@@ -1,8 +1,9 @@
 {
-	"name": "py_standardised_to_harmonised_data_conversions",
+	"name": "py_create_lake_databases",
 	"properties": {
+		"description": "Post deployment script to create lake databases",
 		"folder": {
-			"name": "odw-standardised"
+			"name": "archive"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -15,12 +16,12 @@
 			"driverCores": 4,
 			"executorMemory": "28g",
 			"executorCores": 4,
-			"numExecutors": 2,
+			"numExecutors": 1,
 			"conf": {
-				"spark.dynamicAllocation.enabled": "false",
-				"spark.dynamicAllocation.minExecutors": "2",
-				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5d3a2888-b417-4a0b-95d7-83a642e8298c"
+				"spark.dynamicAllocation.enabled": "true",
+				"spark.dynamicAllocation.minExecutors": "1",
+				"spark.dynamicAllocation.maxExecutors": "1",
+				"spark.autotune.trackingId": "e84da3a8-4025-4e34-bf2b-ef5d76739020"
 			}
 		},
 		"metadata": {
@@ -45,7 +46,8 @@
 				"sparkVersion": "3.1",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 28
+				"memory": 28,
+				"automaticScaleJobs": true
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -64,39 +66,10 @@
 					}
 				},
 				"source": [
-					"from notebookutils import mssparkutils\n",
+					"from notebookutils import mssparkutils\r\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"tags": [
-						"parameters"
-					]
-				},
-				"source": [
-					"raw_storage_container = 'abfss://odw-raw@' + storage_account\r\n",
-					"raw_storage_source_folder = 'sap-load-tables'\r\n",
-					"raw_storage_source_name = 'sap-hr'\r\n",
-					"workspace_storage_container = 'abfss://odw-workspace@' + storage_account\r\n",
-					"workspace_storage_temp_folder = 'sap-load-tables'\r\n",
-					"workspace_storage_temp_name = 'sap-hr'\r\n",
-					"standardised_storage_container = 'abfss://odw-standardised@' + storage_account\r\n",
-					"standardised_storage_delta_folder = 'sap-load-tables'\r\n",
-					"standardised_storage_delta_table_name = 'sap-hr'"
-				],
-				"execution_count": 3
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -112,10 +85,31 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql.functions import lower, col\r\n",
-					"from pyspark.sql import *"
+					"#raw_database_name = 'odw_raw_db'\r\n",
+					"#raw_database_location = 'abfss://odw-raw@' + storage_account\r\n",
+					"workspace_database_name = 'odw_workspace_db'\r\n",
+					"workspace_database_location = 'abfss://odw-workspace@' + storage_account + '/'\r\n",
+					"standardised_database_name = 'odw_standardised_db'\r\n",
+					"standardised_database_location = 'abfss://odw-standardised@' + storage_account + '/'\r\n",
+					"harmonised_database_name = 'odw_harmonised_db'\r\n",
+					"harmonised_database_location = 'abfss://odw-harmonised@' + storage_account + '/'\r\n",
+					"curated_database_name = 'odw_curated_db'\r\n",
+					"curated_database_location = 'abfss://odw-curated@' + storage_account + '/'\r\n",
+					"config_database_name = 'odw_config_db'\r\n",
+					"config_database_location = 'abfss://odw-config@' + storage_account + '/'"
 				],
-				"execution_count": null
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS {0} LOCATION '{1}'\".format(workspace_database_name, workspace_database_location))\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS {0} LOCATION '{1}'\".format(standardised_database_name, standardised_database_location))\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS {0} LOCATION '{1}'\".format(harmonised_database_name, harmonised_database_location))\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS {0} LOCATION '{1}'\".format(curated_database_name, curated_database_location))\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS {0} LOCATION '{1}'\".format(config_database_name, config_database_location))"
+				],
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -131,14 +125,9 @@
 					}
 				},
 				"source": [
-					"\r\n",
-					"def convertLowerCase(inputDF : DataFrame , inputColumnName) -> DataFrame:\r\n",
-					"    newColumnName = 'lower_' + inputColumnName\r\n",
-					"    transDF = inputDF.withColumn(newColumnName,lower(col(inputColumnName)))\r\n",
-					"    return transDF\r\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
