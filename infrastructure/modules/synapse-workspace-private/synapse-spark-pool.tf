@@ -16,5 +16,10 @@ resource "azurerm_synapse_spark_pool" "synapse" {
     min_node_count = var.spark_pool_min_node_count
   }
 
+  library_requirement {
+    content  = file("${path.module}/configuration/spark-requirements.txt")
+    filename = "requirements.txt"
+  }
+
   tags = local.tags
 }
