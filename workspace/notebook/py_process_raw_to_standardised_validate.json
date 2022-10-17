@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8f55b8fa-312d-45ab-bb5b-6f212f248ddc"
+				"spark.autotune.trackingId": "2e31d62e-0997-4f30-8f1a-deca32bc828a"
 			}
 		},
 		"metadata": {
@@ -92,42 +92,7 @@
 					"delta_lake_table_name = \"sap_hr\"\r\n",
 					"delta_lake_database_name = 'odw_standardised_db'"
 				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"from pyspark.sql.types import *\r\n",
-					"\r\n",
-					"raw_storage_folder_path = raw_storage_container   + '/' + raw_storage_source_folder + '/' + raw_storage_source_name\r\n",
-					"workspace_storage_folder_path = workspace_storage_container + '/' + workspace_storage_temp_folder + '/' + workspace_storage_temp_name\r\n",
-					"\r\n",
-					"rawsourceDF=spark.read.options(header='True', inferSchema='True', delimiter='|').csv(raw_storage_folder_path)\r\n",
-					"\r\n",
-					"\r\n",
-					"#Rename Columns with illegal Parquet characters\r\n",
-					"import re\r\n",
-					"cols=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in rawsourceDF.columns] # replace chars with _\r\n",
-					"cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
-					"cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
-					"rawsourceDF=rawsourceDF.toDF(*cols)\r\n",
-					"\r\n",
-					"rawsourceDF.write.option(\"header\", \"true\").format('parquet').mode('overwrite').save(workspace_storage_folder_path)\r\n",
-					"#display(rawsourceDF)"
-				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -207,27 +172,56 @@
 				},
 				"source": [
 					"import pyspark.pandas as ps\r\n",
-					"from pyspark.sql.functions import count\r\n",
+					"\r\n",
 					"\r\n",
 					"raw_storage_container = 'abfss://odw-raw@' + storage_account\r\n",
 					"raw_storage_source_folder ='Fileshare/SAP_HR/2022-08/'\r\n",
 					"raw_storage_source_name ='SAPHR_20220831.xlsx'\r\n",
-					"raw_storage_folder_path = raw_storage_container   + '/' + raw_storage_source_folder + '/' + raw_storage_source_name\r\n",
-					"p='abfss://odw-harmonised@pinsstodwdevuks9h80mb.dfs.core.windows.net//raw/excel/Address.xlsx'\r\n",
+					"raw_storage_folder_path = raw_storage_container   + '/' + raw_storage_source_folder + '/' \r\n",
 					"print('raw_storage_folder_path------ '+raw_storage_folder_path)\r\n",
 					"\r\n",
+					"file_table_mapping = {\"Addresses - 20220831.xlsx\" : \"addresses\", \"HR Absence Data 220831.xlsx\": \"absences\", \r\n",
+					"\"HR PC 2022_08.xlsx\":  \"personal_characteristics\", \"Leave Entitlement_20220831.xlsx\": \"leave\", \"SAP_email_20220831.xlsx\" : \"email\",\r\n",
+					"\"SAP_Leavers_20220831.xlsx\" : \"leavers\", \"Specialisms - 220831.xlsx\" : \"specialisms\"}\r\n",
+					"\r\n",
+					"for file, table in file_table_mapping.items():\r\n",
+					"    full_path =raw_storage_folder_path + file\r\n",
+					"    print('-----path is '+full_path)\r\n",
+					"    df = ps.read_excel(full_path, dtype=str)\r\n",
+					"    print(df.count)\r\n",
 					"\r\n",
 					"\r\n",
-					"df = ps.read_excel(p, dtype=str)\r\n",
-					"print(df['Staff Number'].count())\r\n",
-					"count =df.count()\r\n",
 					"\r\n",
-					"#print(count)\r\n",
+					"\r\n",
+					"\r\n",
 					"\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 39
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"show TABLES;"
+				],
+				"execution_count": 2
 			}
 		]
 	}
