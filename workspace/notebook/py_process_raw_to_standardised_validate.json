@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "14af147c-de8f-4f11-a10b-b22f516b9739"
+				"spark.autotune.trackingId": "f6da3b73-8276-4eba-9c2f-9a698b688556"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,25 @@
 					"from notebookutils import mssparkutils\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 1
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -84,7 +102,7 @@
 					"standardised_storage_container = 'abfss://odw-standardised@' + storage_account\r\n",
 					"delta_lake_database_name = 'odw_standardised_db'"
 				],
-				"execution_count": 2
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +120,7 @@
 				"source": [
 					"import pyspark.pandas as ps\r\n",
 					"from pyspark.sql.functions import count\r\n",
-					"from py_logging_d\r\n",
+					"\r\n",
 					"\r\n",
 					"raw_storage_container = 'abfss://odw-raw@' + storage_account\r\n",
 					"raw_storage_source_folder ='Fileshare/SAP_HR/2022-08/'\r\n",
@@ -115,33 +133,38 @@
 					"\"SAP_Leavers_20220831.xlsx\" : \"leavers\", \"Specialisms - 220831.xlsx\" : \"specialisms\"}\r\n",
 					"\r\n",
 					"\r\n",
+					"@logging_to_appins\r\n",
+					"def validate_data():\r\n",
+					"    print('---Validation started---')\r\n",
+					"    for file, table in file_table_mapping.items():\r\n",
+					"        try:\r\n",
+					"            full_path =raw_storage_folder_path + file\r\n",
+					"            print('-----Validating file '+file)\r\n",
+					"            df = ps.read_excel(full_path, dtype=str)\r\n",
+					"            file_count = len(df.index)\r\n",
+					"            sql_df= spark.sql(\"SELECT count(*) FROM odw_standardised_db.\"+table)\r\n",
+					"            table_count = sql_df.first()[0]\r\n",
 					"\r\n",
-					"for file, table in file_table_mapping.items():\r\n",
-					"    try:\r\n",
-					"        full_path =raw_storage_folder_path + file\r\n",
-					"        print('-----Validating file '+file)\r\n",
-					"        df = ps.read_excel(full_path, dtype=str)\r\n",
-					"        file_count = len(df.index)\r\n",
-					"        sql_df= spark.sql(\"SELECT count(*) FROM odw_standardised_db.\"+table)\r\n",
-					"        table_count = sql_df.first()[0]\r\n",
+					"            if(table_count == file_count):\r\n",
+					"                print('------File count and Table counts are equal')\r\n",
+					"            else:\r\n",
+					"                print('------File count and Table counts are not equal')\r\n",
+					"                print('------File Count: '+str(file_count) +' Table Count: '+str(table_count))\r\n",
+					"                raise ValueError('File count and Table counts are not equal')\r\n",
 					"\r\n",
-					"        if(table_count == file_count):\r\n",
-					"            print('------File count and Table counts are equal')\r\n",
-					"        else:\r\n",
-					"            print('------File count and Table counts are not equal')\r\n",
-					"            print('------File Count: '+str(file_count) +' Table Count: '+str(table_count))\r\n",
-					"            raise ValueError('File count and Table counts are not equal')\r\n",
+					"        except ValueError as err:\r\n",
+					"            print(err.args)\r\n",
+					"    print('---Validation finished---')\r\n",
 					"\r\n",
-					"    except ValueError as err:\r\n",
-					"        print(err.args)\r\n",
 					"\r\n",
+					"validate_data()\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 9
 			}
 		]
 	}
