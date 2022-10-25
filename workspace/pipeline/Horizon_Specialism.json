@@ -58,7 +58,15 @@
 				"name": "HZN_Data_Copy_Specialism",
 				"description": "This is connecting to the Horizon specialism view and loading the data into the RAW ODW Layer as Parquet",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "HZN_Data_Copy_AllAppeals",
+						"dependencyConditions": [
+							"Succeeded",
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -109,7 +117,14 @@
 				"name": "HZN_Copy_Data_CommonLand",
 				"description": "This is connecting to the Horizon CommonLandCombined view and loading the data into the RAW ODW Layer as Parquet",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "HZN_Data_Copy_Specialism",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -160,7 +175,14 @@
 				"name": "HZN_Copy_Data_AdditionalFields",
 				"description": "This is connecting to the Horizon AdditionalFields view and loading the data into the RAW ODW Layer as Parquet",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "HZN_Copy_Data_CommonLand",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -211,7 +233,14 @@
 				"name": "HZN_Copy_Data_SpecialistModifcations",
 				"description": "This is connecting to the Horizon SpecialistMofdifcations view and loading the data into the RAW ODW Layer as Parquet",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "HZN_Copy_Data_AdditionalFields",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -262,7 +291,14 @@
 				"name": "HZN_Copy_Data_Event",
 				"description": "This is connecting to the Horizon Event view and loading the data into the RAW ODW Layer as Parquet",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "HZN_Copy_Data_SpecialistModifcations",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -308,6 +344,126 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "HZN_Data_Copy_InspectorCases",
+				"description": "This is connecting to the Horizon Inspector_Cases view and loading the data into the RAW ODW Layer as Parquet",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "HZN_Copy_Data_Event",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "HZN_InspectorCases",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "HZN_InspectorCases_Parquet",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "HZN_Copy_Data_InspectorGroup",
+				"description": "This is connecting to the Horizon Inspector_Group view and loading the data into the RAW ODW Layer as Parquet",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"enableStaging": false
+				}
+			},
+			{
+				"name": "All_Appeals_Data_Copy_Failure",
+				"description": "This is a failure",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "HZN_Data_Copy_AllAppeals",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [
+					{
+						"name": "Michael Cross",
+						"value": "michael.cross@planninginspectorate.gov.uk"
+					}
+				],
+				"typeProperties": {
+					"message": "All Appeals copy to Raw has failed",
+					"errorCode": "HZN_Data_Copy_AllAppeals1"
+				}
+			},
+			{
+				"name": "Specialism_Data_Copy_Failure",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "HZN_Data_Copy_Specialism",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [
+					{
+						"name": "Michael Cross",
+						"value": "michael.cross@planninginspectorate.gov.uk"
+					}
+				],
+				"typeProperties": {
+					"message": "Specialism copy to Raw has failed",
+					"errorCode": "HZN_Data_Copy_Specialism1"
+				}
 			}
 		],
 		"folder": {
