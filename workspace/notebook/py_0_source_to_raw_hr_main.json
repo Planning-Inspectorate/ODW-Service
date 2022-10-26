@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c27522fa-d14d-454d-8981-08f2ca7e801d"
+				"spark.autotune.trackingId": "c7c79477-3140-4032-bb40-6d6310143d60"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 55
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -84,7 +84,7 @@
 					"target_container = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/\"\r\n",
 					"target_folder = \"config/datalabs_log/\""
 				],
-				"execution_count": 56
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -100,33 +100,9 @@
 					}
 				},
 				"source": [
-					"from azure.storage.fileshare import ShareDirectoryClient\r\n",
-					"from notebookutils import mssparkutils\r\n",
-					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
-					"parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=\"ODW/HR/Monthly/2022-08/\")\r\n",
-					"list(parent_dir.list_directories_and_files())\r\n",
-					"parent_dir.get_file_client(\"Addresses - 20220831.xlsx\").get_file_properties().last_modified"
+					"create_table_from_schema(jsonschema, db_name, table_name, target_container, target_folder)"
 				],
-				"execution_count": 67
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"create_table_from_schema(jsonschema, db_name, table_name, target_container, target_folder)\r\n",
-					""
-				],
-				"execution_count": 57
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -144,86 +120,7 @@
 				"source": [
 					"azfileshare_new_files(\"pinskvsynwodwdevuks\",\"datalab-connectionstring\", \"ls_kv\", share_name=\"datalab\", directory_path=\"ODW/HR/\", jsonschema=schema_table, target_container=target_container,target_folder=target_folder)"
 				],
-				"execution_count": 59
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"akv_name=\"pinskvsynwodwdevuks\"\r\n",
-					"secret_name=\"datalab-connectionstring\"\r\n",
-					"kv_linked_service=\"ls_kv\"\r\n",
-					"share_name=\"datalab\"\r\n",
-					"directory_path=\"ODW/HR/\"\r\n",
-					"jsonschema=schema_table\r\n",
-					"\r\n",
-					"\r\n",
-					"\r\n",
-					"import datetime\r\n",
-					"dt = datetime.datetime.now()\r\n",
-					"\r\n",
-					"\r\n",
-					"### establish connection to azure files and create client\r\n",
-					"from azure.storage.fileshare import ShareDirectoryClient\r\n",
-					"from notebookutils import mssparkutils\r\n",
-					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
-					"parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
-					"\r\n",
-					"### recursive function to find all files within a directory\r\n",
-					"all_files = []\r\n",
-					"def _recursive_find_all_files(share_directory_client):\r\n",
-					"    files_and_dirs = list(share_directory_client.list_directories_and_files())\r\n",
-					"    if files_and_dirs == []:\r\n",
-					"        raise ValueError\r\n",
-					"    ### add some ms type checks \r\n",
-					"    # import azure.storage.fileshare\r\n",
-					"    # isinstance(my_list[0], azure.storage.fileshare._models.DirectoryProperties)\r\n",
-					"    files_and_dirs_len = len(files_and_dirs)\r\n",
-					"    count = 0\r\n",
-					"    for li in files_and_dirs:\r\n",
-					"        if li['is_directory']:\r\n",
-					"            _recursive_find_all_files(share_directory_client.get_subdirectory_client(li['name']))\r\n",
-					"        else:\r\n",
-					"            fileprops = share_directory_client.get_file_client(li['name']).get_file_properties()\r\n",
-					"            all_files.append([dt, fileprops.path, fileprops.last_modified]) # correct this to timestamp?\r\n",
-					"            count += 1\r\n",
-					"            if files_and_dirs_len == count:\r\n",
-					"                break\r\n",
-					"\r\n",
-					"_recursive_find_all_files(parent_dir)\r\n",
-					"\r\n",
-					"from pyspark.sql import SparkSession\r\n",
-					"from pyspark.sql.functions import lit\r\n",
-					"spark = SparkSession.builder.getOrCreate()\r\n",
-					"\r\n",
-					"from pyspark.sql.types import StructType\r\n",
-					"import json\r\n",
-					"schema = StructType.fromJson(json.loads(jsonschema))\r\n",
-					"logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
-					"logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\r\n",
-					"filtered_cols = logs_now_df.columns\r\n",
-					"filtered_cols.remove(\"Process_Date\")\r\n",
-					"print(filtered_cols)\r\n",
-					"logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
-					"logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
-					"new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
-					"\r\n",
-					"new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
-					"# logs_now_df = spark.createDataFrame(new_paths, schema)\r\n",
-					"\r\n",
-					"new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.datalabs_log\")"
-				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -240,42 +137,6 @@
 				},
 				"source": [
 					"# spark.sql(\"drop table if exists odw_config_db.datalabs_log\")"
-				],
-				"execution_count": 54
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": 53
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
 				],
 				"execution_count": null
 			}
