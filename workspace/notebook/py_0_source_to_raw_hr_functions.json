@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "168fecda-0299-4324-9419-5a6f00e4c9dd"
+				"spark.autotune.trackingId": "06d6c4dd-3a22-4920-9753-7f1e990dc2c5"
 			}
 		},
 		"metadata": {
@@ -191,7 +191,7 @@
 					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
 					"    df = spark.createDataFrame([], schema)\r\n",
 					"\r\n",
-					"    ### check if db.table exists\r\n",
+					"    ### table checks\r\n",
 					"    if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\r\n",
 					"        if any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\r\n",
 					"            table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\r\n",
@@ -203,9 +203,11 @@
 					"                else:\r\n",
 					"                    raise ValueError(\"Table already exists but the location provided doesn't match the existing parquet location for the table!\")\r\n",
 					"\r\n",
+					"    ### write df to parquet location\r\n",
 					"    if not (DeltaTable.isDeltaTable(spark,target_loc)):\r\n",
 					"        df.write.option(\"mergeSchema\", \"false\").format('delta').save(target_loc)# no overwrite on table creation\r\n",
 					"    \r\n",
+					"    ### create spark sql table from parquet\r\n",
 					"    if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\r\n",
 					"        if not any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\r\n",
 					"            spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(db_name,table_name,target_loc))\r\n",
@@ -233,9 +235,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"select count(*) ; from odw_test_db.test_table"
+					"drop table if exists odw_config_db.datalabs_log"
 				],
-				"execution_count": 32
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
