@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5b8d4b58-78a8-4538-a24a-90a79e72d182"
+				"spark.autotune.trackingId": "0faff369-c23f-4dda-8a3f-28399e5dc24a"
 			}
 		},
 		"metadata": {
@@ -121,7 +121,7 @@
 					"                _recursive_find_all_files(share_directory_client.get_subdirectory_client(li['name']))\r\n",
 					"            else:\r\n",
 					"                fileprops = share_directory_client.get_file_client(li['name']).get_file_properties()\r\n",
-					"                all_files.append([dt, fileprops.path, str(fileprops.last_modified)]) # correct this to timestamp?\r\n",
+					"                all_files.append([dt, fileprops.path, fileprops.last_modified]) # correct this to timestamp?\r\n",
 					"                count += 1\r\n",
 					"                if files_and_dirs_len == count:\r\n",
 					"                    break\r\n",
@@ -137,14 +137,16 @@
 					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
 					"    logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
 					"    logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\r\n",
-					"    logs_now_df_compare = logs_now_df.select(logs_now_df.columns.remove(\"Process_Date\"))\r\n",
-					"    logs_table_df_compare = logs_table_df.select(logs_table_df.columns.remove(\"Process_Date\"))\r\n",
+					"    filtered_cols = logs_now_df.columns\r\n",
+					"    filtered_cols.remove(\"Process_Date\")\r\n",
+					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
+					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
 					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
 					"\r\n",
 					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
-					"    logs_now_df = spark.createDataFrame(new_paths, schema)\r\n",
-					"    \r\n",
-					"    logs_now_df.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.datalabs_log\")"
+					"    # logs_now_df = spark.createDataFrame(new_paths, schema)\r\n",
+					"\r\n",
+					"    new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.datalabs_log\")"
 				],
 				"execution_count": null
 			},
