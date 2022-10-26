@@ -17,21 +17,21 @@ resource "azurerm_storage_management_policy" "synapse" {
 
       actions {
         base_blob {
-          tier_to_cool_after_days_since_modification_greater_than    = can(rule.value.cool_tier_since_modified_days) ? rule.value.cool_tier_since_modified_days : null
-          tier_to_archive_after_days_since_modification_greater_than = can(rule.value.archive_tier_since_modified_days) ? rule.value.archive_tier_since_modified_days : null
-          delete_after_days_since_modification_greater_than          = can(rule.value.delete_since_modified_days) ? rule.value.delete_since_modified_days : null
+          tier_to_cool_after_days_since_modification_greater_than    = can(rule.value.blob.cool_tier_since_modified_days) ? rule.value.blob.cool_tier_since_modified_days : null
+          tier_to_archive_after_days_since_modification_greater_than = can(rule.value.blob.archive_tier_since_modified_days) ? rule.value.blob.archive_tier_since_modified_days : null
+          delete_after_days_since_modification_greater_than          = can(rule.value.blob.delete_since_modified_days) ? rule.value.blob.delete_since_modified_days : null
         }
 
         snapshot {
-          change_tier_to_cool_after_days_since_creation    = can(rule.value.cool_tier_since_created_days) ? rule.value.cool_tier_since_created_days : null
-          change_tier_to_archive_after_days_since_creation = can(rule.value.archive_tier_since_created_days) ? rule.value.archive_tier_since_created_days : null
-          delete_after_days_since_creation_greater_than    = can(rule.value.delete_since_created_days) ? rule.value.delete_since_created_days : null
+          change_tier_to_cool_after_days_since_creation    = can(rule.value.snapshot.cool_tier_since_created_days) ? rule.value.snapshot.cool_tier_since_created_days : null
+          change_tier_to_archive_after_days_since_creation = can(rule.value.snapshot.archive_tier_since_created_days) ? rule.value.snapshot.archive_tier_since_created_days : null
+          delete_after_days_since_creation_greater_than    = can(rule.value.snapshot.delete_since_created_days) ? rule.value.snapshot.delete_since_created_days : null
         }
 
         version {
-          change_tier_to_cool_after_days_since_creation    = can(rule.value.cool_tier_since_created_days) ? rule.value.cool_tier_since_created_days : null
-          change_tier_to_archive_after_days_since_creation = can(rule.value.archive_tier_since_created_days) ? rule.value.archive_tier_since_created_days : null
-          delete_after_days_since_creation                 = can(rule.value.delete_since_created_days) ? rule.value.delete_since_created_days : null
+          change_tier_to_cool_after_days_since_creation    = can(rule.value.version.cool_tier_since_created_days) ? rule.value.version.cool_tier_since_created_days : null
+          change_tier_to_archive_after_days_since_creation = can(rule.value.version.archive_tier_since_created_days) ? rule.value.version.archive_tier_since_created_days : null
+          delete_after_days_since_creation                 = can(rule.value.version.delete_since_created_days) ? rule.value.version.delete_since_created_days : null
         }
       }
     }
