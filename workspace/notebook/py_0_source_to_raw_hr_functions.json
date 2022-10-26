@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "95cb6402-367f-4467-8260-6a588e5430c4"
+				"spark.autotune.trackingId": "1653650b-da8c-4b37-9308-2dc0732dbc04"
 			}
 		},
 		"metadata": {
@@ -192,11 +192,16 @@
 					"    ### check if db exists\r\n",
 					"\r\n",
 					"    ### check if db.table exists\r\n",
-					"    # if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\r\n",
-					"    #     if any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\r\n",
-					"    \r\n",
-					"    ### do that weird edge case\r\n",
-					"    # df = spark.sql(\"DESCRIBE DETAIL odw_config_db.datalabs_log\")\r\n",
+					"    if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\r\n",
+					"        if any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\r\n",
+					"            table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\r\n",
+					"            if len(table_details['location'] > 1):\r\n",
+					"                raise ValueError(\"The table is represented by multiple parquet files- please investigate!\")\r\n",
+					"            else:\r\n",
+					"                if table_details['location'][0] == target_loc:\r\n",
+					"                    raise ValueError(\"Table already exists\")\r\n",
+					"                else:\r\n",
+					"                    raise ValueError(\"Table already exists but the location provided doesn't match the existing parquet location for the table!\")\r\n",
 					"\r\n",
 					"    if not (DeltaTable.isDeltaTable(spark,target_loc)):\r\n",
 					"        df.write.option(\"mergeSchema\", \"false\").format('delta').save(target_loc)# no overwrite on table creation\r\n",
@@ -204,8 +209,6 @@
 					"    if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\r\n",
 					"        if not any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\r\n",
 					"            spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(db_name,table_name,target_loc))\r\n",
-					"        else:\r\n",
-					"            logging.info(\"Table already exists\")\r\n",
 					"    else:\r\n",
 					"        raise NameError(f\"{db_name} doesn't exist\")"
 				],
@@ -222,81 +225,13 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"print(\"hello world\")\r\n",
-					"from delta.tables import *\r\n",
-					"from pyspark.sql.types import StructType\r\n",
-					"from pyspark.sql import SparkSession\r\n",
-					"import json\r\n",
-					"from delta import DeltaTable\r\n",
-					"import logging\r\n",
-					"\r\n",
-					"spark = SparkSession.builder.getOrCreate()\r\n",
-					"deltaTable = DeltaTable.forPath(spark, \"odw_config_db.datalabs_log\")\r\n",
-					"\r\n",
-					"detailDF = deltaTable.detail()"
-				],
-				"execution_count": 8
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df = spark.sql(\"DESCRIBE DETAIL odw_config_db.datalabs_log\")"
-				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df.toPandas()['location'][0]"
-				],
-				"execution_count": 27
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"DROP DATABASE\r\n",
-					"odw_test_2_db"
+					"-- %%sql\r\n",
+					"-- DROP DATABASE\r\n",
+					"-- odw_test_2_db"
 				],
 				"execution_count": 5
 			},
