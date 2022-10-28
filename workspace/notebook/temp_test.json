@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "da6a076f-3fdd-4ee2-80d6-b4318582f5c9"
+				"spark.autotune.trackingId": "187a4e82-476d-4dda-9f0e-7effa4113fd8"
 			}
 		},
 		"metadata": {
@@ -86,104 +86,7 @@
 					"            raise e\r\n",
 					"    return wrapper"
 				],
-				"execution_count": 19
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"@logging_to_appins\r\n",
-					"def azfileshare_new_files(akv_name:str, secret_name:str, kv_linked_service:str, share_name:str, directory_path:str, jsonschema:str, target_container:str, target_folder:str):\r\n",
-					"    '''\r\n",
-					"    Function which determines if any new files are available in the datalabs environment\r\n",
-					"    \r\n",
-					"    Args:\r\n",
-					"        akv_name (str): Name of the key vault resource\r\n",
-					"        secret_name (str): Name of the secret\r\n",
-					"        kv_linked_service (str): Name of the key vault linked service in Azure Synapse\r\n",
-					"        share_name (str): Azure File Share resource name\r\n",
-					"        directory_path (str):  Root path to establish ShareDirectoryClient connection to \r\n",
-					"        jsonschema (str): Pyspark StructType representation of a dataframe schema \r\n",
-					"        target_container (str): Container containing the Fileshare logs\r\n",
-					"        target_folder (str): Folder containing the Fileshare delta table\r\n",
-					"\r\n",
-					"    Returns:\r\n",
-					"        Nothing\r\n",
-					"\r\n",
-					"    Actions:\r\n",
-					"        Appends any new files to the fileshare logs (a delta table) from a Fileshare\r\n",
-					"        \r\n",
-					"    Raises:\r\n",
-					"        ValueError(\"Empty directory has been provided\") - avoids a Fileshare client directory which is empty\r\n",
-					"\r\n",
-					"    '''\r\n",
-					"    ### start datetime REMOVE?\r\n",
-					"    import datetime\r\n",
-					"    dt = datetime.datetime.now()\r\n",
-					"\r\n",
-					"\r\n",
-					"    ### establish connection to azure files and create client\r\n",
-					"    from azure.storage.fileshare import ShareDirectoryClient\r\n",
-					"    from notebookutils import mssparkutils\r\n",
-					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
-					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
-					"\r\n",
-					"    ### recursive function to find all files within a directory\r\n",
-					"    all_files = []\r\n",
-					"    def _recursive_find_all_files(share_directory_client):\r\n",
-					"        files_and_dirs = list(share_directory_client.list_directories_and_files())\r\n",
-					"        if files_and_dirs == []:\r\n",
-					"            raise ValueError(\"Empty directory has been provided\")\r\n",
-					"        ### add some ms type checks \r\n",
-					"        # import azure.storage.fileshare\r\n",
-					"        # isinstance(my_list[0], azure.storage.fileshare._models.DirectoryProperties)\r\n",
-					"        files_and_dirs_len = len(files_and_dirs)\r\n",
-					"        count = 0\r\n",
-					"        for li in files_and_dirs:\r\n",
-					"            if li['is_directory']:\r\n",
-					"                _recursive_find_all_files(share_directory_client.get_subdirectory_client(li['name']))\r\n",
-					"            else:\r\n",
-					"                fileprops = share_directory_client.get_file_client(li['name']).get_file_properties()\r\n",
-					"                all_files.append([dt, fileprops.path, fileprops.last_modified]) # correct this to timestamp?\r\n",
-					"                count += 1\r\n",
-					"                if files_and_dirs_len == count:\r\n",
-					"                    break\r\n",
-					"\r\n",
-					"    _recursive_find_all_files(parent_dir)\r\n",
-					"    \r\n",
-					"    from pyspark.sql import SparkSession\r\n",
-					"    from pyspark.sql.functions import lit\r\n",
-					"    spark = SparkSession.builder.getOrCreate()\r\n",
-					"\r\n",
-					"    from pyspark.sql.types import StructType\r\n",
-					"    import json\r\n",
-					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
-					"    logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
-					"    logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\r\n",
-					"    filtered_cols = logs_now_df.columns\r\n",
-					"    filtered_cols.remove(\"Process_Date\")\r\n",
-					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
-					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
-					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
-					"\r\n",
-					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
-					"    # logs_now_df = spark.createDataFrame(new_paths, schema)\r\n",
-					"\r\n",
-					"    new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.datalabs_log\")\r\n",
-					"    all_paths = new_paths.select(\"Filepath\").toJSON().collect()\r\n",
-					"    mssparkutils.notebook.exit(all_paths)"
-				],
-				"execution_count": 20
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -265,7 +168,105 @@
 					"    else:\r\n",
 					"        raise NameError(f\"{db_name} doesn't exist\")"
 				],
-				"execution_count": 21
+				"execution_count": 103
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\r\n",
+					"def azfileshare_new_files(akv_name:str, secret_name:str, kv_linked_service:str, share_name:str, directory_path:str, jsonschema:str, target_container:str, target_folder:str, db_name:str, table_name:str):\r\n",
+					"    '''\r\n",
+					"    Function which determines if any new files are available in the datalabs environment\r\n",
+					"    \r\n",
+					"    Args:\r\n",
+					"        akv_name (str): Name of the key vault resource\r\n",
+					"        secret_name (str): Name of the secret\r\n",
+					"        kv_linked_service (str): Name of the key vault linked service in Azure Synapse\r\n",
+					"        share_name (str): Azure File Share resource name\r\n",
+					"        directory_path (str):  Root path to establish ShareDirectoryClient connection to \r\n",
+					"        jsonschema (str): Pyspark StructType representation of a dataframe schema \r\n",
+					"        target_container (str): Container containing the Fileshare logs\r\n",
+					"        target_folder (str): Folder containing the Fileshare delta table\r\n",
+					"        db_name (str):\r\n",
+					"        table_name (str):\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        Nothing\r\n",
+					"\r\n",
+					"    Actions:\r\n",
+					"        Appends any new files to the fileshare logs (a delta table) from a Fileshare\r\n",
+					"        \r\n",
+					"    Raises:\r\n",
+					"        ValueError(\"Empty directory has been provided\") - avoids a Fileshare client directory which is empty\r\n",
+					"\r\n",
+					"    '''\r\n",
+					"    ### start datetime REMOVE?\r\n",
+					"    import datetime\r\n",
+					"    dt = datetime.datetime.now()\r\n",
+					"\r\n",
+					"\r\n",
+					"    ### establish connection to azure files and create client\r\n",
+					"    from azure.storage.fileshare import ShareDirectoryClient\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
+					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
+					"\r\n",
+					"    ### recursive function to find all files within a directory\r\n",
+					"    all_files = []\r\n",
+					"    def _recursive_find_all_files(share_directory_client):\r\n",
+					"        files_and_dirs = list(share_directory_client.list_directories_and_files())\r\n",
+					"        if files_and_dirs == []:\r\n",
+					"            raise ValueError(\"Empty directory has been provided\")\r\n",
+					"        ### add some ms type checks \r\n",
+					"        # import azure.storage.fileshare\r\n",
+					"        # isinstance(my_list[0], azure.storage.fileshare._models.DirectoryProperties)\r\n",
+					"        files_and_dirs_len = len(files_and_dirs)\r\n",
+					"        count = 0\r\n",
+					"        for li in files_and_dirs:\r\n",
+					"            if li['is_directory']:\r\n",
+					"                _recursive_find_all_files(share_directory_client.get_subdirectory_client(li['name']))\r\n",
+					"            else:\r\n",
+					"                fileprops = share_directory_client.get_file_client(li['name']).get_file_properties()\r\n",
+					"                all_files.append([dt, fileprops.path, fileprops.last_modified]) # correct this to timestamp?\r\n",
+					"                count += 1\r\n",
+					"                if files_and_dirs_len == count:\r\n",
+					"                    break\r\n",
+					"\r\n",
+					"    _recursive_find_all_files(parent_dir)\r\n",
+					"    \r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    from pyspark.sql.functions import lit\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"\r\n",
+					"    from pyspark.sql.types import StructType\r\n",
+					"    import json\r\n",
+					"\r\n",
+					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
+					"    logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
+					"    logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\r\n",
+					"    filtered_cols = logs_now_df.columns\r\n",
+					"    filtered_cols.remove(\"Process_Date\")\r\n",
+					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
+					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
+					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
+					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
+					"\r\n",
+					"    new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{db_name}.{table_name}\")\r\n",
+					"    all_paths = new_paths.select(\"Filepath\").toJSON().collect()\r\n",
+					"    mssparkutils.notebook.exit(all_paths)"
+				],
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -288,7 +289,7 @@
 					"target_container = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/\"\r\n",
 					"target_folder = \"raw_logs/datalabs_log/\""
 				],
-				"execution_count": 22
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -306,7 +307,7 @@
 				"source": [
 					"create_table_from_schema(jsonschema, db_name, table_name, target_container, target_folder)"
 				],
-				"execution_count": 23
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -322,9 +323,9 @@
 					}
 				},
 				"source": [
-					"azfileshare_new_files(\"pinskvsynwodwdevuks\",\"datalab-connectionstring\", \"ls_kv\", share_name=\"datalab\", directory_path=\"ODW/HR/\", jsonschema=schema_table, target_container=target_container,target_folder=target_folder)"
+					"azfileshare_new_files(\"pinskvsynwodwdevuks\",\"datalab-connectionstring\", \"ls_kv\", share_name=\"datalab\", directory_path=\"ODW/HR/\", jsonschema=schema_table, target_container=target_container,target_folder=target_folder, db_name=db_name, table_name=table_name)"
 				],
-				"execution_count": 24
+				"execution_count": 109
 			},
 			{
 				"cell_type": "code",
@@ -342,7 +343,7 @@
 				"source": [
 					"# spark.sql(\"drop table if exists odw_config_db.datalabs_log\")"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -358,9 +359,10 @@
 					}
 				},
 				"source": [
-					"df = spark.sql(\"select * from odw_config_db.datalabs_log\")"
+					"df = spark.sql(\"select * from odw_config_db.datalabs_log\")\r\n",
+					"df.head(n=5)"
 				],
-				"execution_count": 26
+				"execution_count": 111
 			},
 			{
 				"cell_type": "code",
@@ -378,7 +380,7 @@
 				"source": [
 					"# df.select(\"Filepath\").toJSON().collect()"
 				],
-				"execution_count": 27
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
