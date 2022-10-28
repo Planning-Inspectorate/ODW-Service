@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9d61bb72-fe1e-42a8-8726-3de93caf6458"
+				"spark.autotune.trackingId": "b1cb02a5-7916-4085-9c14-991b72b6e9e8"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 				},
 				"source": [
 					"@logging_to_appins\r\n",
-					"def log_copy_output(output:str, filepath:str, akv_name:str, secret_name:str, kv_linked_service:str, jsonschema:str):\r\n",
+					"def log_copy_output(output:str, filepath:str, akv_name:str, secret_name:str, kv_linked_service:str, jsonschema:str, db_name:str, table_name:str):\r\n",
 					"    '''\r\n",
 					"\r\n",
 					"    '''\r\n",
@@ -109,6 +109,19 @@
 					"\r\n",
 					"        from azure.storage.fileshare import ShareFileClient\r\n",
 					"        file_client = ShareFileClient.from_connection_string(conn_str=creds, share_name=share_name, file_path=filepath)\r\n",
+					"        fileprops = file_client.get_file_properties()\r\n",
+					"        \r\n",
+					"        import datetime\r\n",
+					"        dt = datetime.datetime.now()\r\n",
+					"\r\n",
+					"        from pyspark.sql.types import StructType\r\n",
+					"        import json\r\n",
+					"        from pyspark.sql import SparkSession\r\n",
+					"        spark = SparkSession.builder.getOrCreate()\r\n",
+					"        schema = StructType.fromJson(json.loads(jsonschema))\r\n",
+					"        new_raw_file = spark.createDataFrame([dt, filepath, fileprops.last_modified], schema)\r\n",
+					"        new_raw_file.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{db_name}.{table_name}\")\r\n",
+					"        \r\n",
 					"    else:\r\n",
 					"        raise Exception(f\"Transfer to raw for file {filepath} has failed\")\r\n",
 					""
