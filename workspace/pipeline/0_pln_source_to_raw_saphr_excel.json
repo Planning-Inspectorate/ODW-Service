@@ -3,74 +3,6 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "0_SAP_HR_Source_To_Raw",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "BinarySource",
-						"storeSettings": {
-							"type": "AzureFileStorageReadSettings",
-							"recursive": true
-						},
-						"formatSettings": {
-							"type": "BinaryReadSettings"
-						}
-					},
-					"sink": {
-						"type": "BinarySink",
-						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
-						}
-					},
-					"enableStaging": false
-				},
-				"inputs": [
-					{
-						"referenceName": "a_ds_saphr_excel_binary_source",
-						"type": "DatasetReference",
-						"parameters": {
-							"Filepath": {
-								"value": "@pipeline().parameters.SourceFilepath",
-								"type": "Expression"
-							}
-						}
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "b_ds_binary_sink",
-						"type": "DatasetReference",
-						"parameters": {
-							"Filename": {
-								"value": "@pipeline().parameters.Filename",
-								"type": "Expression"
-							},
-							"SourceType": {
-								"value": "@pipeline().parameters.TargetSourceType",
-								"type": "Expression"
-							},
-							"SourceSystem": {
-								"value": "@pipeline().parameters.TargetSourceSystem",
-								"type": "Expression"
-							},
-							"Date": {
-								"value": "@pipeline().parameters.TargetDate",
-								"type": "Expression"
-							}
-						}
-					}
-				]
-			},
-			{
 				"name": "source_to_raw_main",
 				"type": "SynapseNotebook",
 				"dependsOn": [],
@@ -98,6 +30,7 @@
 			},
 			{
 				"name": "If Condition1",
+				"description": "If no new files \"[]\" then logged, else Copy activity starts",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
@@ -109,10 +42,35 @@
 				],
 				"userProperties": [],
 				"typeProperties": {
+					"expression": {
+						"value": "equal(@activity('source_to_raw_main').output.status.Output.result.exitValue,\"[]\")",
+						"type": "Expression"
+					},
 					"ifFalseActivities": [
 						{
-							"name": "Copy data1",
-							"type": "Copy",
+							"name": "CopySourceToRaw",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_pln_soruce_to_raw_saphr_excel_copy_activity",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"AllPaths": {
+										"value": "@activity('source_to_raw_main').output.status.Output.result.exitValue",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "No_New_Files_Logging",
+							"type": "SynapseNotebook",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -123,46 +81,14 @@
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"source": {
-									"type": "BinarySource",
-									"storeSettings": {
-										"type": "AzureFileStorageReadSettings",
-										"recursive": true
-									},
-									"formatSettings": {
-										"type": "BinaryReadSettings"
-									}
-								},
-								"sink": {
-									"type": "BinarySink",
-									"storeSettings": {
-										"type": "AzureBlobFSWriteSettings"
-									}
-								},
-								"enableStaging": false
-							},
-							"inputs": [
-								{
-									"referenceName": "a_ds_saphr_excel_binary_source",
-									"type": "DatasetReference"
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "b_ds_binary_sink",
-									"type": "DatasetReference"
-								}
-							]
+								"snapshot": true
+							}
 						}
 					]
 				}
 			}
 		],
 		"parameters": {
-			"SourceFilepath": {
-				"type": "string",
-				"defaultValue": "ignore"
-			},
 			"TargetSourceType": {
 				"type": "string",
 				"defaultValue": "Fileshare"
