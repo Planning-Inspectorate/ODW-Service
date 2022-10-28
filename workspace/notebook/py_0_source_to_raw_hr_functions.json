@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b2bcfbe0-81ca-40b1-9f56-2f3640722ab4"
+				"spark.autotune.trackingId": "9fe0dc38-bd9d-4973-8b9f-260f8706cc2d"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 				},
 				"source": [
 					"@logging_to_appins\r\n",
-					"def azfileshare_new_files(akv_name:str, secret_name:str, kv_linked_service:str, share_name:str, directory_path:str, jsonschema:str, target_container:str, target_folder:str):\r\n",
+					"def azfileshare_new_files(akv_name:str, secret_name:str, kv_linked_service:str, share_name:str, directory_path:str, jsonschema:str, target_container:str, target_folder:str, db_name:str, table_name:str):\r\n",
 					"    '''\r\n",
 					"    Function which determines if any new files are available in the datalabs environment\r\n",
 					"    \r\n",
@@ -86,6 +86,8 @@
 					"        jsonschema (str): Pyspark StructType representation of a dataframe schema \r\n",
 					"        target_container (str): Container containing the Fileshare logs\r\n",
 					"        target_folder (str): Folder containing the Fileshare delta table\r\n",
+					"        db_name (str):\r\n",
+					"        table_name (str):\r\n",
 					"\r\n",
 					"    Returns:\r\n",
 					"        Nothing\r\n",
@@ -137,6 +139,7 @@
 					"\r\n",
 					"    from pyspark.sql.types import StructType\r\n",
 					"    import json\r\n",
+					"\r\n",
 					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
 					"    logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
 					"    logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\r\n",
@@ -145,13 +148,14 @@
 					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
 					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
 					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
-					"\r\n",
 					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
-					"    # logs_now_df = spark.createDataFrame(new_paths, schema)\r\n",
 					"\r\n",
-					"    new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.datalabs_log\")\r\n",
-					"    all_paths = new_paths.select(\"Filepath\").toJSON()\r\n",
-					"    mssparkutils.notebook.exit(all_paths)"
+					"    # new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{db_name}.{table_name}\")\r\n",
+					"    if new_paths.count() == 0:\r\n",
+					"        mssparkutils.notebook.exit(\"[]\")\r\n",
+					"    else:\r\n",
+					"        all_paths = [paths[\"Filepath\"] for paths in new_paths.collect()]\r\n",
+					"        mssparkutils.notebook.exit(\",,,\".join(all_paths))"
 				],
 				"execution_count": 35
 			},
