@@ -22,10 +22,17 @@ variables:
   value: ${{ lower(parameters.environment) }}
 - name: failoverDeployment
   value: ${{ lower(parameters.failover_deployment) }}
+- name: firewallRulesSecureFileName
+  value: allowed_ip_addresses.yaml
 - name: outputsFileName
   value: tfoutputs.json
 - name: planFileName
   value: tfplan
+- name: poolName
+  ${{ if eq(parameters.failover_deployment, false) }}:
+    value: ${{ format('pins-agent-pool-odw-{0}-uks', lower(parameters.environment)) }}
+  ${{ if eq(parameters.failover_deployment, true) }}:
+    value: ${{ format('pins-agent-pool-odw-{0}-ukw', lower(parameters.environment)) }}
 - name: postDeploymentDelaySeconds
   value: 180
 
@@ -33,19 +40,23 @@ pr: none
 
 trigger: none
 
-pool:
-  name: pins-agent-pool-odw-test-uks
-
 stages:
   - stage: Plan
     displayName: Terraform Plan ${{ parameters.environment }}
     jobs:
     - job: Plan
       displayName: Terraform Plan
+      pool: ${{ variables.poolName }}
       steps:
       # Checkout repo
       - checkout: self
         displayName: 'Checkout'
+
+      # Download firewall rule configuration file
+      - template: steps/download-secure-file.yaml
+        parameters:
+          secureFileName: ${{ variables.firewallRulesSecureFileName }}
+          workingDirectory: infrastructure/configuration/firewall-rules
 
       # Login to Azure using Terraform service principal
       - template: steps/azure-login.yaml
@@ -88,6 +99,7 @@ stages:
     - deployment: Apply
       displayName: Terraform Apply
       environment: ${{ parameters.environment }}
+      pool: ${{ variables.poolName }}
       strategy:
         runOnce:
           deploy:
@@ -95,6 +107,12 @@ stages:
             # Checkout repo
             - checkout: self
               displayName: 'Checkout'
+
+            # Download firewall rule configuration file
+            - template: steps/download-secure-file.yaml
+              parameters:
+                secureFileName: ${{ variables.firewallRulesSecureFileName }}
+                workingDirectory: infrastructure/configuration/firewall-rules
 
             # Download pipeline artifacts
             - download: current
