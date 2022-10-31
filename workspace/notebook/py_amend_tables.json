@@ -1,5 +1,5 @@
 {
-	"name": "py_create_tables",
+	"name": "py_amend_tables",
 	"properties": {
 		"description": "Create Tables from JSON Schema",
 		"folder": {
@@ -17,12 +17,11 @@
 			"executorMemory": "28g",
 			"executorCores": 4,
 			"numExecutors": 2,
-			"runAsWorkspaceSystemIdentity": false,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8df4e7e4-b020-4ee4-988f-6f48f92eb8fe"
+				"spark.autotune.trackingId": "27d13922-4ffc-4e80-a42b-af0dfad9a356"
 			}
 		},
 		"metadata": {
@@ -42,14 +41,13 @@
 				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
 				"sparkVersion": "3.2",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -72,7 +70,7 @@
 					"from notebookutils import mssparkutils\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 4
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -87,7 +85,7 @@
 					"harmonised_storage_delta_folder = 'harmonised'\r\n",
 					"delta_lake_database_name = \"odw_harmonised_db\""
 				],
-				"execution_count": 5
+				"execution_count": 80
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +116,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -148,7 +146,7 @@
 					"    json_string_list.append(json_string)\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -174,30 +172,33 @@
 					"schema_list=[]\n",
 					"i=0\n",
 					"\n",
-					"archive_folder = harmonised_storage_container + '/json_schema/create_table/old' \n",
+					"archive_folder = harmonised_storage_container + '/json_schema/amend/old' \n",
 					"\n",
 					"for json_string in json_string_list:\n",
 					"    json_file = ''\n",
 					"    try:\n",
 					"        json_file = json_schema_path+json_schema_files[i]\n",
 					"        table_name= json_schema_files[i].split('.')[0]\n",
-					"        print('---------creating table '+table_name)\n",
+					"        print('---------Amending table '+table_name)\n",
 					"        print('---------from file '+json_file)\n",
 					"        schema = StructType.fromJson(json.loads(json_string))\n",
-					"        harmonised_storage_delta_table_path = harmonised_storage_container + '/' + harmonised_storage_delta_folder + '/' + table_name\n",
 					"\n",
-					"        if not (DeltaTable.isDeltaTable(spark,harmonised_storage_delta_table_path)):\n",
-					"            harmonisationInspectordf = spark.createDataFrame([], schema)\n",
-					"            harmonisationInspectordf.write.option(\"mergeSchema\", \"true\").format('delta').mode('overwrite').save(harmonised_storage_delta_table_path)\n",
-					"            spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(delta_lake_database_name,table_name,harmonised_storage_delta_table_path))\n",
-					"            mssparkutils.fs.mv(json_file, archive_folder)\n",
+					"        harmonised_storage_delta_table_path = harmonised_storage_container + '/' + harmonised_storage_delta_folder + '/' + table_name\n",
+					"        mssparkutils.fs.rm(harmonised_storage_delta_table_path, True)\n",
+					"        spark.sql(\"DROP TABLE IF EXISTS {0}.{1}\".format(delta_lake_database_name,table_name))\n",
+					"        \n",
+					"        harmonisationInspectordf = spark.createDataFrame([], schema)\n",
+					"        harmonisationInspectordf.write.option(\"mergeSchema\", \"true\").format('delta').mode('overwrite').save(harmonised_storage_delta_table_path)\n",
+					"        spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(delta_lake_database_name,table_name,harmonised_storage_delta_table_path))\n",
+					"        mssparkutils.fs.mv(json_file, archive_folder)\n",
+					"        print('---------Table is amended')\n",
 					"    except Exception as e:\n",
 					"        print('------------Error in File '+json_file)\n",
 					"        traceback.print_exc(file=sys.stdout)\n",
 					"    i += 1\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": null
 			}
 		]
 	}
