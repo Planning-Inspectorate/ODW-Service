@@ -1,3 +1,9 @@
+variable "devops_agent_subnet_name" {
+  default     = "ComputeSubnet"
+  description = "The name of the subnet into which the devops agents will be deployed"
+  type        = string
+}
+
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string
@@ -56,6 +62,12 @@ variable "vnet_subnets" {
   ]
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
   type        = list(map(string))
+}
+
+variable "synapse_private_endpoint_subnet_name" {
+  default     = "SynapseEndpointSubnet"
+  description = "The name of the subnet into which Synapse private endpoints should be deployed"
+  type        = string
 }
 
 variable "tags" {

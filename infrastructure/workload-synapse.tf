@@ -11,6 +11,7 @@ module "synapse_workspace_private" {
   data_lake_account_name                = module.synapse_data_lake.data_lake_account_name
   data_lake_account_name_failover       = module.synapse_data_lake_failover.data_lake_account_name
   data_lake_filesystem_id               = module.synapse_data_lake.data_lake_filesystem_id
+  firewall_allowed_ip_addresses         = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                          = module.synapse_data_lake.key_vault_id
   network_resource_group_name           = azurerm_resource_group.network.name
   purview_id                            = module.synapse_management.purview_id
@@ -18,7 +19,7 @@ module "synapse_workspace_private" {
   spark_pool_max_node_count             = var.spark_pool_max_node_count
   spark_pool_min_node_count             = var.spark_pool_min_node_count
   spark_pool_node_size                  = var.spark_pool_node_size
-  spark_pool_requirements               = file("${path.module}/configuration/spark-requirements.txt")
+  spark_pool_requirements               = file("${path.module}/configuration/spark-pool/requirements.txt")
   spark_pool_version                    = var.spark_pool_version
   sql_pool_enabled                      = var.sql_pool_enabled
   sql_pool_collation                    = var.sql_pool_collation
@@ -57,6 +58,7 @@ module "synapse_workspace_private_failover" {
   data_lake_account_name                = module.synapse_data_lake_failover.data_lake_account_name
   data_lake_account_name_failover       = module.synapse_data_lake.data_lake_account_name
   data_lake_filesystem_id               = module.synapse_data_lake_failover.data_lake_filesystem_id
+  firewall_allowed_ip_addresses         = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                          = module.synapse_data_lake_failover.key_vault_id
   network_resource_group_name           = azurerm_resource_group.network_failover.name
   purview_id                            = module.synapse_management_failover[0].purview_id
@@ -64,7 +66,7 @@ module "synapse_workspace_private_failover" {
   spark_pool_max_node_count             = var.spark_pool_max_node_count
   spark_pool_min_node_count             = var.spark_pool_min_node_count
   spark_pool_node_size                  = var.spark_pool_node_size
-  spark_pool_requirements               = file("${path.module}/configuration/spark-requirements.txt")
+  spark_pool_requirements               = file("${path.module}/configuration/spark-pool/requirements.txt")
   spark_pool_version                    = var.spark_pool_version
   sql_pool_enabled                      = var.sql_pool_enabled
   sql_pool_collation                    = var.sql_pool_collation
