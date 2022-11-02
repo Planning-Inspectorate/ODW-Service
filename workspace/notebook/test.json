@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "76dee115-d99c-48c9-a866-b8e4c9e233f1"
+				"spark.autotune.trackingId": "678c6092-b22d-408b-a493-4ef8a19e6f87"
 			}
 		},
 		"metadata": {
@@ -51,14 +51,24 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"tags": [
-						"parameters"
-					]
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
 				},
 				"source": [
-					"test1 = '{\"fields\": [{\"metadata\": {}, \"name\": \"Process_Date\", \"nullable\": false, \"type\": \"timestamp\"}, {\"metadata\": {}, \"name\": \"Filepath\", \"nullable\": false, \"type\": \"string\"}, {\"metadata\": {}, \"name\": \"File_Modified_Date\", \"nullable\": false, \"type\": \"timestamp\"}]}'"
+					"import pyspark\r\n",
+					"from pyspark.sql import SparkSession, Row\r\n",
+					"from pyspark.sql.types import StructType,StructField, StringType\r\n",
+					"\r\n",
+					"spark = SparkSession.builder.getOrCreate()"
 				],
-				"execution_count": 10
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -74,31 +84,53 @@
 					}
 				},
 				"source": [
+					"jsonschema = '{\"fields\": [{\"metadata\": {}, \"name\": \"Process_Date\", \"nullable\": false, \"type\": \"timestamp\"}, {\"metadata\": {}, \"name\": \"Filepath\", \"nullable\": false, \"type\": \"string\"}, {\"metadata\": {}, \"name\": \"File_Modified_Date\", \"nullable\": false, \"type\": \"timestamp\"}]}'\r\n",
 					"import json\r\n",
-					"jsout = json.loads(test1)\r\n",
-					"print(jsout)\r\n",
+					"schema = StructType.fromJson(json.loads(jsonschema))\r\n",
+					"import datetime\r\n",
+					"new_raw_file = spark.createDataFrame([], schema)\r\n",
+					"new_raw_file.write.option(\"mergeSchema\", \"false\").format('delta').save(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/test/\")\r\n",
+					"spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(\"odw_test_db\",\"abdullah_temp\",\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/test/\"))"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"listex = [datetime.datetime.now(), \"example\", datetime.datetime.now()]\r\n",
+					"df2 = spark.createDataFrame([listex], schema)\r\n",
+					"df2.write.format(\"delta\").mode(\"append\").saveAsTable(f\"odw_test_db.abdullah_temp\")"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					""
 				],
-				"execution_count": 11
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from pyspark.sql.types import StructType\r\n",
-					"schema = StructType.fromJson(json.loads(jsout))"
-				],
-				"execution_count": 12
+				"execution_count": null
 			}
 		]
 	}
