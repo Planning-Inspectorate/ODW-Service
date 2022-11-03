@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ebd5cb87-62ef-4a04-9819-2ae5cbdcb42f"
+				"spark.autotune.trackingId": "13fa3ec9-c055-4d47-8c98-a777a1c95c47"
 			}
 		},
 		"metadata": {
@@ -455,6 +455,110 @@
 					"Select * from odw_harmonised_db.EmployeeLeavers_dim "
 				],
 				"execution_count": 49
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Build WorkSchedule_dim table\r\n",
+					"/**\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.WorkSchedule_dim (\r\n",
+					"    WorkScheduleID,\r\n",
+					"    WorkScheduleRule,\r\n",
+					"    WorkWeekDays,\r\n",
+					"    WorkWeekHours,\r\n",
+					"    WorkDayHours,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
+					"**/\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    uuid() AS WorkScheduleID,\r\n",
+					"    Work_Schedule_Rule AS WorkScheduleRule,\r\n",
+					"    WkDys AS WorkWeekDays,\r\n",
+					"    Wk_hrs AS WorkWeekHours,\r\n",
+					"    Hrs_Day AS WorkDayHours,\r\n",
+					"    first(T2.SourceSystemID) AS SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo\r\n",
+					"FROM odw_standardised_db.absences T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
+					"GROUP BY Work_Schedule_Rule, WkDys, Wk_hrs, Hrs_Day ;\r\n",
+					"\r\n",
+					"Select * from odw_harmonised_db.WorkSchedule_dim "
+				],
+				"execution_count": 55
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Build Specialism_dim table\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.Specialism_dim (\r\n",
+					"    SpecialismID,\r\n",
+					"    EmployeeID,\r\n",
+					"    Qualification,\r\n",
+					"    Proficiency,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    uuid() AS SpecialismID,\r\n",
+					"    Staff_Number AS EmployeeID,\r\n",
+					"    Qualification_Name AS Qualification,\r\n",
+					"    Proficien AS Proficiency,\r\n",
+					"    first(T2.SourceSystemID) AS SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo\r\n",
+					"FROM odw_standardised_db.specialisms T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
+					"GROUP BY Staff_Number, Qualification_Name, Proficien;\r\n",
+					"\r\n",
+					"Select * from odw_harmonised_db.Specialism_dim "
+				],
+				"execution_count": 59
 			}
 		]
 	}
