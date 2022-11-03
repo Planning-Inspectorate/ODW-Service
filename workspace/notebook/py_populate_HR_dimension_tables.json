@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "36abd709-c784-49a4-8e71-3200d8c40121"
+				"spark.autotune.trackingId": "03654b9a-0c7a-4f15-88ba-16afb486c917"
 			}
 		},
 		"metadata": {
@@ -176,10 +176,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"\r\n",
 					"-- Build disability_dim table\r\n",
-					"-- INSERT OVERWRITE achieves the same as a TRUNCATE TABLE and INSERT INTO but in one statement\r\n",
-					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.disability_dim (\r\n",
 					"    DisabilityID,\r\n",
 					"    DisabilityCode,\r\n",
@@ -195,12 +192,11 @@
 					"    uuid() AS DisabilityID,\r\n",
 					"    Disability_Text AS DisabilityCode,\r\n",
 					"    Disability_Code_Description AS Description, \r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID, -- NOT CORRECT\r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID, \r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo\r\n",
-					"    --COUNT(Ref_NO) AS count\r\n",
 					"FROM odw_standardised_db.personal_characteristics T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"GROUP BY Disability_Text, Disability_Code_Description\r\n",
@@ -246,12 +242,11 @@
 					"    uuid() AS ReligionID,\r\n",
 					"    Religion AS ReligionCode,\r\n",
 					"    Religious_Denomination AS Description, \r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID, -- NOT CORRECT\r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo\r\n",
-					"    --COUNT(Ref_NO) AS count\r\n",
 					"FROM odw_standardised_db.personal_characteristics T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"GROUP BY Religion, Religious_Denomination\r\n",
@@ -293,17 +288,70 @@
 					"SELECT\r\n",
 					"    uuid() AS SXOID,\r\n",
 					"    SxO AS Description, \r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID, -- NOT CORRECT\r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID, \r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo\r\n",
-					"    --COUNT(Ref_NO) AS count\r\n",
 					"FROM odw_standardised_db.personal_characteristics T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"GROUP BY SxO\r\n",
 					"\r\n",
 					"Select * from odw_harmonised_db.sxo_dim "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Build secureinfo_fact table\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.secureinfo_fact (\r\n",
+					"    SecureInfoID,\r\n",
+					"    DisabilityID,\r\n",
+					"    DiversityID,\r\n",
+					"    ReligionID,\r\n",
+					"    SXOID,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    uuid() AS SecureInfoID,\r\n",
+					"    DisabilityID AS DisabilityID,\r\n",
+					"    DiversityID AS DiversityID,\r\n",
+					"    ReligionID AS ReligionID,\r\n",
+					"    SxO AS SxO, \r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID, -- NOT CORRECT\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo\r\n",
+					"FROM odw_standardised_db.personal_characteristics T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description,\r\n",
+					"    odw_harmonised_db.disability_dim T3 ON T1.Disability_Text = T3.DisabilityCode  AND T1.Disability_Code_Description = T3.Description,\r\n",
+					"    odw_harmonised_db.diversity_dim T4 ON \"SAP HR\" = T4.Description,\r\n",
+					"    odw_harmonised_db.religion_dim T5 ON \"SAP HR\" = T5.Description,\r\n",
+					"    odw_harmonised_db.sxo_dim T6 ON \"SAP HR\" = T6.SxO,\r\n",
+					"\r\n",
+					"Select * from odw_harmonised_db.secureinfo_fact "
 				],
 				"execution_count": null
 			}
