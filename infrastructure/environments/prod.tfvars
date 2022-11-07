@@ -59,7 +59,7 @@ spark_pool_timeout_minutes = 15
 spark_pool_version         = "3.2"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
-sql_pool_enabled   = true
+sql_pool_enabled   = false
 sql_pool_sku_name  = "DW100c"
 
 sql_server_administrator_username = "sqladmin"
