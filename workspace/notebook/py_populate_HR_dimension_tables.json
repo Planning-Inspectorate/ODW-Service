@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "680ac7cd-e46d-4c61-88a7-7418a9c48cb0"
+				"spark.autotune.trackingId": "a1f308d3-e84b-464c-a335-3bdccd304c68"
 			}
 		},
 		"metadata": {
@@ -732,9 +732,25 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"select * from odw_harmonised_db.LeaveEntitlement_dim"
+					"select \r\n",
+					"Work_Schedule_Rule,\r\n",
+					"Wk_hrs,\r\n",
+					"Hrs_Day,\r\n",
+					"WkDys\r\n",
+					"\r\n",
+					"from odw_standardised_db.absences\r\n",
+					"GROUP BY\r\n",
+					"Work_Schedule_Rule,\r\n",
+					"Wk_hrs,\r\n",
+					"Hrs_Day,\r\n",
+					"WkDys\r\n",
+					"ORDER BY\r\n",
+					"Work_Schedule_Rule,\r\n",
+					"Wk_hrs,\r\n",
+					"Hrs_Day,\r\n",
+					"WkDys"
 				],
-				"execution_count": 22
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -815,24 +831,24 @@
 					"%%sql\r\n",
 					"-- Build absence_dim table - MISSING CREATING THE TABLE WITH THE py_create_tables_new (Currently not working)\r\n",
 					"\r\n",
-					"-- INSERT OVERWRITE odw_harmonised_db.Absence_dim (\r\n",
-					"--     AbsenceID,\r\n",
-					"--     EmployeeID,\r\n",
-					"--     StaffNumber,\r\n",
-					"--     Type,\r\n",
-					"--     SicknessGroup,\r\n",
-					"--     AbsenceStartDate,\r\n",
-					"--     AbsenceEndDate,\r\n",
-					"--     Days,\r\n",
-					"--     CalendarDays,\r\n",
-					"--     WorkScheduleID,\r\n",
-					"--     AnnualLeaveStart,\r\n",
-					"--     SourceSystemID,\r\n",
-					"--     StartDate,\r\n",
-					"--     EndDate,\r\n",
-					"--     IngestionDate,\r\n",
-					"--     ValidTo\r\n",
-					"-- )\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.Absence_dim (\r\n",
+					"    AbsenceID,\r\n",
+					"    EmployeeID,\r\n",
+					"    StaffNumber,\r\n",
+					"    Type,\r\n",
+					"    SicknessGroup,\r\n",
+					"    AbsenceStartDate,\r\n",
+					"    AbsenceEndDate,\r\n",
+					"    Days,\r\n",
+					"    CalendarDays,\r\n",
+					"    WorkScheduleID,\r\n",
+					"    AnnualLeaveStart,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
 					"\r\n",
 					"\r\n",
 					"SELECT\r\n",
@@ -846,7 +862,7 @@
 					"    T1.Days,\r\n",
 					"    T1.Cal_Days as CalendarDays,\r\n",
 					"    T3.WorkScheduleID,\r\n",
-					"    T1.Annual_Leave_Start,\r\n",
+					"    T1.Annual_Leave_Start AS AnnualLeaveStart,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
@@ -854,37 +870,13 @@
 					"    NULL AS ValidTo\r\n",
 					"FROM odw_standardised_db.absences T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"LEFT JOIN odw_harmonised_db.workschedule_dim T3 ON T1.Work_Schedule_Rule = T3.WorkScheduleRule\r\n",
-					"LEFT JOIN odw_harmonised_db.employee_dim T4 ON T1.Staff_Number = T4.PersNumber\r\n",
-					"\r\n",
-					"\r\n",
-					"--Select * FROM odw_standardised_db.absences LIMIT 10\r\n",
-					"--SELECT absence from odw_harmonised_db.Absence_dim"
+					"LEFT JOIN odw_harmonised_db.workschedule_dim T3 ON  T1.Work_Schedule_Rule = T3.WorkScheduleRule AND  \r\n",
+					"                                                    T1.Wk_hrs = T3.WorkWeekHours AND\r\n",
+					"                                                    T1.Hrs_Day = T3.WorkDayHours AND\r\n",
+					"                                                    T1.WkDys = T3.WorkWeekDays\r\n",
+					"LEFT JOIN odw_harmonised_db.employee_dim T4 ON T1.Staff_Number = T4.PersNumber"
 				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"Select * FROM odw_harmonised_db.employee_dim LIMIT 10"
-				],
-				"execution_count": 16
+				"execution_count": 38
 			}
 		]
 	}
