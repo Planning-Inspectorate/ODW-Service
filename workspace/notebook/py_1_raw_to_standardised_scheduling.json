@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6e96bbd1-7434-46c3-bd93-cff095f1615b"
+				"spark.autotune.trackingId": "f2cb261d-aa56-46d8-b1b4-bd0c378f7923"
 			}
 		},
 		"metadata": {
@@ -53,6 +53,29 @@
 		"cells": [
 			{
 				"cell_type": "code",
+				"source": [
+					"### get the json\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"mount_path = \"/scheduling_json\"\r\n",
+					"mssparkutils.fs.unmount(mount_path) \r\n",
+					"mssparkutils.fs.mount( \r\n",
+					"    \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/scheduling_json/\", \r\n",
+					"    mount_path, \r\n",
+					"    {\"linkedService\":\"ls_storage\"} \r\n",
+					") \r\n",
+					"\r\n",
+					"jobId = mssparkutils.env.getJobId()\r\n",
+					"import json\r\n",
+					"with open(f\"/synfs/{jobId}/scheduling_json/orchestration_test.json\") as json_config:\r\n",
+					"    json_config_dict = json.loads(json_config.read())\r\n",
+					"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
@@ -65,53 +88,54 @@
 					}
 				},
 				"source": [
-					"jsonconfig = '''{\r\n",
-					"    \"definitions\":[\r\n",
-					"        {\r\n",
-					"        \"SourceID\": 1,\r\n",
-					"        \"SourceType\":\"Fileshare\",\r\n",
-					"        \"SourceSystem\":\"SAP_HR\",\r\n",
-					"        \"Source_Datalake_Root\":\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net\",\r\n",
-					"        \"FrequencyFolder\":\"Monthly\",\r\n",
-					"        \"FolderDateFormat\":\"YYYY-MM\",\r\n",
-					"        \"Completion_Start_Date\":\"0 0 1 * *\",\r\n",
-					"        \"Completion_End_Date\":\"59 23 7 * *\",\r\n",
-					"        \"FilenameFormat\":\"Addresses - YYYYMMDD.xlsx\",\r\n",
-					"        \"FilenameDateFormat\":\"YYYYMMDD\",\r\n",
-					"        \"ABFSS_RawRoot\":\"\",\r\n",
-					"        \"ABFSS_StandardisedRoot\":\"\"\r\n",
-					"    }\r\n",
-					"    ]\r\n",
-					"}\r\n",
-					"'''"
-				],
-				"execution_count": 38
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"### get the json\r\n",
-					"mssparkutils.fs.mount( \r\n",
-					"    \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/scheduling_json/\", \r\n",
-					"    \"/scheduling_json\", \r\n",
-					"    {\"linkedService\":\"pins-synw-odw-dev-uks\"} \r\n",
-					") \r\n",
-					"mssparkutils.fs.unmount(\"/scheduling_json\") \r\n",
-					"\r\n",
 					"\r\n",
 					"### process cron dates\r\n",
+					"from datetime import datetime, timedelta\r\n",
+					"# from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
+					"time_now = datetime(2022,11,7)\r\n",
 					"\r\n",
-					"import json\r\n",
-					"json_config_dict = json.loads(jsonconfig)\r\n",
+					"definitions = json_config_dict['definitions']\r\n",
+					"for defs in definitions:\r\n",
+					"    cronstart = defs['Completion_Start_Date']\r\n",
+					"    cronend = int(defs['Expected_Within_Days'])\r\n",
+					"\r\n",
+					"    from croniter import croniter\r\n",
+					"    iter_start = croniter(cronstart, time_now)\r\n",
+					"    last_start_dt = iter_start.get_prev(datetime)\r\n",
+					"    \r\n",
+					"    next_end_dt = last_start_dt + timedelta(days=cronend)\r\n",
+					"    if last_start_dt < time_now < next_end_dt:\r\n",
+					"        \r\n",
+					"\r\n",
+					"\r\n",
 					"### look into standardised to see if the tables already exist\r\n",
 					"\r\n",
 					"### check raw for file\r\n",
 					"\r\n",
-					"### outstanding files table \r\n",
-					"\r\n",
+					"### outstanding files table "
+				],
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import datetime \r\n",
+					"# from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
+					"time_now = datetime.datetime.now()\r\n",
 					""
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
