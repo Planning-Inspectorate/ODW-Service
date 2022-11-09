@@ -1,5 +1,5 @@
 {
-	"name": "Pipeline 1",
+	"name": "0_Horizon_SQL_Tables_Raw",
 	"properties": {
 		"activities": [
 			{
@@ -21,12 +21,12 @@
 					},
 					{
 						"name": "Destination",
-						"value": "odw-raw/@{concat('Horizon', '/', formatDateTime(utcnow(), 'yyyy-MM-dd'))}/"
+						"value": "odw-raw/@{concat('Horizon', '/', formatDateTime(utcnow(), 'yyyy-MM-dd'))}/@{'SpecialistCoastalAccess.csv'}"
 					}
 				],
 				"typeProperties": {
 					"source": {
-						"type": "SqlServerSource",
+						"type": "AzureSqlSource",
 						"queryTimeout": "02:00:00",
 						"isolationLevel": "ReadCommitted",
 						"partitionOption": "None"
@@ -54,7 +54,7 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "HorizonData_BIS_AllAppeals",
+						"referenceName": "HZN_SpecEnvironment",
 						"type": "DatasetReference"
 					}
 				],
@@ -64,6 +64,79 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"FileName": "SpecialistCoastalAccess.csv"
+						}
+					}
+				]
+			},
+			{
+				"name": "Horizon_BIS_SpecialistEnvironment",
+				"description": "Ingestion of Horizon_vw_BIS_SpecialistEnvironment into ODW Raw",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Horizon_BIS_SpecialistCoastalAccess",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [
+					{
+						"name": "Source",
+						"value": "dbo.Horizon_vw_BIS_SpecialistEnvironment"
+					},
+					{
+						"name": "Destination",
+						"value": "odw-raw/@{concat('Horizon', '/', formatDateTime(utcnow(), 'yyyy-MM-dd'))}/@{'SpecialistEnvironment.csv'}"
+					}
+				],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"queryTimeout": "02:00:00",
+						"isolationLevel": "ReadCommitted",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "HZN_SpecEnvironment",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Horizon_Tables_Data",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileName": "SpecialistEnvironment.csv"
 						}
 					}
 				]
