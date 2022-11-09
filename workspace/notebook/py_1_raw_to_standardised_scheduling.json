@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f2cb261d-aa56-46d8-b1b4-bd0c378f7923"
+				"spark.autotune.trackingId": "05ff00d0-20e4-40cf-ae24-d1115ccefa9a"
 			}
 		},
 		"metadata": {
@@ -53,26 +53,99 @@
 		"cells": [
 			{
 				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
 				"source": [
-					"### get the json\r\n",
-					"from notebookutils import mssparkutils\r\n",
-					"mount_path = \"/scheduling_json\"\r\n",
-					"mssparkutils.fs.unmount(mount_path) \r\n",
-					"mssparkutils.fs.mount( \r\n",
-					"    \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/scheduling_json/\", \r\n",
-					"    mount_path, \r\n",
-					"    {\"linkedService\":\"ls_storage\"} \r\n",
-					") \r\n",
-					"\r\n",
-					"jobId = mssparkutils.env.getJobId()\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
 					"import json\r\n",
-					"with open(f\"/synfs/{jobId}/scheduling_json/orchestration_test.json\") as json_config:\r\n",
-					"    json_config_dict = json.loads(json_config.read())\r\n",
-					"\r\n",
-					"\r\n",
-					""
+					"orchestration_json = spark.read.text(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/scheduling_json/orchestration_test.json\", wholetext=True).first().value\r\n",
+					"json_config_dict = json.loads(orchestration_json)"
 				],
-				"execution_count": 23
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"[obje for obje in json_config_dict[\"definitions\"] if obje[\"Source_ID\"]==1]"
+				],
+				"execution_count": 49
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
+				],
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### get json schema for outstanding files table \r\n",
+					"### expected_datetime | Folderpath | Filename_Format | Filename_Date_Format\r\n",
+					"## #create_table_from_schema(jsonschema:str, db_name:str, table_name:str, target_container:str, target_folder:str)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"create_table_from_schema( )"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -96,16 +169,18 @@
 					"\r\n",
 					"definitions = json_config_dict['definitions']\r\n",
 					"for defs in definitions:\r\n",
-					"    cronstart = defs['Completion_Start_Date']\r\n",
-					"    cronend = int(defs['Expected_Within_Days'])\r\n",
+					"    cronstart = defs['Completion_Frequency_CRON']\r\n",
+					"    deltadays = int(defs['Expected_Within_Weekdays'])\r\n",
 					"\r\n",
 					"    from croniter import croniter\r\n",
 					"    iter_start = croniter(cronstart, time_now)\r\n",
 					"    last_start_dt = iter_start.get_prev(datetime)\r\n",
 					"    \r\n",
-					"    next_end_dt = last_start_dt + timedelta(days=cronend)\r\n",
+					"    next_end_dt = last_start_dt + timedelta(days=deltadays)\r\n",
+					"\r\n",
+					"    if time_now.weekday() > 1 \r\n",
 					"    if last_start_dt < time_now < next_end_dt:\r\n",
-					"        \r\n",
+					"        print(next_end_dt)\r\n",
 					"\r\n",
 					"\r\n",
 					"### look into standardised to see if the tables already exist\r\n",
@@ -114,7 +189,7 @@
 					"\r\n",
 					"### outstanding files table "
 				],
-				"execution_count": 28
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -136,6 +211,24 @@
 					""
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"last_start_dt"
+				],
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
