@@ -193,6 +193,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="module_synapse_monitoring_failover"></a> [synapse\_monitoring\_failover](#module\_synapse\_monitoring\_failover) | ./modules/synapse-monitoring | n/a |
 | <a name="module_synapse_network"></a> [synapse\_network](#module\_synapse\_network) | ./modules/synapse-network | n/a |
 | <a name="module_synapse_network_failover"></a> [synapse\_network\_failover](#module\_synapse\_network\_failover) | ./modules/synapse-network | n/a |
+| <a name="module_synapse_shir"></a> [synapse\_shir](#module\_synapse\_shir) | ./modules/synapse-shir | n/a |
+| <a name="module_synapse_shir_failover"></a> [synapse\_shir\_failover](#module\_synapse\_shir\_failover) | ./modules/synapse-shir | n/a |
 | <a name="module_synapse_sql_server"></a> [synapse\_sql\_server](#module\_synapse\_sql\_server) | ./modules/synapse-sql-server | n/a |
 | <a name="module_synapse_sql_server_failover"></a> [synapse\_sql\_server\_failover](#module\_synapse\_sql\_server\_failover) | ./modules/synapse-sql-server | n/a |
 | <a name="module_synapse_workspace_private"></a> [synapse\_workspace\_private](#module\_synapse\_workspace\_private) | ./modules/synapse-workspace-private | n/a |
@@ -222,6 +224,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | [azurerm_resource_group.network](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.network_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.network_global](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.shir](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.shir_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.sql_server](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.sql_server_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_virtual_network_peering.pri_sec](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) | resource |
@@ -261,6 +265,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_spark_pool_max_node_count"></a> [spark\_pool\_max\_node\_count](#input\_spark\_pool\_max\_node\_count) | The maximum number of nodes the Synapse-linked Spark pool can autoscale to | `number` | `9` | no |
 | <a name="input_spark_pool_min_node_count"></a> [spark\_pool\_min\_node\_count](#input\_spark\_pool\_min\_node\_count) | The minimum number of nodes the Synapse-linked Spark pool can autoscale to | `number` | `3` | no |
 | <a name="input_spark_pool_node_size"></a> [spark\_pool\_node\_size](#input\_spark\_pool\_node\_size) | The size of nodes comprising the Synapse-linked Spark pool | `string` | `"Small"` | no |
+| <a name="input_spark_pool_timeout_minutes"></a> [spark\_pool\_timeout\_minutes](#input\_spark\_pool\_timeout\_minutes) | The time buffer in minutes to wait before the Spark pool is paused due to inactivity | `number` | `15` | no |
 | <a name="input_spark_pool_version"></a> [spark\_pool\_version](#input\_spark\_pool\_version) | The version of Spark running on the Synapse-linked Spark pool | `string` | `"2.4"` | no |
 | <a name="input_sql_pool_collation"></a> [sql\_pool\_collation](#input\_sql\_pool\_collation) | The collation of the Synapse-linked dedicated SQL pool | `string` | `"SQL_Latin1_General_CP1_CI_AS"` | no |
 | <a name="input_sql_pool_enabled"></a> [sql\_pool\_enabled](#input\_sql\_pool\_enabled) | Determines whether a Synapse-linked dedicated SQL pool should be deployed | `bool` | `false` | no |
