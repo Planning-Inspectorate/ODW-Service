@@ -109,6 +109,7 @@ No requirements.
 | <a name="input_data_lake_account_id_failover"></a> [data\_lake\_account\_id\_failover](#input\_data\_lake\_account\_id\_failover) | The ID of the Data Lake Storage Account used for backup and failover | `string` | n/a | yes |
 | <a name="input_data_lake_account_name"></a> [data\_lake\_account\_name](#input\_data\_lake\_account\_name) | The name of the Data Lake Storage Account | `string` | n/a | yes |
 | <a name="input_data_lake_account_name_failover"></a> [data\_lake\_account\_name\_failover](#input\_data\_lake\_account\_name\_failover) | The name of the Data Lake Storage Account used for backup and failover | `string` | n/a | yes |
+| <a name="input_data_lake_dfs_endpoint"></a> [data\_lake\_dfs\_endpoint](#input\_data\_lake\_dfs\_endpoint) | The DFS endpoint URL of the Data Lake Storage Account | `string` | n/a | yes |
 | <a name="input_data_lake_filesystem_id"></a> [data\_lake\_filesystem\_id](#input\_data\_lake\_filesystem\_id) | The ID of the Data Lake Gen2 filesystem | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | The name of the environment in which resources will be deployed | `string` | n/a | yes |
 | <a name="input_firewall_allowed_ip_addresses"></a> [firewall\_allowed\_ip\_addresses](#input\_firewall\_allowed\_ip\_addresses) | A list of CIDR ranges to be permitted access to the data lake Storage Account | `list(string)` | `[]` | no |

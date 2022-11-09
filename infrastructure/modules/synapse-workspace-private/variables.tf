@@ -18,6 +18,11 @@ variable "data_lake_account_name_failover" {
   type        = string
 }
 
+variable "data_lake_dfs_endpoint" {
+  description = "The DFS endpoint URL of the Data Lake Storage Account"
+  type        = string
+}
+
 variable "data_lake_filesystem_id" {
   description = "The ID of the Data Lake Gen2 filesystem"
   type        = string

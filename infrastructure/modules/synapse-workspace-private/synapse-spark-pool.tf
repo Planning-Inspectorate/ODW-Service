@@ -25,5 +25,12 @@ resource "azurerm_synapse_spark_pool" "synapse" {
     }
   }
 
+  spark_config {
+    content  = <<-EOT
+      spark.executorEnv.dataLakeDfsEndpoint ${var.data_lake_dfs_endpoint}
+      EOT
+    filename = "configuration.txt"
+  }
+
   tags = local.tags
 }
