@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "90c91eb1-12b4-4d94-bb48-7622cf1e3906"
+				"spark.autotune.trackingId": "ae795005-e9b8-4e1b-bc31-588887ea053c"
 			}
 		},
 		"metadata": {
@@ -92,29 +92,6 @@
 					"    NULL AS ValidTo"
 				],
 				"execution_count": 37
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"select * from odw_harmonised_db.sourcesystem_fact"
-				],
-				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -505,9 +482,36 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"select * from odw_harmonised_db.employee_dim LIMIT 10"
+					"-- Build PersonnelArea_dim table\r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.PersonnelArea_dim (\r\n",
+					"    PersonnelAreaID,\r\n",
+					"    PersonnelAreaCode,\r\n",
+					"    Description,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    uuid() AS PersonnelAreaID,\r\n",
+					"    T1.PA AS PersonnelAreaCode,\r\n",
+					"    First(T1.Personnel_Area) AS Description, \r\n",
+					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo\r\n",
+					"FROM odw_standardised_db.saphr T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
+					"GROUP BY T1.PA\r\n",
+					"\r\n",
+					"\r\n",
+					""
 				],
-				"execution_count": 4
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -523,15 +527,16 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build PersonnelArea_dim table -- MISSING SOURCE TABLE SAPHR\r\n",
-					"/**\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.PersonnelArea_dim (\r\n",
-					"    PersonnelAreaID,\r\n",
-					"    PersonnelAreaCode,\r\n",
+					"-- Build PersonnelSubArea_dim table\r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.PersonnelSubArea_dim (\r\n",
+					"    PersonnelSubAreaID,\r\n",
+					"    PersonnelSubAreaCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
@@ -540,24 +545,20 @@
 					"    ValidTo\r\n",
 					")\r\n",
 					"\r\n",
-					"SELECT\r\n",
-					"    uuid() AS ReligionID,\r\n",
-					"    -A- AS PersonnelAreaCode,\r\n",
-					"    -B- AS Description, \r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
+					"SELECT \r\n",
+					"    uuid() AS PersonnelSubAreaID,\r\n",
+					"    T1.PSubarea as PersonnelSubAreaCode,\r\n",
+					"    First(T1.Personnel_Subarea) AS Description,\r\n",
+					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo\r\n",
 					"FROM odw_standardised_db.saphr T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"GROUP BY -A-, -B-;\r\n",
-					"\r\n",
-					"Select * from odw_harmonised_db.PersonnelArea_dim \r\n",
-					"**/\r\n",
-					""
+					"GROUP BY T1.PSubarea"
 				],
-				"execution_count": 44
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
