@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3af958e7-c0d2-42aa-8d2c-19ddf496edab"
+				"spark.autotune.trackingId": "864e7108-d114-4ff7-9c36-f7686cc064ba"
 			}
 		},
 		"metadata": {
@@ -378,45 +378,47 @@
 					"%%sql\r\n",
 					"-- Build Employee_Dim table \r\n",
 					"\r\n",
-					"-- INSERT OVERWRITE odw_harmonised_db.employee_dim (\r\n",
-					"--     EmployeeID,\r\n",
-					"--     FirstName,\r\n",
-					"--     LastName,\r\n",
-					"--     DOB,\r\n",
-					"--     NINumber,\r\n",
-					"--     Gender,\r\n",
-					"--     AddressLine1,\r\n",
-					"--     AddressLine2,\r\n",
-					"--     AddressLine3,\r\n",
-					"--     City,\r\n",
-					"--     County,\r\n",
-					"--     PostCode,\r\n",
-					"--     EmailAddress,\r\n",
-					"--     TelephoneNumberPersonal,\r\n",
-					"--     TelephoneNumberWork,\r\n",
-					"--     PersNumber,\r\n",
-					"--     EmployeeNumber,\r\n",
-					"--     FTE,\r\n",
-					"--     WorkHours,\r\n",
-					"--     PartTimeEmployee,\r\n",
-					"--     EmploymentStatus,\r\n",
-					"--     CivilServiceStart,\r\n",
-					"--     DateToCurrentJob,\r\n",
-					"--     SeniorityDate,\r\n",
-					"--     OrgStartDate,\r\n",
-					"--     FixTermEndDate,\r\n",
-					"--     LoanStartDate,\r\n",
-					"--     LoanEndDate,\r\n",
-					"--     PayrollArea,\r\n",
-					"--     AssignmentNumber,\r\n",
-					"--     EmployeeGroup,\r\n",
-					"--     AnnualSalary,\r\n",
-					"--     SourceSystemID,\r\n",
-					"--     StartDate,\r\n",
-					"--     EndDate,\r\n",
-					"--     IngestionDate,\r\n",
-					"--     ValidTo\r\n",
-					"-- )\r\n",
+					"-- Notes - Addresses are only supplied for Inspectors - need to check inspector count against addresses data\r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.employee_dim (\r\n",
+					"    EmployeeID,\r\n",
+					"    FirstName,\r\n",
+					"    LastName,\r\n",
+					"    DOB,\r\n",
+					"    NINumber,\r\n",
+					"    Gender,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressLine3,\r\n",
+					"    City,\r\n",
+					"    County,\r\n",
+					"    PostCode,\r\n",
+					"    EmailAddress,\r\n",
+					"    TelephoneNumberPersonal,\r\n",
+					"    TelephoneNumberWork,\r\n",
+					"    PersNumber,\r\n",
+					"    EmployeeNumber,\r\n",
+					"    FTE,\r\n",
+					"    WorkHours,\r\n",
+					"    PartTimeEmployee,\r\n",
+					"    EmploymentStatus,\r\n",
+					"    CivilServiceStart,\r\n",
+					"    DateToCurrentJob,\r\n",
+					"    SeniorityDate,\r\n",
+					"    OrgStartDate,\r\n",
+					"    FixTermEndDate,\r\n",
+					"    LoanStartDate,\r\n",
+					"    LoanEndDate,\r\n",
+					"    PayrollArea,\r\n",
+					"    AssignmentNumber,\r\n",
+					"    EmployeeGroup,\r\n",
+					"    AnnualSalary,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    uuid(), --EmployeeID\r\n",
@@ -435,7 +437,13 @@
 					"    T2.Personal_Mobile as TelephoneNumberPersonal,\r\n",
 					"    T2.Work_Mobile as TelephoneNumberWork,\r\n",
 					"    T2.Staff_Number as PersNumber,\r\n",
-					"    T1.Employee_No as EmployeeNumber,\r\n",
+					"    CASE \r\n",
+					"        WHEN LENGTH(T1.Pers_No) = 6 AND SUBSTR(T1.Pers_No,1,1) = 5 \r\n",
+					"        THEN concat('00',T1.Pers_No) \r\n",
+					"        WHEN LENGTH(T1.Pers_No) = 6 AND SUBSTR(T1.Pers_No,1,1) = 4 \r\n",
+					"        THEN concat('50',T1.Pers_No)\r\n",
+					"        ELSE T1.Pers_No\r\n",
+					"    End as EmployeeNumber,\r\n",
 					"    T1.FTE,\r\n",
 					"    T1.Wk_hrs as WorkHours,\r\n",
 					"    T1.`Indicator_Part-Time_Employee` as PartTimeEmployee,\r\n",
@@ -462,7 +470,86 @@
 					"LEFT JOIN odw_standardised_db.email T3 ON T2.Staff_Number = T3.Staff_Number\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T4 ON \"SAP HR\" = T4.Description"
 				],
-				"execution_count": 60
+				"execution_count": 61
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql   \r\n",
+					"-- select count(*)\r\n",
+					"-- FROM odw_standardised_db.saphr T1\r\n",
+					"-- LEFT JOIN odw_standardised_db.addresses T2 ON T1.Pers_No = T2.Staff_Number\r\n",
+					"-- where T2.Postal_Code IS NOT NULL -- 211 count\r\n",
+					"\r\n",
+					"-- select count(*)\r\n",
+					"-- FROM odw_standardised_db.addresses T1 -- 484 count\r\n",
+					"\r\n",
+					"\r\n",
+					"-- select COUNT(*) --T1.Pers_No, T2.Staff_Number\r\n",
+					"-- FROM odw_standardised_db.saphr T1\r\n",
+					"-- INNER JOIN odw_standardised_db.addresses T2 ON T1.Pers_No = T2.Staff_Number\r\n",
+					"-- where T2.Postal_Code IS NOT NULL -- 211 count\r\n",
+					"\r\n",
+					"\r\n",
+					"-- select T1.Pers_No, T2.Staff_Number\r\n",
+					"-- FROM odw_standardised_db.saphr T1\r\n",
+					"-- RIGHT JOIN odw_standardised_db.addresses T2 ON T1.Pers_No = T2.Staff_Number\r\n",
+					"-- where T1.Pers_No IS NULL\r\n",
+					"\r\n",
+					"\r\n",
+					"SELECT CASE \r\n",
+					"            WHEN LENGTH(Pers_No) = 6 AND SUBSTR(Pers_No,1,1) = 5 \r\n",
+					"            THEN concat('00',Pers_No) \r\n",
+					"            WHEN LENGTH(Pers_No) = 6 AND SUBSTR(Pers_No,1,1) = 4 \r\n",
+					"            THEN concat('50',Pers_No)\r\n",
+					"            ELSE Pers_No\r\n",
+					"        End,\r\n",
+					"        Pers_No\r\n",
+					"from odw_standardised_db.saphr\r\n",
+					"--where Pers_No = '421971'\r\n",
+					"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 109
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql   \r\n",
+					"SELECT length('Spark SQL ')"
+				],
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
