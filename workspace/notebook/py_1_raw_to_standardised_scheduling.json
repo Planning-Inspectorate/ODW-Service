@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7e9d8775-51b0-4512-bfb1-50d09755c70b"
+				"spark.autotune.trackingId": "72f95b4b-363c-437d-8bd3-b6c383be0c70"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,7 @@
 					}
 				},
 				"source": [
-					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
+					""
 				],
 				"execution_count": 53
 			},
@@ -311,13 +311,39 @@
 					"    '''\r\n",
 					"    \r\n",
 					"    ### LOADS JSON\r\n",
-					"\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    import json\r\n",
+					"    orchestration_json = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration/orchestration_test.json\", wholetext=True).first().value\r\n",
+					"    json_config_dict = json.loads(orchestration_json)\r\n",
+					"    \r\n",
 					"    ### ITERATE THROUGH ALL JSON\r\n",
+					"    ### process cron dates\r\n",
+					"    from datetime import datetime, timedelta\r\n",
+					"    # from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
+					"    time_now = datetime(2022,11,7)\r\n",
 					"\r\n",
-					"    ### IS FILE EXPECTED RIGHT NOW?\r\n",
+					"    definitions = json_config_dict['definitions']\r\n",
+					"    for defs in definitions:\r\n",
+					"        cronstart = defs['Completion_Frequency_CRON']\r\n",
+					"        deltadays = defs['Expected_Within_Weekdays'])\r\n",
+					"\r\n",
+					"        from croniter import croniter\r\n",
+					"        iter_start = croniter(cronstart, time_now)\r\n",
+					"        last_start_dt = iter_start.get_prev(datetime)\r\n",
+					"        \r\n",
+					"        next_end_dt = last_start_dt + timedelta(days=deltadays)\r\n",
+					"    \r\n",
+					"        ### IS FILE EXPECTED RIGHT NOW?\r\n",
+					"        # weekdays handling\r\n",
+					"        # if time_now.weekday() > 1 \r\n",
+					"        if last_start_dt < time_now < next_end_dt:\r\n",
+					"            print(next_end_dt)\r\n",
+					"\r\n",
+					"    \r\n",
 					"\r\n",
 					"    ### HAS THE FILE BEEN INGESTED ---> REFACTOR STANDARDISED TO INCLUDE NEW PROCESS_DATE COLUMN\r\n",
-					"\r\n",
+					"    create_standardised_tables()\r\n",
 					"    ### INGEST IF IT HASN'T BEEN INGESTED INTO STANDARDISED\r\n",
 					"    ### MOVE FILE INTO ARCHIVE\r\n",
 					"\r\n",
@@ -327,6 +353,46 @@
 					"    return None "
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_standardised_tables():\r\n",
+					"    ### load in loop all files from folder\r\n",
+					"    \r\n",
+					"    ### make sure all tables exist\r\n",
+					"    return None"
+				],
+				"execution_count": 1
 			}
 		]
 	}
