@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ae795005-e9b8-4e1b-bc31-588887ea053c"
+				"spark.autotune.trackingId": "6b7aad7b-9dd0-4f17-9745-4eb8d5a31758"
 			}
 		},
 		"metadata": {
@@ -1131,6 +1131,107 @@
 					"GROUP BY T1.Cost_Ctr"
 				],
 				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Build Employee_HR_Hierarchy_Dim table  \r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.Employee_HR_Hierarchy_Dim (\r\n",
+					"    EmployeeHRHierarchyID,\r\n",
+					"    EmployeeID,\r\n",
+					"    ManagersEmployeeID,\r\n",
+					"    CounterSignManagerID, -- join back on first name and last name\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo\r\n",
+					")\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    uuid() AS EmployeeHRHierarchyID,\r\n",
+					"    T1.EmployeeID AS EmployeeID,\r\n",
+					"    T2.EmployeeID as ManagersEmployeeID,\r\n",
+					"    T3.EmployeeID as CounterSignManagerID\r\n",
+					"    T3.SourceSystemID as SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo\r\n",
+					"FROM odw_harmonised_db.employee_dim T1\r\n",
+					"LEFT JOIN  odw_standardised_db.saphr T2 ON T1.PersNumber = T2.Pers_No_2\r\n",
+					"LEFT JOIN  odw_standardised_db.saphr T3 ON CONCAT(T1.FirstName,' ', T2.LastName) = T3.Counter_Sign_Manager\r\n",
+					"\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
+					"LEFT JOIN odw_standardised_db.saphr T3 ON T1.PersNumber = T3.Pers_No\r\n",
+					"LEFT JOIN odw_harmonised_db.employee_dim T4 ON T1.Pers_No_2 = T4.PersNumber\r\n",
+					"\r\n",
+					"odw_standardised_db.saphr"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"Select * from odw_standardised_db.saphr limit 100"
+				],
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from odw_harmonised_db.position_dim"
+				],
+				"execution_count": 32
 			}
 		]
 	}
