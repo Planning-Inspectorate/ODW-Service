@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "deb374af-3d0a-4849-bbc7-436fd4adca2f"
+				"spark.autotune.trackingId": "6201b7f6-27ee-4532-87ca-38dc521a6749"
 			}
 		},
 		"metadata": {
@@ -174,7 +174,7 @@
 					"        create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)\r\n",
 					"        \r\n",
 					"        cronstart = defs['Completion_Frequency_CRON']\r\n",
-					"        deltadays = defs['Expected_Within_Weekdays'])\r\n",
+					"        deltadays = defs['Expected_Within_Weekdays']\r\n",
 					"\r\n",
 					"\r\n",
 					"        from croniter import croniter\r\n",
@@ -188,14 +188,18 @@
 					"        # if time_now.weekday() > 1 \r\n",
 					"        if last_start_dt < time_now < next_end_dt: # always gonna be before midnight\r\n",
 					"            standardised_table_df = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
-					"            rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &&  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
+					"            rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"            if rows > 0 :\r\n",
 					"                print(\"hello world\")\r\n",
 					"            else:\r\n",
 					"                source_container_path = defs['Source_Container_Path']\r\n",
-					"                source_folder =  defs['Source_Folder'] + \"Source_Frequency_Folder\"\r\n",
+					"                source_folder =  defs['Source_Folder'] + defs[\"Source_Frequency_Folder\"]\r\n",
 					"                # find correct weekly folder \r\n",
-					"\r\n",
+					"                date_folders = mssparkutils.fs.ls(source_container_path+source_folder)\r\n",
+					"                for date in date_folders:\r\n",
+					"                    folder_date = datetime.strptime(date.path.split(source_container_path+source_folder)[1], \"%Y-%m-%d\")\r\n",
+					"                    if last_start_dt < folder_date < next_end_dt:\r\n",
+					"                        \r\n",
 					"                # make sure date in filename is also correct\r\n",
 					"\r\n",
 					"                # open up excel file ### make it condiitonal\r\n",
@@ -220,7 +224,7 @@
 					"\r\n",
 					"    return None "
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -237,7 +241,28 @@
 				},
 				"source": [
 					"### for migration checks do it with a mount and open ????\r\n",
-					"# no just coutn rows i ntable and rows in df = want to make sure the write went okay"
+					"# no just coutn rows i ntable and rows in df = want to make sure the write went okay\r\n",
+					"date_folders = mssparkutils.fs.ls(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Fileshare/SAP_HR/Weekly/\")\r\n",
+					"for da in date_folders:\r\n",
+					"    print(da.path.split(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Fileshare/SAP_HR/Weekly/\")[1])"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
 				],
 				"execution_count": null
 			}
