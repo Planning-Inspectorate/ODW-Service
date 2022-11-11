@@ -3616,6 +3616,123 @@
 					"message": "The ingestion of [dbo].[Horizon_vw_MiPINS_AppSubTypeCaseName] into ODW RAW has failed ",
 					"errorCode": "AppSubTypeCaseNameFail1"
 				}
+			},
+			{
+				"name": "Horizon_NSIP_redactions",
+				"description": "Ingestion of dbo.Horizon_vw_MiPINS_NSIP_redactions into ODW Raw",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Horizon_AppSubTypeCaseName",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [
+					{
+						"name": "Source",
+						"value": "dbo.Horizon_vw_MiPINS_NSIP_redactions"
+					},
+					{
+						"name": "Destination",
+						"value": "odw-raw/@{concat('Horizon', '/', formatDateTime(utcnow(), 'yyyy-MM-dd'))}/@{'NSIPRedactions.csv'}"
+					}
+				],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"queryTimeout": "02:00:00",
+						"isolationLevel": "ReadCommitted",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "case_reference",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "case_reference",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "num_redactions",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "num_redactions",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "HZN_NSIPRedactions",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Horizon_Tables_Data",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileName": "NSIPRedactions.csv"
+						}
+					}
+				]
+			},
+			{
+				"name": "NSIPRedactionsFail1",
+				"description": "The ingestion ofdbo.Horizon_vw_MiPINS_NSIP_redactions into ODW RAW has failed ",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "Horizon_NSIP_redactions",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"message": "The ingestion ofdbo.Horizon_vw_MiPINS_NSIP_redactions into ODW RAW has failed",
+					"errorCode": "NSIPRedactionsFail1"
+				}
 			}
 		],
 		"folder": {
