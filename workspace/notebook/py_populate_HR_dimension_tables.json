@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d2c45bd8-b39e-4305-8a91-f6fd039746d3"
+				"spark.autotune.trackingId": "94985c18-62f8-46ce-8cdd-4783089f3aee"
 			}
 		},
 		"metadata": {
@@ -1333,35 +1333,36 @@
 					"    -- T10.ManagersEmployeeID,\r\n",
 					"    -- null as ManagerPositionID,\r\n",
 					"    -- T10.CounterSignManagerID,\r\n",
-					"    -- T11.LocationID\r\n",
-					"    --T13.WorkScheduleID\r\n",
+					"    -- T11.LocationID,\r\n",
+					"    -- T13.WorkScheduleID,\r\n",
+					"    -- T14.SpecialismID\r\n",
 					"        \r\n",
 					"    count(*)\r\n",
 					"\r\n",
 					"From odw_standardised_db.saphr T1 -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.employee_dim T2 ON T1.Pers_No = T2.PersNumber -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.personnelarea_dim T3 ON T1.PA = T3.PersonnelAreaCode -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.personnelsubarea_dim T4 ON T1.PSubarea = T4.PersonnelSubAreaCode -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.organisationunit_dim T5 ON T1.Org_Unit = T5.OrganisationUnit AND -- 997\r\n",
-					"                                                         T1.Organizational_Unit = T5.Description AND \r\n",
-					"                                                         T1.Organizational_Key12 = T5.OrganisationUnitKey\r\n",
-					"LEFT JOIN odw_harmonised_db.contract_dim T6 ON T1.WorkC = T6.ContractCode AND -- 997\r\n",
-					"                                                 T1.Work_Contract = T6.Description AND\r\n",
-					"                                                 T1.CT = T6.ContractTypeCode AND \r\n",
-					"                                                 T1.Contract_Type = T6.ContractType\r\n",
-					"LEFT JOIN odw_harmonised_db.payband_dim T7 ON T1.PS_Group = T7.PSGroupCode -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.costcenter_dim T8 ON T1.Cost_Ctr = T8.CostCenterCode --997\r\n",
-					"LEFT JOIN odw_harmonised_db.position_dim T9 ON T1.PositionID = T9.PositionCode -- this may change -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.employee_hr_hierarchy_dim T10 ON T2.EmployeeID = T10.EmployeeID -- 997\r\n",
-					"LEFT JOIN odw_harmonised_db.pins_location_dim T11 ON T1.Loc = T11.LocationCode -- 997\r\n",
-					"-- --LEFT JOIN odw_harmonised_db.absence_dim T12 ON T1.Pers_No = T12.StaffNumber\r\n",
-					"-- --LEFT JOIN odw_harmonised_db.workschedule_dim T13 ON T12.WorkScheduleID = T13.WorkScheduleID  -- need to investigate\r\n",
-					"-- --LEFT JOIN odw_harmonised_db.specialism_dim T14 ON T2.EmployeeID = T14.EmployeeID -- will cause duplication\r\n",
+					"LEFT JOIN odw_harmonised_db.employee_dim T2                 ON T1.Pers_No = T2.PersNumber -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.personnelarea_dim T3            ON T1.PA = T3.PersonnelAreaCode -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.personnelsubarea_dim T4         ON T1.PSubarea = T4.PersonnelSubAreaCode -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.organisationunit_dim T5         ON  T1.Org_Unit = T5.OrganisationUnit AND -- 997\r\n",
+					"                                                                T1.Organizational_Unit = T5.Description AND \r\n",
+					"                                                                T1.Organizational_Key12 = T5.OrganisationUnitKey\r\n",
+					"LEFT JOIN odw_harmonised_db.contract_dim T6                 ON  T1.WorkC = T6.ContractCode AND -- 997\r\n",
+					"                                                                T1.Work_Contract = T6.Description AND\r\n",
+					"                                                                T1.CT = T6.ContractTypeCode AND \r\n",
+					"                                                                T1.Contract_Type = T6.ContractType\r\n",
+					"LEFT JOIN odw_harmonised_db.payband_dim T7                  ON T1.PS_Group = T7.PSGroupCode -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.costcenter_dim T8               ON T1.Cost_Ctr = T8.CostCenterCode --997\r\n",
+					"LEFT JOIN odw_harmonised_db.position_dim T9                 ON T1.PositionID = T9.PositionCode -- this may change -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.employee_hr_hierarchy_dim T10   ON T2.EmployeeID = T10.EmployeeID -- 997\r\n",
+					"LEFT JOIN odw_harmonised_db.pins_location_dim T11           ON T1.Loc = T11.LocationCode -- 997\r\n",
+					"--LEFT JOIN odw_harmonised_db.absence_dim T12 ON T1.Pers_No = T12.StaffNumber\r\n",
+					"--LEFT JOIN odw_harmonised_db.workschedule_dim T13 ON T12.WorkScheduleID = T13.WorkScheduleID  --Employees have multiple work schedules based on the absences data is work schedule anywhere else?\r\n",
+					"--LEFT JOIN odw_harmonised_db.specialism_dim T14 ON T2.EmployeeID = T14.EmployeeID -- will cause duplication\r\n",
 					"\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -1382,10 +1383,38 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"\r\n",
-					"SELECT * from odw_harmonised_db.Specialism_dim LIMIT 1000"
+					"SELECT EmployeeID, StaffNumber, WorkScheduleID, count(*) from odw_harmonised_db.absence_dim \r\n",
+					"GROUP by EmployeeID, StaffNumber, WorkScheduleID\r\n",
+					"ORDER by StaffNumber, WorkScheduleID"
 				],
-				"execution_count": 3
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select Staff_Number, Work_Schedule_Rule, Start_Date, End_date\r\n",
+					"from odw_standardised_db.absences\r\n",
+					"where Staff_Number in ('410544')\r\n",
+					"--group by Staff_Number, Work_Schedule_Rule\r\n",
+					"ORDER by Staff_Number, Work_Schedule_Rule, End_date"
+				],
+				"execution_count": 18
 			}
 		]
 	}
