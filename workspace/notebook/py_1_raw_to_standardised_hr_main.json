@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "163e402b-707b-4fea-b08b-9a446da9516c"
+				"spark.autotune.trackingId": "cf299b44-e116-48a9-9e8c-c0b1b459b0f7"
 			}
 		},
 		"metadata": {
@@ -57,7 +57,7 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 2
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -77,9 +77,9 @@
 					"linked_service = \"ls_storage\"\r\n",
 					"db_name = \"odw_standardised_db\"\r\n",
 					"\r\n",
-					"raw_container = \"abfss://odw-raw@\" + storage_acc\r\n",
-					"raw_source_folder = \"Fileshare/SAP_HR/2022-08/\"\r\n",
-					"raw_name = \"Addresses - 20220831.xlsx\"\r\n",
+					"raw_container = \"abfss://temp-sap-hr-data@\" + storage_acc\r\n",
+					"raw_source_folder = \"\"\r\n",
+					"raw_name = \"Addresses - 20221107_chris_changes.xlsx\"\r\n",
 					"\r\n",
 					"delta_lake_table_name = \"addresses\"\r\n",
 					"standardised_container = 'abfss://odw-standardised@' + storage_acc\r\n",
@@ -90,7 +90,135 @@
 					"sheet_name = 0\r\n",
 					"header_row = 0"
 				],
-				"execution_count": 3
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"jobId = mssparkutils.env.getJobId()\r\n",
+					"mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
+					"mssparkutils.fs.mount( \r\n",
+					"raw_container + raw_source_folder, \r\n",
+					"\"/temp_raw\", \r\n",
+					"{\"linkedService\":\"ls_storage\"} \r\n",
+					")   \r\n",
+					"df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{raw_name}\", dtype=str)\r\n",
+					"mssparkutils.fs.unmount(\"/temp_raw\") "
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"sparkDF=spark.createDataFrame(df)"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import re\r\n",
+					"cols_orig = sparkDF.schema.names\r\n",
+					"cols=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in cols_orig] # replace chars with _\r\n",
+					"cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
+					"cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
+					"cols = [item.replace(',','') for item in cols]\r\n",
+					"for colix in range(len(cols_orig)):\r\n",
+					"    sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], cols[colix])"
+				],
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF.head()"
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF.write.option(\"mergeSchema\", \"false\").format('delta').save(standardised_container+standardised_source_folder+standardised_name)"
+				],
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"target_loc = standardised_container+standardised_source_folder+standardised_name\r\n",
+					"spark.sql(\"CREATE TABLE odw_standardised_db.addresses USING DELTA LOCATION '{2}'\""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -112,7 +240,7 @@
 					"lakedb_table_sparksql(db_name,delta_lake_table_name,standardised_container, standardised_source_folder)\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 19
 			}
 		]
 	}
