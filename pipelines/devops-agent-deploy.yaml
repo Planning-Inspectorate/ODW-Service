@@ -14,6 +14,11 @@ parameters:
 
 variables:
   - group: Terraform ${{ parameters.environment }}
+  - name: agentPoolGroupName
+    ${{ if eq(parameters.failover_deployment, false) }}:
+      value: $(AGENT_POOL_GROUP_NAME)
+    ${{ if eq(parameters.failover_deployment, true) }}:
+      value: $(AGENT_POOL_GROUP_NAME_FAILOVER)
   - name: armServiceConnectionName
     value: ${{ replace(format('ODW {0}', parameters.environment), 'Test', 'PreProd') }}
   - name: artifactName
@@ -127,14 +132,14 @@ stages:
       # Build Azure DevOps agent image
       - template: steps/devops-agent-build.yaml
         parameters:
-          resourceGroupName: $(AGENT_POOL_GROUP_NAME)
+          resourceGroupName: ${{ variables.agentPoolGroupName }}
           workingDirectory: infrastructure/configuration/devops-agents
 
       # Clean-up old images
       - template: steps/azure-image-cleanup.yaml
         parameters:
           armServiceConnectionName: ${{ variables.armServiceConnectionName }}
-          resourceGroupName: $(AGENT_POOL_GROUP_NAME)
+          resourceGroupName: ${{ variables.agentPoolGroupName }}
 
   - stage: Pool_Plan
     dependsOn: Build
