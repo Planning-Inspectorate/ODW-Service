@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a68c2205-0293-4bb1-a554-338e6e3573ed"
+				"spark.autotune.trackingId": "0c4f732f-8195-4b50-bca5-a434e9db1c5e"
 			}
 		},
 		"metadata": {
@@ -79,9 +79,9 @@
 					"\r\n",
 					"raw_container = \"abfss://temp-sap-hr-data@\" + storage_acc\r\n",
 					"raw_source_folder = \"\"\r\n",
-					"raw_name = \"HR PC 2022_10_chris_changes.xlsx\"\r\n",
+					"raw_name = \"Addresses - 20221107_chris_changes.xlsx\"\r\n",
 					"\r\n",
-					"delta_lake_table_name = \"personal_characteristics\"\r\n",
+					"delta_lake_table_name = \"addresses\"\r\n",
 					"standardised_container = 'abfss://odw-standardised@' + storage_acc\r\n",
 					"standardised_source_folder = \"HR/\" + delta_lake_table_name + \"/\"\r\n",
 					"standardised_name = raw_name.split(\".xlsx\")[0] + '.snappy.parquet'\r\n",
@@ -90,7 +90,7 @@
 					"sheet_name = 0\r\n",
 					"header_row = 0"
 				],
-				"execution_count": 47
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -116,9 +116,67 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   \r\n",
 					"df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{raw_name}\", dtype=str)\r\n",
+					"df2nostr = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{raw_name}\")\r\n",
 					"mssparkutils.fs.unmount(\"/temp_raw\") "
 				],
-				"execution_count": 43
+				"execution_count": 103
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df2nostr.info()"
+				],
+				"execution_count": 82
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql.types import StructType\r\n",
+					"import json\r\n",
+					"schmjson = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/standardised_table_definitions/addresses.JSON\", wholetext=True).first().value\r\n",
+					"schema = StructType.fromJson(json.loads(schmjson))"
+				],
+				"execution_count": 89
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"rawschema = json.loads(schmjson)['fields'][3:]"
+				],
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -136,9 +194,32 @@
 				"source": [
 					"from pyspark.sql import SparkSession\r\n",
 					"spark = SparkSession.builder.getOrCreate()\r\n",
-					"sparkDF=spark.createDataFrame(df)"
+					"# from datetime import datetime\r\n",
+					"# df['process_datetime'] = datetime.now() \r\n",
+					"# df['expected_from']= datetime.now() \r\n",
+					"# df['expected_to'] = datetime.now() \r\n",
+					"sparkDF=spark.createDataFrame(df)\r\n",
+					""
 				],
-				"execution_count": 44
+				"execution_count": 104
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF2.printSchema()"
+				],
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -159,11 +240,88 @@
 					"cols=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in cols_orig] # replace chars with _\r\n",
 					"cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
 					"cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
-					"cols = [item.replace(',','') for item in cols]\r\n",
+					"cols = [item.replace(',','').lower() for item in cols]\r\n",
 					"for colix in range(len(cols_orig)):\r\n",
 					"    sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], cols[colix])"
 				],
-				"execution_count": 45
+				"execution_count": 98
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"cols_orig2 = [\"Region (State, Province, Count\"]\r\n",
+					"cols2=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in cols_orig2] # replace chars with _\r\n",
+					"cols2=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols2] #replace consecutive _ with one _\r\n",
+					"cols2=[re.sub(\"(\\_)$\",\"\",i) for i in cols2] #remove trailing _\r\n",
+					"cols2 = [item.replace(',','').lower() for item in cols2]\r\n",
+					"cols2"
+				],
+				"execution_count": 72
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF.select(;)"
+				],
+				"execution_count": 101
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)"
+				],
+				"execution_count": 99
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF2.show()"
+				],
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
