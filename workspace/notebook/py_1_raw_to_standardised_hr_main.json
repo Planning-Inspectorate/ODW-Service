@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b123d9d3-da0a-41dc-b1a1-44277ce40163"
+				"spark.autotune.trackingId": "c8423e7e-8b57-4441-bf82-668adb42613c"
 			}
 		},
 		"metadata": {
@@ -57,7 +57,7 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 17
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -90,7 +90,7 @@
 					"sheet_name = 0\r\n",
 					"header_row = 0"
 				],
-				"execution_count": 54
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,44 @@
 					"df2nostr = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{raw_name}\")\r\n",
 					"mssparkutils.fs.unmount(\"/temp_raw\") "
 				],
-				"execution_count": 103
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# test = pd.DataFrame({'col1': [1, 2], 'col2': [3, 4]})\r\n",
+					"# test['col1'][0]"
+				],
+				"execution_count": 52
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df.dtypes"
+				],
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -158,7 +195,7 @@
 					"schmjson = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/standardised_table_definitions/addresses.JSON\", wholetext=True).first().value\r\n",
 					"schema = StructType.fromJson(json.loads(schmjson))"
 				],
-				"execution_count": 89
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -174,9 +211,10 @@
 					}
 				},
 				"source": [
-					"rawschema = json.loads(schmjson)['fields'][3:]"
+					"for field in json.loads(schmjson)['fields']:\r\n",
+					"    print(field['name'])"
 				],
-				"execution_count": 87
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -200,11 +238,11 @@
 					"# df['expected_to'] = datetime.now() \r\n",
 					"sparkDF=spark.createDataFrame(df)\r\n",
 					"from pyspark.sql.functions import lit\r\n",
-					"sparkDF = sparkDF.withColumn(\"process_datetime\",lit(datetime.now()))\r\n",
+					"sparkDF = sparkDF.withColumn(\"ingested_datetime\",lit(datetime.now()))\r\n",
 					"sparkDF = sparkDF.withColumn(\"expected_from\",lit(datetime.now()))\r\n",
 					"sparkDF = sparkDF.withColumn(\"expected_to\",lit(datetime.now()))"
 				],
-				"execution_count": 106
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -220,9 +258,9 @@
 					}
 				},
 				"source": [
-					"sparkDF2.printSchema()"
+					"sparkDF.printSchema()"
 				],
-				"execution_count": 102
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -247,7 +285,7 @@
 					"for colix in range(len(cols_orig)):\r\n",
 					"    sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], cols[colix])"
 				],
-				"execution_count": 107
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -263,14 +301,15 @@
 					}
 				},
 				"source": [
-					"cols_orig2 = [\"Region (State, Province, Count\"]\r\n",
+					"import re\r\n",
+					"cols_orig2 = [\"Region (State, Province, Count)\"]\r\n",
 					"cols2=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in cols_orig2] # replace chars with _\r\n",
 					"cols2=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols2] #replace consecutive _ with one _\r\n",
 					"cols2=[re.sub(\"(\\_)$\",\"\",i) for i in cols2] #remove trailing _\r\n",
 					"cols2 = [item.replace(',','').lower() for item in cols2]\r\n",
 					"cols2"
 				],
-				"execution_count": 72
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -286,9 +325,61 @@
 					}
 				},
 				"source": [
-					"sparkDF.head()"
+					"type(sparkDF.head()['ingested_datetime'])"
 				],
-				"execution_count": 109
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql.functions import col\r\n",
+					"from pyspark.sql.types import StringType,BooleanType,DateType,TimestampType,IntegerType\r\n",
+					"mapping = {\r\n",
+					"    'string': StringType(),\r\n",
+					"    'timestamp': TimestampType(),\r\n",
+					"    'integer': IntegerType()\r\n",
+					"}\r\n",
+					"\r\n",
+					"for field in json.loads(schmjson)['fields']:\r\n",
+					"    sparkDF = sparkDF.withColumn(field['name'], col(field['name']).cast(mapping[field['type']]))\r\n",
+					"colheaders = []\r\n",
+					"for field in json.loads(schmjson)['fields']:\r\n",
+					"    colheaders.append(field['name'])\r\n",
+					"# sparkDF = df.withColumn(\"age\",col(\"age\").cast(StringType())) \\\r\n",
+					"#     .withColumn(\"isGraduated\",col(\"isGraduated\").cast(BooleanType())) \\\r\n",
+					"#     .withColumn(\"jobStartDate\",col(\"jobStartDate\").cast(DateType()))\r\n",
+					"# df2.printSchema()"
+				],
+				"execution_count": 82
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF = sparkDF.select(colheaders)"
+				],
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -306,7 +397,44 @@
 				"source": [
 					"sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)"
 				],
-				"execution_count": 99
+				"execution_count": 83
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"sparkDF.rdd.first()"
+				],
+				"execution_count": 69
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# .distinct().select(\"\").show()\r\n",
+					"sparkDF.dropDuplicates([\"ingested_datetime\"]).head()"
+				],
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -324,7 +452,7 @@
 				"source": [
 					"sparkDF2.show()"
 				],
-				"execution_count": 100
+				"execution_count": 84
 			},
 			{
 				"cell_type": "code",
@@ -340,9 +468,9 @@
 					}
 				},
 				"source": [
-					"sparkDF.head()"
+					"sparkDF2.head()"
 				],
-				"execution_count": 46
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
