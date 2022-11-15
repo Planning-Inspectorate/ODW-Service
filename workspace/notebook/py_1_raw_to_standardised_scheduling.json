@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0e6a5d1d-bb8a-4ebd-873f-dd3cdea66f17"
+				"spark.autotune.trackingId": "5e49c758-c181-4e62-a840-c3ab80b782df"
 			}
 		},
 		"metadata": {
@@ -65,63 +65,9 @@
 					}
 				},
 				"source": [
-					"[obje for obje in json_config_dict[\"definitions\"] if obje[\"Source_ID\"]==1]"
-				],
-				"execution_count": 49
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"import requests\r\n",
 					"bhls = requests.get(\"https://www.gov.uk/bank-holidays.json\")\r\n",
 					"bhls.json()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark.sql(\"drop table if exists odw_standardised_db.addresses\")"
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### decouple the scheduling and the processing"
 				],
 				"execution_count": null
 			},
@@ -157,9 +103,17 @@
 					}
 				},
 				"source": [
-					"def read_schedule(adhoc=False,):\r\n",
+					"@logging_to_appins\r\n",
+					"def ingest_raw_to_standardised(adhoc=False):\r\n",
 					"    '''\r\n",
-					"    Function reads all the schedules for all files, and processes any new files into standardised, and adds old files into an outstanding files table\r\n",
+					"    Function reads all the schedules for all files, and processes any new files into standardised, and adds outstanding files into an outstanding files table\r\n",
+					"    Parameters:\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"\r\n",
+					"    Actions:\r\n",
+					"\r\n",
+					"    Exceptions:\r\n",
 					"    '''\r\n",
 					"    ### add parameter for adhoc processing - ignore scheduling - \r\n",
 					"    ### do we need something that flags modified files? - generate error and requires ad hoc processing? probably more important for case data\r\n",
@@ -172,6 +126,7 @@
 					"\r\n",
 					"    ### LOADS SCHEDULING JSON\r\n",
 					"    from pyspark.sql import SparkSession\r\n",
+					"    import logging\r\n",
 					"    spark = SparkSession.builder.getOrCreate()\r\n",
 					"    import json\r\n",
 					"    orchestration_json = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration/orchestration_test.json\", wholetext=True).first().value\r\n",
@@ -202,13 +157,11 @@
 					"        next_end_dt = last_start_dt + timedelta(days=deltadays) ### expected to\r\n",
 					"    \r\n",
 					"        ### IS FILE EXPECTED RIGHT NOW?\r\n",
-					"        # weekdays handling\r\n",
-					"        # if time_now.weekday() > 1 \r\n",
 					"        if last_start_dt < time_now < next_end_dt: # always gonna be before midnight\r\n",
 					"            standardised_table_df = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
 					"            rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"            if rows > 0 :\r\n",
-					"                print(\"hello world\")\r\n",
+					"                logging.info(\"File has already been ingested\")\r\n",
 					"            else:\r\n",
 					"                source_container_path = defs['Source_Container_Path']\r\n",
 					"                source_folder =  defs['Source_Folder'] + defs[\"Source_Frequency_Folder\"]\r\n",
@@ -220,6 +173,7 @@
 					"                    except:\r\n",
 					"                        try:\r\n",
 					"                            folder_date = datetime.strptime(date.path.split(source_container_path+source_folder)[1], \"%Y-%m\")\r\n",
+					"                            # need to make sure month end uses last day of the month\r\n",
 					"                        except:\r\n",
 					"                            raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
 					"                    \r\n",
@@ -271,14 +225,12 @@
 					"                                    sparkDF = sparkDF.select(colheaders)\r\n",
 					"                                    sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)\r\n",
 					"                                    sparkDF2.write.format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\r\n",
+					"\r\n",
+					"                                    ### do a DQ check here\r\n",
 					"                            else:\r\n",
 					"                                #outstanding file\r\n",
 					"                    else:\r\n",
 					"                        #outstanding file\r\n",
-					"\r\n",
-					"                # add columns\r\n",
-					"\r\n",
-					"                # write to table\r\n",
 					"\r\n",
 					"                # move file into archive\r\n",
 					"\r\n",
