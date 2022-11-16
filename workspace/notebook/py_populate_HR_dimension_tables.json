@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "21056c42-7d92-4443-b9a9-a6134394b1f5"
+				"spark.autotune.trackingId": "ec0d894b-2cb6-45c0-bfb6-a604f9af9e27"
 			}
 		},
 		"metadata": {
@@ -576,7 +576,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build and merger secureinfo_fact table\r\n",
+					"-- Build and merge secureinfo_fact table\r\n",
 					"\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.secureinfo_fact AS Target\r\n",
@@ -609,11 +609,14 @@
 					"WHEN MATCHED AND Target.RowID <> Source.RowID\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1)\r\n",
+					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
-					"-- For Inserts in new rows\r\n",
+					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT * ;    \r\n",
+					"\r\n",
+					"-- Insert changed data as new row\r\n",
 					"\r\n",
 					"INSERT INTO odw_harmonised_db.secureinfo_fact (\r\n",
 					"    SecureInfoID,\r\n",
@@ -639,7 +642,7 @@
 					"    T6.SXOID, \r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    '9999-12-31' AS EndDate,\r\n",
+					"    'null' AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(T1.Ref_No, T3.DisabilityID, T4.DiversityID, T5.ReligionID, T6.SXOID)) as RowID\r\n",
@@ -652,12 +655,45 @@
 					"LEFT JOIN odw_harmonised_db.secureinfo_fact T7 ON T1.Ref_No = T7.SourceID\r\n",
 					"WHERE T1.Ref_No = T7.SourceID AND md5(concat(T1.Ref_No, T3.DisabilityID, T4.DiversityID, T5.ReligionID, T6.SXOID)) <> T7.RowID;\r\n",
 					"\r\n",
+					"-- Deactivate old rows\r\n",
+					"\r\n",
+					"UPDATE odw_harmonised_db.secureinfo_fact\r\n",
+					"    SET IsActive = 'N'\r\n",
+					"    Where SourceID IN \r\n",
+					"    (\r\n",
+					"        SELECT SourceID\r\n",
+					"        FROM odw_harmonised_db.secureinfo_fact T1\r\n",
+					"        LEFT JOIN odw_standardised_db T2 ON T1.SourceID = T2.Ref_No\r\n",
+					"        WHERE T2.Ref_No IS NULL\r\n",
+					"    )\r\n",
+					"    \r\n",
 					"\r\n",
 					"\r\n",
+					"SELECT\r\n",
+					"    uuid() AS SecureInfoID, -- surrogate key\r\n",
+					"    T1.Ref_No AS SourceID, -- source system id\r\n",
+					"    T3.DisabilityID,\r\n",
+					"    T4.DiversityID,\r\n",
+					"    T5.ReligionID,\r\n",
+					"    T6.SXOID, \r\n",
+					"    T2.SourceSystemID as SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    'null' AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo,\r\n",
+					"    md5(concat(T1.Ref_No, T3.DisabilityID, T4.DiversityID, T5.ReligionID, T6.SXOID)) as RowID\r\n",
+					"FROM odw_standardised_db.personal_characteristics T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
+					"LEFT JOIN odw_harmonised_db.disability_dim T3 ON (T1.Disability_Text = T3.DisabilityCode  AND T1.Disability_Code_Description = T3.Description)\r\n",
+					"LEFT JOIN odw_harmonised_db.diversity_dim T4 ON T1.Ethnic_Origin = T4.Description\r\n",
+					"LEFT JOIN odw_harmonised_db.religion_dim T5 ON (T1.Religion = T5.ReligionCode  AND T1.Religious_Denomination_Key = T5.Description)\r\n",
+					"LEFT JOIN odw_harmonised_db.sxo_dim T6 ON T1.SxO = T6.Description\r\n",
+					"LEFT JOIN odw_harmonised_db.secureinfo_fact T7 ON T1.Ref_No = T7.SourceID\r\n",
+					"WHERE T1.Ref_No = T7.SourceID AND md5(concat(T1.Ref_No, T3.DisabilityID, T4.DiversityID, T5.ReligionID, T6.SXOID)) <> T7.RowID;\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 80
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -680,12 +716,16 @@
 					"%%sql\r\n",
 					"-- amendments to personal_characteristics\r\n",
 					"\r\n",
-					"UPDATE odw_standardised_db.personal_characteristics \r\n",
-					"set Ethnic_Origin = 'Black - African',\r\n",
-					"    Ethnicity = 'BME'\r\n",
-					"where Ref_No = '2210-1101'"
+					"-- UPDATE odw_standardised_db.personal_characteristics \r\n",
+					"-- set Ethnic_Origin = 'Black - African',\r\n",
+					"--     Ethnicity = 'BME'\r\n",
+					"-- where Ref_No = '2210-1101'\r\n",
+					"\r\n",
+					"-- INSERT INTO odw_standardised_db.personal_characteristics \r\n",
+					"\r\n",
+					"-- VALUES ('2210-1952',\t'White - Northern Irish',\t'None',\t'Lesbian',\t'NOT DISABLED',\t'No',\t'No',\t'White',\t'Agnostic / Atheist',\t'LGBT',\t'AO')"
 				],
-				"execution_count": 79
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -708,9 +748,12 @@
 					"%%sql\r\n",
 					"SELECT\r\n",
 					"* from odw_harmonised_db.secureinfo_fact\r\n",
-					"where SourceID = '2210-1101'"
+					"where SourceID = '2210-1952'\r\n",
+					"\r\n",
+					"-- select * from odw_standardised_db.personal_characteristics \r\n",
+					"-- where Ref_No = '2210-1952'"
 				],
-				"execution_count": 81
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
