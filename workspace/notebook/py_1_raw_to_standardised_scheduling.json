@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "326f1632-e355-4df8-b130-b2916a5ee7ed"
+				"spark.autotune.trackingId": "381ca65d-4337-44b5-802a-36460dc0caf3"
 			}
 		},
 		"metadata": {
@@ -104,7 +104,7 @@
 				},
 				"source": [
 					"@logging_to_appins\r\n",
-					"def ingest_raw_to_standardised(adhoc=False):\r\n",
+					"def ingest_raw_to_standardised():\r\n",
 					"    '''\r\n",
 					"    Function reads all the schedules for all files, and processes any new files into standardised, and adds outstanding files into an outstanding files table\r\n",
 					"    Parameters:\r\n",
@@ -147,7 +147,7 @@
 					"            # from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
 					"            definitions = json_config_dict['definitions']\r\n",
 					"            for defs in definitions:\r\n",
-					"                if defs['Source_ID'] = outstanding_source_id:\r\n",
+					"                if defs['Source_ID'] == outstanding_source_id:\r\n",
 					"                    standardised_container = defs['Standardised_Container'] + \"/\"\r\n",
 					"                    standardised_table_name = defs['Standardised_Table_Name']\r\n",
 					"                    standardised_path = defs['Standardised_Path'] + \"/\"\r\n",
@@ -250,8 +250,12 @@
 					"                                                    # remove entry from outstanding files\r\n",
 					"                                                    logging.info('All rows have successfully written')\r\n",
 					"                                                else:\r\n",
-					"                                                    \r\n",
-					"                                                    raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, roll back one version\")\r\n",
+					"                                                    from delta.tables import *\r\n",
+					"                                                    deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\r\n",
+					"                                                    fullHistoryDF = deltaTable_standardised.history()    # get the full history of the table\r\n",
+					"                                                    fullHistoryDF.select(\"version\").first()['version']\r\n",
+					"                                                    deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\r\n",
+					"                                                    raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\r\n",
 					"                                                \r\n",
 					"                                            else:\r\n",
 					"                                                raise ValueError(\"This file type is unsupported\")\r\n",
@@ -369,7 +373,6 @@
 					"                            else:\r\n",
 					"                                # needs to be upsert\r\n",
 					"                                outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
-					"                                print(last_start_dt)\r\n",
 					"                                new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
 					"                                new_outst_file.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.raw_to_std_outstanding_files\")\r\n",
 					"                    else:\r\n",
@@ -379,6 +382,30 @@
 					"                        new_outst_file.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.raw_to_std_outstanding_files\")"
 				],
 				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from delta.tables import *\r\n",
+					"\r\n",
+					"deltaTable = DeltaTable.forPath(spark, pathToTable)\r\n",
+					"\r\n",
+					"fullHistoryDF = deltaTable.history()    # get the full history of the table\r\n",
+					"\r\n",
+					"lastOperationDF = deltaTable.history(1) # get the last operation"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -515,10 +542,10 @@
 					"import json\r\n",
 					"from pyspark.sql.types import StructType\r\n",
 					"outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
-					"new_outst_file = spark.createDataFrame([[datetime.now(), 1]], outstanding_struct_schema)\r\n",
+					"new_outst_file = spark.createDataFrame([[datetime.now(), 3]], outstanding_struct_schema)\r\n",
 					"new_outst_file.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_config_db.raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 10
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -574,6 +601,104 @@
 					"not outstanding_df_pd.empty"
 				],
 				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from delta.tables import *\r\n",
+					"\r\n",
+					"deltaTable = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from delta.tables import *\r\n",
+					"\r\n",
+					"deltaTable2 = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"\r\n",
+					"fullHistoryDF2 = deltaTable2.history()"
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullHistoryDF2.head(n=5)"
+				],
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
