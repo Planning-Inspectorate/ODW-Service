@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6b249ee7-eb73-4609-9abf-96bc477308b7"
+				"spark.autotune.trackingId": "70547845-1a84-4d70-b5f1-69e361579f22"
 			}
 		},
 		"metadata": {
@@ -80,7 +80,8 @@
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
-					"    ValidTo\r\n",
+					"    ValidTo,\r\n",
+					"    RowID\r\n",
 					")\r\n",
 					"\r\n",
 					"SELECT\r\n",
@@ -89,9 +90,10 @@
 					"    CURRENT_TIMESTAMP AS StartDate, \r\n",
 					"    '9999-12-31' AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo"
+					"    NULL AS ValidTo,\r\n",
+					"    md5(\"SAP HR\") as RowID"
 				],
-				"execution_count": 10
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -550,6 +552,30 @@
 				},
 				"source": [
 					"%%sql\r\n",
+					"--drop table odw_harmonised_db.sourcesystem_fact;\r\n",
+					"drop table odw_harmonised_db.secureinfo_fact"
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
 					"-- Build secureinfo_fact table\r\n",
 					"-- INSERT OVERWRITE odw_harmonised_db.secureinfo_fact (\r\n",
 					"--     SecureInfoID,\r\n",
@@ -585,7 +611,7 @@
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.secureinfo_fact AS Target\r\n",
 					"USING ( SELECT\r\n",
-					"            uuuid() AS SecureInfoID, -- surrogate key\r\n",
+					"            uuid() AS SecureInfoID, -- surrogate key\r\n",
 					"            T1.Ref_No AS SourceID, -- source system id\r\n",
 					"            T3.DisabilityID,\r\n",
 					"            T4.DiversityID,\r\n",
@@ -613,17 +639,18 @@
 					"WHEN MATCHED AND Target.RowID <> Source.RowID\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = current_timestamp -1\r\n",
+					"    Target.EndDate = date_sub(current_timestamp,1)\r\n",
 					"\r\n",
 					"-- For Inserts in new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
 					"    THEN    \r\n",
-					"    INSERT (DiversityID) \r\n",
-					"    VALUES (Source.DiversityID) ;\r\n",
-					"\r\n",
+					"    INSERT (SecureInfoID, SourceID , DisabilityID, DiversityID, ReligionID, SXOID, SourceSystemID, StartDate, EndDate, IngestionDate, ValidTo, RowID) \r\n",
+					"    VALUES (Source.SecureInfoID, Source.SourceID , Source.DisabilityID, Source.DiversityID, \r\n",
+					"            Source.ReligionID, Source.SXOID, Source.SourceSystemID, Source.StartDate, Source.EndDate, Source.IngestionDate, Source.ValidTo, Source.RowID) ;\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.secureinfo_fact (\r\n",
 					"    SecureInfoID,\r\n",
+					"    SourceID,\r\n",
 					"    DisabilityID,\r\n",
 					"    DiversityID,\r\n",
 					"    ReligionID,\r\n",
@@ -632,7 +659,8 @@
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
-					"    ValidTo\r\n",
+					"    ValidTo,\r\n",
+					"    RowID\r\n",
 					")\r\n",
 					"\r\n",
 					"SELECT\r\n",
@@ -662,7 +690,30 @@
 					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from odw_harmonised_db.secureinfo_fact"
+				],
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
