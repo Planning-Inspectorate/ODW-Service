@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "381ca65d-4337-44b5-802a-36460dc0caf3"
+				"spark.autotune.trackingId": "67367c33-eb71-4ef8-adc1-82dd6ebc88e5"
 			}
 		},
 		"metadata": {
@@ -246,8 +246,8 @@
 					"\r\n",
 					"                                                \r\n",
 					"                                                if rows_raw == rows_new:\r\n",
-					"                                                    # move file into archive\r\n",
-					"                                                    # remove entry from outstanding files\r\n",
+					"                                                    mssparkutils.fs.mv(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\r\n",
+					"                                                    spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{time_now}' and DefinitionID = {outstanding_source_id}\")\r\n",
 					"                                                    logging.info('All rows have successfully written')\r\n",
 					"                                                else:\r\n",
 					"                                                    from delta.tables import *\r\n",
@@ -363,10 +363,16 @@
 					"                                    standardised_table_df_new = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
 					"                                    rows_new = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"                                    if rows_raw == rows_new:\r\n",
+					"                                        mssparkutils.fs.mv(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\r\n",
+					"                                        spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{time_now}' and DefinitionID = {outstanding_source_id}\")\r\n",
 					"                                        logging.info('All rows have successfully written')\r\n",
 					"                                    else:\r\n",
-					"                                        # move file into archive\r\n",
-					"                                        raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, roll back one version\")\r\n",
+					"                                        from delta.tables import *\r\n",
+					"                                        deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\r\n",
+					"                                        fullHistoryDF = deltaTable_standardised.history()    # get the full history of the table\r\n",
+					"                                        fullHistoryDF.select(\"version\").first()['version']\r\n",
+					"                                        deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\r\n",
+					"                                        raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\r\n",
 					"                                    \r\n",
 					"                                else:\r\n",
 					"                                    raise ValueError(\"This file type is unsupported\")\r\n",
@@ -561,9 +567,9 @@
 					}
 				},
 				"source": [
-					"outstanding_df_pd = outstanding_df.toPandas()"
+					"dftest = spark.sql(\"select * from odw_config_db.raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 14
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -579,10 +585,10 @@
 					}
 				},
 				"source": [
-					"for pdidx, pdrow in outstanding_df_pd.iterrows():\r\n",
-					"    print(pdrow['Expected_Datetime'])"
+					"testdt = dftest.first()['Expected_Datetime']\r\n",
+					"testdef = dftest.first()['DefinitionID']"
 				],
-				"execution_count": 17
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -598,9 +604,9 @@
 					}
 				},
 				"source": [
-					"not outstanding_df_pd.empty"
+					"spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{testdt}' and DefinitionID = {testdef}\")"
 				],
-				"execution_count": 21
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -616,89 +622,9 @@
 					}
 				},
 				"source": [
-					""
+					"spark.sql(\"select * from odw_config_db.raw_to_std_outstanding_files\").show()"
 				],
-				"execution_count": 32
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": 36
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from delta.tables import *\r\n",
-					"\r\n",
-					"deltaTable = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
-					"\r\n",
-					""
-				],
-				"execution_count": 37
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from delta.tables import *\r\n",
-					"\r\n",
-					"deltaTable2 = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
-					"\r\n",
-					"fullHistoryDF2 = deltaTable2.history()"
-				],
-				"execution_count": 38
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"fullHistoryDF2.head(n=5)"
-				],
-				"execution_count": 41
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
