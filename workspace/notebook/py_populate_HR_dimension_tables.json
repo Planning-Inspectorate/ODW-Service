@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5125b89a-cd02-4793-9fd7-919d44435b83"
+				"spark.autotune.trackingId": "1d4da708-c56d-4738-a975-759f9311d0a8"
 			}
 		},
 		"metadata": {
@@ -302,9 +302,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"INSERT INTO odw_standardised_db.personal_characteristics \r\n",
+					"-- INSERT INTO odw_standardised_db.personal_characteristics \r\n",
 					"\r\n",
-					"VALUES ('2210-3000',\t'Asian - Thai',\t'None',\t'Lesbian',\t'NOT DISABLED',\t'No',\t'No',\t'White',\t'Agnostic / Atheist',\t'LGBT',\t'AO')\r\n",
+					"-- VALUES ('2210-3000',\t'Asian - Thai',\t'None',\t'Lesbian',\t'NOT DISABLED',\t'No',\t'No',\t'White',\t'Agnostic / Atheist',\t'LGBT',\t'AO')\r\n",
 					" ;\r\n",
 					""
 				],
@@ -324,7 +324,7 @@
 					"-- Build diversity_dim table\r\n",
 					"-- INSERT OVERWRITE achieves the same as a TRUNCATE TABLE and INSERT INTO but in one statement\r\n",
 					"\r\n",
-					"\r\n",
+					"-- OLD SCRIPT DO NOT USE\r\n",
 					"\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.diversity_dim (\r\n",
@@ -357,254 +357,6 @@
 					""
 				],
 				"execution_count": 11
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"-- Three statements unioned together\r\n",
-					"-- 1. Old data that is already there\r\n",
-					"-- 2. New data that has never been seen before\r\n",
-					"-- 3. Modified data\r\n",
-					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.diversity_dim (\r\n",
-					"    DiversityID,\r\n",
-					"    Description,\r\n",
-					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
-					"    IngestionDate,\r\n",
-					"    ValidTo,\r\n",
-					"    RowID\r\n",
-					" )\r\n",
-					"\r\n",
-					"-- Insert all matching rows\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    T3.DiversityID,\r\n",
-					"    T3.Description,\r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"    first(T3.StartDate) StartDate,\r\n",
-					"    first(T3.EndDate) as EndDate,\r\n",
-					"    first(T3.IngestionDate),\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    T3.RowID\r\n",
-					"\r\n",
-					"FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"LEFT JOIN odw_harmonised_db.diversity_dim T3 ON md5(T1.Ethnic_Origin) = T3.RowID\r\n",
-					"WHERE md5(T1.Ethnic_Origin) = T3.RowID\r\n",
-					"GROUP BY T3.DiversityID, T3.Description,T3.RowID\r\n",
-					"\r\n",
-					"   \r\n",
-					"     UNION ALL\r\n",
-					"\r\n",
-					"-- Insert New data\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    uuid() AS DiversityID,\r\n",
-					"    T1.Ethnic_Origin AS Description,\r\n",
-					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    '9999-12-31' AS EndDate,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    md5(Ethnic_Origin) as RowID\r\n",
-					"\r\n",
-					"FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"LEFT JOIN odw_harmonised_db.diversity_dim T3 ON     md5(T1.Ethnic_Origin) = T3.RowID\r\n",
-					"WHERE   T3.RowID IS NULL       -- check that the md5 doesn't match\r\n",
-					"GROUP BY T1.Ethnic_Origin\r\n",
-					"\r\n",
-					"--      UNION ALL\r\n",
-					"\r\n",
-					"-- Inserts everything from diversity_dim that is not in standardised table with an updated end date\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    FIRST(T3.DiversityID),\r\n",
-					"    FIRST(T3.Description),\r\n",
-					"    FIRST(T2.SourceSystemID) as SourceSystemID, \r\n",
-					"    FIRST(T3.StartDate),\r\n",
-					"    CURRENT_TIMESTAMP AS EndDate,\r\n",
-					"    FIRST(T3.IngestionDate),\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    FIRST(T3.RowID)\r\n",
-					"\r\n",
-					"\r\n",
-					"FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2    ON \"SAP HR\" = T2.Description\r\n",
-					"RIGHT JOIN odw_harmonised_db.diversity_dim T3       ON     md5(T1.Ethnic_Origin) = T3.RowID -- brings back everything from diversity_dim that is not in standardised table\r\n",
-					"WHERE T1.Ethnic_Origin is null \r\n",
-					"GROUP BY T1.Ethnic_Origin\r\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"\r\n",
-					"MERGE INTO odw_harmonised_db.diversity_dim AS Target\r\n",
-					"USING ( SELECT\r\n",
-					"            uuid() AS DiversityID,\r\n",
-					"            T1.Ethnic_Origin AS Description,\r\n",
-					"            first(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"            CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"            '9999-12-31' AS EndDate,\r\n",
-					"            CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"            NULL AS ValidTo,\r\n",
-					"            md5(Ethnic_Origin) as RowID\r\n",
-					"\r\n",
-					"        FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"        LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"        GROUP BY T1.Ethnic_Origin ) AS Source\r\n",
-					"\r\n",
-					"ON Source.RowID = Target.RowID\r\n",
-					"\r\n",
-					"-- For Updates\r\n",
-					"WHEN MATCHED AND Target.Description <> Source.Description\r\n",
-					"    THEN \r\n",
-					"    UPDATE SET\r\n",
-					"    Target.EndDate = current_timestamp\r\n",
-					"\r\n",
-					"-- For Inserts\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN    \r\n",
-					"    INSERT (DiversityID, Description, SourceSystemID, StartDate, EndDate, IngestionDate, ValidTo, RowID) \r\n",
-					"    VALUES (Source.DiversityID,Source.Description, Source.SourceSystemID, Source.StartDate, Source.EndDate, Source.IngestionDate, Source.ValidTo, Source.RowID)\r\n",
-					"\r\n",
-					"-- For Deletes\r\n",
-					"-- WHEN NOT MATCHED BY Source\r\n",
-					"--     THEN\r\n",
-					"--     DELETE\r\n",
-					"\r\n",
-					""
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"\r\n",
-					"\r\n",
-					"-- SELECT\r\n",
-					"--     FIRST(T3.DiversityID),\r\n",
-					"--     FIRST(T3.Description),\r\n",
-					"--     FIRST(T2.SourceSystemID) as SourceSystemID, \r\n",
-					"--     FIRST(T3.StartDate),\r\n",
-					"--     CURRENT_TIMESTAMP AS EndDate,\r\n",
-					"--     FIRST(T3.IngestionDate),\r\n",
-					"--     NULL AS ValidTo,\r\n",
-					"--     FIRST(T3.RowID)\r\n",
-					"\r\n",
-					"\r\n",
-					"-- FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"-- LEFT JOIN odw_harmonised_db.sourcesystem_fact T2    ON \"SAP HR\" = T2.Description\r\n",
-					"-- RIGHT JOIN odw_harmonised_db.diversity_dim T3       ON     md5(T1.Ethnic_Origin) = T3.RowID -- brings back everything from diversity_dim that is not in standardised table\r\n",
-					"-- WHERE T1.Ethnic_Origin is null \r\n",
-					"-- GROUP BY T1.Ethnic_Origin;\r\n",
-					"\r\n",
-					"--select * from odw_standardised_db.addresses where Staff_number = '500002'\r\n",
-					"\r\n",
-					"-- select Ethnic_Origin from odw_standardised_db.personal_characteristics\r\n",
-					"-- Where Ethnic_origin = 'Mixed - White & Black African'\r\n",
-					"-- GROUP BY Ethnic_Origin;\r\n",
-					"\r\n",
-					"select count(*) from odw_standardised_db.addresses;\r\n",
-					"\r\n",
-					"select count(*) from odw_harmonised_db.employee_dim where AddressLine1 is not null ;\r\n",
-					"\r\n",
-					"\r\n",
-					"--select * from odw_harmonised_db.diversity_dim where Description = 'Mixed - White & Black African';\r\n",
-					"\r\n",
-					"-- Mixed - White & Black African"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql   \r\n",
-					"-- SELECT\r\n",
-					"--     row_number() OVER(ORDER BY Ethnic_Origin),\r\n",
-					"--     T1.Ethnic_Origin,\r\n",
-					"--     first(T2.SourceSystemID) as SourceSystemID, -- NOT CORRECT\r\n",
-					"--     CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"--     NULL AS EndDate,\r\n",
-					"--     CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"--     NULL AS ValidTo,\r\n",
-					"--     md5(Ethnic_Origin) as RowID\r\n",
-					"\r\n",
-					"-- FROM odw_standardised_db.personal_characteristics T1\r\n",
-					"-- LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"-- GROUP BY Ethnic_Origin;\r\n",
-					"\r\n",
-					"select * from odw_standardised_db.personal_characteristics"
-				],
-				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
