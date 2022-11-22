@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f592afc4-95b3-4e7e-95d2-4a6d50a17dff"
+				"spark.autotune.trackingId": "0b54b7da-d481-4649-9060-59037f47f4a2"
 			}
 		},
 		"metadata": {
@@ -123,7 +123,7 @@
 				"source": [
 					"# spark.sql(\"drop table if exists odw_standardised_db.saphr_new\")"
 				],
-				"execution_count": 34
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -202,13 +202,13 @@
 					"                    last_start_dt = iter_start.get_prev(datetime) ### expected from\r\n",
 					"                    \r\n",
 					"                    next_end_dt = last_start_dt + timedelta(days=deltadays) ### expected to\r\n",
-					"                    print(last_start_dt)\r\n",
-					"                    print(next_end_dt)\r\n",
+					"                    print(time_now, last_start_dt, next_end_dt)\r\n",
 					"                    # is the file expected right now?\r\n",
 					"                    if last_start_dt <= time_now < next_end_dt: \r\n",
 					"                        standardised_table_df = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
 					"                        # check if the file has already been ingested\r\n",
 					"                        rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
+					"                        \r\n",
 					"                        if rows > 0 :\r\n",
 					"                            logging.info(\"File has already been ingested\")\r\n",
 					"                        else:\r\n",
@@ -260,8 +260,13 @@
 					"                                                cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
 					"                                                cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
 					"                                                cols = [item.replace(',','').lower() for item in cols]\r\n",
+					"                                                newlist = []\r\n",
+					"                                                for i, v in enumerate(cols):\r\n",
+					"                                                    totalcount = cols.count(v)\r\n",
+					"                                                    count = cols[:i].count(v)\r\n",
+					"                                                    newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
 					"                                                for colix in range(len(cols_orig)):\r\n",
-					"                                                    sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], cols[colix])\r\n",
+					"                                                    sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], newlist[colix])\r\n",
 					"\r\n",
 					"                                                from pyspark.sql.functions import col\r\n",
 					"                                                from pyspark.sql.types import StringType,BooleanType,DateType,TimestampType,IntegerType, FloatType\r\n",
@@ -306,7 +311,7 @@
 					"    ### ITERATE THROUGH ALL JSON\r\n",
 					"    from datetime import datetime, timedelta\r\n",
 					"    # from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
-					"    time_now = datetime(2022,11,4) # datetime.now() ### ingested_datetime\r\n",
+					"    time_now = datetime(2022,11,4,12,0,0) # datetime.now() ### ingested_datetime\r\n",
 					"    definitions = json_config_dict['definitions']\r\n",
 					"    for defs in definitions:\r\n",
 					"        standardised_container = defs['Standardised_Container'] + \"/\"\r\n",
@@ -382,8 +387,13 @@
 					"                                    cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
 					"                                    cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
 					"                                    cols = [item.replace(',','').lower() for item in cols]\r\n",
+					"                                    newlist = []\r\n",
+					"                                    for i, v in enumerate(cols):\r\n",
+					"                                        totalcount = cols.count(v)\r\n",
+					"                                        count = cols[:i].count(v)\r\n",
+					"                                        newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
 					"                                    for colix in range(len(cols_orig)):\r\n",
-					"                                        sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], cols[colix])\r\n",
+					"                                        sparkDF = sparkDF.withColumnRenamed(cols_orig[colix], newlist[colix])\r\n",
 					"\r\n",
 					"                                    from pyspark.sql.functions import col\r\n",
 					"                                    from pyspark.sql.types import StringType,BooleanType,DateType,TimestampType,IntegerType, FloatType\r\n",
@@ -434,7 +444,7 @@
 					"                        outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                        outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 36
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -452,7 +462,7 @@
 				"source": [
 					"ingest_raw_to_standardised()"
 				],
-				"execution_count": 37
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
