@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e0557dd4-52a8-462a-be20-5967114a96f1"
+				"spark.autotune.trackingId": "5416dfa7-81e6-4415-8946-5f12f375ddc6"
 			}
 		},
 		"metadata": {
@@ -62,53 +62,13 @@
 				},
 				"source": [
 					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.Employee_HR_Hierarchy_Dim)\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.cost_center_dim)\n",
 					"- **New Data:** where an EmployeeID in the source does not exist as an EmployeeID in the target. NewData flag is set to 'Y'\n",
 					"- **Updated data:** Comparison occurs on EmployeeID in source and EmployeeID in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
 					"- **Deleted data:** where an EmployeeID in the target exists but the same EmployeeID doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View employee_hr_hierarchy_dim_new is created"
+					"## View costcenter_dim_new is created"
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"INSERT OVERWRITE odw_harmonised_db.CostCenter_Dim (\r\n",
-					"    CostCenterID,\r\n",
-					"    CostCenterCode,\r\n",
-					"    Description,\r\n",
-					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
-					"    IngestionDate,\r\n",
-					"    ValidTo\r\n",
-					")\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    uuid() AS CostCenterID,\r\n",
-					"    T1.Cost_Ctr AS CostCenterCode,\r\n",
-					"    First(T1.Cost_Centre) AS Description,\r\n",
-					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    '9999-12-31' AS EndDate,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo\r\n",
-					"FROM odw_standardised_db.vw_saphr T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"GROUP BY T1.Cost_Ctr"
-				],
-				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -120,10 +80,10 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build employee_hr_hierarchy_dim table\r\n",
+					"-- Build costcenter_dim_new table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW employee_hr_hierarchy_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW costcenter_dim_new\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -199,8 +159,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **employee_hr_hierarchy_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View employee_hr_hierarchy_dim_changed_rows is created"
+					"- View **CostCenter_Dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View CostCenter_Dim_changed_rows is created"
 				]
 			},
 			{
@@ -224,17 +184,16 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW employee_hr_hierarchy_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW CostCenter_Dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select \r\n",
-					"    EmployeeHRHierarchyID, -- surrogate key\r\n",
-					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
-					"    CounterSignManagerID,\r\n",
+					"    CostCenterID, -- surrogate key\r\n",
+					"    CostCenterCode,\r\n",
+					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -243,17 +202,16 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"From employee_hr_hierarchy_dim_new\r\n",
+					"From CostCenter_Dim_new\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    EmployeeHRHierarchyID, -- surrogate key\r\n",
-					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
-					"    CounterSignManagerID,\r\n",
+					"    CostCenterID, -- surrogate key\r\n",
+					"    CostCenterCode,\r\n",
+					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -261,8 +219,8 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employee_hr_hierarchy_dim\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM employee_hr_hierarchy_dim_new); "
+					"FROM odw_harmonised_db.CostCenter_Dim\r\n",
+					"WHERE EmployeeID IN (SELECT EmployeeID FROM CostCenter_Dim_new); "
 				],
 				"execution_count": 19
 			},
@@ -304,10 +262,10 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.employee_hr_hierarchy_dim AS Target\r\n",
-					"USING employee_hr_hierarchy_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.CostCenter_Dim AS Target\r\n",
+					"USING CostCenter_Dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.EmployeeHRHierarchyID = Target.EmployeeHRHierarchyID\r\n",
+					"ON Source.CostCenterID = Target.CostCenterID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -364,10 +322,9 @@
 					"INSERT OVERWRITE odw_harmonised_db.employee_hr_hierarchy_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY EmployeeHRHierarchyID NULLS LAST) AS EmployeeHRHierarchyID,\r\n",
-					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
-					"    CounterSignManagerID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY CostCenterID NULLS LAST) AS CostCenterID,\r\n",
+					"    CostCenterCode,\r\n",
+					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -375,9 +332,9 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employee_hr_hierarchy_dim;\r\n",
+					"FROM odw_harmonised_db.CostCenter_Dim;\r\n",
 					"\r\n",
-					"Select * FROM odw_harmonised_db.employee_hr_hierarchy_dim;\r\n",
+					"Select * FROM odw_harmonised_db.CostCenter_Dim;\r\n",
 					""
 				],
 				"execution_count": null
