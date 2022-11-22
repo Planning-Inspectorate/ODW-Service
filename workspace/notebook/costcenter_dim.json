@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4e510bd1-cb06-49ee-8289-f3947b01d059"
+				"spark.autotune.trackingId": "7fc6c479-871b-4cd0-823c-ab645edf979a"
 			}
 		},
 		"metadata": {
@@ -93,12 +93,12 @@
 					"SELECT \r\n",
 					"    CASE\r\n",
 					"        WHEN T1.Cost_Ctr IS NULL\r\n",
-					"        THEN T7.CostCenterID\r\n",
+					"        THEN first(T7.CostCenterID)\r\n",
 					"        ELSE NULL\r\n",
 					"    END as CostCenterID, -- surrogate key\r\n",
 					"    T1.Cost_Ctr AS CostCenterCode,\r\n",
 					"    T1.Cost_Centre AS Description,\r\n",
-					"    T2.SourceSystemID as SourceSystemID,\r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
@@ -106,9 +106,9 @@
 					"    md5(concat(IFNULL(T1.Cost_Ctr,'.'), IFNULL(T1.Cost_Centre,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.Cost_Ctr = T7.CostCenterCode AND  md5(concat(IFNULL(T1.Cost_Ctr,'.'), IFNULL(T1.Cost_Centre,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"        WHEN T1.Cost_Ctr = first(T7.CostCenterCode) AND  md5(concat(IFNULL(T1.Cost_Ctr,'.'), IFNULL(T1.Cost_Centre,'.'))) <> first(T7.RowID)    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T7.CostCenterCode IS NULL -- new employee\r\n",
+					"        WHEN first(T7.CostCenterCode) IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -141,11 +141,11 @@
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
 					")\r\n",
-					"\r\n",
+					"GROUP BY T1.Cost_Ctr, T1.Cost_Centre\r\n",
 					";\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -220,9 +220,9 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.CostCenter_Dim\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM CostCenter_Dim_new); "
+					"WHERE CostCenterCode IN (SELECT CostCenterCode FROM CostCenter_Dim_new); "
 				],
-				"execution_count": null
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -280,7 +280,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -319,7 +319,7 @@
 					"%%sql\r\n",
 					"-- Insert new employee_hr_hierarchy_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.employee_hr_hierarchy_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.CostCenter_Dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY CostCenterID NULLS LAST) AS CostCenterID,\r\n",
@@ -337,7 +337,7 @@
 					"Select * FROM odw_harmonised_db.CostCenter_Dim;\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 11
 			}
 		]
 	}
