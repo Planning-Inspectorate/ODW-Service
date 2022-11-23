@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b88ac4ae-a955-49d3-9fc2-a972e7df7ecf"
+				"spark.autotune.trackingId": "38266f50-cad7-44c6-8853-7941e26c2cca"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 28
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 				"source": [
 					"%run \"utils/py_logging_decorator\""
 				],
-				"execution_count": 29
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"# test = FloatType()\r\n",
 					"# test.jsonValue()"
 				],
-				"execution_count": 30
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -121,9 +121,40 @@
 					}
 				},
 				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"import logging\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"if outstanding_df.count() > 0: # make sure there are entries in the outstanding files table\r\n",
+					"    print(\"got here 2\")\r\n",
+					"    outstanding_df_pd = outstanding_df.toPandas()\r\n",
+					"    for pdidx, pdrow in outstanding_df_pd.iterrows():\r\n",
+					"        time_now = pdrow['Expected_Datetime'] # use the expected from date as the pseudo 'today's date'\r\n",
+					"        outstanding_source_id = pdrow['DefinitionID'] \r\n",
+					"        spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{time_now}' and DefinitionID = {outstanding_source_id}\")"
+				],
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# from pyspark.sql import SparkSession\r\n",
+					"# import logging\r\n",
+					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"# spark.sql(\"drop table if exists odw_standardised_db.saphr_new\")"
 				],
-				"execution_count": 44
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -175,7 +206,6 @@
 					"    ###### process outstanding files\r\n",
 					"    outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"    if outstanding_df.count() > 0: # make sure there are entries in the outstanding files table\r\n",
-					"        print(\"got here 2\")\r\n",
 					"        outstanding_df_pd = outstanding_df.toPandas()\r\n",
 					"        for pdidx, pdrow in outstanding_df_pd.iterrows():\r\n",
 					"            time_now = pdrow['Expected_Datetime'] # use the expected from date as the pseudo 'today's date'\r\n",
@@ -185,7 +215,6 @@
 					"            definitions = json_config_dict['definitions']\r\n",
 					"            for defs in definitions:\r\n",
 					"                if defs['Source_ID'] == outstanding_source_id: # isolate the correct scheduling config\r\n",
-					"                    print(\"got here 1\")\r\n",
 					"                    standardised_container = defs['Standardised_Container'] + \"/\"\r\n",
 					"                    standardised_table_name = defs['Standardised_Table_Name']\r\n",
 					"                    standardised_path = defs['Standardised_Path'] + \"/\"\r\n",
@@ -199,7 +228,7 @@
 					"\r\n",
 					"                    from croniter import croniter\r\n",
 					"                    iter_start = croniter(cronstart, time_now)\r\n",
-					"                    last_start_dt = iter_start.get_prev(datetime) ### expected from\r\n",
+					"                    last_start_dt = time_now#iter_start.get_prev(datetime) ### expected from\r\n",
 					"                    \r\n",
 					"                    next_end_dt = last_start_dt + timedelta(days=deltadays) ### expected to\r\n",
 					"                    print(time_now, last_start_dt, next_end_dt)\r\n",
@@ -245,6 +274,7 @@
 					"                                                {\"linkedService\":\"ls_storage\"} \r\n",
 					"                                                )   \r\n",
 					"                                                df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str)\r\n",
+					"                                                df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
 					"                                                rows_raw = len(df.index)\r\n",
 					"                                                mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
 					"                                                sparkDF=spark.createDataFrame(df)\r\n",
@@ -260,6 +290,7 @@
 					"                                                cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
 					"                                                cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
 					"                                                cols = [item.replace(',','').lower() for item in cols]\r\n",
+					"                                                cols = [item.replace(':','').lower() for item in cols]\r\n",
 					"                                                newlist = []\r\n",
 					"                                                for i, v in enumerate(cols):\r\n",
 					"                                                    totalcount = cols.count(v)\r\n",
@@ -373,6 +404,7 @@
 					"                                    {\"linkedService\":\"ls_storage\"} \r\n",
 					"                                    )   \r\n",
 					"                                    df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str)\r\n",
+					"                                    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
 					"                                    rows_raw = len(df.index)\r\n",
 					"                                    mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
 					"                                    sparkDF=spark.createDataFrame(df)\r\n",
@@ -383,11 +415,14 @@
 					"                                    schema = StructType.fromJson(json.loads(standardised_table_def_json))\r\n",
 					"\r\n",
 					"                                    import re\r\n",
+					"                                    \r\n",
 					"                                    cols_orig = sparkDF.schema.names\r\n",
+					"                                    print(\"originalcols\", cols_orig)\r\n",
 					"                                    cols=[re.sub(\"( |\\#|\\# |\\.|\\(|\\)|\\/)\",\"_\",i) for i in cols_orig] # replace chars with _\r\n",
 					"                                    cols=[re.sub(\"([\\_]{2,})\",\"_\",i) for i in cols] #replace consecutive _ with one _\r\n",
 					"                                    cols=[re.sub(\"(\\_)$\",\"\",i) for i in cols] #remove trailing _\r\n",
 					"                                    cols = [item.replace(',','').lower() for item in cols]\r\n",
+					"                                    cols = [item.replace(':','').lower() for item in cols]\r\n",
 					"                                    newlist = []\r\n",
 					"                                    for i, v in enumerate(cols):\r\n",
 					"                                        totalcount = cols.count(v)\r\n",
@@ -446,7 +481,7 @@
 					"                        outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                        outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 47
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -464,7 +499,7 @@
 				"source": [
 					"ingest_raw_to_standardised()"
 				],
-				"execution_count": 48
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
