@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d20d7cd5-ebaf-42d4-86b2-edba9fae67b6"
+				"spark.autotune.trackingId": "e397c60d-ca2e-46d8-9bf7-f7046247d572"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 17
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 				"source": [
 					"%run \"utils/py_logging_decorator\""
 				],
-				"execution_count": 18
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -152,10 +152,10 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# import logging\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
-					"# spark.sql(\"drop table if exists odw_standardised_db.addresses_new\")\r\n",
-					"# #odw_config_db.raw_to_std_outstanding_tables"
+					"# spark.sql(\"drop table if exists odw_config_db.raw_to_std_outstanding_files\")\r\n",
+					"# #"
 				],
-				"execution_count": 57
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -389,6 +389,7 @@
 					"    \r\n",
 					"        ### IS FILE EXPECTED RIGHT NOW?\r\n",
 					"        if last_start_dt <= time_now < next_end_dt: # always gonna be before midnight\r\n",
+					"            folder_available = False\r\n",
 					"            standardised_table_df = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
 					"            rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"            if rows > 0 :\r\n",
@@ -411,14 +412,17 @@
 					"                        except:\r\n",
 					"                            raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
 					"                    print(folder_date,last_start_dt,next_end_dt)\r\n",
+					"                    \r\n",
 					"                    if last_start_dt <= folder_date < next_end_dt:\r\n",
+					"                        folder_available = True\r\n",
 					"                        source_folder_with_date = mssparkutils.fs.ls(source_container_path+source_folder+date_string)\r\n",
 					"                        if source_folder_with_date == []:\r\n",
 					"                            raise ValueError(\"Folder is empty\")\r\n",
-					"                        in_folder = False\r\n",
+					"                        file_available = False\r\n",
 					"                        for file in source_folder_with_date:\r\n",
 					"                            filename = file.path.split(source_container_path+source_folder+date_string)[-1]\r\n",
 					"                            if defs['Source_Filename_Start'] in filename:\r\n",
+					"                                file_available = True\r\n",
 					"                                if \".xlsx\" in filename.lower():\r\n",
 					"                                    \r\n",
 					"                                    jobId = mssparkutils.env.getJobId()\r\n",
@@ -482,7 +486,7 @@
 					"                                        mssparkutils.fs.mkdirs(source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\")\r\n",
 					"                                        mssparkutils.fs.cp(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\r\n",
 					"                                        logger.info('All rows have successfully written')\r\n",
-					"                                        in_folder = True\r\n",
+					"                                        \r\n",
 					"                                    else:\r\n",
 					"                                        from delta.tables import DeltaTable\r\n",
 					"                                        deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\r\n",
@@ -493,20 +497,20 @@
 					"                                    \r\n",
 					"                                else:\r\n",
 					"                                    raise ValueError(\"This file type is unsupported\")\r\n",
-					"                        if in_folder==False:\r\n",
+					"                        if file_available==False:\r\n",
 					"                            outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                            new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
 					"                            outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                            outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                            outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
-					"                    else:\r\n",
+					"                    if folder_available==False:\r\n",
 					"                        outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                        new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
 					"                        outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                        outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                        outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 52
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -524,7 +528,7 @@
 				"source": [
 					"ingest_raw_to_standardised()"
 				],
-				"execution_count": 50
+				"execution_count": 64
 			}
 		]
 	}
