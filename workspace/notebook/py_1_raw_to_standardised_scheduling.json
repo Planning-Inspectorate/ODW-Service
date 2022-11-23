@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cfd5865d-825c-4b7a-8d06-0dac5845aaf8"
+				"spark.autotune.trackingId": "652c638a-8234-4a4a-9707-0ae5a0dce016"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 71
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 				"source": [
 					"%run \"utils/py_logging_decorator\""
 				],
-				"execution_count": 72
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"# test = FloatType()\r\n",
 					"# test.jsonValue()"
 				],
-				"execution_count": 73
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -133,7 +133,7 @@
 					"#         outstanding_source_id = pdrow['DefinitionID'] \r\n",
 					"#         spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{time_now}' and DefinitionID = {outstanding_source_id}\")"
 				],
-				"execution_count": 74
+				"execution_count": 84
 			},
 			{
 				"cell_type": "code",
@@ -155,7 +155,7 @@
 					"# spark.sql(\"drop table if exists odw_config_db.raw_to_std_outstanding_files\")\r\n",
 					"# #"
 				],
-				"execution_count": 75
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -176,7 +176,7 @@
 					"# target = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Fileshare/SAP_HR/HR/Weekly/2022-10-31/\"\r\n",
 					"# mssparkutils.fs.cp(source,target)"
 				],
-				"execution_count": 76
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -269,18 +269,17 @@
 					"                            source_folder =  defs['Source_Folder'] +\"/\"+ defs[\"Source_Frequency_Folder\"] + \"/\"\r\n",
 					"                            # find correct weekly folder \r\n",
 					"                            date_folders = mssparkutils.fs.ls(source_container_path+source_folder)\r\n",
-					"                            for date in date_folders:\r\n",
-					"                                date_string = date.path.split(source_container_path+source_folder)[1]\r\n",
-					"                                try:\r\n",
+					"                            for datex in date_folders:\r\n",
+					"                                date_string = datex.path.split(source_container_path+source_folder)[1]\r\n",
+					"                                if len(date_string) == 10:\r\n",
 					"                                    folder_date = datetime.strptime(date_string, \"%Y-%m-%d\")\r\n",
-					"                                except:\r\n",
-					"                                    try:\r\n",
-					"                                        ### make sure monthly json uses the penultimate day of a month\r\n",
-					"                                        folder_date = datetime.strptime(date_string, \"%Y-%m\")\r\n",
-					"                                        import calendar\r\n",
-					"                                        folder_date = date(folder_date.year, folder_date.month, calendar.monthrange(folder_date.year, folder_date.month)[-1])\r\n",
-					"                                    except:\r\n",
-					"                                        raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
+					"                                elif len(date_string) == 7:\r\n",
+					"                                    folder_date = datetime.strptime(date_string, \"%Y-%m\")\r\n",
+					"                                    import calendar\r\n",
+					"                                    folder_date = date(folder_date.year, folder_date.month, calendar.monthrange(folder_date.year, folder_date.month)[-1]) + timedelta(days=1)\r\n",
+					"                                    folder_date = datetime.combine(folder_date, datetime.min.time())\r\n",
+					"                                else:\r\n",
+					"                                    raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
 					"                                if last_start_dt <= folder_date < next_end_dt:\r\n",
 					"                                    source_folder_with_date = mssparkutils.fs.ls(source_container_path+source_folder+date_string)\r\n",
 					"                                    if source_folder_with_date == []:\r\n",
@@ -367,7 +366,7 @@
 					"    ### ITERATE THROUGH ALL JSON\r\n",
 					"    from datetime import datetime, timedelta, date\r\n",
 					"    # from zoneinfo import ZoneInfo tz=ZoneInfo(\"Europe/London\")\r\n",
-					"    time_now = datetime(2022,11,4,12,0,0) # datetime.now() ### ingested_datetime\r\n",
+					"    time_now = datetime.now() ### ingested_datetime\r\n",
 					"    definitions = json_config_dict['definitions']\r\n",
 					"    for defs in definitions:\r\n",
 					"        standardised_container = defs['Standardised_Container'] + \"/\"\r\n",
@@ -399,18 +398,18 @@
 					"                source_folder =  defs['Source_Folder'] +\"/\"+ defs[\"Source_Frequency_Folder\"] + \"/\"\r\n",
 					"                # find correct weekly folder \r\n",
 					"                date_folders = mssparkutils.fs.ls(source_container_path+source_folder)\r\n",
-					"                for date in date_folders:\r\n",
-					"                    date_string = date.path.split(source_container_path+source_folder)[1]\r\n",
-					"                    try:\r\n",
+					"                for datex in date_folders:\r\n",
+					"                    date_string = datex.path.split(source_container_path+source_folder)[1]\r\n",
+					"\r\n",
+					"                    if len(date_string) == 10:\r\n",
 					"                        folder_date = datetime.strptime(date_string, \"%Y-%m-%d\")\r\n",
-					"                    except:\r\n",
-					"                        try:\r\n",
-					"                            ### make sure monthly json uses the penultimate day of a month\r\n",
-					"                            folder_date = datetime.strptime(date_string, \"%Y-%m\")\r\n",
-					"                            import calendar\r\n",
-					"                            folder_date = date(folder_date.year, folder_date.month, calendar.monthrange(folder_date.year, folder_date.month)[-1])\r\n",
-					"                        except:\r\n",
-					"                            raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
+					"                    elif len(date_string) == 7:\r\n",
+					"                        folder_date = datetime.strptime(date_string, \"%Y-%m\")\r\n",
+					"                        import calendar\r\n",
+					"                        folder_date = date(folder_date.year, folder_date.month, calendar.monthrange(folder_date.year, folder_date.month)[-1]) + timedelta(days=1)\r\n",
+					"                        folder_date = datetime.combine(folder_date, datetime.min.time())\r\n",
+					"                    else:\r\n",
+					"                        raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\r\n",
 					"                    print(folder_date,last_start_dt,next_end_dt)\r\n",
 					"                    \r\n",
 					"                    if last_start_dt <= folder_date < next_end_dt:\r\n",
@@ -498,19 +497,21 @@
 					"                                else:\r\n",
 					"                                    raise ValueError(\"This file type is unsupported\")\r\n",
 					"                        if file_available==False:\r\n",
+					"                            print(\"1\")\r\n",
 					"                            outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                            new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
 					"                            outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                            outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                            outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                    if folder_available==False:\r\n",
+					"                        print(\"2\")\r\n",
 					"                        outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                        new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
 					"                        outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                        outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                        outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 77
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -528,7 +529,7 @@
 				"source": [
 					"ingest_raw_to_standardised()"
 				],
-				"execution_count": 78
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
