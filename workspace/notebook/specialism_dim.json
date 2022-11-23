@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b8ef65ae-f9c2-4926-9fa7-7260d14551a3"
+				"spark.autotune.trackingId": "50dadf09-1f7f-45ea-b8e2-3399c7ebd2d4"
 			}
 		},
 		"metadata": {
@@ -93,13 +93,13 @@
 					"SELECT \r\n",
 					"    CASE\r\n",
 					"        WHEN T1.Staff_Number IS NULL\r\n",
-					"        THEN T7.SpecialismID\r\n",
+					"        THEN first(T7.SpecialismID)\r\n",
 					"        ELSE NULL\r\n",
 					"    END as SpecialismID, -- surrogate key\r\n",
 					"    T1.Staff_Number AS EmployeeID,\r\n",
 					"    T1.Qualification as Qualification,\r\n",
 					"    T1.Proficiency AS Proficiency,\r\n",
-					"    T1.SourceSystemID as SourceSystemID,\r\n",
+					"    first(T1.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
@@ -107,14 +107,14 @@
 					"    md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T3.EmployeeID = T7.EmployeeID AND  md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"        WHEN T1.Staff_Number = T7.EmployeeID AND  md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.EmployeeID IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
 					"    CASE\r\n",
-					"        WHEN T3.EmployeeID IS NULL\r\n",
+					"        WHEN T1.Staff_Number IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END AS  DeletedData\r\n",
@@ -151,7 +151,7 @@
 					";\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -165,8 +165,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **employee_hr_hierarchy_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View employee_hr_hierarchy_dim_changed_rows is created"
+					"- View **especialism_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View specialism_dim_changed_rows is created"
 				]
 			},
 			{
@@ -188,19 +188,16 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW employee_hr_hierarchy_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW specialism_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
-					"-- gets updated, deleted and new rows \r\n",
-					"\r\n",
 					"Select \r\n",
-					"    EmployeeHRHierarchyID, -- surrogate key\r\n",
+					"    SpecialismID,\r\n",
 					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
-					"    CounterSignManagerID,\r\n",
+					"    Qualification,\r\n",
+					"    Proficiency,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -209,16 +206,17 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"From employee_hr_hierarchy_dim_new\r\n",
+					"From specialism_dim_new\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    EmployeeHRHierarchyID, -- surrogate key\r\n",
+					"    SpecialismID,\r\n",
 					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
+					"    Qualification,\r\n",
+					"    Proficiency,\r\n",
 					"    CounterSignManagerID,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
@@ -227,10 +225,10 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employee_hr_hierarchy_dim\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM employee_hr_hierarchy_dim_new); "
+					"FROM odw_harmonised_db.specialism_dim\r\n",
+					"WHERE SpecialismID IN (SELECT SpecialismID FROM specialism_dim_new); "
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -242,10 +240,10 @@
 					}
 				},
 				"source": [
-					"# View personnelarea_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
-					"- **WHEN MATCHED** ON the Business Key (i.e. EmployeeID from employee_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+					"# View specialism_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"- **WHEN MATCHED** ON the Business Key (i.e. SpecialismID from specialism_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised_db.employee_hr_hierarchy_dim is updated"
+					"## Table odw_harmonised_db.specialism_dim is updated"
 				]
 			},
 			{
@@ -270,10 +268,10 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.employee_hr_hierarchy_dim AS Target\r\n",
-					"USING employee_hr_hierarchy_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.specialism_dim AS Target\r\n",
+					"USING specialism_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.EmployeeHRHierarchyID = Target.EmployeeHRHierarchyID\r\n",
+					"ON Source.SpecialismID = Target.SpecialismID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -288,7 +286,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -303,7 +301,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised_db.employee_hr_hierarchy_dim is updated"
+					"## Table odw_harmonised_db.specialism_dim is updated"
 				]
 			},
 			{
@@ -327,13 +325,13 @@
 					"%%sql\r\n",
 					"-- Insert new employee_hr_hierarchy_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.employee_hr_hierarchy_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.specialism_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY EmployeeHRHierarchyID NULLS LAST) AS EmployeeHRHierarchyID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY SpecialismID NULLS LAST) AS SpecialismID,\r\n",
 					"    EmployeeID,\r\n",
-					"    ManagerEmployeeID,\r\n",
-					"    CounterSignManagerID,\r\n",
+					"    Qualification,\r\n",
+					"    Proficiency,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -341,10 +339,33 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employee_hr_hierarchy_dim;\r\n",
+					"FROM odw_harmonised_db.specialism_dim;\r\n",
 					"\r\n",
-					"Select * FROM odw_harmonised_db.employee_hr_hierarchy_dim;\r\n",
+					"Select * FROM odw_harmonised_db.specialism_dim;\r\n",
 					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"-- DELETE FROM odw_harmonised_db.specialism_dim;"
 				],
 				"execution_count": null
 			}
