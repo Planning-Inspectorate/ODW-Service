@@ -16,7 +16,7 @@ bastion_vm_image = {
 }
 
 data_lake_account_tier     = "Standard"
-data_lake_replication_type = "GZRS"
+data_lake_replication_type = "GRS"
 data_lake_retention_days   = 28
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
@@ -51,14 +51,15 @@ key_vault_role_assignments = {
 
 network_watcher_enabled = false
 
-spark_pool_enabled        = true
-spark_pool_max_node_count = 12
-spark_pool_min_node_count = 3
-spark_pool_node_size      = "Small"
-spark_pool_version        = "3.2"
+spark_pool_enabled         = true
+spark_pool_max_node_count  = 12
+spark_pool_min_node_count  = 3
+spark_pool_node_size       = "Small"
+spark_pool_timeout_minutes = 15
+spark_pool_version         = "3.2"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
-sql_pool_enabled   = true
+sql_pool_enabled   = false
 sql_pool_sku_name  = "DW100c"
 
 sql_server_administrator_username = "sqladmin"
