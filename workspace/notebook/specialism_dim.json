@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cbe5b12b-5f43-4377-b06b-ddf682363f53"
+				"spark.autotune.trackingId": "b8ef65ae-f9c2-4926-9fa7-7260d14551a3"
 			}
 		},
 		"metadata": {
@@ -52,12 +52,8 @@
 		},
 		"cells": [
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
 					"nteract": {
 						"transient": {
 							"deleting": false
@@ -72,8 +68,7 @@
 					"- **Deleted data:** where an EmployeeID in the target exists but the same EmployeeID doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
 					"## View specialism_dim_new is created"
-				],
-				"execution_count": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -97,22 +92,22 @@
 					"\r\n",
 					"SELECT \r\n",
 					"    CASE\r\n",
-					"        WHEN T3.EmployeeID IS NULL\r\n",
+					"        WHEN T1.Staff_Number IS NULL\r\n",
 					"        THEN T7.SpecialismID\r\n",
 					"        ELSE NULL\r\n",
 					"    END as SpecialismID, -- surrogate key\r\n",
-					"    T7.Staff_Number AS EmployeeID,\r\n",
-					"    T7.Qualification as Qualification,\r\n",
-					"    T7.Proficiency AS Proficiency,\r\n",
-					"    T7.SourceSystemID as SourceSystemID,\r\n",
+					"    T1.Staff_Number AS EmployeeID,\r\n",
+					"    T1.Qualification as Qualification,\r\n",
+					"    T1.Proficiency AS Proficiency,\r\n",
+					"    T1.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T3.EmployeeID,'.'), IFNULL(T4.EmployeeID,'.'), IFNULL(T5.EmployeeID,'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T3.EmployeeID = T7.EmployeeID AND  md5(concat(IFNULL(T3.EmployeeID,'.'), IFNULL(T4.EmployeeID,'.'), IFNULL(T5.EmployeeID,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"        WHEN T3.EmployeeID = T7.EmployeeID AND  md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.EmployeeID IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
@@ -124,7 +119,7 @@
 					"        ELSE 'N'\r\n",
 					"    END AS  DeletedData\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.specialism T1\r\n",
+					"FROM odw_standardised_db.specialisms T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"FULL JOIN odw_harmonised_db.specialism_dim T7 ON T1.Staff_Number = T7.EmployeeID\r\n",
 					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
@@ -133,7 +128,7 @@
 					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Staff_Number = T7.EmployeeID AND  md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T4.EmployeeID,'.'), IFNULL(T5.EmployeeID,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"            WHEN T1.Staff_Number = T7.EmployeeID AND  md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Qualification,'.'), IFNULL(T1.Proficiency,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
 					"            THEN 'Y'\r\n",
 					"            WHEN T7.EmployeeID IS NULL -- new employee\r\n",
 					"            THEN 'Y'\r\n",
@@ -148,10 +143,15 @@
 					"        END = 'Y' )\r\n",
 					")\r\n",
 					"\r\n",
+					"    AND\r\n",
+					"        T7.Staff_Number IS NOT NULL\r\n",
+					"\r\n",
+					"GROUP BY T7.Staff_Number, T7.Qualification, T7.Proficiency\r\n",
+					"\r\n",
 					";\r\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
