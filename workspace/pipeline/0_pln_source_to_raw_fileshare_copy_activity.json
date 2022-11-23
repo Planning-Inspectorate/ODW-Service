@@ -3,7 +3,8 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "ForEach1",
+				"name": "CopyFilesLoop",
+				"description": "This loop splits the list of filepaths of new and modified files generated from scanning the Azure Fileshare into individual filepaths ",
 				"type": "ForEach",
 				"dependsOn": [],
 				"userProperties": [],
@@ -15,6 +16,7 @@
 					"activities": [
 						{
 							"name": "CopySourceToRaw",
+							"description": "Copying data from the datalabs source container into the odw-raw target container via a binary copy.",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -62,17 +64,24 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"FrequencyDateFilename": {
-											"value": "@replace(item(),'ODW/HR/','')",
+											"value": "@replace(item(),pipeline().parameters.directory_path,'')",
 											"type": "Expression"
 										},
-										"SourceType": "Fileshare",
-										"SourceSystem": "SAP_HR"
+										"SourceType": {
+											"value": "@pipeline().parameters.sink_sourcetype",
+											"type": "Expression"
+										},
+										"SourceSystem": {
+											"value": "@pipeline().parameters.sink_sourcesystem",
+											"type": "Expression"
+										}
 									}
 								}
 							]
 						},
 						{
-							"name": "Copy_Success_Failure_Logging",
+							"name": "Copy_Outcome_Logging_and_Log_Table_Update",
+							"description": "Logs the output of the copy activity \nUpdates the log table with filepaths and last modified dates of the transferred files",
 							"type": "SynapseNotebook",
 							"dependsOn": [
 								{
@@ -99,7 +108,7 @@
 								"parameters": {
 									"output": {
 										"value": {
-											"value": "@activity('CopySourceToRaw').output.executionDetails.status",
+											"value": "@activity('CopySourceToRaw').output.executionDetails[0].status",
 											"type": "Expression"
 										},
 										"type": "string"
@@ -113,7 +122,7 @@
 									},
 									"jsonschema": {
 										"value": {
-											"value": "@pipeline().parameters.jsonschema",
+											"value": "@json(pipeline().parameters.jsonschema)",
 											"type": "Expression"
 										},
 										"type": "string"
@@ -204,7 +213,19 @@
 			},
 			"AllPaths": {
 				"type": "array"
+			},
+			"directory_path": {
+				"type": "string"
+			},
+			"sink_sourcetype": {
+				"type": "string"
+			},
+			"sink_sourcesystem": {
+				"type": "string"
 			}
+		},
+		"folder": {
+			"name": "0_Raw_SAP_HR_Data_Copy"
 		},
 		"annotations": [],
 		"lastPublishTime": "2022-11-01T08:30:58Z"

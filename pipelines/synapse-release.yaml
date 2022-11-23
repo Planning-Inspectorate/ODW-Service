@@ -6,6 +6,13 @@ parameters:
     values:
     - Test
     - Prod
+  - name: source_workspace
+    displayName: 'Published Artifact Source'
+    type: string
+    default: Primary
+    values:
+    - Primary
+    - Secondary
   - name: failover_deployment
     displayName: 'Failover Deployment'
     type: boolean
@@ -25,18 +32,30 @@ variables:
   value: ${{ lower(parameters.environment) }}
 - name: failoverDeployment
   value: ${{ lower(parameters.failover_deployment) }}
+- name: firewallRulesSecureFileName
+  value: allowed_ip_addresses.yaml
 - name: outputsFileName
   value: tfoutputs.json
 - name: overridesFileName
   value: TemplateParametersForWorkspace.json
 - name: planFileName
   value: tfplan
+- name: poolName
+  ${{ if eq(parameters.failover_deployment, false) }}:
+    value: ${{ format('pins-agent-pool-odw-{0}-uks', lower(parameters.environment)) }}
+  ${{ if eq(parameters.failover_deployment, true) }}:
+    value: ${{ format('pins-agent-pool-odw-{0}-ukw', lower(parameters.environment)) }}
 - name: postDeploymentDelaySeconds
   value: 180
 - name: publishBranchName
   value: 'workspace_publish'
 - name: sourceEnvironment
   value: 'dev'
+- name: sourceWorkspaceName
+  ${{ if eq(parameters.source_workspace, 'Primary') }}:
+    value: 'pins-synw-odw-dev-uks'
+  ${{ if eq(parameters.source_workspace, 'Secondary') }}:
+    value: 'pins-synw-odw-dev-ukw'
 
 pr: none
 
@@ -45,19 +64,23 @@ trigger:
     include:
     - workspace_publish
 
-pool:
-  vmImage: ubuntu-22.04
-
 stages:
   - stage: Output
     displayName: Terraform Output ${{ parameters.environment }}
     jobs:
     - job: Output
       displayName: Terraform Output
+      pool: ${{ variables.poolName }}
       steps:
       # Checkout repo
       - checkout: self
         displayName: 'Checkout'
+
+      # Download firewall rule configuration file
+      - template: steps/download-secure-file.yaml
+        parameters:
+          secureFileName: ${{ variables.firewallRulesSecureFileName }}
+          workingDirectory: infrastructure/configuration/firewall-rules
 
       # Login to Azure using Terraform service principal
       - template: steps/azure-login.yaml
@@ -78,6 +101,7 @@ stages:
       - template: steps/terraform-plan.yaml
         parameters:
           environment: ${{ variables.environment }}
+          failoverDeployment: ${{ variables.failoverDeployment }}
           planFileName: ${{ variables.planFileName }}
           workingDirectory: infrastructure
 
@@ -94,6 +118,7 @@ stages:
     jobs:
     - job: Prep
       displayName: Override Parameters
+      pool: ${{ variables.poolName }}
       steps:
       # Checkout repo
       - checkout: self
@@ -108,13 +133,13 @@ stages:
       - template: steps/branch-switch.yaml
         parameters:
           branchName: ${{ variables.publishBranchName }}
-          showDirectory: $(Build.SourcesDirectory)/$(source_workspace_name)
+          showDirectory: $(Build.SourcesDirectory)/${{ variables.sourceWorkspaceName }}
 
       # Copy Synapse Workspace ARM template files to artifact directory
       - task: CopyFiles@2
         displayName: 'Create Release Artifacts'
         inputs:
-          sourceFolder: $(Build.SourcesDirectory)/$(source_workspace_name)
+          sourceFolder: $(Build.SourcesDirectory)/${{ variables.sourceWorkspaceName }}
           contents: |
             TemplateForWorkspace.json
             TemplateParametersForWorkspace.json
@@ -141,7 +166,6 @@ stages:
 
       variables:
         data_lake_account_name: $[ stageDependencies.Output.Output.outputs['SetVariables.data_lake_account_name'] ]
-        source_workspace_name: $[ replace(stageDependencies.Output.Output.outputs['SetVariables.synapse_workspace_name'], '${{ variables.environment }}', '${{ variables.sourceEnvironment }}') ]
 
   - stage: Release
     dependsOn: [ Output, Prep ]
@@ -150,6 +174,7 @@ stages:
     - deployment: Release
       displayName: Synapse Release
       environment: ${{ parameters.environment }}
+      pool: ${{ variables.poolName }}
       strategy:
         runOnce:
           deploy:
@@ -159,6 +184,12 @@ stages:
               clean: true
               displayName: 'Checkout'
               persistCredentials: true
+
+            # Download firewall rule configuration file
+            - template: steps/download-secure-file.yaml
+              parameters:
+                secureFileName: ${{ variables.firewallRulesSecureFileName }}
+                workingDirectory: infrastructure/configuration/firewall-rules
 
             # Download pipeline artifacts
             - download: current
@@ -304,7 +335,6 @@ stages:
         data_resource_group_name: $[ stageDependencies.Output.Output.outputs['SetVariables.data_resource_group_name'] ]
         key_vault_uri: $[ stageDependencies.Output.Output.outputs['SetVariables.key_vault_uri'] ]
         service_bus_namespace_name: $[ stageDependencies.Output.Output.outputs['SetVariables.service_bus_namespace_name'] ]
-        source_workspace_name: $[ replace(stageDependencies.Output.Output.outputs['SetVariables.synapse_workspace_name'], '${{ variables.environment }}', '${{ variables.sourceEnvironment }}') ]
         synapse_dev_endpoint: $[ stageDependencies.Output.Output.outputs['SetVariables.synapse_dev_endpoint'] ]
         synapse_dsql_endpoint: $[ stageDependencies.Output.Output.outputs['SetVariables.synapse_dsql_endpoint'] ]
         synapse_ssql_endpoint: $[ stageDependencies.Output.Output.outputs['SetVariables.synapse_ssql_endpoint'] ]
