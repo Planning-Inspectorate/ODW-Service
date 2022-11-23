@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cb460da8-89a1-4252-aec7-1d14e9c7aca1"
+				"spark.autotune.trackingId": "bbff43ff-f4be-49b5-a4bc-8b1e077b40cd"
 			}
 		},
 		"metadata": {
@@ -105,12 +105,12 @@
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(T1.Work_Schedule_Rule, T1.Pay_Band_Description)) as RowID,\r\n",
+					"    md5(concat(T1.Work_Schedule_Rule, T1.WkDys)) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.Work_Schedule_Rule = first(T7.WorkScheduleRule) AND md5(concat(T1.Work_Schedule_Rule, T1.WkDys)) <> first(T7.RowID)    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN first(T7.WorkScheduleRule) IS NULL -- new employee\r\n",
+					"        WHEN first(T7.WorkScheduleRule) IS NULL -- new work schedule\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -153,7 +153,7 @@
 					";\r\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -230,7 +230,7 @@
 					"WHERE WorkScheduleRule IN (SELECT WorkScheduleRule FROM workschedule_dim_new); \r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -270,7 +270,7 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.workschedule_dim AS Target\r\n",
-					"USING WorkScheduleID_dim_changed_rows AS Source\r\n",
+					"USING workschedule_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.WorkScheduleID = Target.WorkScheduleID\r\n",
 					"\r\n",
@@ -287,7 +287,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -324,14 +324,16 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new PersonnelAreaID\r\n",
+					"-- Insert new WorkScheduleID\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.workschedule_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY WorkScheduleID NULLS LAST) AS WorkScheduleID,\r\n",
 					"    WorkScheduleRule,\r\n",
-					"    Description, \r\n",
+					"    WorkWeekDays,\r\n",
+					"    WorkWeekHours,\r\n",
+					"    WorkDayHours,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -344,7 +346,7 @@
 					"Select * FROM odw_harmonised_db.workschedule_dim;\r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 12
 			}
 		]
 	}
