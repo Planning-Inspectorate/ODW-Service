@@ -1,5 +1,5 @@
 {
-	"name": "organisationalunit_dim",
+	"name": "position_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "18696d46-a94d-493f-bb31-cf977f67d54a"
+				"spark.autotune.trackingId": "aad84ea9-9a1f-4d48-a072-6394e5e8e097"
 			}
 		},
 		"metadata": {
@@ -62,12 +62,12 @@
 				},
 				"source": [
 					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.OrganisationUnit_dim)\n",
-					"- **New Data:** where a Org_unit in the source does not exist as a OrganisationUnit in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on Org_unit in source and OrganisationUnit in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an OrganisationUnit in the target exists but the same Org_unit doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.position_dim)\n",
+					"- **New Data:** where a Loc in the source does not exist as a LocationCode in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on Loc in source and LocationCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an LocationCode in the target exists but the same Loc doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View OrganisationUnit_dim_new is created"
+					"## View PINS_Location_dim_new is created"
 				]
 			},
 			{
@@ -80,73 +80,72 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build OrganisationUnit_dim_new table\r\n",
+					"-- Build PINS_Location_dim_new table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW OrganisationUnit_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW position_dim_new\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"     AS\r\n",
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    CASE\r\n",
-					"        WHEN T1.Org_unit IS NULL\r\n",
-					"        THEN first(T7.OrganisationUnitID)\r\n",
+					"        WHEN T1.PositionID IS NULL\r\n",
+					"        THEN first(T7.PositionCode)\r\n",
 					"        ELSE NULL\r\n",
-					"    END as OrganisationUnitID, -- surrogate key\r\n",
-					"    T1.Org_unit AS OrganisationUnit,\r\n",
-					"    FIRST(T1.Organizational_Unit) AS Description,\r\n",
-					"    NULL AS OrganisationUnitKey,\r\n",
+					"    END as PositionID, \r\n",
+					"    T1.PositionID  AS PositionCode,\r\n",
+					"    First(PositionName)  AS Description,\r\n",
 					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.Org_unit,'.'), IFNULL(FIRST(T1.Organizational_Unit),'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T1.PositionID,'.'), IFNULL(FIRST(T1.PositionName),'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.Org_unit = first(T7.OrganisationUnit) AND  md5(concat(IFNULL(T1.Org_unit,'.'), IFNULL(FIRST(T1.Organizational_Unit),'.'))) <> first(T7.RowID)    -- same employee, changed data\r\n",
+					"        WHEN T1.PositionID = first(T7.PositionCode) AND  md5(concat(IFNULL(T1.PositionID,'.'), IFNULL(FIRST(T1.PositionName),'.'))) <> first(T7.RowID)    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN FIRST(T7.OrganisationUnit) IS NULL -- new employee\r\n",
+					"        WHEN FIRST(T7.PositionCode) IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.Org_unit IS NULL\r\n",
+					"        WHEN T1.PositionID IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END AS  DeletedData\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_saphr T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.organisationunit_dim T7 ON T1.Org_unit = T7.OrganisationUnit\r\n",
+					"FULL JOIN odw_harmonised_db.position_dim T7 ON T1.PositionID = T7.PositionCode\r\n",
 					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
 					"    \r\n",
 					"        AND (\r\n",
 					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.Org_unit = T7.OrganisationUnit AND  md5(concat(IFNULL(T1.Org_unit,'.'), IFNULL(T1.Organizational_Unit,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"                WHEN T1.PositionID = T7.PositionCode AND  md5(concat(IFNULL(T1.PositionID,'.'), IFNULL(T1.PositionName,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
-					"                WHEN T7.OrganisationUnit IS NULL -- new employee\r\n",
+					"                WHEN T7.PositionCode IS NULL -- new employee\r\n",
 					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
+					"            ELSE 'N'\r\n",
 					"            END  = 'Y' ) OR\r\n",
 					"        \r\n",
 					"        -- flags deleted data\r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.Org_unit IS NULL\r\n",
+					"                WHEN T1.PositionID IS NULL\r\n",
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
 					")\r\n",
-					"GROUP BY T1.Org_unit\r\n",
+					"GROUP BY T1.PositionID\r\n",
 					";\r\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -160,8 +159,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **OrganisationUnit_Dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View OrganisationUnit_dim_changed_rows is created"
+					"- View **PINS_Location_dim__new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View PINS_Location_dim_changed_rows is created"
 				]
 			},
 			{
@@ -185,15 +184,33 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW OrganisationUnit_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW position_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select \r\n",
-					"    OrganisationUnitID,\r\n",
-					"    OrganisationUnit,\r\n",
+					"    PositionID,\r\n",
+					"    PositionCode,\r\n",
+					"    Description,\r\n",
+					"    SourceSystemID,\r\n",
+					"    StartDate,\r\n",
+					"    EndDate,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo,\r\n",
+					"    RowID,\r\n",
+					"    IsActive\r\n",
+					"\r\n",
+					"From position_dim_new\r\n",
+					"\r\n",
+					"    UNION ALL\r\n",
+					"\r\n",
+					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    PositionID,\r\n",
+					"    PositionCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
@@ -203,27 +220,10 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"From OrganisationUnit_dim_new\r\n",
-					"\r\n",
-					"    UNION ALL\r\n",
-					"\r\n",
-					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    OrganisationUnitID,\r\n",
-					"    OrganisationUnit,\r\n",
-					"    Description,\r\n",
-					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
-					"    IngestionDate,\r\n",
-					"    ValidTo,\r\n",
-					"    RowID,\r\n",
-					"    IsActive\r\n",
-					"FROM odw_harmonised_db.organisationunit_dim\r\n",
-					"WHERE OrganisationUnit IN (SELECT OrganisationUnit FROM OrganisationUnit_dim_new); "
+					"FROM odw_harmonised_db.position_dim\r\n",
+					"WHERE PositionCode IN (SELECT PositionCode FROM position_dim_new); "
 				],
-				"execution_count": 27
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -235,8 +235,8 @@
 					}
 				},
 				"source": [
-					"# View organisationunit_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
-					"- **WHEN MATCHED** ON the surrogate Key (i.e. OrganisationUnitID from organisationunit_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+					"# View PINS_Location_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"- **WHEN MATCHED** ON the surrogate Key (i.e. LocationID from PINS_Location_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
 					"## Table odw_harmonised_db.organisationunit_dim is updated"
 				]
@@ -263,10 +263,10 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.organisationunit_dim AS Target\r\n",
-					"USING OrganisationUnit_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.position_dim AS Target\r\n",
+					"USING position_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.OrganisationUnitID = Target.OrganisationUnitID\r\n",
+					"ON Source.PositionID = Target.PositionID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -281,7 +281,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 28
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -296,7 +296,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised_db.organisationunit_dim is updated"
+					"## Table odw_harmonised_db.PINS_Location_dim is updated"
 				]
 			},
 			{
@@ -318,13 +318,13 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new organisationunit_dim\r\n",
+					"-- Insert new PINS_Location_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.organisationunit_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.position_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY OrganisationUnitID NULLS LAST) AS OrganisationUnitID,\r\n",
-					"    OrganisationUnit,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY PositionID NULLS LAST) AS PositionID,\r\n",
+					"    PositionCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
@@ -333,12 +333,12 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.organisationunit_dim;\r\n",
+					"FROM odw_harmonised_db.position_dim;\r\n",
 					"\r\n",
-					"Select * FROM odw_harmonised_db.organisationunit_dim;\r\n",
+					"Select * FROM odw_harmonised_db.position_dim;\r\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": 7
 			}
 		]
 	}
