@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2d8a4ec7-29be-4312-b75b-8a8c422308e9"
+				"spark.autotune.trackingId": "092b5e43-b648-4a6b-a753-b289ef03e700"
 			}
 		},
 		"metadata": {
@@ -138,11 +138,11 @@
 				"source": [
 					"%%sql\r\n",
 					"--select * from odw_harmonised_db.employee_dim where employeeid = '73'\r\n",
-					"select * from odw_standardised_db.vw_leavers where Last_name = 'Hayes'\r\n",
+					"select * from odw_standardised_db.vw_leavers where Pers_No = '00500017'\r\n",
 					"\r\n",
 					"--drop TABLE odw_harmonised_db.employeeleavers_dim"
 				],
-				"execution_count": 30
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -167,6 +167,7 @@
 					"        THEN T7.EmployeeLeaversID\r\n",
 					"        ELSE NULL\r\n",
 					"    END as EmployeeLeaversID,     \r\n",
+					"    T1.pers_no,\r\n",
 					"    T3.EmployeeID,\r\n",
 					"    T4.LocationID,\r\n",
 					"    T5.PayBandID,\r\n",
@@ -207,7 +208,9 @@
 					"FULL JOIN odw_harmonised_db.EmployeeLeavers_dim T7 ON T3.EmployeeID = T7.EmployeeID\r\n",
 					"LEFT JOIN odw_harmonised_db.personnelarea_dim T8 ON T1.PA = T8.PersonnelAreaCode\r\n",
 					"LEFT JOIN odw_harmonised_db.personnelsubarea_dim T9 ON T1.PSubarea = T9.PersonnelSubAreaCode\r\n",
-					"LEFT JOIN odw_harmonised_db.contract_dim T10 ON T1.WorkC = T10.ContractCode\r\n",
+					"LEFT JOIN ( SELECT First(ContractID) as ContractID, ContractCode \r\n",
+					"            From odw_harmonised_db.contract_dim \r\n",
+					"            GROUP BY ContractCode ) T10 ON T1.WorkC = T10.ContractCode\r\n",
 					"\r\n",
 					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
 					"    \r\n",
@@ -233,7 +236,7 @@
 					"\r\n",
 					";"
 				],
-				"execution_count": 28
+				"execution_count": 34
 			},
 			{
 				"cell_type": "markdown",
@@ -276,9 +279,18 @@
 					"    AS\r\n",
 					"\r\n",
 					"Select \r\n",
-					"    EmployeeLeaversID,\r\n",
+					"    EmployeeLeaversID,     \r\n",
+					"    pers_no,\r\n",
 					"    EmployeeID,\r\n",
-					"    ReasonForLeaving,\r\n",
+					"    LocationID,\r\n",
+					"    PayBandID,\r\n",
+					"    OrganisationUnitID,\r\n",
+					"    PersonnelAreaID,\r\n",
+					"    PersonnelSubAreaID,\r\n",
+					"    ContractID,\r\n",
+					"    ReasonForLeaving, \r\n",
+					"    EmploymentStartDate,\r\n",
+					"    EmploymentEndDate,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -291,9 +303,18 @@
 					"    UNION ALL\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    EmployeeLeaversID,\r\n",
+					"    EmployeeLeaversID,     \r\n",
+					"    pers_no,\r\n",
 					"    EmployeeID,\r\n",
-					"    ReasonForLeaving,\r\n",
+					"    LocationID,\r\n",
+					"    PayBandID,\r\n",
+					"    OrganisationUnitID,\r\n",
+					"    PersonnelAreaID,\r\n",
+					"    PersonnelSubAreaID,\r\n",
+					"    ContractID,\r\n",
+					"    ReasonForLeaving, \r\n",
+					"    EmploymentStartDate,\r\n",
+					"    EmploymentEndDate,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -302,6 +323,7 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.employeeleavers_dim T1\r\n",
+					"\r\n",
 					"WHERE EmployeeID IN (SELECT EmployeeID FROM employeeleavers_dim_new)\r\n",
 					"; \r\n",
 					""
