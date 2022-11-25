@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5f7da00d-d5da-46a9-8baf-66eac5863410"
+				"spark.autotune.trackingId": "0db7f536-df6a-43fb-9420-d2fc49363ae2"
 			}
 		},
 		"metadata": {
@@ -211,7 +211,7 @@
 					"\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY  VIEW employee_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY  VIEW hr_record_fact_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -240,7 +240,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"From employee_dim_new\r\n",
+					"From hr_record_fact_new\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
@@ -269,8 +269,8 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employee_dim\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM employee_dim_new);\r\n",
+					"FROM odw_harmonised_db.hr_record_fact\r\n",
+					"WHERE EmployeeID IN (SELECT EmployeeID FROM hr_record_fact_new);\r\n",
 					""
 				],
 				"execution_count": 4
@@ -285,10 +285,10 @@
 					}
 				},
 				"source": [
-					"# View employee_dim_changed_rows is used in a merge (Upsert) statement into the target table\r\n",
+					"# View hr_record_fact_changed_rows is used in a merge (Upsert) statement into the target table\r\n",
 					"- **WHEN MATCHED** ON the Business Key (i.e. Pers_No from SAP HR), EndDate is set to today -1 day and the IsActive flag is set to 'N'\r\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\r\n",
-					"## Table odw_harmonised.employee_dim is updated"
+					"## Table hr_record_fact.employee_dim is updated"
 				]
 			},
 			{
@@ -312,10 +312,10 @@
 					"%%sql\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.employee_dim AS Target\r\n",
-					"USING employee_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.hr_record_fact AS Target\r\n",
+					"USING hr_record_fact_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.EmployeeID = Target.EmployeeID\r\n",
+					"ON Source.EHRRecordID = Target.EHRRecordID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -347,7 +347,7 @@
 					"# Fix the IDs\r\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\r\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\r\n",
-					"## Table odw_harmonised.employee_dim is updated"
+					"## Table odw_harmonised.hr_record_fact is updated"
 				]
 			},
 			{
@@ -371,10 +371,10 @@
 					"%%sql\r\n",
 					"-- Insert new SecureInfoID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.employee_dim \r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_record_fact\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY EmployeeID NULLS LAST) AS EHRRecordID, -- surrogate key\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY EHRRecordID NULLS LAST) AS EHRRecordID, -- surrogate key\r\n",
 					"    EmployeeID,\r\n",
 					"    PersonnelAreaID,\r\n",
 					"    PersonnelSubAreaID,\r\n",
