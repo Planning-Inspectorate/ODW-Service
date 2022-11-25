@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "52cbb23e-6366-42e6-82b7-53921c04d9c1"
+				"spark.autotune.trackingId": "bc7fdf2f-f2cf-418f-9d08-8a9393092fb9"
 			}
 		},
 		"metadata": {
@@ -116,7 +116,33 @@
 					"LEFT JOIN odw_harmonised_db.employee_dim T3 ON T1.Pers_No = T3.PersNumber;\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"--select * from odw_harmonised_db.employee_dim where employeeid = '73'\r\n",
+					"select * from odw_standardised_db.vw_leavers where Last_name = 'Hayes'\r\n",
+					"\r\n",
+					"--drop TABLE odw_harmonised_db.employeeleavers_dim"
+				],
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -129,9 +155,9 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW employeeleavers_dim_new\r\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW employeeleavers_dim_new\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"--     AS\r\n",
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
@@ -142,7 +168,15 @@
 					"        ELSE NULL\r\n",
 					"    END as EmployeeLeaversID,     \r\n",
 					"    T3.EmployeeID, -- FK to Employee_dim table\r\n",
+					"    T4.LocationID,\r\n",
+					"    T5.PayBandID,\r\n",
+					"    OrganisationUnitID\r\n",
+					"    PersonnelAreaID\r\n",
+					"    PersonnelSubAreaID\r\n",
+					"    ContractID\r\n",
 					"    T1.Reason_For_Action AS ReasonForLeaving, \r\n",
+					"    T1.Org_Start_Date AS EmploymentStartDate,\r\n",
+					"    T1.Leaving AS EmploymentEndDate,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
 					"    NULL AS EndDate,\r\n",
@@ -167,6 +201,9 @@
 					"FROM odw_standardised_db.vw_leavers T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"LEFT JOIN odw_harmonised_db.employee_dim T3 ON T1.Pers_No = T3.EmployeeNumber\r\n",
+					"LEFT JOIN odw_harmonised_db.pins_location_dim T4 ON T1.Loc = T4.LocationCode\r\n",
+					"LEFT JOIN odw_harmonised_db.payband_dim T5 ON T1.PS_Group = T5.PSGroupCode\r\n",
+					"LEFT JOIN odw_harmonised_db.organisationunit_dim T6 ON T1.\r\n",
 					"FULL JOIN odw_harmonised_db.EmployeeLeavers_dim T7 ON T3.EmployeeID = T7.EmployeeID\r\n",
 					"                                                    \r\n",
 					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
@@ -193,7 +230,7 @@
 					"\r\n",
 					";"
 				],
-				"execution_count": 7
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -239,6 +276,7 @@
 					"    EmployeeLeaversID,\r\n",
 					"    EmployeeID,\r\n",
 					"    ReasonForLeaving,\r\n",
+					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
@@ -253,6 +291,7 @@
 					"    EmployeeLeaversID,\r\n",
 					"    EmployeeID,\r\n",
 					"    ReasonForLeaving,\r\n",
+					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
@@ -264,7 +303,7 @@
 					"; \r\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -304,10 +343,10 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.leaveentitlement_dim AS Target\r\n",
-					"USING leaveentitlement_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.employeeleavers_dim AS Target\r\n",
+					"USING employeeleavers_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.LeaveEntitlementID = Target.LeaveEntitlementID\r\n",
+					"ON Source.EmployeeLeaversID = Target.EmployeeLeaversID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -322,7 +361,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -362,16 +401,12 @@
 					"\r\n",
 					"-- Insert new ContractID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.leaveentitlement_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.employeeleavers_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY LeaveEntitlementID NULLS LAST) AS LeaveEntitlementID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY EmployeeLeaversID NULLS LAST) AS EmployeeLeaversID,\r\n",
 					"    EmployeeID,\r\n",
-					"    LeaveDaysPerYear,\r\n",
-					"    LeaveDeduction,\r\n",
-					"    LeaveYearStart,\r\n",
-					"    LeaveYearEnd,\r\n",
-					"    AbsenceQuotaType,\r\n",
+					"    ReasonForLeaving,\r\n",
 					"    SourceSystemID,\r\n",
 					"    StartDate,\r\n",
 					"    EndDate,\r\n",
@@ -379,10 +414,10 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.leaveentitlement_dim;\r\n",
+					"FROM odw_harmonised_db.employeeleavers_dim;\r\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -404,9 +439,9 @@
 				"source": [
 					"%%sql\n",
 					"SELECT *\n",
-					"from odw_harmonised_db.leaveentitlement_dim;"
+					"from odw_harmonised_db.employeeleavers_dim;"
 				],
-				"execution_count": 17
+				"execution_count": null
 			}
 		]
 	}
