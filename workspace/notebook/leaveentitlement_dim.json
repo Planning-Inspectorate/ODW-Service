@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c73d5319-4541-4718-b6fc-148434eb81c3"
+				"spark.autotune.trackingId": "153a6ee5-085a-46dd-8690-74170be9fe9a"
 			}
 		},
 		"metadata": {
@@ -69,67 +69,6 @@
 					"\n",
 					"## View contract_dim_new is created"
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"-- INSERT OVERWRITE odw_harmonised_db.LeaveEntitlement_dim (\r\n",
-					"--     LeaveEntitlementID,\r\n",
-					"--     EmployeeID,\r\n",
-					"--     LeaveDaysPerYear,\r\n",
-					"--     LeaveDeduction,\r\n",
-					"--     LeaveYearStart,\r\n",
-					"--     LeaveYearEnd,\r\n",
-					"--     AbsenceQuotaType,\r\n",
-					"--     SourceSystemID,\r\n",
-					"--     StartDate,\r\n",
-					"--     EndDate,\r\n",
-					"--     IngestionDate,\r\n",
-					"--     ValidTo\r\n",
-					"-- )\r\n",
-					"\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    uuid() AS LeaveEntitlementID,\r\n",
-					"    T1.Staff_Number,\r\n",
-					"    T3.EmployeeID, -- FK to Employee_Dim\r\n",
-					"    Number AS LeaveDaysPerYear,\r\n",
-					"    Deduction AS LeaveDeduction,\r\n",
-					"    Ded_from AS LeaveYearStart,\r\n",
-					"    Ded_To AS LeaveYearEnd,\r\n",
-					"    Absence_Quota_type AS AbsenceQuotaType,\r\n",
-					"    T2.SourceSystemID AS SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo\r\n",
-					"FROM odw_standardised_db.vw_leave T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
-					"LEFT JOIN odw_harmonised_db.employee_dim T3 ON T1.Staff_Number = T3.EmployeeNumber\r\n",
-					"\r\n",
-					"\r\n",
-					"-- Select Absence_Quota_type\r\n",
-					"-- from odw_standardised_db.vw_leave\r\n",
-					"-- GROUP by Absence_Quota_type\r\n",
-					""
-				],
-				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -210,7 +149,7 @@
 					"\r\n",
 					";"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -272,27 +211,27 @@
 					"    UNION ALL\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    LeaveEntitlementID,\r\n",
-					"    EmployeeID,\r\n",
-					"    LeaveDaysPerYear,\r\n",
-					"    LeaveDeduction,\r\n",
-					"    LeaveYearStart,\r\n",
-					"    LeaveYearEnd,\r\n",
-					"    AbsenceQuotaType,\r\n",
-					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
-					"    IngestionDate,\r\n",
-					"    ValidTo,\r\n",
-					"    RowID,\r\n",
-					"    IsActive\r\n",
+					"    T1.LeaveEntitlementID,\r\n",
+					"    T1.EmployeeID,\r\n",
+					"    T1.LeaveDaysPerYear,\r\n",
+					"    T1.LeaveDeduction,\r\n",
+					"    T1.LeaveYearStart,\r\n",
+					"    T1.LeaveYearEnd,\r\n",
+					"    T1.AbsenceQuotaType,\r\n",
+					"    T1.SourceSystemID,\r\n",
+					"    T1.StartDate,\r\n",
+					"    T1.EndDate,\r\n",
+					"    T1.IngestionDate,\r\n",
+					"    T1.ValidTo,\r\n",
+					"    T1.RowID,\r\n",
+					"    T1.IsActive\r\n",
 					"FROM odw_harmonised_db.leaveentitlement_dim T1\r\n",
 					"INNER JOIN leaveentitlement_dim_new T2 ON   T1.EmployeeID = T2.EmployeeID AND\r\n",
 					"                                            T1.AbsenceQuotaType = T2.AbsenceQuotaType\r\n",
 					"; \r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -335,7 +274,7 @@
 					"MERGE INTO odw_harmonised_db.leaveentitlement_dim AS Target\r\n",
 					"USING leaveentitlement_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.ContractID = Target.ContractID\r\n",
+					"ON Source.LeaveEntitlementID = Target.LeaveEntitlementID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -350,7 +289,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -410,7 +349,7 @@
 					"FROM odw_harmonised_db.leaveentitlement_dim;\r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -434,7 +373,7 @@
 					"SELECT *\n",
 					"from odw_harmonised_db.leaveentitlement_dim;"
 				],
-				"execution_count": 28
+				"execution_count": 17
 			}
 		]
 	}
