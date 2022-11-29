@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5ac438ee-5609-4145-9c7e-34c50dde76d8"
+				"spark.autotune.trackingId": "bdcfaa8e-7592-47c6-a3ad-9703075e68d7"
 			}
 		},
 		"metadata": {
@@ -89,6 +89,29 @@
 				},
 				"source": [
 					"%%sql\r\n",
+					"DELETE from odw_harmonised_db.hr_record_fact"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
 					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW hr_record_fact_new \r\n",
 					"\r\n",
@@ -112,7 +135,7 @@
 					"    TempMPID.PositionID AS ManagerPositionID,\r\n",
 					"    T10.CounterSignManagerID AS CounterSignManagerEmployeeID,\r\n",
 					"    T11.LocationID AS LocationID,\r\n",
-					"    -- T12.WorkScheduleID AS WorkScheduleID,\r\n",
+					"    T12.WorkScheduleID AS WorkScheduleID,\r\n",
 					"    T14.SourceSystemID,\r\n",
 					"    current_timestamp as StartDate,\r\n",
 					"    NULL as EndDate,\r\n",
@@ -146,18 +169,21 @@
 					"    ) T12 ON T2.EmployeeID = T12.EmployeeID\r\n",
 					"\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T14 ON \"SAP HR\" = T14.Description\r\n",
+					"LEFT JOIN odw_harmonised_db.hr_record_fact T15 ON T2.EmployeeID = T15.EmployeeID\r\n",
 					"\r\n",
-					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
+					"WHERE  (T15.IsActive = 'Y' or T15.IsActive IS NULL)\r\n",
 					"    \r\n",
 					"        AND (\r\n",
 					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Pers_No = T2.EmployeeNumber AND md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\r\n",
-					"                IFNULL(T7.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),IFNULL(TempMPID.PositionID, '.'),\r\n",
-					"                IFNULL(T10.CounterSignManagerID, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'))) <> T7.RowID     \r\n",
+					"            WHEN T2.EmployeeID = T15.EmployeeID AND md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), \r\n",
+					"                IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\r\n",
+					"                IFNULL(T7.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),\r\n",
+					"                IFNULL(TempMPID.PositionID, '.'),\r\n",
+					"                IFNULL(T10.CounterSignManagerID, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'))) <> T15.RowID\r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T2.EmployeeID IS NULL\r\n",
+					"            WHEN T15.EmployeeID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
@@ -169,11 +195,11 @@
 					"            ELSE 'N'\r\n",
 					"        END = 'Y' )\r\n",
 					")\r\n",
-					"-- GROUP BY T1.Pers_No, T2.EmployeeID, T3.PersonnelAreaID, T4.PersonnelSubAreaID, T5.OrganisationUnitID, T6.ContractID, T7.PayBandID, T8.CostCenterID, T9.PositionID, T10.ManagerEmployeeID, TempMPID.PositionID, T10.CounterSignManagerID, T11.LocationID, T12.WorkScheduleID\r\n",
+					"\r\n",
 					";\r\n",
-					"SELECT * FROM hr_record_fact_new;"
+					"SELECT count(*) FROM hr_record_fact_new;"
 				],
-				"execution_count": 44
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
