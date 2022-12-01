@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6fa38b8a-e1c0-4012-8363-6db728b16379"
+				"spark.autotune.trackingId": "56275dd7-a40a-4b03-9619-f950fbf907c2"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 26
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 				"source": [
 					"%run \"utils/py_logging_decorator\""
 				],
-				"execution_count": 27
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -334,73 +334,73 @@
 					"                                file_available = True\r\n",
 					"                                \r\n",
 					"                                    \r\n",
-					"                            jobId = mssparkutils.env.getJobId()\r\n",
-					"                            mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
-					"                            mssparkutils.fs.mount( \r\n",
-					"                            source_container_path+source_folder+date_string, \r\n",
-					"                            \"/temp_raw\", \r\n",
-					"                            {\"linkedService\":\"ls_storage\"} \r\n",
-					"                            )   \r\n",
-					"                            if \".xlsx\" in filename.lower():\r\n",
-					"                                df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str)\r\n",
-					"                            elif '.csv' in filename.lower():\r\n",
-					"                                df = pd.read_csv(f\"/synfs/{jobId}/temp_raw/{filename}\", quotechar='\"',escapechar='\\\\',encoding=\"utf8\",dtype=str)\r\n",
-					"                            else:\r\n",
-					"                                raise ValueError(\"This file type is unsupported\")\r\n",
-					"                            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
-					"                            rows_raw = len(df.index)\r\n",
-					"                            mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
-					"                            sparkDF=spark.createDataFrame(df)\r\n",
-					"                            sparkDF = sparkDF.withColumn(\"ingested_datetime\",lit(datetime.now()))\r\n",
-					"                            sparkDF = sparkDF.withColumn(\"expected_from\",lit(last_start_dt))\r\n",
-					"                            sparkDF = sparkDF.withColumn(\"expected_to\",lit(next_end_dt))\r\n",
-					"                            schema = StructType.fromJson(json.loads(standardised_table_def_json))\r\n",
+					"                                jobId = mssparkutils.env.getJobId()\r\n",
+					"                                mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
+					"                                mssparkutils.fs.mount( \r\n",
+					"                                source_container_path+source_folder+date_string, \r\n",
+					"                                \"/temp_raw\", \r\n",
+					"                                {\"linkedService\":\"ls_storage\"} \r\n",
+					"                                )   \r\n",
+					"                                if \".xlsx\" in filename.lower():\r\n",
+					"                                    df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str)\r\n",
+					"                                elif '.csv' in filename.lower():\r\n",
+					"                                    df = pd.read_csv(f\"/synfs/{jobId}/temp_raw/{filename}\", quotechar='\"',escapechar='\\\\',encoding=\"utf8\",dtype=str)\r\n",
+					"                                else:\r\n",
+					"                                    raise ValueError(\"This file type is unsupported\")\r\n",
+					"                                df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
+					"                                rows_raw = len(df.index)\r\n",
+					"                                mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
+					"                                sparkDF=spark.createDataFrame(df)\r\n",
+					"                                sparkDF = sparkDF.withColumn(\"ingested_datetime\",lit(datetime.now()))\r\n",
+					"                                sparkDF = sparkDF.withColumn(\"expected_from\",lit(last_start_dt))\r\n",
+					"                                sparkDF = sparkDF.withColumn(\"expected_to\",lit(next_end_dt))\r\n",
+					"                                schema = StructType.fromJson(json.loads(standardised_table_def_json))\r\n",
 					"\r\n",
-					"                            \r\n",
-					"                            \r\n",
-					"                            cols_orig = sparkDF.schema.names\r\n",
-					"                            cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig] # replace all non alphanumeric characters\r\n",
-					"                            cols=[colm.rstrip('_') for colm in cols]\r\n",
-					"                            newlist = []\r\n",
-					"                            for i, v in enumerate(cols):\r\n",
-					"                                totalcount = cols.count(v)\r\n",
-					"                                count = cols[:i].count(v)\r\n",
-					"                                newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
-					"                            for colix in range(len(cols_orig)):\r\n",
-					"                                sparkDF = sparkDF.toDF(*newlist) \r\n",
-					"                                #sparkDF.withColumnRenamed(cols_orig[colix], newlist[colix])\r\n",
-					"                            \r\n",
-					"                            mapping = {\r\n",
-					"                                'string': StringType(),\r\n",
-					"                                'timestamp': TimestampType(),\r\n",
-					"                                'integer': IntegerType(),\r\n",
-					"                                'date': DateType(),\r\n",
-					"                                'float': FloatType()\r\n",
-					"                            }\r\n",
-					"\r\n",
-					"                            for field in json.loads(standardised_table_def_json)['fields']:\r\n",
-					"                                sparkDF = sparkDF.withColumn(field['name'], col(field['name']).cast(mapping[field['type']]))\r\n",
-					"                            colheaders = []\r\n",
-					"                            for field in json.loads(standardised_table_def_json)['fields']:\r\n",
-					"                                colheaders.append(field['name'])\r\n",
-					"                            sparkDF = sparkDF.select(colheaders)\r\n",
-					"                            sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)\r\n",
-					"                            sparkDF2.write.format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\r\n",
-					"\r\n",
-					"                            standardised_table_df_new = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
-					"                            rows_new = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
-					"                            if rows_raw == rows_new:\r\n",
-					"                                mssparkutils.fs.mkdirs(source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\")\r\n",
-					"                                mssparkutils.fs.cp(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\r\n",
-					"                                logger.info('All rows have successfully written')\r\n",
 					"                                \r\n",
-					"                            else:\r\n",
-					"                                ### add to outstanding files table?\r\n",
-					"                                deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\r\n",
-					"                                fullHistoryDF = deltaTable_standardised.history()    # get the full history of the table\r\n",
-					"                                fullHistoryDF.select(\"version\").first()['version']\r\n",
-					"                                deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\r\n",
-					"                                raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\r\n",
+					"                                \r\n",
+					"                                cols_orig = sparkDF.schema.names\r\n",
+					"                                cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig] # replace all non alphanumeric characters\r\n",
+					"                                cols=[colm.rstrip('_') for colm in cols]\r\n",
+					"                                newlist = []\r\n",
+					"                                for i, v in enumerate(cols):\r\n",
+					"                                    totalcount = cols.count(v)\r\n",
+					"                                    count = cols[:i].count(v)\r\n",
+					"                                    newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
+					"                                for colix in range(len(cols_orig)):\r\n",
+					"                                    sparkDF = sparkDF.toDF(*newlist) \r\n",
+					"                                    #sparkDF.withColumnRenamed(cols_orig[colix], newlist[colix])\r\n",
+					"                                \r\n",
+					"                                mapping = {\r\n",
+					"                                    'string': StringType(),\r\n",
+					"                                    'timestamp': TimestampType(),\r\n",
+					"                                    'integer': IntegerType(),\r\n",
+					"                                    'date': DateType(),\r\n",
+					"                                    'float': FloatType()\r\n",
+					"                                }\r\n",
+					"\r\n",
+					"                                for field in json.loads(standardised_table_def_json)['fields']:\r\n",
+					"                                    sparkDF = sparkDF.withColumn(field['name'], col(field['name']).cast(mapping[field['type']]))\r\n",
+					"                                colheaders = []\r\n",
+					"                                for field in json.loads(standardised_table_def_json)['fields']:\r\n",
+					"                                    colheaders.append(field['name'])\r\n",
+					"                                sparkDF = sparkDF.select(colheaders)\r\n",
+					"                                sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)\r\n",
+					"                                sparkDF2.write.format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\r\n",
+					"\r\n",
+					"                                standardised_table_df_new = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
+					"                                rows_new = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
+					"                                if rows_raw == rows_new:\r\n",
+					"                                    mssparkutils.fs.mkdirs(source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\")\r\n",
+					"                                    mssparkutils.fs.cp(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\r\n",
+					"                                    logger.info('All rows have successfully written')\r\n",
+					"                                    \r\n",
+					"                                else:\r\n",
+					"                                    ### add to outstanding files table?\r\n",
+					"                                    deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\r\n",
+					"                                    fullHistoryDF = deltaTable_standardised.history()    # get the full history of the table\r\n",
+					"                                    fullHistoryDF.select(\"version\").first()['version']\r\n",
+					"                                    deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\r\n",
+					"                                    raise ValueError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\r\n",
 					"\r\n",
 					"                        if file_available==False:\r\n",
 					"                            outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
@@ -415,7 +415,7 @@
 					"                outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
 					"                outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
-				"execution_count": 28
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -433,7 +433,7 @@
 				"source": [
 					"ingest_raw_to_standardised()"
 				],
-				"execution_count": 29
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -511,6 +511,24 @@
 					"deltaTable_standardised2 = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/\"+ \"config/raw_to_std_outstanding_files\")\r\n",
 					"fullHistoryDF2 = deltaTable_standardised2.history()    # get the full history of the table\r\n",
 					"fullHistoryDF2.toPandas()['operationParameters'][1]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.sql(\"drop table if exists odw_standardised_db.checkmark_complexity_referencet\")"
 				],
 				"execution_count": null
 			},
