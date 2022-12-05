@@ -10,9 +10,11 @@ module "synapse_workspace_private" {
   data_lake_account_id_failover         = module.synapse_data_lake_failover.data_lake_account_id
   data_lake_account_name                = module.synapse_data_lake.data_lake_account_name
   data_lake_account_name_failover       = module.synapse_data_lake_failover.data_lake_account_name
+  data_lake_dfs_endpoint                = module.synapse_data_lake.data_lake_dfs_endpoint
   data_lake_filesystem_id               = module.synapse_data_lake.data_lake_filesystem_id
   firewall_allowed_ip_addresses         = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                          = module.synapse_data_lake.key_vault_id
+  key_vault_name                        = module.synapse_data_lake.key_vault_name
   network_resource_group_name           = azurerm_resource_group.network.name
   purview_id                            = module.synapse_management.purview_id
   spark_pool_enabled                    = var.spark_pool_enabled
@@ -58,9 +60,11 @@ module "synapse_workspace_private_failover" {
   data_lake_account_id_failover         = module.synapse_data_lake.data_lake_account_id
   data_lake_account_name                = module.synapse_data_lake_failover.data_lake_account_name
   data_lake_account_name_failover       = module.synapse_data_lake.data_lake_account_name
+  data_lake_dfs_endpoint                = module.synapse_data_lake_failover.data_lake_dfs_endpoint
   data_lake_filesystem_id               = module.synapse_data_lake_failover.data_lake_filesystem_id
   firewall_allowed_ip_addresses         = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                          = module.synapse_data_lake_failover.key_vault_id
+  key_vault_name                        = module.synapse_data_lake_failover.key_vault_name
   network_resource_group_name           = azurerm_resource_group.network_failover.name
   purview_id                            = module.synapse_management_failover[0].purview_id
   spark_pool_enabled                    = var.spark_pool_enabled
