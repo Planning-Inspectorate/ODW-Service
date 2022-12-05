@@ -27,7 +27,7 @@ resource "azurerm_synapse_spark_pool" "synapse" {
 
   spark_config {
     content  = <<-EOT
-      spark.executorEnv.dataLakeDfsEndpoint ${replace(var.data_lake_dfs_endpoint, "https://", "")}
+      spark.executorEnv.dataLakeAccountName ${var.data_lake_account_name}
       spark.executorEnv.keyVaultName ${var.key_vault_name}
       EOT
     filename = "configuration.txt"
