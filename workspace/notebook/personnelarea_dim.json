@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bd0129e1-8fcf-4114-967e-ae29d77b6e46"
+				"spark.autotune.trackingId": "a33e731f-22bb-4237-bf13-c964c2d1df21"
 			}
 		},
 		"metadata": {
@@ -73,6 +73,42 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW personnelarea_grouped\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"select PA, Personnel_Area\n",
+					"\n",
+					"from odw_standardised_db.vw_saphr\n",
+					"\n",
+					"Where PA IS NOT NULL\n",
+					"\n",
+					"group by PA, Personnel_Area;\n",
+					"\n",
+					"select * from personnelarea_grouped;"
+				],
+				"execution_count": 81
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
 					},
@@ -96,7 +132,14 @@
 					"        THEN first(T7.PersonnelAreaID)\r\n",
 					"        ELSE NULL\r\n",
 					"    END as PersonnelAreaID, -- surrogate key\r\n",
-					"    PA AS PersonnelAreaCode, -- source system id\r\n",
+					"    CASE\r\n",
+					"        WHEN T1.PA IS NULL\r\n",
+					"        THEN first(T7.PersonnelAreaCode)\r\n",
+					"        ELSE T1.PA\r\n",
+					"    END as PersonnelAreaCode, -- surrogate key\r\n",
+					"    \r\n",
+					"\r\n",
+					"    --PA AS PersonnelAreaCode, -- source system id\r\n",
 					"    Personnel_Area AS Description, \r\n",
 					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
@@ -118,7 +161,7 @@
 					"        ELSE 'N'\r\n",
 					"    END AS  DeletedData\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.vw_saphr T1\r\n",
+					"FROM personnelarea_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description\r\n",
 					"FULL JOIN odw_harmonised_db.personnelarea_dim T7 ON T1.PA = T7.PersonnelAreaCode\r\n",
 					"WHERE  (T7.IsActive = 'Y' or T7.IsActive IS NULL)\r\n",
@@ -153,7 +196,7 @@
 					"SELECT * FROM personnelarea_dim_new;\r\n",
 					""
 				],
-				"execution_count": 70
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -186,7 +229,7 @@
 					"SELECT DISTINCT PA AS Existing_PAreas FROM odw_standardised_db.vw_saphr T1 RIGHT JOIN odw_harmonised_db.personnelarea_dim T7 ON T1.PA = T7.PersonnelAreaCode;\n",
 					"SELECT * FROM personnelarea_dim_new;"
 				],
-				"execution_count": 62
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -257,7 +300,7 @@
 					"#     raise 'Loading Number do not match'\n",
 					""
 				],
-				"execution_count": 64
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -281,6 +324,30 @@
 					"-- DELETE FROM odw_harmonised_db.personnelarea_dim WHERE PersonnelAreaCode = 'P500'"
 				],
 				"execution_count": 59
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT * FROM odw_standardised_db.vw_saphr;"
+				],
+				"execution_count": 77
 			},
 			{
 				"cell_type": "markdown",
