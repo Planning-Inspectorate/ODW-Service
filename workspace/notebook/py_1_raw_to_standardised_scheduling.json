@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "98735ca3-3844-4861-9fec-cef46ec7befa"
+				"spark.autotune.trackingId": "6f1f314b-2e16-472d-8acf-fb0237e7bd5b"
 			}
 		},
 		"metadata": {
@@ -133,16 +133,18 @@
 					"    from pyspark.sql.functions import col, lit\r\n",
 					"    import calendar\r\n",
 					"\r\n",
+					"    storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
+					"\r\n",
 					"    ### create outstanding files table\r\n",
-					"    outstanding_files_table_json = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration/scheduling_outstanding_files_table.json\", wholetext=True).first().value\r\n",
-					"    create_table_from_schema(outstanding_files_table_json, \"odw_config_db\", \"raw_to_std_outstanding_files\", \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/\", \"config/raw_to_std_outstanding_files\" )\r\n",
+					"    outstanding_files_table_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/scheduling_outstanding_files_table.json\", wholetext=True).first().value\r\n",
+					"    create_table_from_schema(outstanding_files_table_json, \"odw_config_db\", \"raw_to_std_outstanding_files\", \"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/\", \"config/raw_to_std_outstanding_files\" )\r\n",
 					"\r\n",
 					"    ### loads json for scheduling\r\n",
-					"    orchestration_json = spark.read.text(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration/orchestration_test.json\", wholetext=True).first().value\r\n",
+					"    orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration_test.json\", wholetext=True).first().value\r\n",
 					"    json_config_dict = json.loads(orchestration_json)\r\n",
 					"    \r\n",
 					"    ###### process outstanding files\r\n",
-					"    outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"    outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"    if outstanding_df.count() > 0: # make sure there are entries in the outstanding files table\r\n",
 					"        outstanding_df_pd = outstanding_df.toPandas()\r\n",
 					"        for pdidx, pdrow in outstanding_df_pd.iterrows():\r\n",
@@ -405,15 +407,15 @@
 					"                        if file_available==False:\r\n",
 					"                            outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                            new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
-					"                            outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"                            outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                            outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
-					"                            outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"                            outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"            if folder_available==False:\r\n",
 					"                outstanding_struct_schema = StructType.fromJson(json.loads(outstanding_files_table_json))\r\n",
 					"                new_outst_file = spark.createDataFrame([[last_start_dt, defs['Source_ID']]], outstanding_struct_schema)\r\n",
-					"                outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
+					"                outstanding_df = spark.read.format(\"delta\").load(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")\r\n",
 					"                outstanding_df = outstanding_df.union(new_outst_file).dropDuplicates()\r\n",
-					"                outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
+					"                outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 				],
 				"execution_count": 8
 			},
