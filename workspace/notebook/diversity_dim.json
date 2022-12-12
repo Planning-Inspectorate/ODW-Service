@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b986552c-8623-4f9a-9d61-1fd2f0017208"
+				"spark.autotune.trackingId": "7776e951-a202-4b6f-b855-17eb983920ed"
 			}
 		},
 		"metadata": {
@@ -175,7 +175,63 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 4
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"Source_Number_PAreas = spark.sql(\"SELECT COUNT (DISTINCT Ethnic_Origin) AS Source_Number_PAreas FROM odw_standardised_db.vw_protected_characteristics\")\n",
+					"Current_Number_PAreas = spark.sql(\"SELECT COUNT (DISTINCT Decription) AS Current_Number_PAreas FROM odw_harmonised_db.diversity_dim where IsActive = 'Y' \")\n",
+					"New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT Decription) AS New_Data_Number FROM diversity_dim_new WHERE NewData = 'Y'\")\n",
+					"Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT Decription) AS Deleted_Data_Number FROM diversity_dim_new WHERE DeletedData = 'Y'\")\n",
+					"\n",
+					"Source_Number_PAreas_Pandas = Source_Number_PAreas.toPandas()\n",
+					"Current_Number_PAreas_Pandas =  Current_Number_PAreas.toPandas()\n",
+					"New_Data_Number_Pandas = New_Data_Number.toPandas()\n",
+					"Deleted_Data_Number_Pandas = Deleted_Data_Number.toPandas()\n",
+					"\n",
+					"# checking if new total number of registers matches the previously loaded, plus New ones, minus Deleted ones\n",
+					"print(\"SET 1:\")\n",
+					"Total_Number = Source_Number_PAreas_Pandas['Source_Number_PAreas'].tolist() \n",
+					"Current_Loaded_Number = Current_Number_PAreas_Pandas['Current_Number_PAreas'].tolist() \n",
+					"New_Data_Number = New_Data_Number_Pandas['New_Data_Number'].tolist() \n",
+					"Deleted_Data_Number = Deleted_Data_Number_Pandas['Deleted_Data_Number'].tolist() \n",
+					"\n",
+					"# print(Total_Number) \n",
+					"# print(Current_Loaded_Number) \n",
+					"# print(New_Data_Number) \n",
+					"# print(Deleted_Data_Number)\n",
+					"\n",
+					"if Total_Number[0] != (Current_Loaded_Number[0] + New_Data_Number[0] - Deleted_Data_Number[0]):\n",
+					"    raise RuntimeError(\"Loading Number do not match\")\n",
+					"else:\n",
+					"    print(\"Loading number matches with existing codes plus new, minus deleted!\")\n",
+					"\n",
+					"if New_Data_Number[0] > 10:\n",
+					"    raise RuntimeError(\"ALERT: Too many new codes\")\n",
+					"else:\n",
+					"    print(\"New data under tolerance levels\")\n",
+					"\n",
+					"if Deleted_Data_Number[0] > 5:\n",
+					"    raise RuntimeError(\"ALERT: Too many deleted codes\")\n",
+					"else:\n",
+					"    print(\"Unused codes under tolerance levels\")"
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
