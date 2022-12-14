@@ -66,19 +66,23 @@ The repository structure is as follows:
 |
 +-- modules
 |   +-- bastion-host
+|   +-- devops-agent-pool
+|   +-- synapse-data-lake
 |   +-- synapse-ingestion
 |   +-- synapse-management
 |   +-- synapse-monitoring
 |   +-- synapse-network
+|   +-- synapse-shir
+|   +-- synapse-sql-server
 |   +-- synapse-workspace-private
 |
++-- deploy-*.tf
 +-- locals.tf
 +-- provider.tf
 +-- README.md
 +-- region.tf
 +-- resource-groups.tf
 +-- variables.tf
-+-- workload.tf
 ```
 
 The `environments` folder contains two types of file for each environment:
@@ -89,21 +93,25 @@ The `environments` folder contains two types of file for each environment:
 The `modules` folder contains the child modules used by this workload:
 
 - `bastion-host`
+- `devops-agent-pool`
+- `synapse-data-lake`
 - `synapse-ingestion`
 - `synapse-management`
 - `synapse-monitoring`
 - `synapse-network`
+- `synapse-shir`
+- `synapse-sql-sever`
 - `synapse-workspace-private`
 
 All other loose files within the `infrastructure` comprise the root Terraform module, and define the PINS ODW workload specifics:
 
+- `deploy-*.tf` are the main files used to deploy the solution. They call upon each of the child modules in a specific order and provides values for the input variables.
 - `locals.tf` defines static attributes passed into each module such as the service name, Azure resource tags, and a resource suffix applied to all resources made up of the service name, region, and environment.
 - `provider.tf` defines both the Terraform and AzureRM provider versions in-use within this workload. The backend state file storage details are also specified here in conjunction with the environment-specific `{env}.tfbackend` files in the `environments` directory.
 - `README.md` this file, describing how to contribute to the PINS ODW infrastructure codebase, and the requirements, providers, inputs, and outputs of this root Terraform module.
 - `region.tf` a third-party module used to easily reference an Azure region in one of the many available formats. For example one of "UK South", "uks", "uk-south", or "uk_south" may be required for specific scenarios.
 - `resource-groups.tf` defines the resource groups as used in this workload, in-line with the Cloud Adoption Framework (CAF) recommendations for a data landing zone.
 - `variables.tf` a list of all variables abstracted from the child modules. The values for many of these variables are defined in the environment-specific `{env}.tfvars` files.
-- `workload.tf` the main file used to deploy the solution. Calls upon each of the child modules in a specific order and provides values for the input variables.
 
 ### Environments
 The PINS ODW infrastructure is deployed to three environments which manifest themselves in the form of seperate Azure subscriptions:
@@ -115,7 +123,7 @@ The PINS ODW infrastructure is deployed to three environments which manifest the
 | pins-odw-data-prod-sub | a82fd28d-5989-4e06-a0bb-1a5d859f9e0c |
 
 #### Environment-Specific Deployments
-Upon deployment, the resource groups defined in `resource-groups.tf` are deployed to the target environment. The child modules are then called upon in `workload.tf` to orchestrate the deployment of the ODW infrastructure components.
+Upon deployment, the resource groups defined in `resource-groups.tf` are deployed to the target environment. The child modules are then called upon in `deploy-*.tf` to orchestrate the deployment of the ODW infrastructure components.
 
 The deployment pipeline ultimately runs the `terraform apply` command to provision the ODW infrastructure to the target environment. The specific environment is targeted at two key points:
 
