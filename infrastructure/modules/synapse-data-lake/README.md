@@ -1,4 +1,5 @@
 # Synapse Data Lake
+This module deploy the Synapse data lake resources.
 
 ### Table of Contents
 1. [Usage](#usage)
@@ -8,6 +9,42 @@
 5. [Outputs](#outputs)
 
 ## Usage
+The below module definition provides an example of usage. This module is designed to depend on the outputs from the associated `synapse_network` and `synapse_network_failover` modules. These associated modules provision the Synapse virtual network in both the primary and secondary region to ensure data lake replication may be facilitated for redundancy. At the time of writing ADLS-enabled Storage Accounts do not support failover for GRS-replication.
+```
+module "synapse_data_lake" {
+  source = "./modules/synapse-data-lake"
+  environment         = "dev"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = "uks"
+  service_name        = "odw"
+  data_lake_account_tier                 = "Standard"
+  data_lake_private_endpoint_dns_zone_id = azurerm_private_dns_zone.example.id
+  data_lake_lifecycle_rules              = jsondecode(file(local.lifecycle_policy_file_path))
+  data_lake_replication_type             = "ZRS"
+  data_lake_retention_days               = 30
+  data_lake_role_assignments             = {
+    "Storage Blob Data Contributor" = ["00000000-0000-0000-0000-000000000000"]
+  }
+  data_lake_storage_containers           = ["raw", "standardized", "harmonized", "curated"]
+  devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_name
+  firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
+  key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.example.id
+  key_vault_role_assignments             = {
+    "Key Vault Administrator"   = ["00000000-0000-0000-0000-000000000000"],
+    "Key Vault Secrets Officer" = ["00000000-0000-0000-0000-000000000000"]
+  }
+  network_resource_group_name            = azurerm_resource_group.example.name
+  synapse_private_endpoint_subnet_name   = module.synapse_network.synapse_private_endpoint_subnet_name
+  tenant_id                              = "00000000-0000-0000-0000-000000000000"
+  vnet_subnet_ids                        = module.synapse_network.vnet_subnets
+  vnet_subnet_ids_failover               = module.synapse_network_failover.vnet_subnets
+  depends_on = [
+    module.synapse_network,
+    module.synapse_network_failover
+  ]
+  tags = local.tags
+}
+```
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements

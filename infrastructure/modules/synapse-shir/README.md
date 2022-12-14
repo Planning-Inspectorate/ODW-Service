@@ -9,6 +9,24 @@ This module provisions an VM to work as a Self-Hosted Integration Runtime for Sy
 5. [Outputs](#outputs)
 
 ## Usage
+The below module definition provides an example of usage. This module is designed to depend on the outputs from the associated `synapse_network` and `synapse_workspace_private` modules. These associated modules provision the Synapse virtual network and Synapse Workspace resources respecitvely. This module then creates a virtual machine and configures it with the Microsoft Self-Hosted Integration Runtime agent and registers it with the existing Synapse Workspace.
+```
+module "synapse_shir" {
+  source = "./modules/synapse-shir"
+  environment         = "dev"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = "uks"
+  service_name        = "odw"
+  devops_agent_subnet_name = "ComputeSubnet"
+  synapse_workspace_id     = module.synapse_workspace_private.synapse_workspace_id
+  vnet_subnet_ids          = module.synapse_network.vnet_subnets
+  depends_on = [
+    module.synapse_network,
+    module.synapse_workspace_private
+  ]
+  tags = local.tags
+}
+```
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements

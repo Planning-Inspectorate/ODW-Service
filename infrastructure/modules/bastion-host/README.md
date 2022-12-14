@@ -17,15 +17,24 @@ module "bastion_host" {
   source = "./modules/bastion-host"
 
   environment         = "dev"
-  resource_group_name = azurerm_resource_group.data_management.name
+  resource_group_name = azurerm_resource_group.example.name
   location            = "uks"
   service_name        = "odw"
 
-  bastion_vm_username         = "basadmin"
-  bastion_vm_size             = "Standard_F2s_v2"
-  key_vault_id                = module.synapse_management.key_vault_id
-  synapse_compute_subnet_name = "ComputeSubnet"
-  synapse_vnet_subnets        = module.synapse_network.vnet_subnets
+  bastion_vm_image = {
+    "offer": "windows-11",
+    "publisher": "MicrosoftWindowsDesktop",
+    "sku": "win11-21h2-ent",
+    "version": "latest"
+  }
+  bastion_vm_username          = "basadmin"
+  bastion_vm_size              = "Standard_F2s_v2"
+  key_vault_id                 = azurerm_key_vault.example.id
+  network_resource_group_name  = azurerm_resource_group.network.name
+  synapse_compute_subnet_name  = "ComputeSubnet"
+  synapse_vnet_security_groups = module.synapse_network.vnet_security_groups
+  synapse_vnet_subnet_names    = module.synapse_network.vnet_subnets
+  synapse_vnet_subnet_prefixes = module.synapse_network.vnet_subnet_prefixes
 
   depends_on = [
     module.synapse_network,

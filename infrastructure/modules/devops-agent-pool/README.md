@@ -9,6 +9,30 @@ This module provisions an Azure DevOps agent pool into the specified a specified
 5. [Outputs](#outputs)
 
 ## Usage
+The below module definition provides an example of usage. This module is designed to depend on the outputs from the associated `synapse_network` module. This associated module provisions the Synapse virtual network resources. This module then deploys a Virtual Machine Scale Set which may be linked to Azure DevOps for the running of Pipelines internal to the Azure network. This arrangement allows for platform deployments for resources which are not publically accessible.
+```
+module "devops_agent_pool" {
+  source = "./modules/devops-agent-pool"
+  environment         = "dev"
+  resource_group_name = azurerm_resource_group.example.name
+  location            = "uks"
+  service_name        = "odw"
+  deploy_agent_pool         = true
+  devops_agent_image_prefix = "devops-agents"
+  devops_agent_instances    = 1
+  devops_agent_subnet_name  = "ComputeSubnet"
+  devops_agent_vm_sku       = "Standard_F2s_v2"
+  vnet_subnet_ids           = module.synapse_network.vnet_subnets
+  depends_on = [
+    module.synapse_network
+  ]
+  tags = local.tags
+}
+```
+
+| :scroll: Note |
+|----------|
+| This module is designed to work differently depending on whether the environment is being provisioned for the first time or not. A special Azure DevOps pipeline may be used to run a targetted Teraform deployment for this module with `deploy_agent_pool` set to `false` to first deploy network resources (dependencies) followed by a second deployment to provision the agent pool. |
 
 <!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 ## Requirements
