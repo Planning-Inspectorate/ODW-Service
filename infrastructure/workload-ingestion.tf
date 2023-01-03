@@ -20,7 +20,8 @@ module "synapse_ingestion" {
   location            = module.azure_region.location_cli
   service_name        = local.service_name
 
-  failover_namespace = false
+  failover_namespace           = false
+  service_bus_role_assignments = var.service_bus_role_assignments
 
   tags = local.tags
 }
@@ -35,6 +36,7 @@ module "synapse_ingestion_failover" {
 
   failover_namespace               = true
   primary_service_bus_namespace_id = module.synapse_ingestion.service_bus_namespace_id
+  service_bus_role_assignments     = var.service_bus_role_assignments
 
   depends_on = [
     module.synapse_ingestion

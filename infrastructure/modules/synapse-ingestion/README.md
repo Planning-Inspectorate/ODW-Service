@@ -50,6 +50,7 @@ No requirements.
 
 | Name | Type |
 |------|------|
+| [azurerm_role_assignment.service_bus](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/role_assignment) | resource |
 | [azurerm_servicebus_namespace.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/servicebus_namespace) | resource |
 | [azurerm_servicebus_namespace_disaster_recovery_config.failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/servicebus_namespace_disaster_recovery_config) | resource |
 | [azurerm_servicebus_topic.employee](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/servicebus_topic) | resource |
@@ -64,6 +65,7 @@ No requirements.
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_primary_service_bus_namespace_id"></a> [primary\_service\_bus\_namespace\_id](#input\_primary\_service\_bus\_namespace\_id) | The ID of the Service Bus Namespace to replicate from if failover\_namespace is true | `string` | `null` | no |
 | <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | The name of the resource group into which resources will be deployed | `string` | n/a | yes |
+| <a name="input_service_bus_role_assignments"></a> [service\_bus\_role\_assignments](#input\_service\_bus\_role\_assignments) | An object mapping RBAC roles to principal IDs for the service bus | `map(list(string))` | `{}` | no |
 | <a name="input_service_name"></a> [service\_name](#input\_service\_name) | The short-format name of the overarching service being deployed | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | A collection of tags to assign to taggable resources | `map(string)` | `{}` | no |
 
