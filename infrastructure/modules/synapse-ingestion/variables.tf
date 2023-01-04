@@ -37,7 +37,7 @@ variable "service_name" {
 
 variable "synapse_workspace_failover_principal_id" {
   default     = null
-  description = "The managed identity for the Synapse Workspace"
+  description = "The managed identity for the failover Synapse Workspace"
   type        = string
 }
 

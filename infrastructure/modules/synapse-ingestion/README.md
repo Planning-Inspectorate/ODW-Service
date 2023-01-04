@@ -71,7 +71,7 @@ No requirements.
 | <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | The name of the resource group into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_service_bus_role_assignments"></a> [service\_bus\_role\_assignments](#input\_service\_bus\_role\_assignments) | An object mapping RBAC roles to principal IDs for the service bus | `map(list(string))` | `{}` | no |
 | <a name="input_service_name"></a> [service\_name](#input\_service\_name) | The short-format name of the overarching service being deployed | `string` | n/a | yes |
-| <a name="input_synapse_workspace_failover_principal_id"></a> [synapse\_workspace\_failover\_principal\_id](#input\_synapse\_workspace\_failover\_principal\_id) | The managed identity for the Synapse Workspace | `string` | `null` | no |
+| <a name="input_synapse_workspace_failover_principal_id"></a> [synapse\_workspace\_failover\_principal\_id](#input\_synapse\_workspace\_failover\_principal\_id) | The managed identity for the failover Synapse Workspace | `string` | `null` | no |
 | <a name="input_synapse_workspace_principal_id"></a> [synapse\_workspace\_principal\_id](#input\_synapse\_workspace\_principal\_id) | The managed identity for the Synapse Workspace | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | A collection of tags to assign to taggable resources | `map(string)` | `{}` | no |
 
