@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fb078053-50ed-4b0f-bac2-a5c54655aab7"
+				"spark.autotune.trackingId": "d2e09588-348d-47c4-aa25-ea725e4cf88e"
 			}
 		},
 		"metadata": {
@@ -195,6 +195,44 @@
 				"source": [
 					"%%sql\n",
 					"\n",
+					"-- Build SourceSystem_Fact table\n",
+					"-- INSERT OVERWRITE achieves the same as a TRUNCATE TABLE and INSERT INTO but in one statement\n",
+					"\n",
+					"-- INSERT OVERWRITE odw_harmonised_db.sourcesystem_fact\n",
+					"\n",
+					"-- SELECT\n",
+					"--     2 AS SourceSystemID,\n",
+					"--     \"Legacy Timesheets\" AS Description,\n",
+					"--     CURRENT_TIMESTAMP AS StartDate, \n",
+					"--     NULL AS EndDate,\n",
+					"--     CURRENT_TIMESTAMP AS IngestionDate,\n",
+					"--     NULL AS ValidTo,\n",
+					"--     md5(\"Legacy Timesheets\") as RowID,\n",
+					"--     \"Y\" AS IsActive\n",
+					";"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
 					"INSERT OVERWRITE odw_harmonised_db.legacy_mrw_fact\n",
 					"\n",
 					"SELECT\n",
@@ -203,17 +241,19 @@
 					"    T1.MRWLinesID AS MRWLinesID,\n",
 					"    T2.MRWStatusID AS MRWStatusID,\n",
 					"    T3.MRWSubmissionDateID AS MRWSubmissionDateID,\n",
+					"    T4.SourceSystemID AS SourceSystemID,\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\n",
 					"    NULL AS ValidTo,\n",
 					"    md5(CONCAT(IFNULL(T1.InspectorID, \".\"), IFNULL(T1.MRWLinesID, \".\"), IFNULL(T2.MRWStatusID, \".\"), IFNULL(T3.MRWSubmissionDateID, \".\"))) as RowID,\n",
 					"    \"Y\" AS IsActive\n",
 					"FROM odw_harmonised_db.mrw_lines_dim T1\n",
 					"LEFT JOIN odw_harmonised_db.mrw_status_dim T2 ON T1.InspectorID = T2.InspectorID AND T1.JobID = T2.JobID AND T1.TimeSheetDate = T2.TimeSheetDate\n",
-					"LEFT JOIN odw_harmonised_db.mrw_submission_date_dim T3 ON T1.InspectorID = T3.InspectorID AND T1.JobID = T3.JobID AND T1.Dated = T3.Dated;\n",
+					"LEFT JOIN odw_harmonised_db.mrw_submission_date_dim T3 ON T1.InspectorID = T3.InspectorID AND T1.JobID = T3.JobID AND T1.Dated = T3.Dated\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T4 ON \"Legacy Timesheets\" = T4.Description;\n",
 					"\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
