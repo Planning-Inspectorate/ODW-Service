@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6abb6521-cec4-403d-b6e6-706ada90d194"
+				"spark.autotune.trackingId": "2e3bf825-2961-43c5-934b-3e815db89fcc"
 			}
 		},
 		"metadata": {
@@ -65,11 +65,54 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql import SparkSession\r\n",
-					"spark = SparkSession.builder.getOrCreate()\r\n",
-					"spark.sql(\"drop table if exists odw_standardised_db.mock_data\")"
+					"db_name=\"odw_standardised_db\"\r\n",
+					"table_name=\"work_segment\""
 				],
-				"execution_count": 3
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if len(table_details) > 1:\r\n",
+					"    raise RuntimeError(\"too many locations associated with the table!\")\r\n",
+					"else:\r\n",
+					"    loc = table_details['location'][0]\r\n",
+					"    mssparkutils.fs.rm(loc, True)\r\n",
+					"    spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")"
+				],
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
