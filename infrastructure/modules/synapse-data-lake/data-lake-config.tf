@@ -5,5 +5,5 @@ resource "azurerm_storage_blob" "test" {
   storage_account_name   = azurerm_storage_account.synapse.name
   storage_container_name = "odw-config"
   type                   = "Block"
-  source                 = each.key
+  source                 = "${var.data_lake_configuration_folder_path}/${each.key}"
 }

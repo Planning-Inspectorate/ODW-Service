@@ -54,6 +54,7 @@ No requirements.
 |------|-------------|------|---------|:--------:|
 | <a name="input_data_lake_account_tier"></a> [data\_lake\_account\_tier](#input\_data\_lake\_account\_tier) | The tier of the Synapse data lake Storage Account | `string` | `"Standard"` | no |
 | <a name="input_data_lake_configuration_files"></a> [data\_lake\_configuration\_files](#input\_data\_lake\_configuration\_files) | A list of files to be copied into the data lake configuration container | `list(string)` | `[]` | no |
+| <a name="input_data_lake_configuration_folder_path"></a> [data\_lake\_configuration\_folder\_path](#input\_data\_lake\_configuration\_folder\_path) | The folder path containing data lake configuration files | `string` | `""` | no |
 | <a name="input_data_lake_lifecycle_rules"></a> [data\_lake\_lifecycle\_rules](#input\_data\_lake\_lifecycle\_rules) | A list of objects describing data lifecycle rules for the Synapse data lake Storage Account | `list(any)` | `[]` | no |
 | <a name="input_data_lake_private_endpoint_dns_zone_id"></a> [data\_lake\_private\_endpoint\_dns\_zone\_id](#input\_data\_lake\_private\_endpoint\_dns\_zone\_id) | The ID of the Private DNS Zone hosting privatelink.dfs.core.windows.net | `string` | n/a | yes |
 | <a name="input_data_lake_replication_type"></a> [data\_lake\_replication\_type](#input\_data\_lake\_replication\_type) | The replication type for the Synapse data lake Storage Account | `string` | `"ZRS"` | no |
