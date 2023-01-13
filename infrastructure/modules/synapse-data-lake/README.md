@@ -41,6 +41,7 @@ No requirements.
 | [azurerm_role_assignment.terraform](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/role_assignment) | resource |
 | [azurerm_storage_account.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) | resource |
 | [azurerm_storage_account_network_rules.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account_network_rules) | resource |
+| [azurerm_storage_blob.test](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_blob) | resource |
 | [azurerm_storage_container.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_container) | resource |
 | [azurerm_storage_data_lake_gen2_filesystem.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_data_lake_gen2_filesystem) | resource |
 | [azurerm_storage_management_policy.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_management_policy) | resource |
@@ -52,6 +53,7 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_data_lake_account_tier"></a> [data\_lake\_account\_tier](#input\_data\_lake\_account\_tier) | The tier of the Synapse data lake Storage Account | `string` | `"Standard"` | no |
+| <a name="input_data_lake_configuration_files"></a> [data\_lake\_configuration\_files](#input\_data\_lake\_configuration\_files) | A list of files to be copied into the data lake configuration container | `list(string)` | `[]` | no |
 | <a name="input_data_lake_lifecycle_rules"></a> [data\_lake\_lifecycle\_rules](#input\_data\_lake\_lifecycle\_rules) | A list of objects describing data lifecycle rules for the Synapse data lake Storage Account | `list(any)` | `[]` | no |
 | <a name="input_data_lake_private_endpoint_dns_zone_id"></a> [data\_lake\_private\_endpoint\_dns\_zone\_id](#input\_data\_lake\_private\_endpoint\_dns\_zone\_id) | The ID of the Private DNS Zone hosting privatelink.dfs.core.windows.net | `string` | n/a | yes |
 | <a name="input_data_lake_replication_type"></a> [data\_lake\_replication\_type](#input\_data\_lake\_replication\_type) | The replication type for the Synapse data lake Storage Account | `string` | `"ZRS"` | no |
