@@ -2,7 +2,7 @@ locals {
   location     = var.location
   service_name = "odw"
 
-  data_lake_config_files_path = "${path.module}/configuration/data-lake-configuration"
+  data_lake_config_files_path = "${path.module}/configuration/data-lake"
   firewall_config_file_path   = "${path.module}/configuration/firewall-rules/allowed_ip_addresses.yaml"
   lifecycle_policy_file_path  = "${path.module}/configuration/data-lifecycle/policies.json"
 
