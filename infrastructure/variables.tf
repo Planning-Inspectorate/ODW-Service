@@ -68,6 +68,12 @@ variable "data_lake_account_tier" {
   type        = string
 }
 
+variable "data_lake_config_container_name" {
+  default     = ""
+  description = "The name of the data lake Storage Account container to store configuration files"
+  type        = string
+}
+
 variable "data_lake_replication_type" {
   default     = "ZRS"
   description = "The replication type for the Synapse data lake Storage Account"
@@ -152,6 +158,12 @@ variable "network_watcher_enabled" {
   default     = false
   description = "Determines whether a Network Watcher resource will be deployed"
   type        = bool
+}
+
+variable "service_bus_role_assignments" {
+  default     = {}
+  description = "An object mapping RBAC roles to principal IDs for the service bus"
+  type        = map(list(string))
 }
 
 variable "spark_pool_enabled" {

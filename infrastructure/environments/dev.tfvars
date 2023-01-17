@@ -15,9 +15,10 @@ bastion_vm_image = {
   version   = "latest"
 }
 
-data_lake_account_tier     = "Standard"
-data_lake_replication_type = "GRS"
-data_lake_retention_days   = 7
+data_lake_account_tier          = "Standard"
+data_lake_config_container_name = "odw-config"
+data_lake_replication_type      = "GRS"
+data_lake_retention_days        = 7
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543", # pins-odw-dev-administrators
@@ -51,12 +52,18 @@ key_vault_role_assignments = {
 
 network_watcher_enabled = false
 
+service_bus_role_assignments = {
+  "Azure Service Bus Data Owner" = [
+    "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators
+  ]
+}
+
 spark_pool_enabled         = true
 spark_pool_max_node_count  = 12
 spark_pool_min_node_count  = 3
 spark_pool_node_size       = "Small"
 spark_pool_timeout_minutes = 60
-spark_pool_version         = "3.2"
+spark_pool_version         = "3.3"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false
