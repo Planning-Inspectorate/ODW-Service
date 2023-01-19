@@ -1,5 +1,5 @@
 {
-	"name": "position_dim",
+	"name": "hr_position_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ffb63407-b0e8-43c8-97a6-d2adcb3da877"
+				"spark.autotune.trackingId": "bd9ffbe8-b3b3-4717-b691-be0b51dd0b68"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -76,7 +76,6 @@
 					"    AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"\r\n",
 					"    Position  AS PositionCode,\r\n",
 					"    First(Position_1)  AS Description\r\n",
 					"\r\n",
@@ -135,8 +134,6 @@
 					"    T1.PositionCode,\r\n",
 					"    T1.Description,\r\n",
 					"    T2.SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.PositionCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
@@ -156,8 +153,8 @@
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM pins_position_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.position_dim T7 ON T1.PositionCode = T7.PositionCode AND T7.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.hr_position_dim T7 ON T1.PositionCode = T7.PositionCode AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
@@ -177,7 +174,7 @@
 					"            END = 'Y' )\r\n",
 					"    );"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -244,7 +241,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -309,7 +306,7 @@
 					"#     else:\r\n",
 					"#         raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -359,8 +356,6 @@
 					"    PositionCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
@@ -377,17 +372,15 @@
 					"    PositionCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.position_dim\r\n",
+					"FROM odw_harmonised_db.hr_position_dim\r\n",
 					"WHERE PositionCode IN (SELECT PositionCode FROM position_dim_new WHERE PositionID IS NULL) AND IsActive = 'Y'; "
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -427,7 +420,7 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.position_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.hr_position_dim AS Target\r\n",
 					"USING position_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.PositionID = Target.PositionID\r\n",
@@ -437,7 +430,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -445,7 +438,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -484,24 +477,22 @@
 					"%%sql\r\n",
 					"-- Insert new PINS_Location_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.position_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_position_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY PositionID NULLS LAST) AS PositionID,\r\n",
 					"    PositionCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.position_dim;\r\n",
+					"FROM odw_harmonised_db.hr_position_dim;\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": null
 			}
 		]
 	}
