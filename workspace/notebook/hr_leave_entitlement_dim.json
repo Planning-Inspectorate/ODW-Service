@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5d17aa87-c224-49a4-a830-c2710fa66022"
+				"spark.autotune.trackingId": "903466b4-8019-43db-8d62-609acd032684"
 			}
 		},
 		"metadata": {
@@ -100,8 +100,6 @@
 					"    T1.Ded_To AS LeaveYearEnd,\r\n",
 					"    T1.Absence_Quota_type AS AbsenceQuotaType,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.Number,'.'), IFNULL(T1.Deduction,'.'))) as RowID,\r\n",
@@ -151,7 +149,7 @@
 					"\r\n",
 					";"
 				],
-				"execution_count": 1
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -202,8 +200,6 @@
 					"    LeaveYearEnd,\r\n",
 					"    AbsenceQuotaType,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
@@ -221,13 +217,11 @@
 					"    T1.LeaveYearEnd,\r\n",
 					"    T1.AbsenceQuotaType,\r\n",
 					"    T1.SourceSystemID,\r\n",
-					"    T1.StartDate,\r\n",
-					"    T1.EndDate,\r\n",
 					"    T1.IngestionDate,\r\n",
 					"    T1.ValidTo,\r\n",
 					"    T1.RowID,\r\n",
 					"    T1.IsActive\r\n",
-					"FROM odw_harmonised_db.leaveentitlement_dim T1\r\n",
+					"FROM odw_harmonised_db.hr_leave_entitlement_dim T1\r\n",
 					"INNER JOIN leaveentitlement_dim_new T2 ON   T1.EmployeeID = T2.EmployeeID AND\r\n",
 					"                                            T1.AbsenceQuotaType = T2.AbsenceQuotaType AND\r\n",
 					"                                            T2.LeaveEntitlementID IS NULL AND \r\n",
@@ -275,7 +269,7 @@
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.leaveentitlement_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.hr_leave_entitlement_dim AS Target\r\n",
 					"USING leaveentitlement_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.LeaveEntitlementID = Target.LeaveEntitlementID\r\n",
@@ -285,7 +279,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -333,7 +327,7 @@
 					"\r\n",
 					"-- Insert new ContractID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.leaveentitlement_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_leave_entitlement_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY LeaveEntitlementID NULLS LAST) AS LeaveEntitlementID,\r\n",
@@ -344,13 +338,11 @@
 					"    LeaveYearEnd,\r\n",
 					"    AbsenceQuotaType,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.leaveentitlement_dim;\r\n",
+					"FROM odw_harmonised_db.hr_leave_entitlement_dim;\r\n",
 					""
 				],
 				"execution_count": null
