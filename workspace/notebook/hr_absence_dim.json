@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2002779d-cc16-4365-91b0-7caf31dee2b2"
+				"spark.autotune.trackingId": "b65e7638-390b-48d1-8034-9f05586e8ab4"
 			}
 		},
 		"metadata": {
@@ -107,8 +107,6 @@
 					"    T4.WorkScheduleID as WorkScheduleID,\r\n",
 					"    Annual_Leave_Start AS AnnualLeaveStart,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T3.EmployeeID,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(T1.Start_Date,'.'), IFNULL(T1.End_Date,'.'))) as RowID,\r\n",
@@ -131,14 +129,14 @@
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_absences T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"LEFT JOIN odw_harmonised_db.employee_dim T3 ON T3.EmployeeNumber = T1.Staff_Number and T3.IsActive = 'Y'\r\n",
-					"LEFT JOIN odw_harmonised_db.workschedule_dim T4 ON T4.WorkScheduleRule = T1.Work_Schedule_Rule AND \r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.hr_employee_fact T3 ON T3.EmployeeNumber = T1.Staff_Number and T3.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.hr_work_schedule_dim T4 ON T4.WorkScheduleRule = T1.Work_Schedule_Rule AND \r\n",
 					"                                                        T4.WorkWeekDays = T1.WkDys AND \r\n",
 					"                                                        T4.WorkWeekHours = T1.Wk_hrs AND   \r\n",
 					"                                                        T4.WorkDayHours = T1.Hrs_Day\r\n",
 					"                                                        AND T4.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.absence_dim T7 ON T3.EmployeeID = T7.EmployeeID AND \r\n",
+					"FULL JOIN odw_harmonised_db.hr_absence_dim T7 ON T3.EmployeeID = T7.EmployeeID AND \r\n",
 					"                                                T1.Attendance_or_Absence_Type = T7.AbsenceType AND \r\n",
 					"                                                T1.Start_Date = T7.AbsenceStartDate AND \r\n",
 					"                                                T1.End_Date = T7.AbsenceEndDate\r\n",
@@ -166,7 +164,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 4
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -221,8 +219,6 @@
 					"    WorkScheduleID,\r\n",
 					"    AnnualLeaveStart,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
@@ -243,21 +239,17 @@
 					"    T4.WorkScheduleID,\r\n",
 					"    T4.AnnualLeaveStart,\r\n",
 					"    T4.SourceSystemID,\r\n",
-					"    T4.StartDate,\r\n",
-					"    T4.EndDate,\r\n",
 					"    T4.IngestionDate,\r\n",
 					"    T4.ValidTo,\r\n",
 					"    T4.RowID,\r\n",
 					"    T4.IsActive\r\n",
-					"FROM odw_harmonised_db.absence_dim T4\r\n",
+					"FROM odw_harmonised_db.hr_absence_dim T4\r\n",
 					"INNER JOIN absence_dim_new T5 ON T4.EmployeeID = T5.EmployeeID AND T4.AbsenceType = T5.AbsenceType AND\r\n",
 					" T4.AbsenceStartDate = T5.AbsenceStartDate AND T4.AbsenceEndDate = T5.AbsenceEndDate AND \r\n",
-					" T5.AbsenceID IS NULL AND IsActive = 'Y'\r\n",
-					"; \r\n",
-					"\r\n",
-					""
+					" T5.AbsenceID IS NULL AND T5.IsActive = 'Y'\r\n",
+					";"
 				],
-				"execution_count": 5
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -296,7 +288,7 @@
 					"%%sql\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.absence_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.hr_absence_dim AS Target\r\n",
 					"USING absence_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.AbsenceID = Target.AbsenceID \r\n",
@@ -306,7 +298,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -353,7 +345,7 @@
 					"%%sql\r\n",
 					"-- Insert new WorkScheduleID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.absence_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_absence_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY AbsenceID NULLS LAST) AS AbsenceID,\r\n",
@@ -367,13 +359,11 @@
 					"    WorkScheduleID,\r\n",
 					"    AnnualLeaveStart,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.absence_dim;\r\n",
+					"FROM odw_harmonised_db.hr_absence_dim;\r\n",
 					"\r\n",
 					""
 				],
