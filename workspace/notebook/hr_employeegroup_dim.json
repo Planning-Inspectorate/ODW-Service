@@ -1,5 +1,5 @@
 {
-	"name": "employeegroup_dim",
+	"name": "hr_employeegroup_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "9",
 				"spark.dynamicAllocation.maxExecutors": "9",
-				"spark.autotune.trackingId": "fbeea392-cb84-4e4d-b1ac-e6cca3f97532"
+				"spark.autotune.trackingId": "c851bb55-ce48-479d-8aad-a563a9a0d6fc"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -72,11 +72,9 @@
 					"%%sql\r\n",
 					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW employeegroup_grouped\r\n",
-					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"\r\n",
 					"    EEGrp,\r\n",
 					"    First(Employee_Group) AS EmployeeGroup    \r\n",
 					"    \r\n",
@@ -134,8 +132,6 @@
 					"    T1.EEGrp, -- source system id\r\n",
 					"    T1.EmployeeGroup, \r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.EEGrp,'.'), IFNULL(T1.EmployeeGroup,'.'))) as RowID,\r\n",
@@ -155,8 +151,8 @@
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM employeegroup_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.employeegroup_dim T7 ON T1.EEGrp = T7.EEGrp AND T7.IsActive = 'Y' \r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.hr_employeegroup_dim T7 ON T1.EEGrp = T7.EEGrp AND T7.IsActive = 'Y' \r\n",
 					"WHERE\r\n",
 					"    ( \r\n",
 					"        -- flags new data        \r\n",
@@ -175,8 +171,7 @@
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
 					"    )\r\n",
-					";\r\n",
-					""
+					";"
 				],
 				"execution_count": 13
 			},
@@ -226,8 +221,6 @@
 					"    EEGrp,\r\n",
 					"    EmployeeGroup,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
@@ -241,13 +234,11 @@
 					"    EEGrp,\r\n",
 					"    EmployeeGroup,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employeegroup_dim\r\n",
+					"FROM odw_harmonised_db.hr_employeegroup_dim\r\n",
 					"WHERE EEGrp IN (SELECT EEGrp FROM employeegroup_dim_new WHERE EmployeeGroupID IS NULL) AND IsActive = 'Y'; \r\n",
 					""
 				],
@@ -290,7 +281,7 @@
 					"%%sql\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.employeegroup_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.hr_employeegroup_dim AS Target\r\n",
 					"USING employeegroup_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.EmployeeGroupID = Target.EmployeeGroupID\r\n",
@@ -300,7 +291,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -347,20 +338,18 @@
 					"%%sql\r\n",
 					"-- Insert new PersonnelAreaID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.employeegroup_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_employeegroup_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY EmployeeGroupID NULLS LAST) AS EmployeeGroupID,\r\n",
 					"    EEGrp,\r\n",
 					"    EmployeeGroup,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.employeegroup_dim;\r\n",
+					"FROM odw_harmonised_db.hr_employeegroup_dim;\r\n",
 					""
 				],
 				"execution_count": 18
