@@ -1,5 +1,5 @@
 {
-	"name": "payband_dim",
+	"name": "hr_payband_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7ab4b81f-dd14-4bcf-abf5-0910ca1b5826"
+				"spark.autotune.trackingId": "81f00d13-e0e1-44c3-8bda-bdb363c0a7d3"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -76,15 +76,14 @@
 					"    AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"\r\n",
 					"    PS_group AS PSGroupCode,\r\n",
-					"    First(Pay_Band_Description) AS Description    \r\n",
+					"    First(Pay_Band_Description) AS Description\r\n",
 					"    \r\n",
 					"FROM odw_standardised_db.vw_saphr\r\n",
 					"WHERE PS_group IS NOT NULL\r\n",
 					"GROUP BY PS_group;"
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -134,8 +133,6 @@
 					"    T1.PSGroupCode, -- source system id\r\n",
 					"    T1.Description, \r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
@@ -155,8 +152,8 @@
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM payband_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.payband_dim T7 ON T1.PSGroupCode = T7.PSGroupCode AND\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.hr_payband_dim T7 ON T1.PSGroupCode = T7.PSGroupCode AND\r\n",
 					"                                                T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
@@ -362,8 +359,6 @@
 					"    PSGroupCode,\r\n",
 					"    Description, \r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
@@ -377,13 +372,11 @@
 					"    PSGroupCode,\r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.payband_dim\r\n",
+					"FROM odw_harmonised_db.hr_payband_dim\r\n",
 					"WHERE PSGroupCode IN (SELECT PSGroupCode FROM payband_dim_new WHERE PayBandID IS NULL) \r\n",
 					"AND IsActive = 'Y' ; \r\n",
 					""
@@ -427,7 +420,7 @@
 					"%%sql\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.payband_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.hr_payband_dim AS Target\r\n",
 					"USING payband_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.PayBandID = Target.PayBandID\r\n",
@@ -437,7 +430,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -484,20 +477,18 @@
 					"%%sql\r\n",
 					"-- Insert new PersonnelAreaID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.payband_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_payband_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY PayBandID NULLS LAST) AS PayBandID,\r\n",
 					"    PSGroupCode,\r\n",
 					"    Description, \r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.payband_dim;\r\n",
+					"FROM odw_harmonised_db.hr_payband_dim;\r\n",
 					""
 				],
 				"execution_count": null
