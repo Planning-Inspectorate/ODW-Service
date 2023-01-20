@@ -52,6 +52,7 @@ key_vault_role_assignments = {
 
 network_watcher_enabled = false
 
+service_bus_failover_enabled = false
 service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators

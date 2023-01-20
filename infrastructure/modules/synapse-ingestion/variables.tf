@@ -24,6 +24,11 @@ variable "location" {
   type        = string
 }
 
+variable "service_bus_failover_enabled" {
+  default     = false
+  description = "A switch to determine if Service Bus failover is enabled requiring the Premium SKU"
+}
+
 variable "service_bus_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for the service bus"
