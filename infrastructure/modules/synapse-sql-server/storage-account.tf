@@ -1,8 +1,8 @@
 resource "azurerm_storage_account" "sql_server_auditing" {
-  #checkov:skip=CKV_AZURE_35:   TODO: Set default network access to deny
-  #checkov:skip=CKV2_AZURE_1:   SKIP: Microsoft managed keys are acceptable
-  #checkov:skip=CKV2_AZURE_8:   TODO: Set activity log container to private
-  #checkov:skip=CKV2_AZURE_18:  SKIP: Microsoft managed keys are acceptable
+  #checkov:skip=CKV_AZURE_35: Firewall is enabled using azurerm_storage_account_network_rules
+  #checkov:skip=CKV2_AZURE_1: Microsoft managed keys are acceptable
+  #checkov:skip=CKV2_AZURE_8: Firewall is enabled using azurerm_storage_account_network_rules
+  #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   name                      = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
   location                  = var.location
   resource_group_name       = var.resource_group_name
