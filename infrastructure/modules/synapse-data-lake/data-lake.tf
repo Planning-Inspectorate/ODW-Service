@@ -59,7 +59,7 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "synapse" {
 }
 
 resource "azurerm_storage_container" "synapse" {
-  #checkov:skip=CKV2_AZURE_21:  SKIP: Implemented in synapse-monitoring module
+  #checkov:skip=CKV2_AZURE_21: Implemented in synapse-monitoring module
   for_each = toset(var.data_lake_storage_containers)
 
   name                  = each.key
