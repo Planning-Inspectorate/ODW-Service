@@ -1,8 +1,8 @@
 {
-	"name": "payband_dim",
+	"name": "casework_horizon_decision_issues_dim",
 	"properties": {
 		"folder": {
-			"name": "odw-harmonised/SAP-HR"
+			"name": "odw-standardised"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3a050931-baf1-49a9-9ffd-7d787f6a7c9e"
+				"spark.autotune.trackingId": "4ac3c0a3-4a09-4e5a-903d-94549e625888"
 			}
 		},
 		"metadata": {
@@ -55,15 +55,6 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
 					"microsoft": {
 						"language": "sparksql"
 					},
@@ -71,55 +62,10 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_grouped\r\n",
-					"\r\n",
-					"    AS\r\n",
-					"\r\n",
-					"SELECT \r\n",
-					"\r\n",
-					"    PS_group AS PSGroupCode,\r\n",
-					"    First(Pay_Band_Description) AS Description    \r\n",
-					"    \r\n",
-					"FROM odw_standardised_db.vw_saphr\r\n",
-					"WHERE PS_group IS NOT NULL\r\n",
-					"GROUP BY PS_group;"
-				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.payband_dim)\n",
-					"- **New Data:** where a PA in the source does not exist as an PSGroupCode in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on PA in source and PSGroupCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an PSGroupCode in the target exists but the same PA doesn't exist in the source. DeletedData flag is set to 'Y'\n",
-					"\n",
-					"## View payband_dim_new is created"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"-- Build payband_dim table\r\n",
+					"-- Build horizon_decision_issues_dim table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW horizon_decision_issues_dim\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -127,58 +73,18 @@
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode IS NULL\r\n",
-					"        THEN T7.PayBandID\r\n",
-					"        ELSE NULL\r\n",
-					"    END as PayBandID, -- surrogate key\r\n",
-					"    T1.PSGroupCode, -- source system id\r\n",
-					"    T1.Description, \r\n",
-					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
-					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData, \r\n",
-					"    T7.IsActive as HistoricIsActive\r\n",
+					"    ingested_datetime,\r\n",
+					"    expected_from,\r\n",
+					"    expected_to,\r\n",
+					"    appealrenumber,\r\n",
+					"    lastmodified,\r\n",
+					"    decisionissue,\r\n",
+					"    md5(concat(IFNULL(ingested_datetime,'.'), IFNULL(expected_from,'.'),IFNULL(expected_to,'.'),IFNULL(lastmodified,'.'),IFNULL(decisionissue,'.'))) as RowID,\r\n",
+					"   \r\n",
 					"\r\n",
-					"FROM payband_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.payband_dim T7 ON T1.PSGroupCode = T7.PSGroupCode AND\r\n",
-					"                                                T7.IsActive = 'Y'\r\n",
-					"WHERE\r\n",
-					"    (\r\n",
-					"        -- flags new data        \r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
-					"                THEN 'Y'\r\n",
-					"                WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
-					"    );"
+					"    FROM horizon_decision_issues;"
 				],
-				"execution_count": 5
+				"execution_count": 34
 			},
 			{
 				"cell_type": "markdown",
@@ -250,7 +156,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
