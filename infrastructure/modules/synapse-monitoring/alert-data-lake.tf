@@ -152,26 +152,3 @@ resource "azurerm_monitor_metric_alert" "data_lake_throughput_ingress" {
     action_group_id = azurerm_monitor_action_group.platform_alerts.id
   }
 }
-
-resource "azurerm_monitor_metric_alert" "synapse_pipeline_activity_failure" {
-  name                = "Synapse Activity Failure"
-  resource_group_name = var.resource_group_name
-  scopes              = [var.synapse_workspace_name]
-  description         = "Triggers an alert if an Activity in Synapse fails"
-  enabled             = var.alert_group_platform_enabled
-  frequency           = "PT1M"
-  severity            = 1
-  window_size         = "PT1M"
-
-  criteria {
-    metric_name      = "Synapse_Activity_Failure"
-    metric_namespace = "Microsoft.Storage/storageAccounts"
-    aggregation      = "Count"
-    operator         = "GreaterThan"
-    threshold        = 0 # 2.79TiB/minute (46.57GiB/s)
-  }
-
-  action {
-    action_group_id = azurerm_monitor_action_group.platform_alerts.id
-  }
-}
