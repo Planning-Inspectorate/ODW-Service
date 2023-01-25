@@ -96,13 +96,13 @@ variable "spark_pool_node_size" {
 
 variable "spark_pool_preview_enabled" {
   default     = false
-  description = "Determines whether a Synapse-linked Spark pool should be deployed"
+  description = "Determines whether a Synapse-linked preview Spark pool should be deployed"
   type        = bool
 }
 
 variable "spark_pool_preview_version" {
   default     = "3.3"
-  description = "The version of Spark running on the Synapse-linked Spark pool"
+  description = "The version of Spark running on the Synapse-linked preview Spark pool"
   type        = string
 }
 
