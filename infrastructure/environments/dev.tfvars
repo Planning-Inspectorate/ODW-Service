@@ -66,6 +66,9 @@ spark_pool_node_size       = "Small"
 spark_pool_timeout_minutes = 60
 spark_pool_version         = "3.2"
 
+spark_pool_preview_enabled = true
+spark_pool_preview_version = "3.3"
+
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false
 sql_pool_sku_name  = "DW100c"
@@ -77,9 +80,6 @@ synapse_aad_administrator = {
   username  = "pins-odw-data-dev-syn-ws-sqladmins"
   object_id = "1c996957-30e4-40fe-b0b4-82d40f13c058"
 }
-
-spark_pool_preview_enabled = true
-spark_pool_preview_version = "3.3"
 
 synapse_data_exfiltration_enabled  = false
 synapse_sql_administrator_username = "synadmin"
