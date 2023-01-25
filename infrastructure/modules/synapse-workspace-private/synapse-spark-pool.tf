@@ -37,13 +37,13 @@ resource "azurerm_synapse_spark_pool" "synapse" {
 }
 
 resource "azurerm_synapse_spark_pool" "synapse_preview" {
-  count = var.spark_pool_enabled ? 1 : 0
+  count = var.spark_pool_preview_enabled ? 1 : 0
 
   name                 = "pinsodwpreview"
   synapse_workspace_id = azurerm_synapse_workspace.synapse.id
   node_size_family     = "MemoryOptimized"
   node_size            = var.spark_pool_node_size
-  spark_version        = var.spark_pool_version
+  spark_version        = var.spark_pool_preview_version
 
   auto_pause {
     delay_in_minutes = var.spark_pool_timeout_minutes

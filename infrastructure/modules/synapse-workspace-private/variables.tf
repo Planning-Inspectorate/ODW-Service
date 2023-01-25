@@ -76,6 +76,12 @@ variable "spark_pool_enabled" {
   type        = bool
 }
 
+variable "spark_pool_preview_enabled" {
+  default     = false
+  description = "Determines whether a Synapse-linked Spark pool should be deployed"
+  type        = bool
+}
+
 variable "spark_pool_max_node_count" {
   default     = 9
   description = "The maximum number of nodes the Synapse-linked Spark pool can autoscale to"
@@ -107,6 +113,12 @@ variable "spark_pool_timeout_minutes" {
 }
 
 variable "spark_pool_version" {
+  default     = "2.4"
+  description = "The version of Spark running on the Synapse-linked Spark pool"
+  type        = string
+}
+
+variable "spark_pool_preview_version" {
   default     = "2.4"
   description = "The version of Spark running on the Synapse-linked Spark pool"
   type        = string
