@@ -99,6 +99,7 @@ resource "azurerm_monitor_metric_alert" "synapse_exceptions" {
   frequency           = "PT1M"
   severity            = 1
   window_size         = "PT5M"
+
   criteria {
     metric_name      = "FailureAnomaliesDetector"
     metric_namespace = "Microsoft.AlertsManagement/smartDetectorAlertRules"
@@ -106,8 +107,10 @@ resource "azurerm_monitor_metric_alert" "synapse_exceptions" {
     operator         = "GreaterThanOrEqual"
     threshold        = 1
   }
+
   action {
     action_group_id = azurerm_monitor_action_group.synapse_alerts.id
   }
+
   tags = local.tags
 }
