@@ -101,7 +101,7 @@ resource "azurerm_monitor_metric_alert" "synapse_exceptions" {
   window_size         = "PT5M"
 
   criteria {
-    metric_name      = "FailureAnomaliesDetector"
+    metric_name      = "exceptions/count"
     metric_namespace = "Microsoft.Insights/components"
     aggregation      = "Count"
     operator         = "GreaterThanOrEqual"
