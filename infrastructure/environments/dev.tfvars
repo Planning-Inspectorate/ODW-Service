@@ -78,6 +78,25 @@ synapse_aad_administrator = {
   object_id = "1c996957-30e4-40fe-b0b4-82d40f13c058"
 }
 
+spark_pool_preview_enabled         = true
+spark_pool_preview_max_node_count  = 12
+spark_pool_preview_min_node_count  = 3
+spark_pool_preview_node_size       = "Small"
+spark_pool_preview_timeout_minutes = 60
+spark_pool_preview_version         = "3.3"
+
+sql_pool_preview_collation = "SQL_Latin1_General_CP1_CI_AS"
+sql_pool_preview_enabled   = false
+sql_pool_preview_sku_name  = "DW100c"
+
+sql_server_administrator_username = "sqladmin"
+sql_server_enabled                = true
+
+synapse_aad_administrator = {
+  username  = "pins-odw-data-dev-syn-ws-sqladmins"
+  object_id = "1c996957-30e4-40fe-b0b4-82d40f13c058"
+}
+
 synapse_data_exfiltration_enabled  = false
 synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
