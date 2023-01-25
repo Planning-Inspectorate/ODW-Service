@@ -13,7 +13,8 @@ resource "azurerm_network_interface" "jumpbox" {
 }
 
 resource "azurerm_windows_virtual_machine" "jumpbox" {
-  #checkov:skip=CKV_AZURE_151:  SKIP: Host encryption not enabled for subscription
+  #checkov:skip=CKV_AZURE_151: Host encryption is not supported
+  #checkov:skip=CKV_AZURE_177: Automatic updates are only supported for Windows Server 2022
   name                       = "bas-vm-${local.resource_suffix}"
   location                   = var.location
   resource_group_name        = var.resource_group_name
@@ -23,7 +24,7 @@ resource "azurerm_windows_virtual_machine" "jumpbox" {
   allow_extension_operations = false
   computer_name              = "bastion-${random_string.unique_id.id}"
   network_interface_ids      = [azurerm_network_interface.jumpbox.id]
-  provision_vm_agent         = false
+  provision_vm_agent         = true
 
   os_disk {
     caching              = "ReadWrite"
