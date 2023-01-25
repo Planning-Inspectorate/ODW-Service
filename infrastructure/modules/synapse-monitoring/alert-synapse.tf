@@ -102,7 +102,7 @@ resource "azurerm_monitor_metric_alert" "synapse_exceptions" {
 
   criteria {
     metric_name      = "FailureAnomaliesDetector"
-    metric_namespace = "Microsoft.AlertsManagement/smartDetectorAlertRules"
+    metric_namespace = "Microsoft.Insights/components"
     aggregation      = "Count"
     operator         = "GreaterThanOrEqual"
     threshold        = 1
