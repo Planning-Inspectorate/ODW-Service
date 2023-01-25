@@ -26,15 +26,14 @@ module "synapse_sql_server" {
   location            = module.azure_region.location_cli
   service_name        = local.service_name
 
+  devops_agent_subnet_name          = module.synapse_network.devops_agent_subnet_name
+  firewall_allowed_ip_addresses     = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                      = module.synapse_data_lake.key_vault_id
   sql_server_aad_administrator      = var.synapse_aad_administrator
   sql_server_administrator_username = var.sql_server_administrator_username
   synapse_workspace_id              = module.synapse_workspace_private.synapse_workspace_id
-
-  depends_on = [
-    module.synapse_data_lake,
-    module.synapse_workspace_private
-  ]
+  vnet_subnet_ids                   = module.synapse_network.vnet_subnets
+  vnet_subnet_ids_failover          = module.synapse_network_failover.vnet_subnets
 
   tags = local.tags
 }
@@ -49,15 +48,14 @@ module "synapse_sql_server_failover" {
   location            = module.azure_region.paired_location.location_cli
   service_name        = local.service_name
 
+  devops_agent_subnet_name          = module.synapse_network_failover.devops_agent_subnet_name
+  firewall_allowed_ip_addresses     = yamldecode(file(local.firewall_config_file_path))
   key_vault_id                      = module.synapse_data_lake_failover.key_vault_id
   sql_server_aad_administrator      = var.synapse_aad_administrator
   sql_server_administrator_username = var.sql_server_administrator_username
   synapse_workspace_id              = module.synapse_workspace_private_failover[0].synapse_workspace_id
-
-  depends_on = [
-    module.synapse_data_lake_failover,
-    module.synapse_workspace_private_failover
-  ]
+  vnet_subnet_ids                   = module.synapse_network_failover.vnet_subnets
+  vnet_subnet_ids_failover          = module.synapse_network.vnet_subnets
 
   tags = local.tags
 }
