@@ -1,5 +1,5 @@
 {
-	"name": "casework_horizon_decision_issues_dim",
+	"name": "casework_advert_details_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2e227034-f984-401b-b867-24548281fde9"
+				"spark.autotune.trackingId": "fbc51dc7-9760-47cf-8c64-e13da94d9e97"
 			}
 		},
 		"metadata": {
@@ -53,38 +53,23 @@
 		},
 		"cells": [
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
 				},
 				"source": [
-					"%%sql\r\n",
-					"-- Build horizon_decision_issues_dim table\r\n",
-					"-- Gets modified or deleted from source rows\r\n",
+					"# Check for new, updated or deleted data\r\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.specialism_dim)\r\n",
+					"- **New Data:** where an EmployeeID in the source does not exist as an EmployeeID in the target. NewData flag is set to 'Y'\r\n",
+					"- **Updated data:** Comparison occurs on EmployeeID in source and EmployeeID in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\r\n",
+					"- **Deleted data:** where an EmployeeID in the target exists but the same EmployeeID doesn't exist in the source. DeletedData flag is set to 'Y'\r\n",
 					"\r\n",
-					"--CREATE OR REPLACE TEMPORARY VIEW horizon_decision_issues_dim\r\n",
-					"\r\n",
-					"  --  AS\r\n",
-					"\r\n",
-					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
-					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
-					"\r\n",
-					"SELECT \r\n",
-					"    ingested_datetime,\r\n",
-					"    expected_from,\r\n",
-					"    expected_to,\r\n",
-					"    appealrefnumber,\r\n",
-					"    lastmodified,\r\n",
-					"    decisionissue,\r\n",
-					"    md5(concat(IFNULL(ingested_datetime,'.'), IFNULL(expected_from,'.'),IFNULL(expected_to,'.'),IFNULL(lastmodified,'.'),IFNULL(decisionissue,'.'))) as RowID\r\n",
-					"   \r\n",
-					"   \r\n",
-					"FROM odw_standardised_db.horizon_decision_issues;"
-				],
-				"execution_count": 19
+					"## View specialism_dim_new is created"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -97,10 +82,82 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"microsoft": {
+						"language": "sparksql"
 					}
 				},
 				"source": [
-					""
+					"%%sql\r\n",
+					"-- Build specialism_dim table\r\n",
+					"-- Gets modified or deleted from source rows\r\n",
+					"\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_advert_details_new\r\n",
+					"\r\n",
+					"    AS\r\n",
+					"\r\n",
+					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
+					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    CASE\r\n",
+					"        WHEN T1.AdvertDetailsID IS NULL\r\n",
+					"        THEN first(T7.AdvertDetailsID)\r\n",
+					"        ELSE NULL\r\n",
+					"    END as AdvertDeailsID, -- surrogate key\r\n",
+					"    FIRST(T3.EmployeeID) AS EmployeeID,\r\n",
+					"    T1.Qualification_Name as Qualification,\r\n",
+					"    T1.Proficien AS Proficiency,\r\n",
+					"    first(T2.SourceSystemID) as SourceSystemID,\r\n",
+					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
+					"    NULL AS EndDate,\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo,\r\n",
+					"    md5(concat(IFNULL(FIRST(T3.EmployeeID),'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) as RowID,\r\n",
+					"    'Y' as IsActive,\r\n",
+					"    CASE\r\n",
+					"        WHEN FIRST(T3.EmployeeID) = first(T7.EmployeeID) AND  md5(concat(IFNULL(FIRST(T3.EmployeeID),'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) <> first(T7.RowID)    -- same employee, changed data\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN first(T7.EmployeeID) IS NULL -- new employee\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END as NewData,\r\n",
+					"    CASE\r\n",
+					"        WHEN FIRST(T3.EmployeeID) IS NULL\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END AS  DeletedData, \r\n",
+					"    T7.IsActive as HistoricIsActive\r\n",
+					"\r\n",
+					"\r\n",
+					"FROM odw_standardised_db.horizon_advert_details T1\r\n",
+					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.casework_advert_details_dim T7 ON T1.AdvertDetailsID = T7.AdvertDetailsID AND T7.IsActive = 'Y'\r\n",
+					"\r\n",
+					"WHERE\r\n",
+					"    (\r\n",
+					"        \r\n",
+					"        -- flags new data        \r\n",
+					"        ( CASE\r\n",
+					"            WHEN T3.EmployeeID = T7.EmployeeID AND  md5(concat(IFNULL(T3.EmployeeID,'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"            THEN 'Y'\r\n",
+					"            WHEN T7.EmployeeID IS NULL -- new employee\r\n",
+					"            THEN 'Y'\r\n",
+					"            ELSE 'N'\r\n",
+					"        END  = 'Y' ) OR\r\n",
+					"        \r\n",
+					"        -- flags deleted data\r\n",
+					"        ( CASE\r\n",
+					"            WHEN T3.EmployeeID IS NULL\r\n",
+					"            THEN 'Y'\r\n",
+					"            ELSE 'N'\r\n",
+					"        END = 'Y' )\r\n",
+					"    )\r\n",
+					"    AND\r\n",
+					"        T1.Staff_Number IS NOT NULL\r\n",
+					"\r\n",
+					"GROUP BY T1.Staff_Number, T1.Qualification_Name, T1.Proficien\r\n",
+					";"
 				],
 				"execution_count": null
 			},
