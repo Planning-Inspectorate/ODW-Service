@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b4a673c4-6154-40fb-96dc-63ea7ac5850c"
+				"spark.autotune.trackingId": "bbcba2a1-f165-4111-8c3a-cf61a7e331e9"
 			}
 		},
 		"metadata": {
@@ -41,14 +41,13 @@
 				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.3",
+				"sparkVersion": "3.2",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -64,12 +63,12 @@
 				},
 				"source": [
 					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.contract_dim)\n",
-					"- **New Data:** where a workc in the source does not exist as an ContractCode in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on workc in source and ContractCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an ContractCode in the target exists but the same workc doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.leave_entitlement_dim)\n",
+					"- **New Data:** where a EmployeeID in the source does not exist as an EmployeeID in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on EmployeeID in source and ContracEmployeeIDtCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an EmployeeID in the target exists but the same workc doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View contract_dim_new is created"
+					"## View leave_entitlement_dim_new is created"
 				]
 			},
 			{
@@ -163,7 +162,7 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **contract_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"- View **leave_entitlement_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
 					"## View contract_dim_changed_rows is created"
 				]
 			},
@@ -228,7 +227,8 @@
 					"                                            IsActive = 'Y'\r\n",
 					"; \r\n",
 					""
-				]
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -240,10 +240,10 @@
 					}
 				},
 				"source": [
-					"# View contract_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"# View leave_entitlement_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
 					"- **WHEN MATCHED** ON the Business Key (i.e. workc from SAPHR), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised.contract_dim is updated"
+					"## Table odw_harmonised.leave_entitlement_dim is updated"
 				]
 			},
 			{
@@ -266,7 +266,7 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"-- merge into fact table\r\n",
+					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.hr_leave_entitlement_dim AS Target\r\n",
 					"USING leaveentitlement_dim_changed_rows AS Source\r\n",
@@ -285,11 +285,16 @@
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT * ;  \r\n",
 					""
-				]
+				],
+				"execution_count": null
 			},
 			{
-				"cell_type": "markdown",
+				"cell_type": "code",
 				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
 					"nteract": {
 						"transient": {
 							"deleting": false
@@ -300,8 +305,9 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised.contract_dim is updated"
-				]
+					"## Table odw_harmonised.leave_entitlement_dim is updated"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -323,7 +329,7 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"-- Insert new ContractID\r\n",
+					"-- Insert new leaveentitlementID\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.hr_leave_entitlement_dim\r\n",
 					"\r\n",
@@ -342,7 +348,8 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.hr_leave_entitlement_dim;\r\n",
 					""
-				]
+				],
+				"execution_count": null
 			}
 		]
 	}
