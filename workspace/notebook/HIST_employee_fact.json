@@ -1,5 +1,5 @@
 {
-	"name": "HIST_contract_dim",
+	"name": "HIST_employee_fact",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR/HIST"
@@ -16,12 +16,11 @@
 			"executorMemory": "28g",
 			"executorCores": 4,
 			"numExecutors": 2,
-			"runAsWorkspaceSystemIdentity": false,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "467e5631-e9b4-4080-99d4-781df6880518"
+				"spark.autotune.trackingId": "e77043c1-fd82-4345-9713-021ccc22ec07"
 			}
 		},
 		"metadata": {
@@ -62,48 +61,32 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build contract_dim table\r\n",
+					"-- Build Employee_Dim table \r\n",
 					"\r\n",
-<<<<<<< HEAD
-					"INSERT OVERWRITE odw_harmonised_db.hr_contract_dim\r\n",
-=======
-					"INSERT OVERWRITE odw_harmonised_db.hr_contract_dim (\r\n",
-					"    ContractID,\r\n",
-					"    ContractCode,\r\n",
-					"    Description,\r\n",
-					"    ContractTypeCode,\r\n",
-					"    ContractType,\r\n",
-					"    SourceSystemID,\r\n",
-					"    IngestionDate,\r\n",
-					"    ValidTo,\r\n",
-					"    RowID,\r\n",
-					"    IsActive\r\n",
-					")\r\n",
->>>>>>> origin
+					"-- Notes - Addresses are only supplied for Inspectors - need to check inspector count against addresses data\r\n",
 					"\r\n",
-					"SELECT\r\n",
-					"    Row_Number() over (order by T1.WorkC NULLS FIRST) AS ContractID,\r\n",
-					"    T1.WorkC as ContractCode, \r\n",
-					"    First(T1.Work_Contract) as Description,\r\n",
-					"    CASE \r\n",
-					"        WHEN T1.CT IS NULL\r\n",
-					"        THEN 'N/A'\r\n",
-					"        ELSE T1.CT\r\n",
-					"    END as ContractTypeCode,\r\n",
-					"    First(T1.Contract_Type) as ContractType,\r\n",
-					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.WorkC,'.'), IFNULL(First(T1.Work_Contract),'.'), IFNULL(T1.CT,'.'), IFNULL(First(T1.Contract_Type),'.'))) as RowID,\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_employee_fact\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    Row_Number() over (order by T1.Pers_No NULLS FIRST) as EmployeeID,\r\n",
+					"    T1.Birth_date as DOB,\r\n",
+					"    T1.NI_number as NINumber,\r\n",
+					"    T2.Staff_Number as PersNumber,\r\n",
+					"    T1.Pers_No as EmployeeNumber,\r\n",
+					"    T1.Employee_No as LegacyEmployeeNumber,\r\n",
+					"    NULL as NewSAPEmployeeNumber,\r\n",
+					"    T4.SourceSystemID,\r\n",
+					"    current_timestamp as IngestionDate,\r\n",
+					"    NULL as ValidTo,\r\n",
+					"    md5(concat( IFNULL(T1.Birth_date,'.'), IFNULL(T1.NI_number, '.'), IFNULL(T1.Pers_No, '.'), IFNULL(T1.Employee_No,'.'))) as RowID, \r\n",
 					"    'Y' as IsActive\r\n",
-					"FROM odw_standardised_db.vw_saphr_historic T1 \r\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"WHERE T1.WorkC IS NOT NULL\r\n",
-					"GROUP BY T1.WorkC, T1.CT\r\n",
 					"\r\n",
+					"FROM odw_standardised_db.vw_saphr_historic T1\r\n",
+					"LEFT JOIN odw_standardised_db.vw_addresses T2 ON T1.Pers_No = T2.Staff_Number\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T4 ON \"SAP HR\" = T4.Description and T4.IsActive = 'Y'\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 9
 			}
 		]
 	}
