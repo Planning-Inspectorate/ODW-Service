@@ -21,6 +21,9 @@ module "synapse_data_lake" {
   service_name        = local.service_name
 
   data_lake_account_tier                 = var.data_lake_account_tier
+  data_lake_config_files                 = fileset(local.data_lake_config_files_path, "**")
+  data_lake_config_files_path            = local.data_lake_config_files_path
+  data_lake_config_container_name        = var.data_lake_config_container_name
   data_lake_private_endpoint_dns_zone_id = azurerm_private_dns_zone.data_lake.id
   data_lake_lifecycle_rules              = jsondecode(file(local.lifecycle_policy_file_path))
   data_lake_replication_type             = var.data_lake_replication_type
@@ -37,11 +40,6 @@ module "synapse_data_lake" {
   vnet_subnet_ids                        = module.synapse_network.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network_failover.vnet_subnets
 
-  depends_on = [
-    module.synapse_network,
-    module.synapse_network_failover
-  ]
-
   tags = local.tags
 }
 
@@ -54,6 +52,9 @@ module "synapse_data_lake_failover" {
   service_name        = local.service_name
 
   data_lake_account_tier                 = var.data_lake_account_tier
+  data_lake_config_files                 = fileset(local.data_lake_config_files_path, "**")
+  data_lake_config_files_path            = local.data_lake_config_files_path
+  data_lake_config_container_name        = var.data_lake_config_container_name
   data_lake_private_endpoint_dns_zone_id = azurerm_private_dns_zone.data_lake.id
   data_lake_lifecycle_rules              = jsondecode(file(local.lifecycle_policy_file_path))
   data_lake_replication_type             = var.data_lake_replication_type
@@ -69,11 +70,6 @@ module "synapse_data_lake_failover" {
   tenant_id                              = var.tenant_id
   vnet_subnet_ids                        = module.synapse_network_failover.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network.vnet_subnets
-
-  depends_on = [
-    module.synapse_network,
-    module.synapse_network_failover
-  ]
 
   tags = local.tags
 }

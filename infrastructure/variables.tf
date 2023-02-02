@@ -68,6 +68,12 @@ variable "data_lake_account_tier" {
   type        = string
 }
 
+variable "data_lake_config_container_name" {
+  default     = ""
+  description = "The name of the data lake Storage Account container to store configuration files"
+  type        = string
+}
+
 variable "data_lake_replication_type" {
   default     = "ZRS"
   description = "The replication type for the Synapse data lake Storage Account"
@@ -154,6 +160,12 @@ variable "network_watcher_enabled" {
   type        = bool
 }
 
+variable "service_bus_failover_enabled" {
+  default     = false
+  description = "Determines whether the Service Bus Namespace will be provisioned with the Premium SKU for failover"
+  type        = bool
+}
+
 variable "service_bus_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for the service bus"
@@ -181,6 +193,18 @@ variable "spark_pool_min_node_count" {
 variable "spark_pool_node_size" {
   default     = "Small"
   description = "The size of nodes comprising the Synapse-linked Spark pool"
+  type        = string
+}
+
+variable "spark_pool_preview_enabled" {
+  default     = false
+  description = "Determines whether a Synapse-linked preview Spark pool should be deployed"
+  type        = bool
+}
+
+variable "spark_pool_preview_version" {
+  default     = "3.3"
+  description = "The version of Spark running on the Synapse-linked preview Spark pool"
   type        = string
 }
 

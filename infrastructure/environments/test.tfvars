@@ -1,7 +1,7 @@
 alert_group_platform_enabled             = true
-alert_group_platform_recipients          = ["lester.march@planninginspectorate.gov.uk"]
+alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk"]
 alert_group_synapse_enabled              = true
-alert_group_synapse_recipients           = ["lester.march@planninginspectorate.gov.uk"]
+alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
@@ -15,9 +15,10 @@ bastion_vm_image = {
   version   = "latest"
 }
 
-data_lake_account_tier     = "Standard"
-data_lake_replication_type = "GRS"
-data_lake_retention_days   = 7
+data_lake_account_tier          = "Standard"
+data_lake_config_container_name = "odw-config"
+data_lake_replication_type      = "GRS"
+data_lake_retention_days        = 7
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
@@ -51,6 +52,7 @@ key_vault_role_assignments = {
 
 network_watcher_enabled = false
 
+service_bus_failover_enabled = false
 service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4" # pins-odw-preprod-administrators
@@ -63,6 +65,9 @@ spark_pool_min_node_count  = 3
 spark_pool_node_size       = "Small"
 spark_pool_timeout_minutes = 15
 spark_pool_version         = "3.2"
+
+spark_pool_preview_enabled = false
+spark_pool_preview_version = "3.3"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false

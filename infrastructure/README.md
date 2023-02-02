@@ -172,7 +172,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 
 | Name | Version |
 |------|---------|
-| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.25.0 |
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.39.1 |
 
 ## Modules
 
@@ -246,6 +246,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_bastion_vm_size"></a> [bastion\_vm\_size](#input\_bastion\_vm\_size) | The size of the Bastion jumpbox VM to be deployed | `string` | `"Standard_F2s_v2"` | no |
 | <a name="input_bastion_vm_username"></a> [bastion\_vm\_username](#input\_bastion\_vm\_username) | The Windows administrator username for the Bastion jumpbox VM | `string` | `"basadmin"` | no |
 | <a name="input_data_lake_account_tier"></a> [data\_lake\_account\_tier](#input\_data\_lake\_account\_tier) | The tier of the Synapse data lake Storage Account | `string` | `"Standard"` | no |
+| <a name="input_data_lake_config_container_name"></a> [data\_lake\_config\_container\_name](#input\_data\_lake\_config\_container\_name) | The name of the data lake Storage Account container to store configuration files | `string` | `""` | no |
 | <a name="input_data_lake_replication_type"></a> [data\_lake\_replication\_type](#input\_data\_lake\_replication\_type) | The replication type for the Synapse data lake Storage Account | `string` | `"ZRS"` | no |
 | <a name="input_data_lake_retention_days"></a> [data\_lake\_retention\_days](#input\_data\_lake\_retention\_days) | The number of days blob and queue data will be retained for upon deletion | `number` | `7` | no |
 | <a name="input_data_lake_role_assignments"></a> [data\_lake\_role\_assignments](#input\_data\_lake\_role\_assignments) | An object mapping RBAC roles to principal IDs for the data lake Storage Account | `map(list(string))` | `{}` | no |
@@ -261,11 +262,14 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_network_watcher_enabled"></a> [network\_watcher\_enabled](#input\_network\_watcher\_enabled) | Determines whether a Network Watcher resource will be deployed | `bool` | `false` | no |
+| <a name="input_service_bus_failover_enabled"></a> [service\_bus\_failover\_enabled](#input\_service\_bus\_failover\_enabled) | Determines whether the Service Bus Namespace will be provisioned with the Premium SKU for failover | `bool` | `false` | no |
 | <a name="input_service_bus_role_assignments"></a> [service\_bus\_role\_assignments](#input\_service\_bus\_role\_assignments) | An object mapping RBAC roles to principal IDs for the service bus | `map(list(string))` | `{}` | no |
 | <a name="input_spark_pool_enabled"></a> [spark\_pool\_enabled](#input\_spark\_pool\_enabled) | Determines whether a Synapse-linked Spark pool should be deployed | `bool` | `false` | no |
 | <a name="input_spark_pool_max_node_count"></a> [spark\_pool\_max\_node\_count](#input\_spark\_pool\_max\_node\_count) | The maximum number of nodes the Synapse-linked Spark pool can autoscale to | `number` | `9` | no |
 | <a name="input_spark_pool_min_node_count"></a> [spark\_pool\_min\_node\_count](#input\_spark\_pool\_min\_node\_count) | The minimum number of nodes the Synapse-linked Spark pool can autoscale to | `number` | `3` | no |
 | <a name="input_spark_pool_node_size"></a> [spark\_pool\_node\_size](#input\_spark\_pool\_node\_size) | The size of nodes comprising the Synapse-linked Spark pool | `string` | `"Small"` | no |
+| <a name="input_spark_pool_preview_enabled"></a> [spark\_pool\_preview\_enabled](#input\_spark\_pool\_preview\_enabled) | Determines whether a Synapse-linked preview Spark pool should be deployed | `bool` | `false` | no |
+| <a name="input_spark_pool_preview_version"></a> [spark\_pool\_preview\_version](#input\_spark\_pool\_preview\_version) | The version of Spark running on the Synapse-linked preview Spark pool | `string` | `"3.3"` | no |
 | <a name="input_spark_pool_timeout_minutes"></a> [spark\_pool\_timeout\_minutes](#input\_spark\_pool\_timeout\_minutes) | The time buffer in minutes to wait before the Spark pool is paused due to inactivity | `number` | `15` | no |
 | <a name="input_spark_pool_version"></a> [spark\_pool\_version](#input\_spark\_pool\_version) | The version of Spark running on the Synapse-linked Spark pool | `string` | `"2.4"` | no |
 | <a name="input_sql_pool_collation"></a> [sql\_pool\_collation](#input\_sql\_pool\_collation) | The collation of the Synapse-linked dedicated SQL pool | `string` | `"SQL_Latin1_General_CP1_CI_AS"` | no |
