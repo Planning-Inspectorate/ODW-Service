@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "66ef1ae0-00ca-43cf-aede-19a82af1a1cb"
+				"spark.autotune.trackingId": "3e929d93-7380-4657-8401-6e2123f9296a"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 					"Where id is not null\r\n",
 					"GROUP BY id,value"
 				],
-				"execution_count": 12
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -118,9 +118,9 @@
 					"-- Build SXO_dim table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW comment_type_reference_dim_new\r\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW comment_type_reference_dim_new\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"--     AS\r\n",
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
@@ -136,13 +136,12 @@
 					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(T1.Description) as RowID,\r\n",
+					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,    \r\n",
 					"    'Y' as IsActive,\r\n",
-					"\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.Description = T3.Description AND md5(concat(T1.Description)) <> T3.RowID  \r\n",
+					"        WHEN T1.id = T3.TypeID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.')))  <> T3.RowID  \r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T3.Description IS NULL\r\n",
+					"        WHEN T3.TypeID IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -153,31 +152,31 @@
 					"    END AS  DeletedData,\r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
-					"FROM sxo_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.hr_sxo_dim T3 ON T1.Description = T3.Description and T3.IsActive = 'Y'\r\n",
+					"FROM comment_type_reference_grouped T1\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.id\r\n",
+					"FULL JOIN odw_harmonised_db.checkmarking_comment_type_reference_grouped T3 ON T1.id = T3.TypeID and T3.IsActive = 'Y'\r\n",
 					"WHERE  \r\n",
 					"    (\r\n",
 					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Description = T3.Description AND md5(concat(T1.Description)) <> T3.RowID\r\n",
+					"            WHEN T1.ID = T3.TypeID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.')))  <> T3.RowID \r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T3.Description IS NULL\r\n",
+					"            WHEN T3.TypeID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
 					"        \r\n",
 					"        -- flags deleted data\r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Description IS NULL\r\n",
+					"            WHEN T1.id IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END = 'Y' )\r\n",
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 9
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
