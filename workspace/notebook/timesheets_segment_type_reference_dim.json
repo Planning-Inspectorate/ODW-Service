@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cf855567-244a-433d-b0c8-7de7566599d3"
+				"spark.autotune.trackingId": "a7155d58-15f0-47f6-af5a-a11744cf48bb"
 			}
 		},
 		"metadata": {
@@ -99,26 +99,28 @@
 					"    T1.segment_type_id AS SegmentTypeID,\r\n",
 					"    T1.segment_type_description AS SegmentTypeDescription,\r\n",
 					"    T1.segment_type_shortname AS SegmentTypeShortName,\r\n",
+					"    T1.segment_type_validity AS SegmentTypeValidity,\r\n",
 					"    T1.future_selectable AS FutureSelectable,\r\n",
 					"    T2.SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat( IFNULL(T1.segment_type_id,'.'), IFNULL(T1.segment_type_description,'.'), IFNULL(T1.segment_type_shortname,'.'), IFNULL(T1.T1.future_selectable,'.'))) AS RowID,\r\n",
+					"    md5(concat( IFNULL(T1.segment_type_id,'.'), IFNULL(T1.segment_type_description,'.'), IFNULL(T1.segment_type_shortname,'.'), IFNULL(T1.segment_type_validity,'.'),\r\n",
+					"                IFNULL(T1.future_selectable,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive, \r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.timesheets_segment_type_reference T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Timesheets\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.timesheets_segment_type_reference_dim T3 ON T1.segment_type_id = T5.SegmentTypeID AND T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.timesheets_segment_type_reference_dim T3 ON T1.segment_type_id = T3.SegmentTypeID AND T3.IsActive = 'Y'\r\n",
 					"\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.segment_type_id = T5.SegmentTypeID AND md5(concat( IFNULL(T1.segment_type_id,'.'), IFNULL(T1.segment_type_description,'.'), IFNULL(T1.segment_type_shortname,'.'), \r\n",
-					"            IFNULL(T1.T1.future_selectable,'.')))<> T3.RowID     \r\n",
+					"            WHEN T1.segment_type_id = T3.SegmentTypeID AND md5(concat( IFNULL(T1.segment_type_id,'.'), IFNULL(T1.segment_type_description,'.'), \r\n",
+					"            IFNULL(T1.segment_type_shortname,'.'), IFNULL(T1.segment_type_validity,'.'), IFNULL(T1.future_selectable,'.')))<> T3.RowID     \r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T5.SegmentTypeID IS NULL\r\n",
+					"            WHEN T3.SegmentTypeID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
@@ -132,7 +134,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 28
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -204,7 +206,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 29
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -269,7 +271,7 @@
 					"#     else:\r\n",
 					"#         raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 30
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -319,6 +321,7 @@
 					"    SegmentTypeID,\r\n",
 					"    SegmentTypeDescription,\r\n",
 					"    SegmentTypeShortName,\r\n",
+					"    SegmentTypeValidity,\r\n",
 					"    FutureSelectable,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -336,6 +339,7 @@
 					"    SegmentTypeID,\r\n",
 					"    SegmentTypeDescription,\r\n",
 					"    SegmentTypeShortName,\r\n",
+					"    SegmentTypeValidity,\r\n",
 					"    FutureSelectable,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -343,11 +347,11 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.timesheets_segment_type_reference_dim\r\n",
-					"WHERE SegmentTypeID IN (SELECT SegmentTypeID FROM timesheets_segment_type_reference_new WHERE EmployeeID IS NULL) ---WIP\r\n",
+					"WHERE SegmentTypeID IN (SELECT SegmentTypeID FROM timesheets_segment_type_reference_new WHERE SegmentTypeReferenceID IS NULL) \r\n",
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 31
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -385,12 +389,12 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"-- merge into fact table\r\n",
+					"-- merge into target table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.timesheets_segment_type_reference_dim AS Target\r\n",
 					"USING timesheets_segment_type_reference_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.TimesheetsWorkSegmentID = Target.TimesheetsWorkSegmentID\r\n",
+					"ON Source.SegmentTypeReferenceID = Target.SegmentTypeReferenceID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -405,7 +409,7 @@
 					"    THEN INSERT * ;   \r\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -447,10 +451,11 @@
 					"INSERT OVERWRITE odw_harmonised_db.timesheets_segment_type_reference_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY SegmentID NULLS LAST) AS SegmentTypeReferenceID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY SegmentTypeID NULLS LAST) AS SegmentTypeReferenceID,\r\n",
 					"    SegmentTypeID,\r\n",
 					"    SegmentTypeDescription,\r\n",
 					"    SegmentTypeShortName,\r\n",
+					"    SegmentTypeValidity,\r\n",
 					"    FutureSelectable,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -461,7 +466,7 @@
 					"\r\n",
 					"Select * FROM odw_harmonised_db.timesheets_segment_type_reference_dim;"
 				],
-				"execution_count": 33
+				"execution_count": 34
 			}
 		]
 	}
