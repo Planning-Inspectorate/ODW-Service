@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "84034bd4-cf65-41ea-a775-d9bd96241c5c"
+				"spark.autotune.trackingId": "9ecd7d90-b6a0-4d51-87a9-a8a3ece01cb0"
 			}
 		},
 		"metadata": {
@@ -87,7 +87,7 @@
 					"Where id is not null\r\n",
 					"GROUP BY id,case_reference,author,comment,timestamp"
 				],
-				"execution_count": 11
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -101,9 +101,9 @@
 				"source": [
 					"# Check for new, updated or deleted data\n",
 					"- This script checks for new, updated or deleted data by checking the source data (checkmark) against the target (odw_harmonised_db.comment_fact)\n",
-					"- **New Data:** where a TypeId in the source does not exist as an id in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on TypeId in source and id in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an id in the target exists but the same TypeId doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- **New Data:** where a CommentsID in the source does not exist as an id in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on CommentsID in source and id in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an id in the target exists but the same CommentsID doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
 					"## View comment_type_reference_dim_new is created"
 				]
@@ -131,20 +131,23 @@
 					"SELECT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.id IS NULL\r\n",
-					"        THEN T3.ComentTypeReferenceID\r\n",
+					"        THEN T3.CommentsDimID\r\n",
 					"        ELSE NULL\r\n",
-					"    END AS ComentTypeReferenceID, -- surrogate key\r\n",
-					"    T1.id AS TypeID,\r\n",
-					"    T1.value AS Value,\r\n",
+					"    END AS CommentsDimID, -- surrogate key\r\n",
+					"    T1.id AS CommentsID,\r\n",
+					"    T1.case_reference AS CaseReference,\r\n",
+					"    T1.author AS Author,\r\n",
+					"    T1.comment AS Comments,\r\n",
+					"    T1.timestamp AS Timestamp,\r\n",
 					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.id = T3.TypeID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"        WHEN T1.id = T3.CommentsID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T3.TypeID IS NULL\r\n",
+					"        WHEN T3.CommentsID IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -157,13 +160,13 @@
 					"\r\n",
 					"FROM comment_type_reference_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.checkmark_comment_type_reference_dim T3 ON T1.id = T3.TypeID and T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.checkmark_comment_type_reference_dim T3 ON T1.id = T3.CommentsID and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (-- flags new data        \r\n",
 					"        (CASE\r\n",
-					"            WHEN T1.ID = T3.TypeID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"            WHEN T1.ID = T3.CommentsID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T3.TypeID IS NULL\r\n",
+					"            WHEN T3.CommentsID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
