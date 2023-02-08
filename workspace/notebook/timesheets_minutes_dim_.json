@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "21fdfe6d-02bc-48de-b476-bde1fed946e6"
+				"spark.autotune.trackingId": "61e1ba29-1f56-4938-8bea-3f22dbc2051d"
 			}
 		},
 		"metadata": {
@@ -94,7 +94,7 @@
 					"SELECT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.staff_number IS NULL\r\n",
-					"        THEN T4.EmployeeID\r\n",
+					"        THEN T5.TimesheetsMinutesID\r\n",
 					"    END as TimesheetsMinutesID, -- surrogate key\r\n",
 					"    T1.staff_number AS StaffNumber,\r\n",
 					"    T4.EmployeeID AS EmployeeID,\r\n",
@@ -133,7 +133,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 24
+				"execution_count": 40
 			},
 			{
 				"cell_type": "markdown",
@@ -205,7 +205,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 25
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -270,7 +270,7 @@
 					"#     else:\r\n",
 					"#         raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 26
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -348,9 +348,10 @@
 					"FROM odw_harmonised_db.timesheets_minutes_dim\r\n",
 					"WHERE TimesheetsMinutesID IN (SELECT TimesheetsMinutesID FROM timesheets_minutes_new WHERE EmployeeID IS NULL)\r\n",
 					"AND IsActive = 'Y'; \r\n",
+					"SELECT * from timesheets_minutes_changed_rows;\r\n",
 					""
 				],
-				"execution_count": 27
+				"execution_count": 37
 			},
 			{
 				"cell_type": "markdown",
@@ -387,15 +388,14 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"\r\n",
-					"-- merge into table\r\n",
+					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.timesheets_minutes_dim AS Target\r\n",
 					"USING timesheets_minutes_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.TimesheetsMinutesID = Target.TimesheetsMinutesID\r\n",
 					"\r\n",
-					"-- updates existing rows\r\n",
+					"-- For Updates existing rows\r\n",
 					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
@@ -405,10 +405,10 @@
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
+					"    THEN INSERT * ;\r\n",
 					""
 				],
-				"execution_count": 30
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -450,7 +450,7 @@
 					"INSERT OVERWRITE odw_harmonised_db.timesheets_minutes_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY WorkSegmentLockID NULLS LAST) AS TimesheetsMinutesID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY TimesheetsMinutesID NULLS LAST) AS TimesheetsMinutesID,\r\n",
 					"    EmployeeID,\r\n",
 					"    StaffNumber,\r\n",
 					"    BusinessArea,\r\n",
