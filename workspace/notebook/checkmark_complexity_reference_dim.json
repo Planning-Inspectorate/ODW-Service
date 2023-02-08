@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2eb81fd6-26ed-4cbe-a468-e7e8f29db659"
+				"spark.autotune.trackingId": "89907ea6-4d60-440d-a0d5-c9529e339294"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 					"Where id is not null\r\n",
 					"GROUP BY id,value"
 				],
-				"execution_count": 3
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -98,9 +98,9 @@
 				"source": [
 					"# Check for new, updated or deleted data\n",
 					"- This script checks for new, updated or deleted data by checking the source data (checkmark) against the target (odw_harmonised_db.comment_fact)\n",
-					"- **New Data:** where a OutcomeID in the source does not exist as an id in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on OutcomeID in source and id in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an id in the target exists but the same OutcomeID doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- **New Data:** where a ComplexityID in the source does not exist as an id in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on ComplexityID in source and id in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an id in the target exists but the same ComplexityID doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
 					"## View comment_type_reference_dim_new is created"
 				]
@@ -128,10 +128,10 @@
 					"SELECT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.id IS NULL\r\n",
-					"        THEN T3.OutcomeReferenceID\r\n",
+					"        THEN T3.ComplexityReferenceID\r\n",
 					"        ELSE NULL\r\n",
-					"    END AS OutcomeReferenceID, -- surrogate key\r\n",
-					"    T1.id AS OutcomeID,\r\n",
+					"    END AS ComplexityReferenceID, -- surrogate key\r\n",
+					"    T1.id AS ComplexityID,\r\n",
 					"    T1.value AS Value,\r\n",
 					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
@@ -139,9 +139,9 @@
 					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.id = T3.OutcomeID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"        WHEN T1.id = T3.ComplexityID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T3.OutcomeID IS NULL\r\n",
+					"        WHEN T3.ComplexityID IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -154,13 +154,13 @@
 					"\r\n",
 					"FROM complexity_reference_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.checkmark_complexity_reference_dim T3 ON T1.id = T3.OutcomeID and T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.checkmark_complexity_reference_dim T3 ON T1.id = T3.ComplexityID and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (-- flags new data        \r\n",
 					"        (CASE\r\n",
-					"            WHEN T1.ID = T3.OutcomeID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"            WHEN T1.ID = T3.ComplexityID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T3.OutcomeID IS NULL\r\n",
+					"            WHEN T3.ComplexityID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
@@ -173,7 +173,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 4
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -245,7 +245,7 @@
 					"#else:\r\n",
 					"#    print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 8
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -311,7 +311,7 @@
 					"#     else:\r\n",
 					"#         #raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 9
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -357,8 +357,8 @@
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select\r\n",
-					"    OutcomeReferenceID,\r\n",
-					"    OutcomeID,\r\n",
+					"    ComplexityReferenceID,\r\n",
+					"    ComplexityID,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -372,8 +372,8 @@
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    OutcomeReferenceID,\r\n",
-					"    OutcomeID,\r\n",
+					"    ComplexityReferenceID,\r\n",
+					"    ComplexityID,\r\n",
 					"    Value,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -381,7 +381,7 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_complexity_reference_dim\r\n",
-					"WHERE Value IN (SELECT Value FROM complexity_reference_dim_new WHERE OutcomeID IS NULL)\r\n",
+					"WHERE Value IN (SELECT Value FROM complexity_reference_dim_new WHERE ComplexityID IS NULL)\r\n",
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
@@ -428,7 +428,7 @@
 					"MERGE INTO odw_harmonised_db.checkmark_complexity_reference_dim AS Target\r\n",
 					"USING complexity_reference_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.OutcomeID = Target.OutcomeID\r\n",
+					"ON Source.ComplexityID = Target.ComplexityID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -485,8 +485,8 @@
 					"INSERT OVERWRITE odw_harmonised_db.checkmark_complexity_reference_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY OutcomeReferenceID NULLS LAST) AS OutcomeReferenceID,\r\n",
-					"    OutcomeID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY ComplexityReferenceID NULLS LAST) AS ComplexityReferenceID,\r\n",
+					"    ComplexityID,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -496,7 +496,7 @@
 					"FROM odw_harmonised_db.checkmark_complexity_reference_dim;\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 7
 			}
 		]
 	}
