@@ -9,9 +9,9 @@ resource "azurerm_storage_account" "sql_server_auditing" {
   name                            = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
   location                        = var.location
   resource_group_name             = var.resource_group_name
-  account_tier                    = "Standard"
+  account_tier                    = "Premium"
   account_replication_type        = "LRS"
-  account_kind                    = "StorageV2"
+  account_kind                    = "BlockBlobStorage"
   default_to_oauth_authentication = true
   enable_https_traffic_only       = true
   min_tls_version                 = "TLS1_2"
