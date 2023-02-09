@@ -27,29 +27,5 @@ resource "azurerm_storage_account" "sql_server_auditing" {
     }
   }
 
-  queue_properties {
-    logging {
-      read                  = true
-      write                 = true
-      delete                = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
-
-    minute_metrics {
-      enabled               = true
-      include_apis          = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
-
-    hour_metrics {
-      enabled               = true
-      include_apis          = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
-  }
-
   tags = local.tags
 }
