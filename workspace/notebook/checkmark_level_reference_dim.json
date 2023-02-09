@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ae16040d-513d-41f3-91ba-372c0c9bba1b"
+				"spark.autotune.trackingId": "601c4b75-f885-46cc-b86a-69cf70da0f0b"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 					"Where id is not null\r\n",
 					"GROUP BY id,value"
 				],
-				"execution_count": 22
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -128,10 +128,10 @@
 					"SELECT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.id IS NULL\r\n",
-					"        THEN T3.CommentStateReferenceID\r\n",
+					"        THEN T3.LevelReferenceID\r\n",
 					"        ELSE NULL\r\n",
-					"    END AS CommentStateReferenceID, -- surrogate key\r\n",
-					"    T1.id AS StateID,\r\n",
+					"    END AS LevelReferenceID, -- surrogate key\r\n",
+					"    T1.id AS CaseLevelID,\r\n",
 					"    T1.value AS Value,\r\n",
 					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
@@ -139,9 +139,9 @@
 					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.id = T3.StateID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"        WHEN T1.id = T3.CaseLevelID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T3.StateID IS NULL\r\n",
+					"        WHEN T3.CaseLevelID IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -154,13 +154,13 @@
 					"\r\n",
 					"FROM level_reference_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.checkmark_level_reference_dim T3 ON T1.id = T3.StateID and T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.checkmark_level_reference_dim T3 ON T1.id = T3.CaseLevelID and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (-- flags new data        \r\n",
 					"        (CASE\r\n",
-					"            WHEN T1.ID = T3.StateID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"            WHEN T1.ID = T3.CaseLevelID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T3.StateID IS NULL\r\n",
+					"            WHEN T3.CaseLevelID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
@@ -173,7 +173,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 23
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -245,7 +245,7 @@
 					"#else:\r\n",
 					"#    print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 24
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -311,7 +311,7 @@
 					"#     else:\r\n",
 					"#         #raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 25
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -357,8 +357,8 @@
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select \r\n",
-					"    CommentStateReferenceID,\r\n",
-					"    StateID,\r\n",
+					"    LevelReferenceID,\r\n",
+					"    CaseLevelID,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -372,8 +372,8 @@
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    CommentStateReferenceID,\r\n",
-					"    StateID,\r\n",
+					"    LevelReferenceID,\r\n",
+					"    CaseLevelID,\r\n",
 					"    Value,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -381,11 +381,11 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_level_reference_dim\r\n",
-					"WHERE Value IN (SELECT Value FROM level_reference_dim_new WHERE StateID IS NULL)\r\n",
+					"WHERE Value IN (SELECT Value FROM level_reference_dim_new WHERE CaseLevelID IS NULL)\r\n",
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -428,7 +428,7 @@
 					"MERGE INTO odw_harmonised_db.checkmark_level_reference_dim AS Target\r\n",
 					"USING level_reference_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.StateID = Target.StateID\r\n",
+					"ON Source.CaseLevelID = Target.CaseLevelID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -443,7 +443,7 @@
 					"    THEN INSERT * ;   \r\n",
 					""
 				],
-				"execution_count": 27
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -485,8 +485,8 @@
 					"INSERT OVERWRITE odw_harmonised_db.checkmark_level_reference_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY CommentStateReferenceID NULLS LAST) AS CommentStateReferenceID, \r\n",
-					"    StateID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY LevelReferenceID NULLS LAST) AS LevelReferenceID, \r\n",
+					"    CaseLevelID,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -496,7 +496,7 @@
 					"FROM odw_harmonised_db.checkmark_level_reference_dim;\r\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 7
 			}
 		]
 	}
