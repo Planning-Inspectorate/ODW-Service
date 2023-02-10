@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c7aace7c-f657-4c8e-a41e-f9ab3af71fd4"
+				"spark.autotune.trackingId": "617d4f09-7323-489d-bfca-9e038ff0fe1b"
 			}
 		},
 		"metadata": {
@@ -212,7 +212,7 @@
 					"timeliness_review_flag,\r\n",
 					"date_modified"
 				],
-				"execution_count": 6
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -335,9 +335,9 @@
 					"    md5(concat( IFNULL(T1.case_reference,'.'), IFNULL(T1.reader_email,'.'), IFNULL(T1.reader_name,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.case_reference = T3.StateID AND md5(concat( IFNULL(T1.case_reference,'.'), IFNULL(T1.reader_email,'.'), IFNULL(T1.reader_name,'.'))) <> T3.RowID\r\n",
+					"        WHEN T1.case_reference = T3.CaseReference AND md5(concat( IFNULL(T1.case_reference,'.'), IFNULL(T1.reader_email,'.'), IFNULL(T1.reader_name,'.'))) <> T3.RowID\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T3.StateID IS NULL\r\n",
+					"        WHEN T3.CaseReference IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
@@ -350,13 +350,13 @@
 					"\r\n",
 					"FROM reading_case_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.checkmark_reading_case_dim T3 ON T1.case_reference = T3.StateID and T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.checkmark_reading_case_dim T3 ON T1.case_reference = T3.CaseReference and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (-- flags new data        \r\n",
 					"        (CASE\r\n",
-					"            WHEN T1.ID = T3.StateID AND md5(concat( IFNULL(T1.case_reference,'.'), IFNULL(T1.reader_email,'.'), IFNULL(T1.reader_name,'.'))) <> T3.RowID\r\n",
+					"            WHEN T1.case_reference = T3.CaseReference AND md5(concat( IFNULL(T1.case_reference,'.'), IFNULL(T1.reader_email,'.'), IFNULL(T1.reader_name,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
-					"            WHEN T3.StateID IS NULL\r\n",
+					"            WHEN T3.CaseReference IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' ) OR\r\n",
@@ -369,7 +369,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -554,7 +554,7 @@
 					"\r\n",
 					"Select \r\n",
 					"    ReadingCaseID,\r\n",
-					"    StateID,\r\n",
+					"    CaseReference,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -569,7 +569,7 @@
 					"\r\n",
 					"SELECT\r\n",
 					"    ReadingCaseID,\r\n",
-					"    StateID,\r\n",
+					"    CaseReference,\r\n",
 					"    Value,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
@@ -577,7 +577,7 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_reading_case_dim\r\n",
-					"WHERE Value IN (SELECT Value FROM reading_case_dim_new WHERE StateID IS NULL)\r\n",
+					"WHERE Value IN (SELECT Value FROM reading_case_dim_new WHERE CaseReference IS NULL)\r\n",
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
@@ -624,7 +624,7 @@
 					"MERGE INTO odw_harmonised_db.checkmark_reading_case_dim AS Target\r\n",
 					"USING reading_case_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.StateID = Target.StateID\r\n",
+					"ON Source.CaseReference = Target.CaseReference\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -682,7 +682,7 @@
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY ReadingCaseID NULLS LAST) AS ReadingCaseID, \r\n",
-					"    StateID,\r\n",
+					"    CaseReference,\r\n",
 					"    Value, \r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
