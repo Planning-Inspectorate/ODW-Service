@@ -6,6 +6,7 @@ resource "azurerm_mssql_server_extended_auditing_policy" "sql_server_auditing" {
   retention_in_days                       = 120
 
   depends_on = [
-    azurerm_role_assignment.sql_server_auditing
+    azurerm_role_assignment.sql_server_auditing,
+    azurerm_storage_account.sql_server_auditing
   ]
 }
