@@ -27,9 +27,5 @@ resource "azurerm_storage_account" "sql_server_auditing" {
     }
   }
 
-  depends_on = [
-    azurerm_role_assignment.sql_server_auditing
-  ]
-
   tags = local.tags
 }
