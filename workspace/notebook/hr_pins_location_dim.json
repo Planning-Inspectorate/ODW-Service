@@ -1,5 +1,5 @@
 {
-	"name": "payband_dim",
+	"name": "hr_pins_location_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/SAP-HR"
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7ab4b81f-dd14-4bcf-abf5-0910ca1b5826"
+				"spark.autotune.trackingId": "4a8b3164-f30a-4de7-970e-dba1392346e6"
 			}
 		},
 		"metadata": {
@@ -73,20 +73,19 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_grouped\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW pins_location_grouped\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"\r\n",
-					"    PS_group AS PSGroupCode,\r\n",
-					"    First(Pay_Band_Description) AS Description    \r\n",
-					"    \r\n",
+					"    Loc  AS LocationCode,\r\n",
+					"    First(Location)  AS Description\r\n",
+					" \r\n",
 					"FROM odw_standardised_db.vw_saphr\r\n",
-					"WHERE PS_group IS NOT NULL\r\n",
-					"GROUP BY PS_group;"
+					"WHERE Loc IS NOT NULL\r\n",
+					"GROUP BY Loc;"
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -99,12 +98,12 @@
 				},
 				"source": [
 					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.payband_dim)\n",
-					"- **New Data:** where a PA in the source does not exist as an PSGroupCode in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on PA in source and PSGroupCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an PSGroupCode in the target exists but the same PA doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.PINS_Location_dim_new)\n",
+					"- **New Data:** where a Loc in the source does not exist as a LocationCode in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on Loc in source and LocationCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an LocationCode in the target exists but the same Loc doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View payband_dim_new is created"
+					"## View PINS_Location_dim_new is created"
 				]
 			},
 			{
@@ -117,69 +116,67 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build payband_dim table\r\n",
+					"-- Build PINS_Location_dim_new table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW PINS_Location_dim_new\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"     AS\r\n",
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode IS NULL\r\n",
-					"        THEN T7.PayBandID\r\n",
+					"        WHEN T1.LocationCode IS NULL\r\n",
+					"        THEN T7.LocationID\r\n",
 					"        ELSE NULL\r\n",
-					"    END as PayBandID, -- surrogate key\r\n",
-					"    T1.PSGroupCode, -- source system id\r\n",
-					"    T1.Description, \r\n",
+					"    END as LocationID, -- surrogate key\r\n",
+					"    T1.LocationCode, -- check\r\n",
+					"    T1.Description,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS StartDate,\r\n",
-					"    NULL AS EndDate,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T1.LocationCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
+					"        WHEN T1.LocationCode = T7.LocationCode AND  md5(concat(IFNULL(T1.LocationCode,'.'), IFNULL(T1.Description,'.'))) <> T7.RowID   -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
+					"        WHEN T7.LocationCode IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END as NewData,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode IS NULL\r\n",
+					"        WHEN T1.LocationCode IS NULL\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END AS  DeletedData, \r\n",
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
-					"FROM payband_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.payband_dim T7 ON T1.PSGroupCode = T7.PSGroupCode AND\r\n",
-					"                                                T7.IsActive = 'Y'\r\n",
+					"FROM pins_location_grouped T1\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.hr_pins_location_dim T7 ON T1.LocationCode = T7.LocationCode AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
+					"                WHEN T1.LocationCode = T7.LocationCode AND  md5(concat(IFNULL(T1.LocationCode,'.'), IFNULL(T1.Description,'.'))) <> T7.RowID   -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
-					"                WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
+					"                WHEN T7.LocationCode IS NULL -- new employee\r\n",
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
+					"            END = 'Y' ) OR\r\n",
 					"        \r\n",
 					"        -- flags deleted data\r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode IS NULL\r\n",
+					"                WHEN T1.LocationCode IS NULL\r\n",
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
-					"    );"
+					"    )\r\n",
+					";"
 				],
-				"execution_count": 5
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -214,10 +211,10 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM payband_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.payband_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM payband_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM payband_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM pins_location_grouped\")\r\n",
+					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.PINS_Location_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM PINS_Location_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM PINS_Location_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
 					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
@@ -231,27 +228,22 @@
 					"# New_Data_Number = New_Data_Number_Pandas['New_Data_Number'].tolist() \r\n",
 					"# Deleted_Data_Number = Deleted_Data_Number_Pandas['Deleted_Data_Number'].tolist() \r\n",
 					"\r\n",
-					"# print(Total_Number) \r\n",
-					"# print(Current_Loaded_Number) \r\n",
-					"# print(New_Data_Number) \r\n",
-					"# print(Deleted_Data_Number)\r\n",
-					"\r\n",
 					"# if Total_Number[0] != (Current_Loaded_Number[0] + New_Data_Number[0] - Deleted_Data_Number[0]):\r\n",
-					"#     #raise RuntimeError(\"Loading Number do not match\")\r\n",
+					"#     raise RuntimeError(\"Loading Number do not match\")\r\n",
 					"# else:\r\n",
 					"#     print(\"Loading number matches with existing codes plus new, minus deleted!\")\r\n",
 					"\r\n",
 					"# if New_Data_Number[0] > 1000:\r\n",
-					"#     #raise RuntimeError(\"ALERT: Too many new codes\")\r\n",
+					"#     raise RuntimeError(\"ALERT: Too many new codes\")\r\n",
 					"# else:\r\n",
 					"#     print(\"New data under tolerance levels\")\r\n",
 					"\r\n",
 					"# if Deleted_Data_Number[0] > 500:\r\n",
-					"#     #raise RuntimeError(\"ALERT: Too many deleted codes\")\r\n",
+					"#     raise RuntimeError(\"ALERT: Too many deleted codes\")\r\n",
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 6
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -263,7 +255,7 @@
 					}
 				},
 				"source": [
-					"# Run tests to check integrity of data by comparision of codes\r\n",
+					"# Run tests to check integrity of data by comparison of codes\r\n",
 					"- This script checks for the total list of current codes in the harmonised table, and compare against the list for new data to be added and data to be set as inactive.\r\n",
 					"- **Changes tracking:** where it checks the data against active records in harmonised and compares with records to add and records to be set as inactive."
 				]
@@ -285,9 +277,9 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.payband_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM payband_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM payband_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.PINS_Location_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM PINS_Location_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM PINS_Location_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
 					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
@@ -308,13 +300,13 @@
 					"#     if i in Current_Records: \r\n",
 					"#         print(i + \" to be deleted is in the current records\")\r\n",
 					"#     else:\r\n",
-					"#         #raise RuntimeError(\"Records to Delete do not match\")\r\n",
+					"#         raise RuntimeError(\"Records to Delete do not match\")\r\n",
 					"\r\n",
 					"# for j in New_Records:\r\n",
 					"#     if j not in Current_Records: \r\n",
 					"#         print(j + \" to be added is not in the current records\")\r\n",
 					"#     else:\r\n",
-					"#         #raise RuntimeError(\"Records to Add do not match\")"
+					"#         raise RuntimeError(\"Records to Add do not match\")"
 				]
 			},
 			{
@@ -329,8 +321,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **payband_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View payband_dim_changed_rows is created"
+					"- View **PINS_Location_dim__new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View PINS_Location_dim_changed_rows is created"
 				]
 			},
 			{
@@ -352,43 +344,44 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Creating new and updated dataset\r\n",
+					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW PINS_Location_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
-					"SELECT \r\n",
-					"    PayBandID,\r\n",
-					"    PSGroupCode,\r\n",
-					"    Description, \r\n",
+					"-- gets updated, deleted and new rows \r\n",
+					"\r\n",
+					"Select \r\n",
+					"    LocationID,\r\n",
+					"    LocationCode, \r\n",
+					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM payband_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+					"    \r\n",
+					"From PINS_Location_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
+					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
+					"\r\n",
 					"SELECT\r\n",
-					"    PayBandID,\r\n",
-					"    PSGroupCode,\r\n",
+					"    LocationID,\r\n",
+					"    LocationCode, \r\n",
 					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.payband_dim\r\n",
-					"WHERE PSGroupCode IN (SELECT PSGroupCode FROM payband_dim_new WHERE PayBandID IS NULL) \r\n",
-					"AND IsActive = 'Y' ; \r\n",
-					""
-				]
+					"    \r\n",
+					"FROM odw_harmonised_db.hr_pins_location_dim\r\n",
+					"WHERE LocationCode IN (SELECT LocationCode FROM PINS_Location_dim_new WHERE LocationID IS NULL) AND IsActive = 'Y'; "
+				],
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -400,10 +393,10 @@
 					}
 				},
 				"source": [
-					"# View payband_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
-					"- **WHEN MATCHED** ON the Business Key (i.e. PA from SAPHR), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
-					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised.payband_dim is updated"
+					"# View PINS_Location_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"- **WHEN MATCHED** ON the surrogate Key (i.e. LocationID from PINS_Location_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+					"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
+					"## Table odw_harmonised_db.organisationunit_dim is updated"
 				]
 			},
 			{
@@ -425,26 +418,28 @@
 				},
 				"source": [
 					"%%sql\r\n",
+					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.payband_dim AS Target\r\n",
-					"USING payband_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.hr_pins_location_dim AS Target\r\n",
+					"USING PINS_Location_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.PayBandID = Target.PayBandID\r\n",
+					"ON Source.LocationID = Target.LocationID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.EndDate = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT * ;  \r\n",
 					""
-				]
+				],
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -459,7 +454,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised.payband_dim is updated"
+					"## Table odw_harmonised_db.PINS_Location_dim is updated"
 				]
 			},
 			{
@@ -481,24 +476,22 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new PersonnelAreaID\r\n",
+					"-- Insert new PINS_Location_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.payband_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_pins_location_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY PayBandID NULLS LAST) AS PayBandID,\r\n",
-					"    PSGroupCode,\r\n",
-					"    Description, \r\n",
+					"    ROW_NUMBER() OVER (ORDER BY LocationID NULLS LAST) AS LocationID,\r\n",
+					"    LocationCode, \r\n",
+					"    Description,\r\n",
 					"    SourceSystemID,\r\n",
-					"    StartDate,\r\n",
-					"    EndDate,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.payband_dim;\r\n",
-					""
-				]
+					"FROM odw_harmonised_db.hr_pins_location_dim;"
+				],
+				"execution_count": 7
 			}
 		]
 	}

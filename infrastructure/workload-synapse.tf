@@ -20,6 +20,8 @@ module "synapse_workspace_private" {
   spark_pool_max_node_count             = var.spark_pool_max_node_count
   spark_pool_min_node_count             = var.spark_pool_min_node_count
   spark_pool_node_size                  = var.spark_pool_node_size
+  spark_pool_preview_enabled            = var.spark_pool_preview_enabled
+  spark_pool_preview_version            = var.spark_pool_preview_version
   spark_pool_requirements               = file("${path.module}/configuration/spark-pool/requirements.txt")
   spark_pool_timeout_minutes            = var.spark_pool_timeout_minutes
   spark_pool_version                    = var.spark_pool_version
@@ -34,13 +36,6 @@ module "synapse_workspace_private" {
   synapse_sql_administrator_username    = var.synapse_sql_administrator_username
   synapse_role_assignments              = var.synapse_role_assignments
   tenant_id                             = var.tenant_id
-
-  depends_on = [
-    module.synapse_data_lake,
-    module.synapse_data_lake_failover,
-    module.synapse_network,
-    module.synapse_management
-  ]
 
   tags = local.tags
 }
@@ -69,6 +64,8 @@ module "synapse_workspace_private_failover" {
   spark_pool_max_node_count             = var.spark_pool_max_node_count
   spark_pool_min_node_count             = var.spark_pool_min_node_count
   spark_pool_node_size                  = var.spark_pool_node_size
+  spark_pool_preview_enabled            = var.spark_pool_preview_enabled
+  spark_pool_preview_version            = var.spark_pool_preview_version
   spark_pool_requirements               = file("${path.module}/configuration/spark-pool/requirements.txt")
   spark_pool_timeout_minutes            = var.spark_pool_timeout_minutes
   spark_pool_version                    = var.spark_pool_version
@@ -83,13 +80,6 @@ module "synapse_workspace_private_failover" {
   synapse_sql_administrator_username    = var.synapse_sql_administrator_username
   synapse_role_assignments              = var.synapse_role_assignments
   tenant_id                             = var.tenant_id
-
-  depends_on = [
-    module.synapse_data_lake,
-    module.synapse_data_lake_failover,
-    module.synapse_network_failover,
-    module.synapse_management_failover
-  ]
 
   tags = local.tags
 }
