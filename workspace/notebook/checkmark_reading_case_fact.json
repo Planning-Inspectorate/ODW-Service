@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "56bc061b-7d61-4124-a6fc-6c217fdd64e4"
+				"spark.autotune.trackingId": "a158230b-c28f-48ae-a9fe-0e7692c97042"
 			}
 		},
 		"metadata": {
@@ -107,7 +107,6 @@
 					"        ELSE NULL\r\n",
 					"    END as ReadingCaseFactID, -- surrogate \r\n",
 					"    T5.ReadingCaseID, -- source system id\r\n",
-					"\r\n",
 					"    T5.CaseLevel AS LevelReferenceID,\r\n",
 					"    TNSI.NSIID,\r\n",
 					"    T5.Source AS SourceReferenceID,\r\n",
@@ -167,97 +166,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"# -- %%sql\r\n",
-					"# -- -- Build checkmark_comments_fact -- merge\r\n",
-					"# -- -- Gets modified or deleted from source rows\r\n",
-					"\r\n",
-					"# -- CREATE OR REPLACE TEMPORARY VIEW checkmark_reading_case_fact_new \r\n",
-					"\r\n",
-					"# --     AS\r\n",
-					"\r\n",
-					"# -- -- gets data that matches of ReadingCaseID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
-					"# -- -- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
-					"\r\n",
-					"# -- SELECT \r\n",
-					"# --     CASE\r\n",
-					"# --         WHEN T1.Pers_No IS NULL\r\n",
-					"# --         THEN T2.EmployeeID\r\n",
-					"# --         ELSE NULL\r\n",
-					"# --     END as HRRecordID, -- surrogate key\r\n",
-					"# --     T2.EmployeeID AS EmployeeID,\r\n",
-					"# --     T3.PersonnelAreaID AS PersonnelAreaID,\r\n",
-					"# --     T4.PersonnelSubAreaID AS PersonnelSubAreaID,\r\n",
-					"# --     T5.OrganisationUnitID AS OrganisationalUnitID,\r\n",
-					"# --     T6.ContractID AS ContractID,\r\n",
-					"# --     T5.PayBandID AS PayBandID,\r\n",
-					"# --     T8.CostCenterID AS CostCenterID,\r\n",
-					"# --     T9.PositionID AS PositionID,\r\n",
-					"# --     T10.ManagerEmployeeID AS ManagerEmployeeID,\r\n",
-					"# --     TempMPID.PositionID AS ManagerPositionID,\r\n",
-					"# --     T10.CounterSignManagerID AS CounterSignManagerEmployeeID,\r\n",
-					"# --     T11.LocationID AS LocationID,\r\n",
-					"# --     T12.WorkScheduleID AS WorkScheduleID,\r\n",
-					"# --     T14.SourceSystemID,\r\n",
-					"# --     current_timestamp as StartDate,\r\n",
-					"# --     NULL as EndDate,\r\n",
-					"# --     current_timestamp as IngestionDate,\r\n",
-					"# --     NULL as ValidTo,\r\n",
-					"# --     md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\r\n",
-					"# --                 IFNULL(T5.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),IFNULL(TempMPID.PositionID, '.'),\r\n",
-					"# --                 IFNULL(T10.CounterSignManagerID, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'))) as RowID, \r\n",
-					"# --     'Y' as IsActive\r\n",
-					"\r\n",
-					"# -- FROM odw_standardised_db.vw_saphr T1\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.employee_dim T2 ON T1.Pers_No = T2.EmployeeNumber\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.personnelarea_dim T3 ON T1.PA = T3.PersonnelAreaCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.personnelsubarea_dim T4 ON T1.PSubArea = T4.PersonnelSubAreaCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.organisationunit_dim T5 ON T1.Org_unit = T5.OrganisationUnit\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.contract_dim T6 ON T1.WorkC = T6.ContractCode AND T1.CT = T6.ContractTypeCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.payband_dim T5 ON T1.PS_group = T5.PSGroupCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.costcenter_dim T8 ON T1.Cost_Ctr = T8.CostCenterCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.position_dim T9 ON T1.PositionID= T9.PositionCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.position_dim TempMPID ON T1.Manager_Position = T9.PositionCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.employee_hr_hierarchy_dim T10 ON T2.EmployeeID = T10.EmployeeID\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.pins_location_dim T11 ON T1.Loc = T11.LocationCode\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.absence_dim TAbs ON T2.EmployeeID = TAbs.EmployeeID AND TAbs.IsActive = 'Y'\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.workschedule_dim T12 ON TAbs.WorkScheduleID = T12.WorkScheduleID\r\n",
-					"# -- LEFT JOIN odw_harmonised_db.sourcesystem_fact T14 ON \"SAP HR\" = T14.Description\r\n",
-					"# -- -- FULL JOIN odw_harmonised_db.checkmark_comments_fact T15 ON ----T1.Pers_No = T5.EmployeeNumber\r\n",
-					"# -- WHERE  (T5.IsActive = 'Y' or T5.IsActive IS NULL)\r\n",
-					"    \r\n",
-					"# --         AND (\r\n",
-					"        \r\n",
-					"# --         -- flags new data        \r\n",
-					"# --         ( CASE\r\n",
-					"# --             WHEN T1.Pers_No = T2.EmployeeNumber AND md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\r\n",
-					"# --                 IFNULL(T5.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),IFNULL(TempMPID.PositionID, '.'),\r\n",
-					"# --                 IFNULL(T10.CounterSignManagerID, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'))) <> T5.RowID     \r\n",
-					"# --             THEN 'Y'\r\n",
-					"# --             WHEN T2.EmployeeID IS NULL\r\n",
-					"# --             THEN 'Y'\r\n",
-					"# --             ELSE 'N'\r\n",
-					"# --         END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"# --         -- flags deleted data\r\n",
-					"# --         ( CASE\r\n",
-					"# --             WHEN T1.Pers_No IS NULL\r\n",
-					"# --             THEN 'Y'\r\n",
-					"# --             ELSE 'N'\r\n",
-					"# --         END = 'Y' )\r\n",
-					"# -- )\r\n",
-					"# -- --GROUP BY T1.Pers_No, T2.EmployeeID, T3.PersonnelAreaID, T4.PersonnelSubAreaID, T5.OrganisationUnitID, T6.ContractID, T5.PayBandID, T8.CostCenterID, T9.PositionID, T10.ManagerEmployeeID, TempMPID.PositionID, T10.CounterSignManagerID, T11.LocationID, T12.WorkScheduleID\r\n",
-					"# -- ;\r\n",
-					""
-				],
-				"execution_count": 5
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -339,11 +248,11 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.checkmark_comments_fact\r\n",
-					"WHERE ReadingCaseID IN (SELECT ReadingCaseID FROM checkmark_reading_case_fact_new WHERE ReadingCaseFactID IS NULL) AND IsActive = 'Y';\r\n",
+					"FROM odw_harmonised_db.checkmark_reading_case_fact\r\n",
+					"WHERE CaseReference IN (SELECT CaseReference FROM checkmark_reading_case_fact_new WHERE ReadingCaseFactID IS NULL) AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -382,10 +291,10 @@
 					"%%sql\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.checkmark_comments_fact AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.checkmark_reading_case_fact AS Target\r\n",
 					"USING checkmark_reading_case_fact_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.ReadingCaseID = Target.ReadingCaseID\r\n",
+					"ON Source.CaseReference = Target.CaseReference\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -400,7 +309,7 @@
 					"    THEN INSERT * ;   \r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -439,7 +348,7 @@
 					"%%sql\r\n",
 					"-- Insert new ReadingCaseFactID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.checkmark_comments_fact\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.checkmark_reading_case_fact\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY ReadingCaseFactID NULLS LAST) AS ReadingCaseFactID, -- surrogate key\r\n",
@@ -456,9 +365,9 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.checkmark_comments_fact;"
+					"FROM odw_harmonised_db.checkmark_reading_case_fact;"
 				],
-				"execution_count": null
+				"execution_count": 23
 			}
 		]
 	}
