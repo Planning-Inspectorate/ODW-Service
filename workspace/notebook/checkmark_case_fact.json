@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "52733ae5-8eab-4fac-a573-ba0d9f3da87b"
+				"spark.autotune.trackingId": "b8121fcb-948f-45f7-a982-16d20c5ad3f3"
 			}
 		},
 		"metadata": {
@@ -103,20 +103,19 @@
 					"SELECT\r\n",
 					"    CASE\r\n",
 					"        WHEN T5.CaseReference IS NULL\r\n",
-					"        THEN T1.CommentsID\r\n",
+					"        THEN T1.CaseID\r\n",
 					"        ELSE NULL\r\n",
-					"    END as CommentsID, -- surrogate \r\n",
-					"    T5.CommentsDimID,\r\n",
+					"    END as CaseID, -- surrogate \r\n",
+					"    T5.DocumentsReferenceID AS DocumentsID,\r\n",
+					"    \r\n",
 					"    T5.CaseReference, -- source system id\r\n",
-					"    T5.State AS StateReferenceID,\r\n",
-					"    T5.Type AS TypeReferenceID,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.CaseReference,'.'), IFNULL(T5.State,'.'), IFNULL(T5.Type,'.'), IFNULL(T5.CaseReference,'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T5.CaseReference,'.'), IFNULL(T5.DocumentsReferenceID,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.CaseReference = T5.CaseReference AND md5(concat(IFNULL(T1.CaseReference,'.'), IFNULL(T5.State,'.'), IFNULL(T5.Type,'.'), IFNULL(T5.CaseReference,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+					"        WHEN T1.CaseReference = T5.CaseReference AND md5(concat(IFNULL(T5.CaseReference,'.'), IFNULL(T5.DocumentsReferenceID,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T5.CaseReference IS NULL -- new comment\r\n",
 					"        THEN 'Y'\r\n",
@@ -132,8 +131,6 @@
 					"FROM odw_harmonised_db.checkmark_case_fact T1\r\n",
 					"FULL JOIN odw_harmonised_db.checkmark_documents_dim T5 ON T1.CaseReference = T5.CaseReference AND T5.IsActive = 'Y'\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"LEFT JOIN odw_harmonised_db.checkmark_comment_state_reference_dim T4 ON T1.StateReferenceID = T4.CommentStateReferenceID AND T4.IsActive = 'Y'\r\n",
-					"LEFT JOIN odw_harmonised_db.checkmark_comment_type_reference_dim T3 ON T1.TypeReferenceID = T3.CommentTypeReferenceID AND T3.IsActive = 'Y'\r\n",
 					"\r\n",
 					"\r\n",
 					"WHERE\r\n",
@@ -141,7 +138,7 @@
 					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.CaseReference = T5.CaseReference AND md5(concat(IFNULL(T1.CaseReference,'.'), IFNULL(T5.State,'.'), IFNULL(T5.Type,'.'), IFNULL(T5.CaseReference,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+					"                WHEN T1.CaseReference = T5.CaseReference AND md5(concat(IFNULL(T5.CaseReference,'.'), IFNULL(T5.DocumentsReferenceID,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
 					"                WHEN T5.CaseReference IS NULL -- new employee\r\n",
 					"                THEN 'Y'\r\n",
@@ -157,7 +154,7 @@
 					"    )\r\n",
 					";"
 				],
-				"execution_count": 9
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -247,7 +244,7 @@
 					"# -- ;\r\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -294,11 +291,9 @@
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select \r\n",
-					"    CommentsID, -- surrogate \r\n",
-					"    CommentsDimID,\r\n",
+					"    CaseID, -- surrogate \r\n",
+					"    DocumentsID,\r\n",
 					"    CaseReference, -- source system id\r\n",
-					"    StateReferenceID,\r\n",
-					"    TypeReferenceID,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -311,21 +306,19 @@
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    CommentsID, -- surrogate \r\n",
-					"    CommentsDimID,\r\n",
+					"    CaseID, -- surrogate \r\n",
+					"    DocumentsID,\r\n",
 					"    CaseReference, -- source system id\r\n",
-					"    StateReferenceID,\r\n",
-					"    TypeReferenceID,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_case_fact\r\n",
-					"WHERE CaseReference IN (SELECT CaseReference FROM checkmark_case_fact_new WHERE CommentsID IS NULL) AND IsActive = 'Y';\r\n",
+					"WHERE CaseReference IN (SELECT CaseReference FROM checkmark_case_fact_new WHERE CaseID IS NULL) AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -382,7 +375,7 @@
 					"    THEN INSERT * ;   \r\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -419,16 +412,14 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new CommentsID\r\n",
+					"-- Insert new CaseID\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.checkmark_case_fact\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY CommentsID NULLS LAST) AS CommentsID, -- surrogate key\r\n",
-					"    CommentsDimID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY CaseID NULLS LAST) AS CaseID, -- surrogate key\r\n",
+					"    DocumentsID,\r\n",
 					"    CaseReference, -- source system id\r\n",
-					"    StateReferenceID,\r\n",
-					"    TypeReferenceID,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -436,7 +427,7 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_case_fact;"
 				],
-				"execution_count": 13
+				"execution_count": 8
 			}
 		]
 	}
