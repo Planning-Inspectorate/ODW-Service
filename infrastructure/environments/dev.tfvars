@@ -59,7 +59,7 @@ service_bus_role_assignments = {
   ]
 }
 
-spark_pool_enabled         = true
+spark_pool_enabled         = false
 spark_pool_max_node_count  = 12
 spark_pool_min_node_count  = 3
 spark_pool_node_size       = "Small"
