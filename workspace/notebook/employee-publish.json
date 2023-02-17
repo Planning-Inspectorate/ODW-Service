@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3a7f2680-f3e1-4e6d-9191-52d3a040e794",
+				"spark.autotune.trackingId": "337482c8-2326-4bb5-b777-bf847af57d5f",
 				"spark.synapse.library.python.env": "name: servicebus\nchannels:\n- defaults\ndependencies:\n  - pip:\n    - azure-servicebus",
 				"spark.synapse.library.python.env.name": "environment.yml"
 			}
@@ -83,23 +83,20 @@
 					}
 				},
 				"source": [
+					"import json\n",
+					"\n",
 					"def get_topic_accessed_at(servicebus_mgmt_client):\n",
 					"    get_topic_runtime_properties = servicebus_mgmt_client.get_topic_runtime_properties(topic_name)\n",
-					"    return(get_topic_runtime_properties.accessed_at_utc)\n",
+					"    return(get_topic_runtime_properties.accessed_at_utc)    \n",
 					"\n",
-					"def send_single_message(sender,content):\n",
-					"    message = ServiceBusMessage(content)\n",
+					"def send_single_message(sender,content,custom_props_attributes):\n",
+					"    json_dict = json.loads(content)\n",
+					"    custom_props = { key: json_dict[key]  for key in json_dict if key in custom_props_attributes}\n",
+					"    message = ServiceBusMessage(content,content_type='application/json',application_properties=custom_props)\n",
 					"    sender.send_messages(message)\n",
-					"\n",
-					"def send_a_list_of_messages(sender):\n",
-					"    messages = [ServiceBusMessage(\"Message in list\") for _ in range(10)]\n",
-					"    sender.send_messages(messages)\n",
-					"\n",
-					"def send_batch_message(sender,df):\n",
-					"    batch_message = sender.create_message_batch()\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -134,9 +131,10 @@
 					"secret_name=\"servicebus-connectionstring\"\n",
 					"kv_linked_service=\"ls_kv\"\n",
 					"topic_name=\"employee\"\n",
-					"table_name=\"odw_curated_db.employee\""
+					"table_name=\"odw_curated_db.employee\"\n",
+					"custom_props_attributes=[\"_change_type\"]"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -172,7 +170,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -207,7 +205,7 @@
 					"topic_accessed_at=\"2023-02-14 22:00:00.000000+00:00\"\n",
 					"print(topic_accessed_at)"
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -281,16 +279,14 @@
 					"        .option(\"readChangeFeed\", \"true\")\n",
 					"        .option(\"startingTimestamp\", topic_accessed_at)\n",
 					"        .table(table_name))\n",
-					"    cdf_df=cdf_df.filter(\"_change_type != 'update_preimage'\")\n",
+					"    cdf_df=cdf_df.filter(\"_change_type != 'update_preimage'\") #CDF provides preimage and postimage records\n",
 					"    with servicebus_client:\n",
 					"        sender = servicebus_client.get_topic_sender(topic_name=topic_name)\n",
 					"        with sender:\n",
-					"            display(cdf_df)\n",
 					"            df_json = cdf_df.toJSON()\n",
 					"            row_count=df_json.count()\n",
 					"            for row in df_json.collect(): \n",
-					"                #send_single_message(sender,row)\n",
-					"                #print(row)\n",
+					"                send_single_message(sender,row,custom_props_attributes)\n",
 					"            print(\"Sent {} messages.\".format(row_count))\n",
 					"\n",
 					"except Exception as e:  \n",
