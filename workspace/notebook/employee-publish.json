@@ -20,7 +20,9 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a0e726af-3d48-46fc-9f0d-9ca17916f300"
+				"spark.autotune.trackingId": "dddb89e1-3ebf-4f0c-a68b-091ce43ff310",
+				"spark.synapse.library.python.env": "name: servicebus\nchannels:\n- defaults\ndependencies:\n  - pip:\n    - azure-servicebus\n    - azure-identity",
+				"spark.synapse.library.python.env.name": "environment.yml"
 			}
 		},
 		"metadata": {
@@ -54,16 +56,117 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"collapsed": false
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
 				},
 				"source": [
-					"display(spark.read.format(\"delta\") \\\n",
-					"  .option(\"readChangeFeed\", \"true\") \\\n",
-					"  .option(\"startingVersion\", 1) \\\n",
-					"  .option(\"endingVersion\", 10) \\\n",
-					"  .table(\"odw_curated_db.employee\"))"
+					"def get_topic_accessed_at(servicebus_mgmt_client):\n",
+					"    get_topic_runtime_properties = servicebus_mgmt_client.get_topic_runtime_properties(topic_name)\n",
+					"    return(get_topic_runtime_properties.accessed_at_utc)\n",
+					"\n",
+					"def send_single_message(sender,content):\n",
+					"    message = ServiceBusMessage(content)\n",
+					"    sender.send_messages(message)\n",
+					"\n",
+					"def send_a_list_of_messages(sender):\n",
+					"    messages = [ServiceBusMessage(\"Message in list\") for _ in range(10)]\n",
+					"    sender.send_messages(messages)\n",
+					"\n",
+					"def send_batch_message(sender,df):\n",
+					"    batch_message = sender.create_message_batch()\n",
+					""
 				],
-				"execution_count": 27
+				"execution_count": 228
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"secret_name=\"servicebus-connectionstring\"\n",
+					"kv_linked_service=\"ls_kv\"\n",
+					"topic_name=\"employee\"\n",
+					"table_name=\"odw_curated_db.employee\""
+				],
+				"execution_count": 229
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"akv_name=spark.sparkContext.environment.get('keyVaultName', 'get')\n",
+					""
+				],
+				"execution_count": 230
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from notebookutils import mssparkutils\n",
+					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)"
+				],
+				"execution_count": 231
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.servicebus.management import ServiceBusAdministrationClient\n",
+					"with ServiceBusAdministrationClient.from_connection_string(conn_str) as servicebus_mgmt_client:\n",
+					"    topic_accessed_at=get_topic_accessed_at(servicebus_mgmt_client)\n",
+					"topic_accessed_at=\"2023-02-14 22:00:00.000000+00:00\"\n",
+					"print(topic_accessed_at)"
+				],
+				"execution_count": 232
 			},
 			{
 				"cell_type": "code",
@@ -80,9 +183,9 @@
 				},
 				"source": [
 					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
-					"from azure.identity import DefaultAzureCredential"
+					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)"
 				],
-				"execution_count": 69
+				"execution_count": 233
 			},
 			{
 				"cell_type": "code",
@@ -95,109 +198,30 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"#CONNECTION_STR = \"\"\n",
-					"FULLY_QUALIFIED_NAMESPACE = \"pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net\"\n",
-					"TOPIC_NAME = \"employee\"\n",
-					"credential = DefaultAzureCredential(managed_identity_client_id='')"
-				],
-				"execution_count": 70
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
 					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
+					"collapsed": false
 				},
 				"source": [
-					"def send_single_message(sender):\n",
-					"    message = ServiceBusMessage(\"Single Message\")\n",
-					"    sender.send_messages(message)"
-				],
-				"execution_count": 71
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def send_a_list_of_messages(sender):\n",
-					"    messages = [ServiceBusMessage(\"Message in list\") for _ in range(10)]\n",
-					"    sender.send_messages(messages)"
-				],
-				"execution_count": 72
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def send_batch_message(sender):\n",
-					"    batch_message = sender.create_message_batch()\n",
-					"    for _ in range(10):\n",
-					"        try:\n",
-					"            batch_message.add_message(ServiceBusMessage(\"Message inside ServiceBusMessageBatch\"))\n",
-					"        except ValueError:\n",
-					"            # ServiceBusMessageBatch object reaches max_size.\n",
-					"            # New ServiceBusMessageBatch object can be created here to send more data.\n",
-					"            break\n",
-					"    sender.send_messages(batch_message)"
-				],
-				"execution_count": 73
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#servicebus_client = ServiceBusClient.from_connection_string(conn_str=CONNECTION_STR, logging_enable=True)\n",
-					"servicebus_client = ServiceBusClient(FULLY_QUALIFIED_NAMESPACE, credential)\n",
-					"with servicebus_client:\n",
-					"    sender = servicebus_client.get_topic_sender(topic_name=TOPIC_NAME)\n",
-					"    with sender:\n",
-					"        send_single_message(sender)\n",
-					"        send_a_list_of_messages(sender)\n",
-					"        send_batch_message(sender)\n",
+					"try:\n",
+					"    cdf_df=(spark.read.format(\"delta\")\n",
+					"        .option(\"readChangeFeed\", \"true\")\n",
+					"        .option(\"startingTimestamp\", topic_accessed_at)\n",
+					"        .table(table_name))\n",
+					"    with servicebus_client:\n",
+					"        sender = servicebus_client.get_topic_sender(topic_name=topic_name)\n",
+					"        with sender:\n",
+					"            display(cdf_df)\n",
+					"            df_json = cdf_df.toJSON()\n",
+					"            row_count=df_json.count()\n",
+					"            for row in df_json.collect(): \n",
+					"                send_single_message(sender,row)\n",
+					"                print(row)\n",
+					"            print(\"Sent {} messages.\".format(row_count))\n",
 					"\n",
-					"print(\"Send message is done.\")"
+					"except Exception as e:  \n",
+					"        print(f\"{e}\") "
 				],
-				"execution_count": 74
+				"execution_count": 234
 			}
 		]
 	}
