@@ -8,7 +8,7 @@ resource "azurerm_servicebus_namespace" "synapse" {
   sku                 = var.service_bus_failover_enabled ? "Premium" : "Standard"
   capacity            = var.service_bus_failover_enabled ? 1 : 0
   minimum_tls_version = "1.2"
-  local_auth_enabled  = false
+  local_auth_enabled  = true
 
   identity {
     type = "SystemAssigned"
