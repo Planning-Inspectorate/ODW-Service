@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2eeb39c6-fef6-4373-bf89-bb9fd68ea684"
+				"spark.autotune.trackingId": "96e7d8e4-5f09-4c79-9d35-940631dcd8fc"
 			}
 		},
 		"metadata": {
@@ -72,15 +72,15 @@
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW pins_position_grouped\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW pins_casework_all_appeals_grouped\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    Position  AS PositionCode,\r\n",
-					"    First(Position_1)  AS Description\r\n",
+					"    First(casework_all_appeals_1)  AS Description\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.vw_saphr\r\n",
+					"FROM odw_standardised_db.horizon_all_appeals\r\n",
 					"WHERE Position IS NOT NULL\r\n",
 					"GROUP BY Position ;"
 				],
@@ -97,12 +97,12 @@
 				},
 				"source": [
 					"# Check for new, updated or deleted data\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.position_dim)\n",
+					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.casework_all_appeals_dim)\n",
 					"- **New Data:** where a Loc in the source does not exist as a LocationCode in the target. NewData flag is set to 'Y'\n",
 					"- **Updated data:** Comparison occurs on Loc in source and LocationCode in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
 					"- **Deleted data:** where an PositionCode in the target exists but the same Loc doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View position_dim_new is created"
+					"## View casework_all_appeals_dim_new is created"
 				]
 			},
 			{
@@ -115,10 +115,10 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build position_dim_new table\r\n",
+					"-- Build casework_all_appeals_dim_new table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW position_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_all_appeals_dim_new\r\n",
 					"\r\n",
 					"     AS\r\n",
 					"\r\n",
@@ -152,9 +152,9 @@
 					"    END AS  DeletedData, \r\n",
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
-					"FROM pins_position_grouped T1\r\n",
+					"FROM pins_casework_all_appeals_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.hr_position_dim T7 ON T1.PositionCode = T7.PositionCode AND T7.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.casework_all_appeals_dim T7 ON T1.PositionCode = T7.PositionCode AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
@@ -209,10 +209,10 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM pins_position_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.position_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM position_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM position_dim WHERE DeletedData = 'Y'\")\r\n",
+					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM pins_casework_all_appeals_grouped\")\r\n",
+					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.casework_all_appeals_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM casework_all_appeals_dim WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM casework_all_appeals_dim WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
 					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
@@ -275,9 +275,9 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.position_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM position_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM position_dim WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.casework_all_appeals_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM casework_all_appeals_dim WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM casework_all_appeals_dim WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
 					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
@@ -320,8 +320,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **position_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View position_dim_changed_rows is created"
+					"- View **casework_all_appeals_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View casework_all_appeals_dim_changed_rows is created"
 				]
 			},
 			{
@@ -345,7 +345,7 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW position_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_all_appeals_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -387,7 +387,7 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"\r\n",
-					"From position_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+					"From casework_all_appeals_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
@@ -429,8 +429,8 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.hr_position_dim\r\n",
-					"WHERE PositionCode IN (SELECT PositionCode FROM position_dim_new WHERE PositionID IS NULL) AND IsActive = 'Y'; "
+					"FROM odw_harmonised_db.casework_all_appeals_dim\r\n",
+					"WHERE PositionCode IN (SELECT PositionCode FROM casework_all_appeals_dim_new WHERE PositionID IS NULL) AND IsActive = 'Y'; "
 				],
 				"execution_count": 5
 			},
@@ -444,10 +444,10 @@
 					}
 				},
 				"source": [
-					"# View position_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"# View casework_all_appeals_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
 					"- **WHEN MATCHED** ON the surrogate Key (i.e. PositionID from PINS_Location_dim), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
-					"## Table odw_harmonised_db.position_dim is updated"
+					"## Table odw_harmonised_db.casework_all_appeals_dim is updated"
 				]
 			},
 			{
@@ -470,8 +470,8 @@
 					"%%sql\r\n",
 					"-- merge into dim table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.hr_position_dim AS Target\r\n",
-					"USING position_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.casework_all_appeals_dim AS Target\r\n",
+					"USING casework_all_appeals_dim_changed_rows AS Source\r\n",
 					"\r\n",
 					"ON Source.PositionID = Target.PositionID\r\n",
 					"\r\n",
@@ -503,7 +503,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised_db.hr_position_dim is updated"
+					"## Table odw_harmonised_db.casework_all_appeals_dim is updated"
 				]
 			},
 			{
@@ -525,9 +525,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new position_dim\r\n",
+					"-- Insert new casework_all_appeals_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_position_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.casework_all_appeals_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY PositionID NULLS LAST) AS AllAppealsID,\r\n",
@@ -560,7 +560,7 @@
 					"    LeadCaseOfficerName,\r\n",
 					"    LeadCaseOfficerLogin,\r\n",
 					"    CurrentActiveTaskGrp,\r\n",
-					"FROM odw_harmonised_db.hr_position_dim;\r\n",
+					"FROM odw_harmonised_db.casework_all_appeals_dim;\r\n",
 					""
 				],
 				"execution_count": 7
