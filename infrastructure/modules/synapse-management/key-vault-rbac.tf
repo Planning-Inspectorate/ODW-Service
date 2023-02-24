@@ -14,10 +14,10 @@ resource "azurerm_role_assignment" "key_vault_terraform" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# resource "azurerm_role_assignment" "purview_msi_key_vault" {
-#   count = var.deploy_purview ? 1 : 0
+resource "azurerm_role_assignment" "purview_msi_key_vault" {
+  count = var.deploy_purview ? 1 : 0
 
-#   scope                = azurerm_key_vault.management.id
-#   role_definition_name = "Key Vault Secrets User"
-#   principal_id         = azurerm_purview_account.management[0].identity[0].principal_id
-# }
+  scope                = azurerm_key_vault.management.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_purview_account.management[0].identity[0].principal_id
+}
