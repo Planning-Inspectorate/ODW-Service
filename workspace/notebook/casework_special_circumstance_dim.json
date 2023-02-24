@@ -1,5 +1,5 @@
 {
-	"name": "casework_inspector_cases_dim",
+	"name": "casework_special_circumstance_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/Casework"
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "32d2d7b9-c4ef-4198-8227-bdd38eb452d4"
+				"spark.autotune.trackingId": "58da9280-eed8-4159-b7d9-80c1a3579500"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"- **Updated data:** Comparison occurs on Reference Fields in source and in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
 					"- **Deleted data:** where an Reference info in the target exists but the same identifyers don't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
-					"## View casework_inspector_cases_dim_new is created"
+					"## View casework_special_circumstance_dim_new is created"
 				]
 			},
 			{
@@ -99,10 +99,10 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build casework_inspector_cases_dim_new table\r\n",
+					"-- Build casework_special_circumstance_dim_new table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW casework_inspector_cases_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_special_circumstance_dim_new\r\n",
 					"\r\n",
 					"     AS\r\n",
 					"\r\n",
@@ -112,22 +112,19 @@
 					"SELECT \r\n",
 					"    CASE\r\n",
 					"        WHEN T1.appealrefnumber IS NULL\r\n",
-					"        THEN T3.InspectorCasesID\r\n",
+					"        THEN T3.SpecialCircumstanceID\r\n",
 					"        ELSE NULL\r\n",
-					"    END as InspectorCasesID,\r\n",
+					"    END as SpecialCircumstanceID,\r\n",
 					"    T1.appealrefnumber AS AppealRefNumber,\r\n",
-					"    T1.casereference AS CaseReference,\r\n",
-					"    T1.typeofinvolvement AS TypeOfInvolvement,\r\n",
-					"    T1.inspectorname AS InspectorName,\r\n",
-					"    T1.contactID AS ContactID,\r\n",
-					"    T1.parentkeyid AS ParentKeyID,\r\n",
+					"    T1.lastmodified AS LastModified,\r\n",
+					"    T1.specialcircumstance AS SpecialCircumstance,\r\n",
 					"    T2.SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.casereference,'.'))) as RowID, -- this hash should contain all the defining fields, so needs to be done\r\n",
+					"    md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.lastmodified,'.'), IFNULL(T1.specialcircumstance,'.'))) as RowID, -- this hash should contain all the defining fields, so needs to be done\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.appealrefnumber = T3.AppealRefNumber AND  md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.casereference,'.'))) <> T3.RowID   -- same employee, changed data\r\n",
+					"        WHEN T1.appealrefnumber = T3.AppealRefNumber AND  md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.lastmodified,'.'), IFNULL(T1.specialcircumstance,'.'))) <> T3.RowID   -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T3.AppealRefNumber IS NULL -- new AppealRef\r\n",
 					"        THEN 'Y'\r\n",
@@ -140,14 +137,14 @@
 					"    END AS  DeletedData, \r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.horizon_inspector_cases T1\r\n",
+					"FROM odw_standardised_db.horizon_special_circumstance T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.casework_inspector_cases_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.casework_special_circumstance_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.appealrefnumber = T3.AppealRefNumber AND md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.casereference,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
+					"                WHEN T1.appealrefnumber = T3.AppealRefNumber AND md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.lastmodified,'.'), IFNULL(T1.specialcircumstance,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
 					"                WHEN T3.AppealRefNumber IS NULL -- new PositionCode\r\n",
 					"                THEN 'Y'\r\n",
@@ -163,7 +160,7 @@
 					"    );\r\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -199,9 +196,9 @@
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
 					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM pins_casework_all_appeals_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.casework_inspector_cases_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM casework_inspector_cases_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM casework_inspector_cases_dim WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.casework_special_circumstance_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM casework_special_circumstance_dim WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM casework_special_circumstance_dim WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
 					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
@@ -230,7 +227,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 21
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -264,9 +261,9 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.casework_inspector_cases_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM casework_inspector_cases_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM casework_inspector_cases_dim WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.casework_special_circumstance_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM casework_special_circumstance_dim WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM casework_special_circumstance_dim WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
 					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
@@ -295,7 +292,7 @@
 					"#     else:\r\n",
 					"#         raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 22
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -310,7 +307,7 @@
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
 					"- View **casework_all_appeals_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View casework_inspector_cases_dim_changed_rows is created"
+					"## View casework_special_circumstance_dim_changed_rows is created"
 				]
 			},
 			{
@@ -334,48 +331,42 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW casework_inspector_cases_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_special_circumstance_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
 					"-- gets updated, deleted and new rows \r\n",
 					"Select \r\n",
-					"    InspectorCasesID,\r\n",
+					"    SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
-					"    CaseReference,\r\n",
-					"    TypeOfInvolvement,\r\n",
-					"    InspectorName,\r\n",
-					"    ContactID,\r\n",
-					"    ParentKeyID,\r\n",
+					"    LastModified,\r\n",
+					"    specialcircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"\r\n",
-					"From casework_inspector_cases_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+					"From casework_special_circumstance_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"SELECT\r\n",
-					"    InspectorCasesID,\r\n",
+					"    SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
-					"    CaseReference,\r\n",
-					"    TypeOfInvolvement,\r\n",
-					"    InspectorName,\r\n",
-					"    ContactID,\r\n",
-					"    ParentKeyID,\r\n",
+					"    LastModified,\r\n",
+					"    specialcircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.casework_inspector_cases_dim\r\n",
-					"WHERE AppealRefNumber IN (SELECT AppealRefNumber FROM casework_inspector_cases_dim_new WHERE AllAppealsID IS NULL) AND IsActive = 'Y'; "
+					"FROM odw_harmonised_db.casework_special_circumstance_dim\r\n",
+					"WHERE AppealRefNumber IN (SELECT AppealRefNumber FROM casework_special_circumstance_dim_new WHERE SpecialCircumstanceID IS NULL) AND IsActive = 'Y'; "
 				],
-				"execution_count": 23
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -387,10 +378,10 @@
 					}
 				},
 				"source": [
-					"# View casework_inspector_cases_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"# View casework_special_circumstance_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
 					"- **WHEN MATCHED** ON the surrogate Key (i.e. AllAppealsID), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
-					"## Table odw_harmonised_db.casework_inspector_cases_dim is updated"
+					"## Table odw_harmonised_db.casework_special_circumstance_dim is updated"
 				]
 			},
 			{
@@ -414,10 +405,10 @@
 					"%%sql\r\n",
 					"-- merge into dim table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.casework_inspector_cases_dim AS Target\r\n",
-					"USING casework_inspector_cases_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.casework_special_circumstance_dim AS Target\r\n",
+					"USING casework_special_circumstance_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.InspectorCasesID = Target.InspectorCasesID\r\n",
+					"ON Source.SpecialCircumstanceID = Target.SpecialCircumstanceID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -432,7 +423,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -447,7 +438,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised_db.casework_inspector_cases_dim is updated"
+					"## Table odw_harmonised_db.casework_special_circumstance_dim is updated"
 				]
 			},
 			{
@@ -469,27 +460,24 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new casework_inspector_cases_dim\r\n",
+					"-- Insert new casework_special_circumstance_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.casework_inspector_cases_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.casework_special_circumstance_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY AllAppealsID NULLS LAST) AS InspectorCasesID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY AppealRefNumber NULLS LAST) AS SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
-					"    CaseReference,\r\n",
-					"    TypeOfInvolvement,\r\n",
-					"    InspectorName,\r\n",
-					"    ContactID,\r\n",
-					"    ParentKeyID,\r\n",
+					"    LastModified,\r\n",
+					"    specialcircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.casework_inspector_cases_dim;\r\n",
+					"FROM odw_harmonised_db.casework_special_circumstance_dim;\r\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": 11
 			}
 		]
 	}
