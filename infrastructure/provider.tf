@@ -24,3 +24,9 @@ provider "azurerm" {
     }
   }
 }
+
+provider "azurerm" {
+  features {}
+  subscription_id = var.odt_back_office_subscription_id
+  alias           = "odt_backoffice"
+}
