@@ -172,6 +172,17 @@ variable "odt_back_office_service_bus_failover_enabled" {
   type        = bool
 }
 
+
+variable "odt_back_office_service_bus_name" {
+  description = "The name of the Service Bus namespace into which resources will be deployed"
+  type        = string
+}
+
+variable "odt_back_office_service_bus_name_failover" {
+  description = "The name of the Service Bus namespace into which resources will be deployed"
+  type        = string
+}
+
 variable "odt_back_office_service_bus_resource_group_name" {
   description = "The name of the resource group into which resources will be deployed"
   type        = string
@@ -196,6 +207,12 @@ variable "service_bus_failover_enabled" {
 variable "service_bus_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for the service bus"
+  type        = map(list(string))
+}
+
+variable "service_bus_topics_and_subscriptions" {
+  default     = {}
+  description = "An object mapping Service Bus Topics to a list of Subscription names"
   type        = map(list(string))
 }
 

@@ -54,6 +54,8 @@ network_watcher_enabled = false
 
 odt_back_office_service_bus_enabled                      = false
 odt_back_office_service_bus_failover_enabled             = false
+odt_back_office_service_bus_name                         = "pins-sb-back-office-dev-ukw-001"
+odt_back_office_service_bus_name_failover                = "pins-sb-back-office-dev-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-dev-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-dev-uks-001"
 odt_back_office_subscription_id                          = "962e477c-0f3b-4372-97fc-a198a58e259e"
@@ -63,6 +65,13 @@ service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators
   ]
+}
+
+service_bus_topics_and_subscriptions = {
+  "employee" = [
+    "employee",
+    "employee-verify"
+  ],
 }
 
 spark_pool_enabled         = true

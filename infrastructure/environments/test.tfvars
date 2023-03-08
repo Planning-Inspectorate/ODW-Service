@@ -5,7 +5,7 @@ alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspecto
 alert_scope_service_health               = "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
-bastion_host_enabled = false
+bastion_host_enabled = true
 bastion_vm_username  = "basadmin"
 bastion_vm_size      = "Standard_F2s_v2"
 bastion_vm_image = {
@@ -54,6 +54,8 @@ network_watcher_enabled = false
 
 odt_back_office_service_bus_enabled                      = true
 odt_back_office_service_bus_failover_enabled             = false
+odt_back_office_service_bus_name                         = "pins-sb-back-office-test-ukw-001"
+odt_back_office_service_bus_name_failover                = "pins-sb-back-office-test-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-test-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-test-uks-001"
 odt_back_office_subscription_id                          = "76cf28c6-6fda-42f1-bcd9-6d7dbed704ef"
@@ -62,6 +64,13 @@ service_bus_failover_enabled = false
 service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4" # pins-odw-preprod-administrators
+  ]
+}
+
+service_bus_topics_and_subscriptions = {
+  "employee" = [
+    "employee",
+    "employee-verify"
   ]
 }
 
