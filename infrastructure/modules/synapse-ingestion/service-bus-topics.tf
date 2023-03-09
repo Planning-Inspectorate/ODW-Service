@@ -1,7 +1,7 @@
-resource "azurerm_servicebus_topic" "employee" {
-  count = var.failover_namespace ? 0 : 1
+resource "azurerm_servicebus_topic" "topics" {
+  for_each = var.failover_namespace ? {} : var.service_bus_topics_and_subscriptions
 
-  name         = "employee"
+  name         = each.key
   namespace_id = azurerm_servicebus_namespace.synapse.id
 
   auto_delete_on_idle                     = "P10675199DT2H48M5.4775807S"
