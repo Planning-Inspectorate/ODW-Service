@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodwpr",
+			"referenceName": "pinssynspodw",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "056f0423-9678-4de6-943f-995d2a01f894"
+				"spark.autotune.trackingId": "148e0c7c-5e8e-4070-83b1-5a9533e3f643"
 			}
 		},
 		"metadata": {
@@ -34,10 +34,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
-				"name": "pinssynspodwpr",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -99,15 +99,54 @@
 					]
 				},
 				"source": [
+					"from notebookutils import mssparkutils\n",
+					"\n",
+					"#destination variables\n",
+					"jobId = mssparkutils.env.getJobId()\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"raw_storage_container = 'abfss://odw-raw@' + storage_account\n",
+					"raw_storage_source_folder = 'odt'\n",
+					"raw_storage_source_name = ''\n",
+					"raw_storage_folder_path = raw_storage_container + raw_storage_source_folder + '/' + raw_storage_source_name\n",
+					"\n",
+					"#service bus variables\n",
 					"secret_name=\"odt-message-queue-connection-string\"\n",
 					"kv_linked_service=\"ls_kv\"\n",
 					"topic_name=\"nsip-project\"\n",
-					"#subscription_name=\"nsip-project-odw\"\n",
-					"subscription_name=\"nsip-project-poc-subscriber\"\n",
-					"table_name=\"odw_curated_db.employee\"\n",
-					"custom_props_attributes=[\"_change_type\"]"
+					"subscription_name=\"nsip-project-odw\""
 				],
-				"execution_count": 32
+				"execution_count": 74
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import json\n",
+					"\n",
+					"### mount the data lake storage in Synapse to the Synapse File Mount API\n",
+					"mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"mssparkutils.fs.mount(raw_storage_folder_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"})\n",
+					"\n",
+					"def writeData(filename, data):\n",
+					"    try:\n",
+					"        with open(f\"/synfs/{jobId}/temp_raw/{filename}\", \"w\") as f:\n",
+					"            print('Writing to ' +filename)\n",
+					"            json.dump(data, f)\n",
+					"    except Exception as e:\n",
+					"        print(\"Failed to write data to \" +filename)\n",
+					"    return"
+				],
+				"execution_count": 75
 			},
 			{
 				"cell_type": "markdown",
@@ -143,7 +182,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": 33
+				"execution_count": 76
 			},
 			{
 				"cell_type": "markdown",
@@ -174,6 +213,7 @@
 				},
 				"source": [
 					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
+					"import json\n",
 					"\n",
 					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
 					"\n",
@@ -184,25 +224,27 @@
 					"            subscription_name=subscription_name\n",
 					"        )\n",
 					"        with receiver:\n",
-					"            \n",
-					"            counter = 0\n",
 					"\n",
 					"            received_msgs = receiver.peek_messages(max_message_count=10, timeout=5)\n",
 					"            #received_msgs = receiver.receive_messages(max_message_count=10, max_wait_time=5)\n",
 					"\n",
 					"            for msg in received_msgs:\n",
-					"                print(str(counter) +\":\" +str(msg) +\"\\n\")\n",
-					"                counter+=1\n",
-					"                #TODO send messages\n",
-					"                \n",
-					"                \n",
+					"                #first json.loads unescapes it, second parses it into a json object\n",
+					"                data = json.loads(json.loads(str(msg)))\n",
+					"                filename = str(data['caseId']) +'.json'\n",
+					"\n",
+					"                #save data to blob\n",
+					"                writeData(filename, data)\n",
 					"                \n",
 					"                #receiver.complete_message(msg)\n",
 					"            \n",
 					"except Exception as e:\n",
-					"    print(f\"{e}\")"
+					"    print(f\"{e}\")\n",
+					"\n",
+					"#cleanup\n",
+					"mssparkutils.fs.unmount(\"/temp_raw\")"
 				],
-				"execution_count": 45
+				"execution_count": 77
 			}
 		]
 	}
