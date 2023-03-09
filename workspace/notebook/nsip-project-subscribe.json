@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b2a7a854-2ef1-4c9d-a920-190465e97f77"
+				"spark.autotune.trackingId": "01d8a52d-da14-4c11-b340-d0bb5e185dd5"
 			}
 		},
 		"metadata": {
@@ -112,9 +112,10 @@
 					"secret_name=\"odt-message-queue-connection-string\"\n",
 					"kv_linked_service=\"ls_kv\"\n",
 					"topic_name=\"nsip-project\"\n",
-					"subscription_name=\"nsip-project-odw\""
+					"subscription_name=\"nsip-project-odw\"\n",
+					"max_records = 1"
 				],
-				"execution_count": 43
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -152,11 +153,11 @@
 					"            print('Writing to ' +filename)\n",
 					"            json.dump(data, f)\n",
 					"    except Exception as e:\n",
-					"        print(e)\n",
-					"        print(\"Failed to write data to \" +filename)\n",
-					"    return"
+					"        print(\"Failed to write data to \" +filename +\" with error \" +e)\n",
+					"        return False\n",
+					"    return True"
 				],
-				"execution_count": 44
+				"execution_count": 56
 			},
 			{
 				"cell_type": "markdown",
@@ -192,7 +193,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": 45
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -235,8 +236,7 @@
 					"        )\n",
 					"        with receiver:\n",
 					"\n",
-					"            received_msgs = receiver.peek_messages(max_message_count=10, timeout=5)\n",
-					"            #received_msgs = receiver.receive_messages(max_message_count=10, max_wait_time=5)\n",
+					"            received_msgs = receiver.receive_messages(max_message_count=max_records, max_wait_time=5)\n",
 					"\n",
 					"            for message in received_msgs:\n",
 					"                #first json.loads unescapes it, second parses it into a json object\n",
@@ -244,16 +244,17 @@
 					"                filename = str(message.message_id) +'.json'\n",
 					"\n",
 					"                #save data to blob\n",
-					"                writeData(filename, data)\n",
-					"                \n",
-					"                #receiver.complete_message(msg)\n",
+					"                if writeData(filename, data):\n",
+					"                    receiver.complete_message(message)\n",
+					"                else:\n",
+					"                    print(\"Failed to write message\")\n",
 					"            \n",
 					"except Exception as e:\n",
 					"    print(f\"{e}\")\n",
 					"\n",
 					""
 				],
-				"execution_count": 46
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -272,7 +273,7 @@
 					"#cleanup\n",
 					"mssparkutils.fs.unmount(\"/temp_raw\")"
 				],
-				"execution_count": 47
+				"execution_count": 59
 			}
 		]
 	}
