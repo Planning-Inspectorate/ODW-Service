@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "148e0c7c-5e8e-4070-83b1-5a9533e3f643"
+				"spark.autotune.trackingId": "b2a7a854-2ef1-4c9d-a920-190465e97f77"
 			}
 		},
 		"metadata": {
@@ -105,9 +105,8 @@
 					"jobId = mssparkutils.env.getJobId()\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_storage_container = 'abfss://odw-raw@' + storage_account\n",
-					"raw_storage_source_folder = 'odt'\n",
-					"raw_storage_source_name = ''\n",
-					"raw_storage_folder_path = raw_storage_container + raw_storage_source_folder + '/' + raw_storage_source_name\n",
+					"raw_storage_source_folder = 'odt/'\n",
+					"raw_storage_folder_path = raw_storage_container + raw_storage_source_folder\n",
 					"\n",
 					"#service bus variables\n",
 					"secret_name=\"odt-message-queue-connection-string\"\n",
@@ -115,7 +114,7 @@
 					"topic_name=\"nsip-project\"\n",
 					"subscription_name=\"nsip-project-odw\""
 				],
-				"execution_count": 74
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -132,21 +131,32 @@
 				},
 				"source": [
 					"import json\n",
+					"from datetime import date\n",
+					"import os\n",
+					"\n",
 					"\n",
 					"### mount the data lake storage in Synapse to the Synapse File Mount API\n",
-					"mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"print(\"Mounting \" +raw_storage_folder_path)\n",
+					"mssparkutils.fs.unmount(\"/temp_raw\")\n",
+					"\n",
 					"mssparkutils.fs.mount(raw_storage_folder_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"})\n",
 					"\n",
 					"def writeData(filename, data):\n",
 					"    try:\n",
-					"        with open(f\"/synfs/{jobId}/temp_raw/{filename}\", \"w\") as f:\n",
+					"        raw_storage_sub_folder = topic_name +'/' +str(date.today())\n",
+					"        destination_dir = '/synfs/' +jobId +'/temp_raw/' +raw_storage_sub_folder+'/'\n",
+					"        #create the destination_directory, if it doesn't already exist\n",
+					"        os.makedirs(destination_dir, exist_ok=True)\n",
+					"\n",
+					"        with open(f\"{destination_dir}{filename}\", \"w\") as f:\n",
 					"            print('Writing to ' +filename)\n",
 					"            json.dump(data, f)\n",
 					"    except Exception as e:\n",
+					"        print(e)\n",
 					"        print(\"Failed to write data to \" +filename)\n",
 					"    return"
 				],
-				"execution_count": 75
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
@@ -182,7 +192,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": 76
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -228,10 +238,10 @@
 					"            received_msgs = receiver.peek_messages(max_message_count=10, timeout=5)\n",
 					"            #received_msgs = receiver.receive_messages(max_message_count=10, max_wait_time=5)\n",
 					"\n",
-					"            for msg in received_msgs:\n",
+					"            for message in received_msgs:\n",
 					"                #first json.loads unescapes it, second parses it into a json object\n",
-					"                data = json.loads(json.loads(str(msg)))\n",
-					"                filename = str(data['caseId']) +'.json'\n",
+					"                data = json.loads(json.loads(str(message)))\n",
+					"                filename = str(message.message_id) +'.json'\n",
 					"\n",
 					"                #save data to blob\n",
 					"                writeData(filename, data)\n",
@@ -241,10 +251,28 @@
 					"except Exception as e:\n",
 					"    print(f\"{e}\")\n",
 					"\n",
+					""
+				],
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"#cleanup\n",
 					"mssparkutils.fs.unmount(\"/temp_raw\")"
 				],
-				"execution_count": 77
+				"execution_count": 47
 			}
 		]
 	}
