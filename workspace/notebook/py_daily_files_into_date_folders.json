@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "true",
 				"spark.dynamicAllocation.minExecutors": "1",
 				"spark.dynamicAllocation.maxExecutors": "5",
-				"spark.autotune.trackingId": "2956fffe-a342-4c01-b546-a8b59846af45"
+				"spark.autotune.trackingId": "efd0b886-d362-4a55-b4ca-d02ed2aa03bb"
 			}
 		},
 		"metadata": {
@@ -58,12 +58,53 @@
 					"from notebookutils import mssparkutils\n",
 					"import datetime\n",
 					"\n",
+					"file_extension = '.xlsx'\n",
 					"container_name = 'odw-raw'\n",
-					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"relative_path = 'Fileshare/SAP_HR/Casework'\n",
 					"\n",
-					"folders_to_check = ['HH', 'HGW', 'TPO', 'LocalPlans']\n",
-					"file_extension = '.xlsx'\n",
+					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"'''\n",
+					"    Function to move excel files which end with date to their respective dated folders\n",
+					"\n",
+					"    Args:\n",
+					"    None\n",
+					"\n",
+					"    Returns:\n",
+					"    None\n",
+					"\n",
+					"    Actions:\n",
+					"    Moves excel files which end with a date to their respective dated folders.\n",
+					"\n",
+					"    Exceptions:\n",
+					"    None\n",
+					"\n",
+					"'''\n",
+					"\n",
+					"def move_files_in_dated_folders():\n",
+					"\n",
+					"    folders = mssparkutils.fs.ls(\"abfss://\"+container_name+\"@\"+storage_account+relative_path)\n",
+					"\n",
+					"    for folder in folders:\n",
+					"\n",
+					"        if not folder.isDir or folder.name not in folders_to_check:\n",
+					"            continue\n",
+					"\n",
+					"        files = mssparkutils.fs.ls(folder.path)\n",
+					"\n",
+					"        for file in files:\n",
+					"            if not file.isFile or not is_excel(file.name):\n",
+					"                continue\n",
+					"\n",
+					"            # getting last 8 characters before the extension to extract date\n",
+					"            date = file.name[len(file_extension) * -1 - 8:len(file_extension) * -1]\n",
+					"\n",
+					"            if is_valid_date(date):\n",
+					"                date_formatted = format_date(date)\n",
+					"                dest_dir = \"{}/{}/{}\".format(folder.path, date_formatted, file.name)\n",
+					"                mssparkutils.fs.mv(file.path, dest_dir, True, overwrite=True)\n",
+					"\n",
+					"\n",
 					"\n",
 					"\n",
 					"def is_excel(file):\n",
@@ -81,30 +122,27 @@
 					"def format_date(date):\n",
 					"    return datetime.datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%d')\n",
 					"\n",
-					"\n",
-					"folders = mssparkutils.fs.ls(\"abfss://\"+container_name+\"@\"+storage_account+relative_path)\n",
-					"\n",
-					"for folder in folders:\n",
-					"\n",
-					"    if not folder.isDir or folder.name not in folders_to_check:\n",
-					"        continue\n",
-					"\n",
-					"    files = mssparkutils.fs.ls(folder.path)\n",
-					"\n",
-					"    for file in files:\n",
-					"        if not file.isFile or not is_excel(file.name):\n",
-					"            continue\n",
-					"\n",
-					"        # getting last 8 characters before the extension to extract date\n",
-					"        date = file.name[len(file_extension) * -1 - 8:len(file_extension) * -1]\n",
-					"\n",
-					"        if is_valid_date(date):\n",
-					"            date_formatted = format_date(date)\n",
-					"            dest_dir = \"{}/{}/{}\".format(folder.path, date_formatted, file.name)\n",
-					"            mssparkutils.fs.mv(file.path, dest_dir, True, overwrite=True)\n",
 					""
 				],
-				"execution_count": 43
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"move_files_in_dated_folders()"
+				],
+				"execution_count": 5
 			}
 		]
 	}
