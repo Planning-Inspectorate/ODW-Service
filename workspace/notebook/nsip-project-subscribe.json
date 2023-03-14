@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9613c549-f9a6-474a-a6ef-6a3c3e5dd3f8"
+				"spark.autotune.trackingId": "0ceae685-5de7-4a29-876e-4499a559fcad"
 			}
 		},
 		"metadata": {
@@ -98,7 +98,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -146,7 +146,7 @@
 					"subscription_name=\"nsip-project-odw\"\n",
 					"max_records = 100"
 				],
-				"execution_count": 55
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -167,13 +167,7 @@
 					"import os\n",
 					"\n",
 					"\n",
-					"### mount the data lake storage in Synapse to the Synapse File Mount API\n",
-					"print(\"Mounting \" +raw_storage_folder_path)\n",
-					"mssparkutils.fs.unmount(\"/temp_raw\")\n",
-					"\n",
-					"mssparkutils.fs.mount(raw_storage_folder_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"})\n",
-					"\n",
-					"def writeData(filename, data):\n",
+					"def writeData(logger, filename, data):\n",
 					"    try:\n",
 					"        raw_storage_sub_folder = topic_name +'/' +str(date.today())\n",
 					"        destination_dir = '/synfs/' +jobId +'/temp_raw/' +raw_storage_sub_folder+'/'\n",
@@ -182,49 +176,12 @@
 					"\n",
 					"        with open(f\"{destination_dir}{filename}\", \"w\") as f:\n",
 					"            json.dump(data, f)\n",
-					"            print('Created ' +filename)\n",
 					"    except Exception as e:\n",
-					"        print(\"Failed to write data to \" +filename +\" with error \" +e)\n",
+					"        logger.exception(e)\n",
 					"        return False\n",
 					"    return True"
 				],
-				"execution_count": 56
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## Get Servicebus connectionstring from Key Vault"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from pyspark.sql import SparkSession\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"akv_name=spark.sparkContext.environment.get('keyVaultName', 'get')\n",
-					"from notebookutils import mssparkutils\n",
-					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
-					""
-				],
-				"execution_count": 57
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -255,13 +212,29 @@
 				},
 				"source": [
 					"@logging_to_appins\n",
-					"def readFromSubscription\n",
+					"def saveFromSubscription():\n",
 					"    from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
 					"    import json\n",
 					"    import logging\n",
 					"    logger = logging.getLogger(__name__)\n",
 					"\n",
+					"    from pyspark.sql import SparkSession\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    akv_name=spark.sparkContext.environment.get('keyVaultName', 'get')\n",
+					"    from notebookutils import mssparkutils\n",
+					"    conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"\n",
+					"    #connect to the service bus\n",
 					"    servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
+					"\n",
+					"    ### mount the data lake storage in Synapse to the Synapse File Mount API\n",
+					"    try:\n",
+					"        logger.info(\"Mounting \" +raw_storage_folder_path)\n",
+					"        mssparkutils.fs.unmount(\"/temp_raw\")\n",
+					"        mssparkutils.fs.mount(raw_storage_folder_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"}) \n",
+					"    except Exception as e:\n",
+					"        logger.exception(e)\n",
+					"        return False\n",
 					"\n",
 					"    try:\n",
 					"        with servicebus_client:\n",
@@ -271,9 +244,10 @@
 					"            )\n",
 					"            with receiver:\n",
 					"\n",
-					"                logger.info(\"File has already been ingested\")\n",
+					"                \n",
 					"                #received_msgs = receiver.receive_messages(max_message_count=max_records, max_wait_time=5)\n",
 					"                received_msgs = receiver.peek_messages(max_message_count=max_records, max_wait_time=5)\n",
+					"                logger.info(\"Reading \" +str(len(received_msgs)) +\" messages\")\n",
 					"\n",
 					"                for message in received_msgs:\n",
 					"                    #first json.loads unescapes it, second parses it into a json object\n",
@@ -281,15 +255,22 @@
 					"                    filename = str(message.message_id) +'.json'\n",
 					"\n",
 					"                    #save data to blob\n",
-					"                    if writeData(filename, data):\n",
+					"                    if writeData(logger, filename, data):\n",
 					"                        #receiver.complete_message(message)\n",
+					"                        logger.info(\"Wrote message to file\" +filename)\n",
 					"                    else:\n",
-					"                        logger.error(\"Failed to write message\")\n",
-					"                \n",
+					"                        logger.error(\"Failed to write message \" +filename)\n",
+					"        return True        \n",
 					"    except Exception as e:\n",
-					"        logger.exception(e)"
+					"        logger.exception(e)\n",
+					"        return False\n",
+					"    finally:\n",
+					"        #cleanup\n",
+					"        logger.info(\"Unmounting \" +raw_storage_folder_path)\n",
+					"        mssparkutils.fs.unmount(\"/temp_raw\")\n",
+					"        logger.info(\"Finished\")"
 				],
-				"execution_count": 58
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -305,28 +286,9 @@
 					}
 				},
 				"source": [
-					"readFromSubscription()"
+					"saveFromSubscription()"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#cleanup\n",
-					"mssparkutils.fs.unmount(\"/temp_raw\")"
-				],
-				"execution_count": 59
+				"execution_count": 37
 			}
 		]
 	}
