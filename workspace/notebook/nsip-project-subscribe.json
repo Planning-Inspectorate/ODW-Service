@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0ceae685-5de7-4a29-876e-4499a559fcad"
+				"spark.autotune.trackingId": "f3826635-5508-4448-a247-3825e189ecab"
 			}
 		},
 		"metadata": {
@@ -144,9 +144,9 @@
 					"kv_linked_service=\"ls_kv\"\n",
 					"topic_name=\"nsip-project\"\n",
 					"subscription_name=\"nsip-project-odw\"\n",
-					"max_records = 100"
+					"max_records = 10"
 				],
-				"execution_count": 26
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -242,24 +242,29 @@
 					"                topic_name=topic_name,\n",
 					"                subscription_name=subscription_name\n",
 					"            )\n",
+					"\n",
 					"            with receiver:\n",
-					"\n",
 					"                \n",
-					"                #received_msgs = receiver.receive_messages(max_message_count=max_records, max_wait_time=5)\n",
-					"                received_msgs = receiver.peek_messages(max_message_count=max_records, max_wait_time=5)\n",
-					"                logger.info(\"Reading \" +str(len(received_msgs)) +\" messages\")\n",
+					"                while True:\n",
+					"                    received_msgs = receiver.receive_messages(max_message_count=max_records, max_wait_time=5)\n",
+					"                    \n",
+					"                    if len(received_msgs) > 0:\n",
+					"                        logger.info(\"Reading \" +str(len(received_msgs)) +\" messages\")\n",
 					"\n",
-					"                for message in received_msgs:\n",
-					"                    #first json.loads unescapes it, second parses it into a json object\n",
-					"                    data = json.loads(json.loads(str(message)))\n",
-					"                    filename = str(message.message_id) +'.json'\n",
+					"                        for message in received_msgs:\n",
+					"                            #first json.loads unescapes it, second parses it into a json object\n",
+					"                            data = json.loads(json.loads(str(message)))\n",
+					"                            filename = str(message.message_id) +'.json'\n",
 					"\n",
-					"                    #save data to blob\n",
-					"                    if writeData(logger, filename, data):\n",
-					"                        #receiver.complete_message(message)\n",
-					"                        logger.info(\"Wrote message to file\" +filename)\n",
+					"                            #save data to blob\n",
+					"                            if writeData(logger, filename, data):\n",
+					"                                receiver.complete_message(message)\n",
+					"                                logger.info(\"Wrote message to file\" +filename)\n",
+					"                            else:\n",
+					"                                logger.error(\"Failed to write message \" +filename)\n",
 					"                    else:\n",
-					"                        logger.error(\"Failed to write message \" +filename)\n",
+					"                        logger.info(\"No messages to process\")\n",
+					"                        break\n",
 					"        return True        \n",
 					"    except Exception as e:\n",
 					"        logger.exception(e)\n",
@@ -270,7 +275,7 @@
 					"        mssparkutils.fs.unmount(\"/temp_raw\")\n",
 					"        logger.info(\"Finished\")"
 				],
-				"execution_count": 36
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -288,7 +293,7 @@
 				"source": [
 					"saveFromSubscription()"
 				],
-				"execution_count": 37
+				"execution_count": 45
 			}
 		]
 	}
