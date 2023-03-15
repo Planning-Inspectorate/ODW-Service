@@ -1,5 +1,5 @@
 alert_group_platform_enabled             = true
-alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk"]
+alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk", "alex.delany@planninginspectorate.gov.uk"]
 alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3"
@@ -67,6 +67,13 @@ service_bus_role_assignments = {
   ]
 }
 
+service_bus_topics_and_subscriptions = {
+  "employee" = [
+    "employee",
+    "employee-verify"
+  ],
+}
+
 spark_pool_enabled         = true
 spark_pool_max_node_count  = 12
 spark_pool_min_node_count  = 3
@@ -75,7 +82,7 @@ spark_pool_timeout_minutes = 60
 spark_pool_version         = "3.3"
 
 spark_pool_preview_enabled = true
-spark_pool_preview_version = "3.3"
+spark_pool_preview_version = "3.2"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false
