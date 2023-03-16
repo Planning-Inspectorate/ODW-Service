@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "temppool",
+			"referenceName": "pinssynspodw",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -15,12 +15,12 @@
 			"driverCores": 4,
 			"executorMemory": "28g",
 			"executorCores": 4,
-			"numExecutors": 1,
+			"numExecutors": 2,
 			"conf": {
-				"spark.dynamicAllocation.enabled": "true",
-				"spark.dynamicAllocation.minExecutors": "1",
-				"spark.dynamicAllocation.maxExecutors": "5",
-				"spark.autotune.trackingId": "fd3ddedd-4312-48b7-bea0-8de76f8c84b7"
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "1bc42144-b84e-43bc-bf40-c69bcf309ceb"
 			}
 		},
 		"metadata": {
@@ -34,19 +34,19 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/temppool",
-				"name": "temppool",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/temppool",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
-				"nodeCount": 10,
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
-				"automaticScaleJobs": true
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -54,40 +54,76 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+				],
+				"execution_count": 49
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run /utils/py_logging_decorator"
+				],
+				"execution_count": 50
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"from notebookutils import mssparkutils\n",
 					"import datetime\n",
+					"import logging\n",
 					"\n",
+					"logger = logging.getLogger(__name__)\n",
 					"file_extension = '.xlsx'\n",
 					"container_name = 'odw-raw'\n",
 					"relative_path = 'Fileshare/SAP_HR/Casework'\n",
 					"folders_to_check = ['HH', 'HGW', 'TPO', 'LocalPlans']\n",
 					"\n",
-					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"\n",
-					"'''\n",
-					"    Function to move excel files which end with date to their respective dated folders\n",
-					"\n",
-					"    Args:\n",
-					"    None\n",
-					"\n",
-					"    Returns:\n",
-					"    None\n",
-					"\n",
-					"    Actions:\n",
-					"    Moves excel files which end with a date to their respective dated folders.\n",
-					"\n",
-					"    Exceptions:\n",
-					"    None\n",
-					"\n",
-					"'''\n",
-					"\n",
+					"@logging_to_appins\n",
 					"def move_files_in_dated_folders():\n",
 					"\n",
+					"    '''\n",
+					"        Function to move excel files which end with date to their respective dated folders\n",
+					"\n",
+					"        Args:\n",
+					"        None\n",
+					"\n",
+					"        Returns:\n",
+					"        None\n",
+					"\n",
+					"        Actions:\n",
+					"        Moves excel files which end with a date to their respective dated folders.\n",
+					"\n",
+					"    '''\n",
+					"\n",
+					"    storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"    folders = mssparkutils.fs.ls(\"abfss://\"+container_name+\"@\"+storage_account+relative_path)\n",
 					"\n",
-					"    for folder in folders:\n",
+					"    incorrect_formatted_files = []\n",
 					"\n",
+					"    for folder in folders:\n",
 					"        if not folder.isDir or folder.name not in folders_to_check:\n",
 					"            continue\n",
 					"\n",
@@ -104,8 +140,14 @@
 					"                date_formatted = format_date(date)\n",
 					"                dest_dir = \"{}/{}/{}\".format(folder.path, date_formatted, file.name)\n",
 					"                mssparkutils.fs.mv(file.path, dest_dir, True, overwrite=True)\n",
+					"            else:\n",
+					"                incorrect_formatted_files.append(file.path)\n",
 					"\n",
-					"\n",
+					"    if(len(incorrect_formatted_files) == 0):\n",
+					"        logger.info('All files have been successfully moved')\n",
+					"    else:\n",
+					"        logger.info('Unable to move the following files because of incorrect date format in the filename. Should be YYYYMDD')\n",
+					"        logger.info('\\n'.join(incorrect_formatted_files))\n",
 					"\n",
 					"\n",
 					"def is_excel(file):\n",
@@ -121,11 +163,9 @@
 					"\n",
 					"\n",
 					"def format_date(date):\n",
-					"    return datetime.datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%d')\n",
-					"\n",
-					""
+					"    return datetime.datetime.strptime(date, '%Y%m%d').strftime('%Y-%m-%d')"
 				],
-				"execution_count": 4
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -143,7 +183,7 @@
 				"source": [
 					"move_files_in_dated_folders()"
 				],
-				"execution_count": 5
+				"execution_count": 52
 			}
 		]
 	}
