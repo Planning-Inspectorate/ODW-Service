@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a557e1f8-412e-4aed-91bd-51321cba247d"
+				"spark.autotune.trackingId": "b9d03017-0df4-46ea-afae-1b161613d13c"
 			}
 		},
 		"metadata": {
@@ -88,7 +88,7 @@
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
-					"SELECT \r\n",
+					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
 					"        WHEN T3.EmployeeID IS NULL\r\n",
 					"        THEN T7.EmployeeLeaversID\r\n",
@@ -105,13 +105,13 @@
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'), IFNULL(T1.Leaving,'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'), IFNULL(T1.Leaving,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
 					"        WHEN T3.EmployeeID = T7.EmployeeID AND \r\n",
 					"             T1.Org_Start_Date = T7.EmploymentStartDate AND\r\n",
 					"             T1.Leaving = T7.EmploymentEndDate AND\r\n",
-					"             md5(concat(IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+					"             md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
@@ -140,7 +140,7 @@
 					"                    WHEN T3.EmployeeID = T7.EmployeeID AND \r\n",
 					"                            T1.Org_Start_Date = T7.EmploymentStartDate AND\r\n",
 					"                            T1.Leaving = T7.EmploymentEndDate AND\r\n",
-					"                            md5(concat(IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+					"                            md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 					"                    THEN 'Y'\r\n",
 					"                    WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
 					"                    THEN 'Y'\r\n",
@@ -153,11 +153,12 @@
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
-					")\r\n",
+					");\r\n",
 					"\r\n",
-					";"
+					"select count(*) from hr_employee_leavers_dim_new;\r\n",
+					"select * from hr_employee_leavers_dim_new;"
 				],
-				"execution_count": 15
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
