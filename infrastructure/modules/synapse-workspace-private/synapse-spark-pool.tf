@@ -30,6 +30,8 @@ resource "azurerm_synapse_spark_pool" "synapse" {
     content  = <<-EOT
       spark.executorEnv.dataLakeAccountName ${var.data_lake_account_name}
       spark.executorEnv.keyVaultName ${var.key_vault_name}
+      spark.microsoft.delta.merge.lowShuffle.enabled false
+      spark.databricks.delta.optimize.repartition.enabled true
       EOT
     filename = "configuration.txt"
   }
