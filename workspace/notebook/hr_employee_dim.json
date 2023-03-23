@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodwpr",
+			"referenceName": "pinssynspodw",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e379f24f-96ea-48eb-a8ed-638d61ef5371"
+				"spark.autotune.trackingId": "7020e66b-3a58-4a84-9e0c-8b346fcb4549"
 			}
 		},
 		"metadata": {
@@ -35,15 +35,15 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
-				"name": "pinssynspodwpr",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -100,7 +100,7 @@
 					"        THEN T7.EmployeeInfoID\r\n",
 					"        ELSE NULL\r\n",
 					"    END as EmployeeInfoID, -- surrogate key\r\n",
-					"    T8.EmployeeID,\r\n",
+					"    T1.Pers_No AS EmployeeID,\r\n",
 					"    T1.First_name AS FirstName,\r\n",
 					"    T1.Last_name AS LastName,\r\n",
 					"    T1.Gender_Key AS Gender,\r\n",
@@ -147,13 +147,12 @@
 					"LEFT JOIN ( SELECT staff_number, max(ded_from) as AnnualLeaveStartDate\r\n",
 					"            FROM odw_standardised_db.vw_leave\r\n",
 					"            GROUP BY Staff_Number) T5 ON T1.Pers_No = T5.staff_number   \r\n",
-					"LEFT JOIN odw_harmonised_db.hr_employee_fact T8 ON T1.Pers_No = T8.PersNumber AND T8.IsActive = 'Y' \r\n",
-					"FULL JOIN odw_harmonised_db.hr_employee_dim T7 ON T8.EmployeeID = T7.EmployeeID AND T7.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.hr_employee_dim T7 ON T1.Pers_No = T7.EmployeeID AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Pers_No = T8.EmployeeNumber AND md5(concat( IFNULL(T1.First_name,'.'),IFNULL(T1.Last_name,'.'), IFNULL(T1.Gender_Key, '.'), IFNULL(T2.Street_and_House_Number, '.'),\r\n",
+					"            WHEN T1.Pers_No = T7.EmployeeID AND md5(concat( IFNULL(T1.First_name,'.'),IFNULL(T1.Last_name,'.'), IFNULL(T1.Gender_Key, '.'), IFNULL(T2.Street_and_House_Number, '.'),\r\n",
 					"                IFNULL(T2.`2nd_Address_Line`, '.'),IFNULL(T2.District, '.'), IFNULL(T2.City, '.'),IFNULL(T2.Region_State_Province_Count, '.'),IFNULL(T2.Postal_Code, '.'),IFNULL(T3.Email_Address, '.'),\r\n",
 					"                IFNULL(T2.Personal_Mobile, '.'), IFNULL(T2.Work_Mobile, '.'), IFNULL(T1.FTE,'.'),IFNULL(T1.Wk_hrs,'.'),IFNULL(T1.Indicator_Part_Time_Employee,'.'),T1.Employment_Status,\r\n",
 					"                IFNULL(T1.Civil_Service_Start, '.'),IFNULL(T1.Date_to_Current_Job, '.'), IFNULL(T1.Seniority_Date, '.'),IFNULL(T1.Org_Start_Date, '.'),IFNULL(T1.Fix_Term_End_Date, '.'),\r\n",
@@ -172,10 +171,13 @@
 					"            ELSE 'N'\r\n",
 					"        END = 'Y' )\r\n",
 					"    )\r\n",
+					"    AND EmployeeID IS NOT NULL\r\n",
 					";\r\n",
-					""
+					"\r\n",
+					"SELECT COUNT(*) FROM employee_dim_new;\r\n",
+					"SELECT * FROM employee_dim_new;"
 				],
-				"execution_count": 1
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
