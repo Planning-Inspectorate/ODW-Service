@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bff87b11-4d58-41bc-8c7c-1ca5f660d3a6"
+				"spark.autotune.trackingId": "26ec7994-6626-4fb7-a5c3-abe0cbca95e3"
 			}
 		},
 		"metadata": {
@@ -50,9 +50,15 @@
 		"cells": [
 			{
 				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
 				"source": [
-					"from pyspark.sql import SparkSession\r\n",
-					"spark = SparkSession.builder.getOrCreate()"
+					"%%sql\r\n",
+					"declare @file_date date\r\n",
+					"set @file_date = (select top 1 (convert(date, substring([file_name], 19, 8), 108)) from sap_hr.leave_entitlement);"
 				],
 				"execution_count": 22
 			},
@@ -68,12 +74,261 @@
 							"deleting": false
 						}
 					},
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
-					""
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW staff_cost\n",
+					"\n",
+					"     AS\n",
+					"\n",
+					"SELECT\n",
+					"    h.pers_no as staff_number,\n",
+					"    h.ps_group as grade, \n",
+					"\th.annual_salary as salary, \n",
+					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate\n",
+					"    -- cast(case sign(datediff(dd, cast(le.[Ded# from] as date), @file_date)) -- harmonised.leave_entitlement  LeaveYearStart\n",
+					"\t-- \t\t\twhen 1 then le.[Ded# from]\n",
+					"\t-- \t\t\twhen 0 then le.[Ded# from]\n",
+					"\t-- \t\t\telse dateadd(year, -1, le.[Ded# from])\n",
+					"\t-- \t\tend as date) as leave_start_date,\n",
+					"\n",
+					"FROM odw_standardised_db.hr_saphr h\n",
+					"LEFT JOIN odw_standardised_db.vw_leave le on h.pers_no = case left(cast(le.Staff_Number as varchar(10)), 1)\n",
+					"                                                            when 4 then '50' + cast(le.Staff_Number as varchar(10))\n",
+					"                                                            when 5 then '00' + cast(le.Staff_Number as varchar(10))\n",
+					"                                                            else cast(le.Staff_Number as varchar(10))\n",
+					"                                                        end\n",
+					"WHERE\n",
+					"    le.absence_quota_type = 'Annual Leave / P&P';"
 				],
 				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW carried_over\n",
+					"    \n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    h.pers_no as staff_number,\n",
+					"    case sign(le.LeaveDaysPerYear - 148)\n",
+					"        when 1 then 148\n",
+					"        when 0 then 148\n",
+					"        else le.LeaveDaysPerYear\n",
+					"    end as carried_over_hours\n",
+					"\n",
+					"FROM odw_standardised_db.hr_saphr h\n",
+					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = case left(cast(le.EmployeeID as varchar(10)), 1) -- we are using view but we also have hr_leave (table)\n",
+					"                                                            when 4 then '50' + cast(le.EmployeeID as varchar(10))\n",
+					"                                                            when 5 then '00' + cast(le.EmployeeID as varchar(10))\n",
+					"                                                            else cast(le.EmployeeID as varchar(10))\n",
+					"                                                        end\n",
+					"WHERE\n",
+					"    le.AbsenceQuotaType = 'Brought Forward';\n",
+					""
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW leave_taken\n",
+					"\n",
+					"     AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    h.pers_no as staff_number,\n",
+					"    case sign(le.number - 148)\n",
+					"        when 1 then 148\n",
+					"        when 0 then 148\n",
+					"        else le.number\n",
+					"    end as carried_over_hours\n",
+					"\n",
+					"FROM odw_standardised_db.hr_saphr h\n",
+					"LEFT JOIN odw_standardised_db.vw_absences f ON h.pers_no = f.staff_number\n",
+					"LEFT JOIN staff_cost l ON f.staff_number = l.staff_number\n",
+					"LEFT JOIN carried_over co ON f.staff_number = co.staff_number\n",
+					"WHERE \n",
+					"    f.Attendance_or_Absence_Type IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
+					"    AND \n",
+					"    f.AbsenceStartDate BETWEEN l.leave_start_date AND @file_date -- or may be AbsenceEndDate\n",
+					"GROUP BY \n",
+					"    h.pers_no;"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"- Missing leave_entitlement.file_name\n",
+					"- Confirm if we need to use views or tables for vw_leaves and vw_absences\n",
+					"- Confirm if f.absence_date is AbsenceStartDate or AbsenceEndDate\n",
+					"- Confirm that Number field is actually le.number"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW sap_hr_historic\n",
+					"\n",
+					"     AS\n",
+					"\t \n",
+					"SELECT \n",
+					"\th.pers_no,\n",
+					"\t[First name]\n",
+					"\t,[Last name]\n",
+					"\t,[Employee No#]\n",
+					"\t,[CoCd]\n",
+					"\t,[Company Code]\n",
+					"\t,[PA]\n",
+					"\t,[Personnel Area]\n",
+					"\t,[PSubarea]\n",
+					"\t,[Personnel Subarea]\n",
+					"\t,[Org#unit]\n",
+					"\t,[Organizational Unit]\n",
+					"\t,[Organizational key]\n",
+					"\t,[Organizational Key1]\n",
+					"\t,[WorkC]\n",
+					"\t,[Work Contract]\n",
+					"\t,[CT]\n",
+					"\t,h.[Contract Type]\n",
+					"\t,[PS group]\n",
+					"\t,[Pay Band Description]\n",
+					"\t,h.[FTE]\n",
+					"\t,[Wk#hrs#]\n",
+					"\t,[Indicator Part-Time Employee]\n",
+					"\t,[S]\n",
+					"\t,[Employment Status]\n",
+					"\t,[Gender Key]\n",
+					"\t,[TRA Start Date]\n",
+					"\t,[TRA End Date]\n",
+					"\t,[TRA Status]\n",
+					"\t,[TRA Grade]\n",
+					"\t,[Prev#PersNo#]\n",
+					"\t,[ActR]\n",
+					"\t,[Reason for Action]\n",
+					"\t,[Position]\n",
+					"\t,[Position1]\n",
+					"\t,[Cost Ctr]\n",
+					"\t,[Cost Centre]\n",
+					"\t,[Civil Service Start]\n",
+					"\t,[Date to Current Job]\n",
+					"\t,[Seniority Date]\n",
+					"\t,[Date to Subst# Grade]\n",
+					"\t,[Pers#No#1]\n",
+					"\t,[Name of Manager (OM)]\n",
+					"\t,[Manager Position]\n",
+					"\t,[Manager Position Text]\n",
+					"\t,[Counter Sign Manager]\n",
+					"\t,[Loc#]\n",
+					"\t,[Location]\n",
+					"\t,[Org Start Date]\n",
+					"\t,[Fix Term End Date]\n",
+					"\t,[Loan Start Date]\n",
+					"\t,[Loan End Date]\n",
+					"\t,[EEGrp]\n",
+					"\t,[Employee Group]\n",
+					"\t,[Annual salary]\n",
+					"\t,[Curr#]\n",
+					"\t,[NI number]\n",
+					"\t,[Birth date]\n",
+					"\t,[Age of employee]\n",
+					"\t,[EO]\n",
+					"\t,[Ethnic origin]\n",
+					"\t,[NID]\n",
+					"\t,[Rel]\n",
+					"\t,[Religious Denomination Key]\n",
+					"\t,[SxO]\n",
+					"\t,[Wage Type]\n",
+					"\t,[Employee Subgroup]\n",
+					"\t,[LOA Abs Type]\n",
+					"\t,[LOA Absence Type Text]\n",
+					"\t,[Scheme reference]\n",
+					"\t,[Pension Scheme Name]\n",
+					"\t,[Disability Code]\n",
+					"\t,[Disability Text]\n",
+					"\t,[Disability Code Description]\n",
+					"\t,[PArea]\n",
+					"\t,[Payroll Area]\n",
+					"\t,[Assignment Number]\n",
+					"\t,[FTE(2)]\n",
+					"\t,[Report_MonthEnd_Date]\n",
+					"\t,isnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) as leave_entitlement_hrs\n",
+					"\t,isnull(lt.leave_hours_taken, 0) as leave_taken_hrs\n",
+					"\t,round((isnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) - isnull(sc.expected_leave_hours_remaining, 0)  - isnull(lt.leave_hours_taken, 0)), 2) as leave_remaining_hours\n",
+					"\t,isnull(round(sc.expected_leave_hours_remaining, 2), 0) as leave_remaining_prorata_hours\n",
+					"\t--,isnull(round((isnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) - isnull(sc.expected_leave_hours_remaining, 0)  - isnull(lt.leave_hours_taken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
+					"from load.SAP_HR h\n",
+					"\tleft join staff_cost sc on h.Pers#No# = sc.staff_number\n",
+					"\tleft join carried_over co on sc.staff_number = co.staff_number\n",
+					"\tleft join leave_taken lt on sc.staff_number = lt.staff_number\n",
+					"\tleft join bis.pension_ernic_rates p on sc.grade = p.Grade -- good\n",
+					"where \n",
+					"\tright(cast(Report_MonthEnd_Date as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
+				],
+				"execution_count": null
 			}
 		]
 	}
