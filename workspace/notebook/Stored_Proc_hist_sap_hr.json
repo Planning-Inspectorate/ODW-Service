@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bd33824b-ab46-4862-9057-13a8dd6f9a23"
+				"spark.autotune.trackingId": "d05b8f7e-074a-441e-8d69-327e0dd1cbd5"
 			}
 		},
 		"metadata": {
@@ -77,9 +77,10 @@
 					"    h.ps_group as grade, \n",
 					"\th.annual_salary as salary, \n",
 					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate,\n",
+					"    le.ExpectedFrom as report_month_end_date,\n",
 					"    le.LeaveDaysPerYear as leave_allowance,\n",
 					"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
-					"                                                    CASE sign(datediff(dd, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
+					"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
 					"                                                    WHEN 1 THEN\n",
 					"                                                    le.leaveyearstart\n",
 					"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
@@ -95,7 +96,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": null
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +139,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": 7
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -179,23 +180,7 @@
 					"GROUP BY \n",
 					"    h.pers_no;"
 				],
-				"execution_count": 8
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"- Missing leave_entitlement.file_name\n",
-					"- Confirm if we need to use views or tables for vw_leaves and vw_absences\n",
-					"- Confirm if f.absence_date is AbsenceStartDate or AbsenceEndDate\n",
-					"- Confirm that Number field is actually le.number"
-				]
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -211,14 +196,15 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW sap_hr_historic\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW sap_hr_historic\n",
 					"\n",
-					"     AS\n",
+					"--      AS\n",
 					"\t \n",
 					"SELECT \n",
 					"\th.pers_no,\n",
@@ -228,9 +214,9 @@
 					"\th.cocd,\n",
 					"\th.company_code,\n",
 					"\th.pa,\n",
-					"\th.personal.area,\n",
+					"\th.personnel_area,\n",
 					"\th.psubarea,\n",
-					"\th.personal_subarea,\n",
+					"\th.personnel_subarea,\n",
 					"\th.org_unit,\n",
 					"\th.organizational_unit,\n",
 					"\th.organizational_key1,\n",
@@ -255,7 +241,7 @@
 					"\th.actr,\n",
 					"\th.reason_for_action,\n",
 					"\th.position,\n",
-					"\th.position1,\n",
+					"\th.position_1,\n",
 					"\th.cost_ctr,\n",
 					"\th.cost_centre,\n",
 					"\th.civil_service_start,\n",
@@ -299,21 +285,21 @@
 					"\th.payroll_area,\n",
 					"\th.assignment_number,\n",
 					"\th.fte_2,\n",
-					"\tReport_MonthEnd_Date,\n",
-					"\tisnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) as leave_entitlement_hrs,\n",
-					"\tisnull(lt.leave_hours_taken, 0) as leave_taken_hrs,\n",
-					"\tround((isnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) - isnull(sc.expected_leave_hours_remaining, 0)  - isnull(lt.leave_hours_taken, 0)), 2) as leave_remaining_hours,\n",
-					"\tisnull(round(sc.expected_leave_hours_remaining, 2), 0) as leave_remaining_prorata_hours\n",
-					"\t--,isnull(round((isnull(sc.leave_allowance, 0) + isnull(co.carried_over_hours, 0) - isnull(sc.expected_leave_hours_remaining, 0)  - isnull(lt.leave_hours_taken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
+					"\tsc.report_month_end_date as Report_MonthEnd_Date,\n",
+					"\tcoalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) as leave_entitlement_hrs,\n",
+					"\tcoalesce(lt.leave_hours_taken, 0) as leave_taken_hrs,\n",
+					"\tround((coalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) - coalesce(sc.expected_leave_hours_remaining, 0)  - coalesce(lt.leave_hours_taken, 0)), 2) as leave_remaining_hours,\n",
+					"\tcoalesce(round(sc.expected_leave_hours_remaining, 2), 0) as leave_remaining_prorata_hours\n",
+					"\t--,coalesce(round((coalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) - coalesce(sc.expected_leave_hours_remaining, 0)  - coalesce(lt.leave_hours_taken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
 					"from odw_standardised_db.hr_saphr h\n",
 					"\tleft join staff_cost sc on h.pers_no = sc.staff_number\n",
 					"\tleft join carried_over co on sc.staff_number = co.staff_number\n",
 					"\tleft join leave_taken lt on sc.staff_number = lt.staff_number\n",
 					"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.grade = p.Grade\n",
 					"where \n",
-					"\tright(cast(Report_MonthEnd_Date as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
+					"\tright(cast(cast(sc.report_month_end_date as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
 				],
-				"execution_count": 13
+				"execution_count": 41
 			}
 		]
 	}
