@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4fedf057-4641-4f04-bdc1-b9f1c5cb285f"
+				"spark.autotune.trackingId": "bd33824b-ab46-4862-9057-13a8dd6f9a23"
 			}
 		},
 		"metadata": {
@@ -51,20 +51,6 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\r\n",
-					"-- declare @file_date date\r\n",
-					"-- set @file_date = (select top 1 (convert(date, substring([file_name], 19, 8), 108)) from sap_hr.leave_entitlement)"
-				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
 						"outputs_hidden": false
@@ -90,13 +76,16 @@
 					"    h.pers_no as staff_number,\n",
 					"    h.ps_group as grade, \n",
 					"\th.annual_salary as salary, \n",
-					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate\n",
-					"    -- cast(case sign(datediff(dd, cast(le.[Ded# from] as date), @file_date)) -- harmonised.leave_entitlement  LeaveYearStart\n",
-					"\t-- \t\t\twhen 1 then le.[Ded# from]\n",
-					"\t-- \t\t\twhen 0 then le.[Ded# from]\n",
-					"\t-- \t\t\telse dateadd(year, -1, le.[Ded# from])\n",
-					"\t-- \t\tend as date) as leave_start_date,\n",
-					"\n",
+					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate,\n",
+					"    le.LeaveDaysPerYear as leave_allowance,\n",
+					"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
+					"                                                    CASE sign(datediff(dd, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
+					"                                                    WHEN 1 THEN\n",
+					"                                                    le.leaveyearstart\n",
+					"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
+					"                                                    END\n",
+					"                                                    AS date), le.expectedfrom))/364.25)%1))) AS expected_leave_hours_remaining\n",
+					"    \n",
 					"FROM odw_standardised_db.hr_saphr h\n",
 					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = case left(cast(le.EmployeeID as varchar(10)), 1)\n",
 					"                                                            when 4 then '50' + cast(le.EmployeeID as varchar(10))\n",
