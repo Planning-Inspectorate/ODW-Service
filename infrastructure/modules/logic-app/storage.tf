@@ -12,5 +12,30 @@ resource "azurerm_storage_account" "logic_app" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
-  tags                     = local.tags
+
+  queue_properties {
+    logging {
+      read                  = true
+      write                 = true
+      delete                = true
+      retention_policy_days = 7
+      version               = "1.0"
+    }
+
+    minute_metrics {
+      enabled               = true
+      include_apis          = true
+      retention_policy_days = 7
+      version               = "1.0"
+    }
+
+    hour_metrics {
+      enabled               = true
+      include_apis          = true
+      retention_policy_days = 7
+      version               = "1.0"
+    }
+  }
+
+  tags = local.tags
 }

@@ -25,12 +25,6 @@ variable "logic_app_storage_account" {
   type        = string
 }
 
-variable "logic_app_storage_account_access_key" {
-  description = "The access key for the storage account"
-  type        = string
-  sensitive   = true
-}
-
 variable "resource_group_name" {
   description = "The name of the resource group into which resources will be deployed"
   type        = string
