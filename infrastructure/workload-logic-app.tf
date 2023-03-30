@@ -41,7 +41,7 @@ module "logic_app_failover" {
 
   logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
   logic_app_standard_enabled     = var.logic_app_standard_enabled
-  logic_app_storage_account      = var.logic_app_storage_account
+  logic_app_storage_account      = var.logic_app_storage_account_failover
 
   tags = local.tags
 }

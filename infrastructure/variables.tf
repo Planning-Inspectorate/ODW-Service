@@ -166,6 +166,11 @@ variable "logic_app_storage_account" {
   type        = string
 }
 
+variable "logic_app_storage_account_failover" {
+  description = "The name of the storage account used by the Logic App"
+  type        = string
+}
+
 variable "logic_app_standard_enabled" {
   default     = false
   description = "Determines whether a Logic App Standard function should be deployed"
