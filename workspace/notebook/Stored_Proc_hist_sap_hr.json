@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2a3f3b26-a11e-4609-937d-7fec4ed549cc"
+				"spark.autotune.trackingId": "a34ceb11-3cff-4bf3-ac42-1a4f7493d39d"
 			}
 		},
 		"metadata": {
@@ -101,7 +101,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 1
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -166,26 +166,88 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW leave_taken\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW leave_taken\n",
+					"\n",
+					"--      AS\n",
+					"\n",
+					"-- SELECT DISTINCT\n",
+					"--     h.pers_no as staff_number,\n",
+					"--     sum(f.Hours) as leave_hours_taken\n",
+					"\n",
+					"-- FROM odw_standardised_db.hr_saphr h\n",
+					"-- LEFT JOIN odw_harmonised_db.hr_absence_dim f ON h.pers_no = f.EmployeeID\n",
+					"-- LEFT JOIN staff_cost sc ON f.EmployeeID = sc.staff_number\n",
+					"-- LEFT JOIN carried_over co ON f.EmployeeID = co.staff_number\n",
+					"-- WHERE \n",
+					"--     f.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
+					"--     AND \n",
+					"--     f.AbsenceEndDate BETWEEN sc.leave_start_date AND sc.report_month_end_date -- or may be AbsenceEndDate\n",
+					"-- GROUP BY \n",
+					"--     h.pers_no;"
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from staff_cost order by staff_number desc;"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW leave_taken1\n",
 					"\n",
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.pers_no as staff_number,\n",
+					"    f.EmployeeID as staff_number,\n",
 					"    sum(f.Hours) as leave_hours_taken\n",
 					"\n",
-					"FROM odw_standardised_db.hr_saphr h\n",
-					"LEFT JOIN odw_harmonised_db.hr_absence_dim f ON h.pers_no = f.EmployeeID\n",
-					"LEFT JOIN staff_cost l ON f.EmployeeID = l.staff_number\n",
-					"LEFT JOIN carried_over co ON f.EmployeeID = co.staff_number\n",
+					"FROM odw_harmonised_db.hr_absence_dim f \n",
+					"LEFT JOIN staff_cost sc ON f.EmployeeID = sc.staff_number\n",
 					"WHERE \n",
 					"    f.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
-					"    -- AND \n",
-					"    -- f.AbsenceStartDate BETWEEN l.leave_start_date AND '@file_date' -- or may be AbsenceEndDate\n",
+					"    AND \n",
+					"    f.AbsenceStartDate  BETWEEN sc.leave_start_date AND sc.report_month_end_date\n",
 					"GROUP BY \n",
-					"    h.pers_no;"
+					"    f.EmployeeID;"
 				],
-				"execution_count": 40
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
