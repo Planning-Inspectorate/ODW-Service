@@ -4,7 +4,6 @@ alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
-app_service_plan_enabled                 = true
 
 bastion_host_enabled = true
 bastion_vm_username  = "basadmin"
@@ -42,7 +41,8 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 environment = "dev"
 location    = "uk-south"
 
-logic_app_standard_enabled = true
+logic_app_service_plan_enabled = true
+logic_app_standard_enabled     = true
 
 key_vault_role_assignments = {
   "Key Vault Administrator" = [

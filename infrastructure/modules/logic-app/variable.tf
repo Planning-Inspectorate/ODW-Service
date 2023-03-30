@@ -1,9 +1,3 @@
-variable "app_service_plan_enabled" {
-  default     = false
-  description = "Determines whether an App Service Plan should be deployed"
-  type        = bool
-}
-
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string
@@ -12,6 +6,12 @@ variable "environment" {
 variable "location" {
   description = "The short-format Azure region into which resources will be deployed"
   type        = string
+}
+
+variable "logic_app_service_plan_enabled" {
+  default     = false
+  description = "Determines whether an App Service Plan should be deployed"
+  type        = bool
 }
 
 variable "logic_app_standard_enabled" {

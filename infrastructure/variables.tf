@@ -33,12 +33,6 @@ variable "alert_threshold_data_lake_capacity_bytes" {
   type        = number
 }
 
-variable "app_service_plan_enabled" {
-  default     = false
-  description = "Determines whether an App Service Plan should be deployed"
-  type        = bool
-}
-
 variable "bastion_host_enabled" {
   default     = false
   description = "Determines if a Bastion Host should be provisioned for management purposes"
@@ -158,6 +152,13 @@ variable "key_vault_role_assignments" {
 variable "location" {
   description = "The short-format Azure region into which resources will be deployed"
   type        = string
+}
+
+
+variable "logic_app_service_plan_enabled" {
+  default     = false
+  description = "Determines whether an App Service Plan should be deployed"
+  type        = bool
 }
 
 variable "logic_app_storage_account" {
