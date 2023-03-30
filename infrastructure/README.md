@@ -183,6 +183,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="module_bastion_host_failover"></a> [bastion\_host\_failover](#module\_bastion\_host\_failover) | ./modules/bastion-host | n/a |
 | <a name="module_devops_agent_pool"></a> [devops\_agent\_pool](#module\_devops\_agent\_pool) | ./modules/devops-agent-pool | n/a |
 | <a name="module_devops_agent_pool_failover"></a> [devops\_agent\_pool\_failover](#module\_devops\_agent\_pool\_failover) | ./modules/devops-agent-pool | n/a |
+| <a name="module_logic_app"></a> [logic\_app](#module\_logic\_app) | ./modules/logic-app | n/a |
+| <a name="module_logic_app_failover"></a> [logic\_app\_failover](#module\_logic\_app\_failover) | ./modules/logic-app | n/a |
 | <a name="module_odt_pe_backoffice_sb"></a> [odt\_pe\_backoffice\_sb](#module\_odt\_pe\_backoffice\_sb) | ./modules/odt-pe-backoffice-sb | n/a |
 | <a name="module_odt_pe_backoffice_sb_failover"></a> [odt\_pe\_backoffice\_sb\_failover](#module\_odt\_pe\_backoffice\_sb\_failover) | ./modules/odt-pe-backoffice-sb | n/a |
 | <a name="module_synapse_data_lake"></a> [synapse\_data\_lake](#module\_synapse\_data\_lake) | ./modules/synapse-data-lake | n/a |
@@ -223,6 +225,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | [azurerm_resource_group.data_management_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.ingestion](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.ingestion_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.logic_app](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.logic_app_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.monitoring](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.monitoring_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.network](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
@@ -248,6 +252,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_alert_group_synapse_recipients"></a> [alert\_group\_synapse\_recipients](#input\_alert\_group\_synapse\_recipients) | A list of email recipients to recieve Synapse alerts | `list(string)` | `[]` | no |
 | <a name="input_alert_scope_service_health"></a> [alert\_scope\_service\_health](#input\_alert\_scope\_service\_health) | The resource scope at which to alert on service health events | `string` | n/a | yes |
 | <a name="input_alert_threshold_data_lake_capacity_bytes"></a> [alert\_threshold\_data\_lake\_capacity\_bytes](#input\_alert\_threshold\_data\_lake\_capacity\_bytes) | The threshold at which to trigger an alert for exceeding Data Lake capacity in bytes | `number` | `1099511627776` | no |
+| <a name="input_app_service_plan_enabled"></a> [app\_service\_plan\_enabled](#input\_app\_service\_plan\_enabled) | Determines whether an App Service Plan should be deployed | `bool` | `false` | no |
 | <a name="input_bastion_host_enabled"></a> [bastion\_host\_enabled](#input\_bastion\_host\_enabled) | Determines if a Bastion Host should be provisioned for management purposes | `bool` | `false` | no |
 | <a name="input_bastion_vm_image"></a> [bastion\_vm\_image](#input\_bastion\_vm\_image) | An object describing the image specification to use for the Bastion jumpbox VM | `map(string)` | <pre>{<br>  "offer": "windows-11",<br>  "publisher": "MicrosoftWindowsDesktop",<br>  "sku": "win11-21h2-ent",<br>  "version": "latest"<br>}</pre> | no |
 | <a name="input_bastion_vm_size"></a> [bastion\_vm\_size](#input\_bastion\_vm\_size) | The size of the Bastion jumpbox VM to be deployed | `string` | `"Standard_F2s_v2"` | no |
@@ -268,6 +273,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_failover_deployment"></a> [failover\_deployment](#input\_failover\_deployment) | Determines if this is a failover deployment such that resources will deployed to the failover region | `bool` | `false` | no |
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
+| <a name="input_logic_app_standard_enabled"></a> [logic\_app\_standard\_enabled](#input\_logic\_app\_standard\_enabled) | Determines whether a Logic App Standard function should be deployed | `bool` | `false` | no |
+| <a name="input_logic_app_storage_account"></a> [logic\_app\_storage\_account](#input\_logic\_app\_storage\_account) | The name of the storage account used by the Logic App | `string` | n/a | yes |
 | <a name="input_network_watcher_enabled"></a> [network\_watcher\_enabled](#input\_network\_watcher\_enabled) | Determines whether a Network Watcher resource will be deployed | `bool` | `false` | no |
 | <a name="input_odt_back_office_service_bus_enabled"></a> [odt\_back\_office\_service\_bus\_enabled](#input\_odt\_back\_office\_service\_bus\_enabled) | Determines whether the ODT Service Bus Namespace will be deployed | `bool` | `false` | no |
 | <a name="input_odt_back_office_service_bus_failover_enabled"></a> [odt\_back\_office\_service\_bus\_failover\_enabled](#input\_odt\_back\_office\_service\_bus\_failover\_enabled) | Whether or not to enable failover for the Service Bus namespace | `bool` | `false` | no |
