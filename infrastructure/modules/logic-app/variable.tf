@@ -25,6 +25,11 @@ variable "logic_app_storage_account" {
   type        = string
 }
 
+variable "logic_app_storage_account_failover" {
+  description = "The name of the storage account used by the Logic App"
+  type        = string
+}
+
 variable "resource_group_name" {
   description = "The name of the resource group into which resources will be deployed"
   type        = string
