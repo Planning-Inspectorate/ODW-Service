@@ -1,8 +1,8 @@
 {
-	"name": "nsip-project-subscribe",
+	"name": "zendesk-subscribe",
 	"properties": {
 		"folder": {
-			"name": "odt-source-to-raw"
+			"name": "0-odw-source-to-raw/ServiceBus"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0d8bbfcc-bd4d-410a-bce4-a4cac9cfdae4"
+				"spark.autotune.trackingId": "8e74d871-0eb1-47bf-8ec6-bed8ee8483d9"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,7 @@
 					}
 				},
 				"source": [
-					"# NSIP Project Subscribe\n",
+					"# Zendesk Subscribe\n",
 					"\n",
 					"Using a predefined subscription to a topic; read the messages and save them to the data lake\n",
 					"\n",
@@ -98,7 +98,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 59
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -136,17 +136,18 @@
 					"jobId = mssparkutils.env.getJobId()\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_storage_container = 'abfss://odw-raw@' + storage_account\n",
-					"raw_storage_source_folder = 'odt/'\n",
+					"raw_storage_source_folder = 'ZenDesk/'\n",
+					"subfolder = 'ServiceBus'\n",
 					"raw_storage_folder_path = raw_storage_container + raw_storage_source_folder\n",
 					"\n",
 					"#service bus variables\n",
-					"secret_name=\"odt-message-queue-connection-string\"\n",
+					"secret_name=\"esb-listen-connection-string\"\n",
 					"kv_linked_service=\"ls_kv\"\n",
-					"topic_name=\"nsip-project\"\n",
-					"subscription_name=\"nsip-project-odw\"\n",
+					"topic_name=\"zendesk\"\n",
+					"subscription_name=\"zendesk\"\n",
 					"max_records = 10"
 				],
-				"execution_count": 60
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +170,7 @@
 					"\n",
 					"def writeData(logger, filename, data):\n",
 					"    try:\n",
-					"        raw_storage_sub_folder = topic_name +'/' +str(date.today())\n",
+					"        raw_storage_sub_folder = subfolder +'/' +str(date.today())\n",
 					"        destination_dir = '/synfs/' +jobId +'/temp_raw/' +raw_storage_sub_folder+'/'\n",
 					"        #create the destination_directory, if it doesn't already exist\n",
 					"        os.makedirs(destination_dir, exist_ok=True)\n",
@@ -181,7 +182,7 @@
 					"        return False\n",
 					"    return True"
 				],
-				"execution_count": 61
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -254,14 +255,13 @@
 					"                        logger.info(\"Reading \" +str(len(received_msgs)) +\" messages\")\n",
 					"\n",
 					"                        for message in received_msgs:\n",
-					"                            #first json.loads unescapes it, second parses it into a json object\n",
 					"                            data = json.loads(str(message))\n",
-					"                            filename = str(message.message_id) +'.json'\n",
+					"                            filename = message.subject +\"-\" +str(message.message_id) +'.json'\n",
 					"\n",
 					"                            #save data to blob\n",
 					"                            if writeData(logger, filename, data):\n",
 					"                                receiver.complete_message(message)\n",
-					"                                logger.info(\"Wrote message to file\" +filename)\n",
+					"                                logger.info(\"Wrote message to file \" +filename)\n",
 					"                            else:\n",
 					"                                logger.error(\"Failed to write message \" +filename)\n",
 					"                    else:\n",
@@ -277,7 +277,7 @@
 					"        mssparkutils.fs.unmount(\"/temp_raw\")\n",
 					"        logger.info(\"Finished\")"
 				],
-				"execution_count": 62
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -295,7 +295,7 @@
 				"source": [
 					"saveFromSubscription()"
 				],
-				"execution_count": 63
+				"execution_count": 20
 			}
 		]
 	}
