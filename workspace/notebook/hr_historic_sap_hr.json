@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ca8009a7-dc57-4cb6-9bdf-039f34b9baa8"
+				"spark.autotune.trackingId": "c479b5b4-30c7-4731-98a0-5ab8eb6f2a28"
 			}
 		},
 		"metadata": {
@@ -914,6 +914,70 @@
 					""
 				],
 				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\n",
+					"from pyspark.sql import SparkSession\n",
+					"\n",
+					"def get_england_and_wales(data_frame):\n",
+					"    return (\n",
+					"        pd\n",
+					"        .json_normalize(\n",
+					"            data_frame.to_dict(),\n",
+					"            record_path=[['england-and-wales', 'events']]\n",
+					"        )\n",
+					"        .astype({\n",
+					"            'title': 'string',\n",
+					"            'date': 'datetime64[ns]'\n",
+					"        })\n",
+					"    )\n",
+					"\n",
+					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
+					"bh = get_england_and_wales(bank_holidays)\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"sparkDF=spark.createDataFrame(bh) \n",
+					"\n",
+					"sparkDF.createOrReplaceTempView('bank_holidays')"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from bank_holidays limit 100;"
+				],
+				"execution_count": 11
 			}
 		]
 	}
