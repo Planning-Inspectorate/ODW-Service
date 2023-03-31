@@ -167,12 +167,6 @@ variable "logic_app_standard_enabled" {
   type        = bool
 }
 
-variable "logic_app_storage_account" {
-  description = "The name of the storage account for the Logic App"
-  type        = string
-}
-
-
 variable "network_watcher_enabled" {
   default     = false
   description = "Determines whether a Network Watcher resource will be deployed"
