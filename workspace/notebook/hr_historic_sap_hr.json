@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a04ae1fb-3f02-4cdf-a9c0-cd8e531f4e01"
+				"spark.autotune.trackingId": "7c16dce9-6412-44e2-9f8d-7cad761cae0a"
 			}
 		},
 		"metadata": {
@@ -80,7 +80,7 @@
 					"    h.ps_group as grade, \n",
 					"\th.annual_salary as salary, \n",
 					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate,\n",
-					"    le.ExpectedFrom as report_month_end_date,\n",
+					"    cast(le.ExpectedFrom as date) as report_month_end_date,\n",
 					"    le.LeaveDaysPerYear as leave_allowance,\n",
 					"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
 					"\t\t\t\twhen 1 then le.LeaveYearStart\n",
@@ -100,7 +100,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 17
+				"execution_count": 209
 			},
 			{
 				"cell_type": "code",
@@ -142,7 +142,7 @@
 					"\r\n",
 					"sparkDF.createOrReplaceTempView('bank_holidays')"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -181,7 +181,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -210,7 +210,11 @@
 					"SELECT DISTINCT\n",
 					"    f.AbsenceID,\n",
 					"    f.EmployeeID as staff_number,\n",
-					"    sum(f.Hours) as leave_hours,\n",
+					"    CASE\n",
+					"        WHEN sc.report_month_end_date >= f.AbsenceEndDate\n",
+					"        THEN f.Hours\n",
+					"        ELSE f.Hours - (f.HoursPerDay * datediff(f.AbsenceEndDate, sc.report_month_end_date))\n",
+					"    END AS leave_hours,\n",
 					"    f.Days, \n",
 					"    f.Hours,\n",
 					"    f.CalendarDays,\n",
@@ -219,7 +223,7 @@
 					"    sc.leave_start_date,\n",
 					"    B.title,\n",
 					"    CASE \n",
-					"        WHEN f.Days = 0 AND f.Hours = 0 THEN 7.4 * f.CalendarDays\n",
+					"        WHEN f.Days = 0 AND f.Hours = 0 THEN f.HoursPerDay * f.CalendarDays\n",
 					"        ELSE NULL\n",
 					"    END AS BankHolidaysHours\n",
 					"\n",
@@ -227,14 +231,15 @@
 					"FROM odw_harmonised_db.hr_absence_dim f \n",
 					"LEFT JOIN staff_cost sc ON f.EmployeeID = sc.staff_number\n",
 					"LEFT JOIN bank_holidays B ON f.AbsenceStartDate = B.date\n",
-					"WHERE \n",
+					"WHERE\n",
 					"    f.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
 					"    AND \n",
 					"    f.AbsenceStartDate  BETWEEN sc.leave_start_date AND sc.report_month_end_date\n",
 					"GROUP BY \n",
-					"    f.EmployeeID,f.AbsenceID,f.Days,f.Hours,f.CalendarDays,f.AbsenceStartDate,f.AbsenceEndDate,sc.leave_start_date,B.title;"
+					"    f.EmployeeID,f.AbsenceID,f.Days,f.Hours,f.CalendarDays,f.AbsenceStartDate,f.AbsenceEndDate,sc.leave_start_date,B.title,f.HoursPerDay,sc.report_month_end_date\n",
+					"Order by AbsenceStartDate"
 				],
-				"execution_count": 20
+				"execution_count": 215
 			},
 			{
 				"cell_type": "code",
@@ -254,31 +259,31 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken\r\n",
-					"\r\n",
-					"    AS\r\n",
-					"\r\n",
-					"SELECT DISTINCT AbsenceID, \r\n",
-					"staff_number,\r\n",
-					"Days, \r\n",
-					"Hours,\r\n",
-					"CalendarDays,\r\n",
-					"AbsenceStartDate,\r\n",
-					"AbsenceEndDate,\r\n",
-					"leave_start_date,\r\n",
-					"title,\r\n",
-					"BankHolidaysHours,\r\n",
-					"leave_hours,\r\n",
-					"CASE\r\n",
-					"    WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours + BankHolidaysHours\r\n",
-					"    ELSE leave_hours\r\n",
-					"END AS leave_hours_taken\r\n",
-					"FROM leave_taken\r\n",
-					"Where staff_number is not null and leave_start_date<=AbsenceStartDate\r\n",
-					"Order by AbsenceEndDate DESC;"
+					" %%sql\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken -- adding bank holidays in leave_hours_taken\n",
+					"\n",
+					"--     AS\n",
+					"\n",
+					"-- SELECT DISTINCT\n",
+					"-- staff_number,\n",
+					"-- Days, \n",
+					"-- Hours,\n",
+					"-- CalendarDays,\n",
+					"-- AbsenceStartDate,\n",
+					"-- AbsenceEndDate,\n",
+					"-- leave_start_date,\n",
+					"-- title,\n",
+					"-- BankHolidaysHours,\n",
+					"-- leave_hours,\n",
+					"--  CASE\n",
+					"--     WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours + BankHolidaysHours\n",
+					"--     ELSE leave_hours\n",
+					"-- END AS leave_hours_taken\n",
+					"-- FROM leave_taken\n",
+					"-- Where staff_number is not null and leave_start_date<=AbsenceStartDate and staff_number = 500514\n",
+					"-- Order by AbsenceEndDate;"
 				],
-				"execution_count": 21
+				"execution_count": 220
 			},
 			{
 				"cell_type": "code",
@@ -298,10 +303,22 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql \r\n",
-					"SELECT * from fixed_leave_taken where Days=0 and Hours=0;"
+					"%%sql\n",
+					"CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken -- adding bank holidays in leave_hours_taken\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT\n",
+					"staff_number,\n",
+					"SUM(CASE\n",
+					"        WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours + BankHolidaysHours\n",
+					"        ELSE leave_hours\n",
+					"    END) AS leave_hours_taken\n",
+					"FROM leave_taken\n",
+					"Where staff_number is not null and leave_start_date<=AbsenceStartDate\n",
+					"GROUP BY staff_number;"
 				],
-				"execution_count": 22
+				"execution_count": 216
 			},
 			{
 				"cell_type": "code",
@@ -415,12 +432,42 @@
 					"from odw_standardised_db.hr_saphr h\n",
 					"\tleft join staff_cost sc on h.pers_no = sc.staff_number\n",
 					"\tleft join carried_over co on sc.staff_number = co.staff_number\n",
-					"\tleft join fixed_leave_taken lt on sc.staff_number = lt.staff_number\n",
+					"\tleft join fixed_leave_taken lt on cast(sc.staff_number as int) = cast(lt.staff_number as int)\n",
 					"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.grade = p.Grade\n",
 					"where \n",
 					"\tright(cast(cast(sc.report_month_end_date as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
 				],
-				"execution_count": null
+				"execution_count": 217
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\t \n",
+					"-- SELECT DISTINCT\n",
+					"-- \tpers_no,\n",
+					"-- \tleave_taken_hrs,\n",
+					"-- \tleave_remaining_hours,\n",
+					"-- \tleave_remaining_prorata_hours\n",
+					"-- from sap_hr_historic\n",
+					"-- order by pers_no"
+				],
+				"execution_count": 218
 			},
 			{
 				"cell_type": "code",
