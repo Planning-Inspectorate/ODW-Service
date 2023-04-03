@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "979a5abb-3540-468a-8771-783ae5629962"
+				"spark.autotune.trackingId": "7665d329-c099-4c37-9a6f-f5fc04ba2573"
 			}
 		},
 		"metadata": {
@@ -94,20 +94,21 @@
 					"        THEN T7.LeaveEntitlementID\r\n",
 					"        ELSE NULL\r\n",
 					"    END as LeaveEntitlementID,     \r\n",
-					"    T3.EmployeeID, -- FK to employee_fact\r\n",
+					"    T1.Staff_Number AS EmployeeID, -- FK to employee_fact\r\n",
 					"    T1.Number AS LeaveDaysPerYear,\r\n",
 					"    T1.Deduction AS LeaveDeduction,\r\n",
 					"    T1.Ded_from AS LeaveYearStart,\r\n",
 					"    T1.Ded_To AS LeaveYearEnd,\r\n",
 					"    T1.Absence_Quota_type AS AbsenceQuotaType,\r\n",
+					"    date_add(T1.Expected_From, -1) AS ExpectedFrom,\r\n",
 					"    T2.SourceSystemID as SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'))) as RowID,\r\n",
+					"    md5(concat(IFNULL(T1.Staff_Number,'.'),IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'),IFNULL(T1.Expected_From,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
 					"    CASE\r\n",
 					"        WHEN T3.EmployeeID = T7.EmployeeID AND T1.Absence_Quota_type = T7.AbsenceQuotaType\r\n",
-					"            AND md5(concat(IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+					"            AND md5(concat(IFNULL(T1.Staff_Number,'.'),IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'),IFNULL(T1.Expected_From,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
@@ -132,7 +133,7 @@
 					"        -- flags new data        \r\n",
 					"        (      CASE\r\n",
 					"                    WHEN T3.EmployeeID = T7.EmployeeID AND T1.Absence_Quota_type = T7.AbsenceQuotaType\r\n",
-					"                        AND md5(concat(IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+					"                        AND md5(concat(IFNULL(T1.Staff_Number,'.'),IFNULL(T1.Number,'.'),IFNULL(T1.Deduction,'.'),IFNULL(T1.Ded_from,'.'),IFNULL(T1.Absence_Quota_type,'.'),IFNULL(T1.Expected_From,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 					"                    THEN 'Y'\r\n",
 					"                    WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
 					"                    THEN 'Y'\r\n",
@@ -146,10 +147,9 @@
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
 					"    )\r\n",
-					";\r\n",
-					""
+					";"
 				],
-				"execution_count": 5
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -199,6 +199,7 @@
 					"    LeaveYearStart,\r\n",
 					"    LeaveYearEnd,\r\n",
 					"    AbsenceQuotaType,\r\n",
+					"    ExpectedFrom,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -216,6 +217,7 @@
 					"    T1.LeaveYearStart,\r\n",
 					"    T1.LeaveYearEnd,\r\n",
 					"    T1.AbsenceQuotaType,\r\n",
+					"    T1.ExpectedFrom,\r\n",
 					"    T1.SourceSystemID,\r\n",
 					"    T1.IngestionDate,\r\n",
 					"    T1.ValidTo,\r\n",
@@ -229,7 +231,7 @@
 					"; \r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -287,7 +289,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -337,6 +339,7 @@
 					"    LeaveYearStart,\r\n",
 					"    LeaveYearEnd,\r\n",
 					"    AbsenceQuotaType,\r\n",
+					"    ExpectedFrom,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -344,6 +347,30 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.hr_leave_entitlement_dim;\r\n",
 					""
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select count(*) from odw_standardised_db.vw_leave;\n",
+					"select count(*) from odw_harmonised_db.hr_leave_entitlement_dim;"
 				],
 				"execution_count": 8
 			}
