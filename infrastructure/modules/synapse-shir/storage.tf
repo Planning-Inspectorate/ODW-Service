@@ -1,4 +1,5 @@
 resource "azurerm_storage_account" "shir" {
+  #checkov:skip=CKV_AZURE_33: Firewall not used on this storage account to implement private endpoint
   #checkov:skip=CKV_AZURE_35: Firewall not required for this stroage account
   #checkov:skip=CKV_AZURE_59: Firewall not required for this stroage account
   #checkov:skip=CKV_AZURE_190: Firewall not required for this stroage account
