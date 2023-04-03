@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1989b29b-249d-4d96-a507-fc9c8989babb"
+				"spark.autotune.trackingId": "8b80e089-83c9-4afb-b15a-1a6dc46f2ce7"
 			}
 		},
 		"metadata": {
@@ -100,7 +100,49 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 30
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"\r\n",
+					"def get_england_and_wales(data_frame):\r\n",
+					"    return (\r\n",
+					"        pd\r\n",
+					"        .json_normalize(\r\n",
+					"            data_frame.to_dict(),\r\n",
+					"            record_path=[['england-and-wales', 'events']]\r\n",
+					"        )\r\n",
+					"        .astype({\r\n",
+					"            'title': 'string',\r\n",
+					"            'date': 'datetime64[ns]',\r\n",
+					"            'notes': 'string',\r\n",
+					"            'bunting': 'bool'\r\n",
+					"        })\r\n",
+					"    )\r\n",
+					"\r\n",
+					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\r\n",
+					"bh = get_england_and_wales(bank_holidays)\r\n",
+					"\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"sparkDF=spark.createDataFrame(bh) \r\n",
+					"\r\n",
+					"sparkDF.createOrReplaceTempView('bank_holidays')"
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -139,7 +181,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -166,20 +208,33 @@
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
+					"    f.AbsenceID,\n",
 					"    f.EmployeeID as staff_number,\n",
-					"    sum(f.Hours) as leave_hours_taken\n",
+					"    sum(f.Hours) as leave_hours_taken,\n",
+					"    f.Days, \n",
+					"    f.Hours,\n",
+					"    f.CalendarDays,\n",
+					"    f.AbsenceStartDate,\n",
+					"    f.AbsenceEndDate,\n",
+					"    sc.leave_start_date,\n",
+					"    B.title,\n",
+					"    CASE \n",
+					"        WHEN f.Days = 0 AND f.Hours = 0 THEN 7.4 * f.CalendarDays\n",
+					"        ELSE NULL\n",
+					"    END AS BankHolidaysHours\n",
+					"\n",
 					"\n",
 					"FROM odw_harmonised_db.hr_absence_dim f \n",
 					"LEFT JOIN staff_cost sc ON f.EmployeeID = sc.staff_number\n",
+					"LEFT JOIN bank_holidays B ON f.AbsenceStartDate = B.date\n",
 					"WHERE \n",
 					"    f.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
 					"    AND \n",
 					"    f.AbsenceStartDate  BETWEEN sc.leave_start_date AND sc.report_month_end_date\n",
 					"GROUP BY \n",
-					"    f.EmployeeID;\n",
-					""
+					"    f.EmployeeID,f.AbsenceID,f.Days,f.Hours,f.CalendarDays,f.AbsenceStartDate,f.AbsenceEndDate,sc.leave_start_date,B.title;"
 				],
-				"execution_count": null
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -853,116 +908,6 @@
 				"source": [
 					"Checking for day and hours in absenence_dim which = 0 "
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.hr_leave_entitlement_dim WHERE EmployeeID = 500023;"
-				],
-				"execution_count": 19
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"\r\n",
-					"\r\n",
-					""
-				],
-				"execution_count": 17
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"import pandas as pd\n",
-					"from pyspark.sql import SparkSession\n",
-					"\n",
-					"def get_england_and_wales(data_frame):\n",
-					"    return (\n",
-					"        pd\n",
-					"        .json_normalize(\n",
-					"            data_frame.to_dict(),\n",
-					"            record_path=[['england-and-wales', 'events']]\n",
-					"        )\n",
-					"        .astype({\n",
-					"            'title': 'string',\n",
-					"            'date': 'datetime64[ns]',\n",
-					"            'notes': 'string',\n",
-					"            'bunting': 'bool'\n",
-					"        })\n",
-					"    )\n",
-					"\n",
-					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
-					"bh = get_england_and_wales(bank_holidays)\n",
-					"\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"sparkDF=spark.createDataFrame(bh) \n",
-					"\n",
-					"sparkDF.createOrReplaceTempView('bank_holidays')"
-				],
-				"execution_count": 21
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from bank_holidays limit 100;"
-				],
-				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
