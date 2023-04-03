@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a5a44a49-0a73-4fe1-a1bb-40a1501ba64d"
+				"spark.autotune.trackingId": "a04ae1fb-3f02-4cdf-a9c0-cd8e531f4e01"
 			}
 		},
 		"metadata": {
@@ -100,7 +100,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 2
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -142,7 +142,7 @@
 					"\r\n",
 					"sparkDF.createOrReplaceTempView('bank_holidays')"
 				],
-				"execution_count": 3
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -181,7 +181,7 @@
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": 4
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -210,7 +210,7 @@
 					"SELECT DISTINCT\n",
 					"    f.AbsenceID,\n",
 					"    f.EmployeeID as staff_number,\n",
-					"    sum(f.Hours) as leave_hours_taken,\n",
+					"    sum(f.Hours) as leave_hours,\n",
 					"    f.Days, \n",
 					"    f.Hours,\n",
 					"    f.CalendarDays,\n",
@@ -234,7 +234,7 @@
 					"GROUP BY \n",
 					"    f.EmployeeID,f.AbsenceID,f.Days,f.Hours,f.CalendarDays,f.AbsenceStartDate,f.AbsenceEndDate,sc.leave_start_date,B.title;"
 				],
-				"execution_count": 9
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -255,9 +255,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken\r\n",
 					"\r\n",
-					"--     AS\r\n",
+					"    AS\r\n",
 					"\r\n",
 					"SELECT DISTINCT AbsenceID, \r\n",
 					"staff_number,\r\n",
@@ -269,16 +269,39 @@
 					"leave_start_date,\r\n",
 					"title,\r\n",
 					"BankHolidaysHours,\r\n",
-					"leave_hours_taken,\r\n",
+					"leave_hours,\r\n",
 					"CASE\r\n",
-					"    WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours_taken + BankHolidaysHours\r\n",
-					"    ELSE leave_hours_taken\r\n",
-					"END AS TotalLeaveHoursTaken\r\n",
+					"    WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours + BankHolidaysHours\r\n",
+					"    ELSE leave_hours\r\n",
+					"END AS leave_hours_taken\r\n",
 					"FROM leave_taken\r\n",
 					"Where staff_number is not null and leave_start_date<=AbsenceStartDate\r\n",
 					"Order by AbsenceEndDate DESC;"
 				],
-				"execution_count": 15
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \r\n",
+					"SELECT * from fixed_leave_taken where Days=0 and Hours=0;"
+				],
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -392,7 +415,7 @@
 					"from odw_standardised_db.hr_saphr h\n",
 					"\tleft join staff_cost sc on h.pers_no = sc.staff_number\n",
 					"\tleft join carried_over co on sc.staff_number = co.staff_number\n",
-					"\tleft join leave_taken lt on sc.staff_number = lt.staff_number\n",
+					"\tleft join fixed_leave_taken lt on sc.staff_number = lt.staff_number\n",
 					"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.grade = p.Grade\n",
 					"where \n",
 					"\tright(cast(cast(sc.report_month_end_date as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
@@ -952,53 +975,6 @@
 				"source": [
 					"Checking for day and hours in absenence_dim which = 0 "
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"-- CREATE OR REPLACE TEMPORARY VIEW fixed_hist_sap_hr\r\n",
-					"\r\n",
-					"--     AS\r\n",
-					"\r\n",
-					"SELECT DISTINCT AbsenceID, \r\n",
-					"EmployeeID, \r\n",
-					"Days, \r\n",
-					"Hours,\r\n",
-					"CalendarDays,\r\n",
-					"AbsenceStartDate,\r\n",
-					"AbsenceEndDate,\r\n",
-					"leave_start_date,\r\n",
-					"title,\r\n",
-					"CASE \r\n",
-					"    WHEN Days = 0 AND Hours = 0 THEN 7.4 * CalendarDays\r\n",
-					"    ELSE NULL\r\n",
-					"END AS BankHolidaysHours,\r\n",
-					"LeaveTakenHrs,\r\n",
-					"CASE\r\n",
-					"    WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN LeaveTakenHrs + BankHolidaysHours\r\n",
-					"    ELSE LeaveTakenHrs\r\n",
-					"END AS TotalLeaveHoursTaken\r\n",
-					"FROM fix_hist_sap_hr\r\n",
-					"Where EmployeeID is not null and leave_start_date<=AbsenceStartDate\r\n",
-					"Order by AbsenceEndDate DESC;"
-				],
-				"execution_count": 61
 			}
 		]
 	}
