@@ -1,5 +1,5 @@
 alert_group_platform_enabled             = true
-alert_group_platform_recipients          = ["odw_support@planninginspectorate.gov.uk"]
+alert_group_platform_recipients          = ["odw_support@planninginspectorate.gov.uk", "alex.delany@planninginspectorate.gov.uk"]
 alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["odw_support@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/a82fd28d-5989-4e06-a0bb-1a5d859f9e0c"
@@ -41,6 +41,9 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-prod-ukw"
 environment = "prod"
 location    = "uk-south"
 
+logic_app_service_plan_enabled = true
+logic_app_standard_enabled     = true
+
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
     "1fa42635-5dc3-43bc-b5da-77578f3dabb7" # pins-odw-prod-administrators
@@ -70,6 +73,10 @@ service_bus_topics_and_subscriptions = {
   "employee" = [
     "employee",
     "employee-verify"
+  ],
+  "zendesk" = [
+    "zendesk",
+    "zendesk-verify"
   ]
 }
 

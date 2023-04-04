@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "85a3439c-ab3a-4909-be6e-15cd6b57912f"
+				"spark.autotune.trackingId": "65af67db-9b40-4911-ab34-32fa63531ad8"
 			}
 		},
 		"metadata": {
@@ -43,7 +43,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -52,25 +52,6 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Check for new, updated or deleted data\r\n",
-					"- This script checks for new, updated or deleted data by checking the source data (sap hr) against the target (odw_harmonised_db.employee_dim)\r\n",
-					"- **New Data:** where a Pers_No in the source does not exist as an EmployeeNumber in the target. NewData flag is set to 'Y'\r\n",
-					"- **Updated data:** Comparison occurs on Pers_No in source and EmployeeNumber in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\r\n",
-					"- **Deleted data:** where an EmployeeNumber in the target exists but the same Pers_No doesn't exist in the source. DeletedData flag is set to 'Y'\r\n",
-					"\r\n",
-					"## View employee_dim_new is created"
-				]
-			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -94,13 +75,13 @@
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
-					"SELECT \r\n",
+					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.Pers_No IS NULL\r\n",
 					"        THEN T7.EmployeeInfoID\r\n",
 					"        ELSE NULL\r\n",
 					"    END as EmployeeInfoID, -- surrogate key\r\n",
-					"    T8.EmployeeID,\r\n",
+					"    T1.Pers_No AS EmployeeID,\r\n",
 					"    T1.First_name AS FirstName,\r\n",
 					"    T1.Last_name AS LastName,\r\n",
 					"    T1.Gender_Key AS Gender,\r\n",
@@ -117,18 +98,18 @@
 					"    T1.Wk_hrs AS WorkHours,\r\n",
 					"    T1.Indicator_Part_Time_Employee AS PartTimeEmployee,\r\n",
 					"    T1.Employment_Status AS EmploymentStatus,\r\n",
-					"    T1.Civil_Service_Start AS CivilServiceStart,\r\n",
-					"    T1.Date_to_Current_Job AS DateToCurrentJob,\r\n",
-					"    T1.Seniority_Date AS SeniorityDate,\r\n",
-					"    T1.Org_Start_Date AS OrgStartDate,\r\n",
-					"    T1.Fix_Term_End_Date AS FixTermEndDate,\r\n",
-					"    T1.Loan_Start_Date AS LoanStartDate,\r\n",
-					"    T1.Loan_End_Date AS LoanEndDate,\r\n",
+					"    to_timestamp(T1.Civil_Service_Start) AS CivilServiceStart,\r\n",
+					"    to_timestamp(T1.Date_to_Current_Job) AS DateToCurrentJob,\r\n",
+					"    to_timestamp(T1.Seniority_Date) AS SeniorityDate,\r\n",
+					"    to_timestamp(T1.Org_Start_Date) AS OrgStartDate,\r\n",
+					"    to_timestamp(T1.Fix_Term_End_Date) AS FixTermEndDate,\r\n",
+					"    to_timestamp(T1.Loan_Start_Date) AS LoanStartDate,\r\n",
+					"    to_timestamp(T1.Loan_End_Date) AS LoanEndDate,\r\n",
 					"    T1.Assignment_Number AS AssignmentNumber,\r\n",
-					"    NULL AS AnnualSalary, -- T1.Annual_salary\r\n",
+					"    T1.Annual_salary AS AnnualSalary, -- T1.Annual_salary\r\n",
 					"    T1.curr AS Currency,\r\n",
 					"    T1.Reason_For_Action AS ReasonForAction,\r\n",
-					"    T1.Date_to_Subst_Grade AS DateToSubstantiveGrade,\r\n",
+					"    to_timestamp(T1.Date_to_Subst_Grade) AS DateToSubstantiveGrade,\r\n",
 					"    T4.SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL as ValidTo,\r\n",
@@ -147,13 +128,13 @@
 					"LEFT JOIN ( SELECT staff_number, max(ded_from) as AnnualLeaveStartDate\r\n",
 					"            FROM odw_standardised_db.vw_leave\r\n",
 					"            GROUP BY Staff_Number) T5 ON T1.Pers_No = T5.staff_number   \r\n",
-					"LEFT JOIN odw_harmonised_db.hr_employee_fact T8 ON T1.Pers_No = T8.EmployeeNumber AND T8.IsActive = 'Y' \r\n",
+					"LEFT JOIN odw_harmonised_db.hr_employee_fact T8 ON T1.Pers_No = T8.PersNumber AND T8.IsActive = 'Y' \r\n",
 					"FULL JOIN odw_harmonised_db.hr_employee_dim T7 ON T8.EmployeeID = T7.EmployeeID AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
-					"            WHEN T1.Pers_No = T8.EmployeeNumber AND md5(concat( IFNULL(T1.First_name,'.'),IFNULL(T1.Last_name,'.'), IFNULL(T1.Gender_Key, '.'), IFNULL(T2.Street_and_House_Number, '.'),\r\n",
+					"            WHEN T1.Pers_No = T7.EmployeeID AND md5(concat( IFNULL(T1.First_name,'.'),IFNULL(T1.Last_name,'.'), IFNULL(T1.Gender_Key, '.'), IFNULL(T2.Street_and_House_Number, '.'),\r\n",
 					"                IFNULL(T2.`2nd_Address_Line`, '.'),IFNULL(T2.District, '.'), IFNULL(T2.City, '.'),IFNULL(T2.Region_State_Province_Count, '.'),IFNULL(T2.Postal_Code, '.'),IFNULL(T3.Email_Address, '.'),\r\n",
 					"                IFNULL(T2.Personal_Mobile, '.'), IFNULL(T2.Work_Mobile, '.'), IFNULL(T1.FTE,'.'),IFNULL(T1.Wk_hrs,'.'),IFNULL(T1.Indicator_Part_Time_Employee,'.'),T1.Employment_Status,\r\n",
 					"                IFNULL(T1.Civil_Service_Start, '.'),IFNULL(T1.Date_to_Current_Job, '.'), IFNULL(T1.Seniority_Date, '.'),IFNULL(T1.Org_Start_Date, '.'),IFNULL(T1.Fix_Term_End_Date, '.'),\r\n",
@@ -172,10 +153,13 @@
 					"            ELSE 'N'\r\n",
 					"        END = 'Y' )\r\n",
 					"    )\r\n",
+					"    AND T1.Pers_No IS NOT NULL\r\n",
 					";\r\n",
-					""
+					"\r\n",
+					"-- SELECT COUNT(*) FROM employee_dim_new;\r\n",
+					"-- SELECT * FROM employee_dim_new;"
 				],
-				"execution_count": 1
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -303,7 +287,7 @@
 					"WHERE EmployeeID IN (SELECT EmployeeID FROM employee_dim_new WHERE EmployeeInfoID IS NULL) AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -359,7 +343,7 @@
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT * ;   "
 				],
-				"execution_count": 3
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -438,7 +422,33 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.hr_employee_dim;"
 				],
-				"execution_count": 4
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"\n",
+					"SELECT COUNT (*) from odw_harmonised_db.hr_employee_fact;\n",
+					"SELECT COUNT (*) from odw_harmonised_db.hr_employee_dim"
+				],
+				"execution_count": 13
 			}
 		]
 	}

@@ -1,5 +1,5 @@
 alert_group_platform_enabled             = true
-alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk"]
+alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk", "alex.delany@planninginspectorate.gov.uk"]
 alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3"
@@ -41,6 +41,9 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 environment = "dev"
 location    = "uk-south"
 
+logic_app_service_plan_enabled = true
+logic_app_standard_enabled     = true
+
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators
@@ -72,6 +75,10 @@ service_bus_topics_and_subscriptions = {
     "employee",
     "employee-verify"
   ],
+  "zendesk" = [
+    "zendesk",
+    "zendesk-verify"
+  ]
 }
 
 spark_pool_enabled         = true
@@ -82,7 +89,7 @@ spark_pool_timeout_minutes = 60
 spark_pool_version         = "3.3"
 
 spark_pool_preview_enabled = true
-spark_pool_preview_version = "3.3"
+spark_pool_preview_version = "3.2"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false
