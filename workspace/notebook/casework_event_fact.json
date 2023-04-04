@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "55a72f59-df3b-40e1-9341-0c2417ba8a2f"
+				"spark.autotune.trackingId": "fecf2c6e-89c4-4f6b-8ad1-aa665ababb62"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
-					"SELECT \r\n",
+					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.appealrefnumber IS NULL\r\n",
 					"        THEN T3.EventID\r\n",
@@ -99,7 +99,7 @@
 					"    END AS EventID,\r\n",
 					"    T4.EventID AS EventDimensionID,\r\n",
 					"    T1.eventtype AS EventType,\r\n",
-					"    T1.dateeventrequested AS DateEventRequested,\r\n",
+					"    to_timestamp(T1.dateeventrequested) AS DateEventRequested,\r\n",
 					"    T2.SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
@@ -122,8 +122,8 @@
 					"\r\n",
 					"FROM odw_standardised_db.horizon_event T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"LEFT JOIN odw_harmonised_db.casework_event_dim T4 ON T3.EventDimensionID = T4.EventID AND T1.appealrefnumber = T4.AppealRefNumber AND T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.casework_event_fact T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.casework_event_dim T4 ON T1.appealrefnumber = T4.AppealRefNumber AND T2.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.casework_event_fact T3 ON T3.EventDimensionID = T4.EventID AND T1.appealrefnumber = T4.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    (\r\n",
 					"        -- flags new data        \r\n",
@@ -131,26 +131,29 @@
 					"                WHEN T1.appealrefnumber = T4.AppealRefNumber AND md5(concat(IFNULL(T4.EventID,'.'), IFNULL(T1.eventtype,'.'), \r\n",
 					"                IFNULL(T1.dateeventrequested,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
-					"                WHEN T4.AppealRefNumber IS NULL -- new PositionCode\r\n",
+					"                -- WHEN T4.AppealRefNumber IS NULL -- new PositionCode\r\n",
+					"                WHEN T4.EventID IS NULL -- new PositionCode\r\n",
+					"\r\n",
 					"                THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"            END  = 'Y' ) OR\r\n",
 					"        \r\n",
 					"        -- flags deleted data\r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.appealrefnumber IS NULL\r\n",
+					"                WHEN T3.EventDimensionID IS NULL\r\n",
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
-					"    );\r\n",
+					"    )\r\n",
+					";\r\n",
 					"\r\n",
 					"    SELECT COUNT(*) FROM odw_standardised_db.horizon_event;\r\n",
 					"    SELECT COUNT(*) FROM casework_event_fact_new;\r\n",
-					"    SELECT * FROM casework_event_fact_new;\r\n",
+					"    SELECT * FROM casework_event_fact_new WHERE DateEventRequested IS NOT NULL;\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -217,7 +220,7 @@
 					"# else:\r\n",
 					"#     print(\"Unused codes under tolerance levels\")"
 				],
-				"execution_count": 7
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -282,7 +285,7 @@
 					"#     else:\r\n",
 					"#         raise RuntimeError(\"Records to Add do not match\")"
 				],
-				"execution_count": 8
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -374,7 +377,7 @@
 					"FROM odw_harmonised_db.casework_event_fact\r\n",
 					"WHERE AppealRefNumber IN (SELECT AppealRefNumber FROM casework_event_fact_new WHERE EventID IS NULL) AND IsActive = 'Y'; "
 				],
-				"execution_count": 9
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -431,7 +434,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -494,7 +497,7 @@
 					"FROM odw_harmonised_db.casework_event_fact;\r\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": null
 			}
 		]
 	}
