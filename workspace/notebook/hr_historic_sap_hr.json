@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7c16dce9-6412-44e2-9f8d-7cad761cae0a"
+				"spark.autotune.trackingId": "b908eeca-e097-4256-925a-c63e0506ce36"
 			}
 		},
 		"metadata": {
@@ -76,73 +76,31 @@
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.pers_no as staff_number,\n",
-					"    h.ps_group as grade, \n",
-					"\th.annual_salary as salary, \n",
-					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as hourly_rate,\n",
-					"    cast(le.ExpectedFrom as date) as report_month_end_date,\n",
-					"    le.LeaveDaysPerYear as leave_allowance,\n",
+					"    h.pers_no as EmployeeID,\n",
+					"    h.ps_group as Grade, \n",
+					"\th.annual_salary as Salary, \n",
+					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as HourlyRate,\n",
+					"    cast(le.ExpectedFrom as date) as ReportMonthEndDate,\n",
+					"    le.LeaveDaysPerYear as LeaveAllowance,\n",
 					"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
 					"\t\t\t\twhen 1 then le.LeaveYearStart\n",
 					"\t\t\t\twhen 0 then le.LeaveYearStart\n",
 					"\t\t\t\telse dateadd(year, -1, le.LeaveYearStart)\n",
-					"\t\t\tend as date) as leave_start_date,\n",
+					"\t\t\tend as date) as LeaveStartDate,\n",
 					"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
 					"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
 					"                                                    WHEN 1 THEN\n",
 					"                                                    le.leaveyearstart\n",
 					"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
 					"                                                    END\n",
-					"                                                    AS date), le.expectedfrom))/364.25)%1))) AS expected_leave_hours_remaining\n",
+					"                                                    AS date), le.expectedfrom))/364.25)%1))) AS ExpectedLeaveHoursRemaining\n",
 					"    \n",
 					"FROM odw_standardised_db.hr_saphr h\n",
 					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 209
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"import pandas as pd\r\n",
-					"from pyspark.sql import SparkSession\r\n",
-					"\r\n",
-					"def get_england_and_wales(data_frame):\r\n",
-					"    return (\r\n",
-					"        pd\r\n",
-					"        .json_normalize(\r\n",
-					"            data_frame.to_dict(),\r\n",
-					"            record_path=[['england-and-wales', 'events']]\r\n",
-					"        )\r\n",
-					"        .astype({\r\n",
-					"            'title': 'string',\r\n",
-					"            'date': 'datetime64[ns]',\r\n",
-					"            'notes': 'string',\r\n",
-					"            'bunting': 'bool'\r\n",
-					"        })\r\n",
-					"    )\r\n",
-					"\r\n",
-					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\r\n",
-					"bh = get_england_and_wales(bank_holidays)\r\n",
-					"\r\n",
-					"spark = SparkSession.builder.getOrCreate()\r\n",
-					"sparkDF=spark.createDataFrame(bh) \r\n",
-					"\r\n",
-					"sparkDF.createOrReplaceTempView('bank_holidays')"
-				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -169,19 +127,61 @@
 					"    AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.pers_no as staff_number,\n",
+					"    h.pers_no as EmployeeID,\n",
 					"    case sign(le.LeaveDaysPerYear - 148)\n",
 					"        when 1 then 148\n",
 					"        when 0 then 148\n",
 					"        else le.LeaveDaysPerYear\n",
-					"    end as carried_over_hours\n",
+					"    end as CarriedOverHours\n",
 					"\n",
 					"FROM odw_standardised_db.hr_saphr h\n",
 					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": null
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\n",
+					"from pyspark.sql import SparkSession\n",
+					"\n",
+					"def get_england_and_wales(data_frame):\n",
+					"    return (\n",
+					"        pd\n",
+					"        .json_normalize(\n",
+					"            data_frame.to_dict(),\n",
+					"            record_path=[['england-and-wales', 'events']]\n",
+					"        )\n",
+					"        .astype({\n",
+					"            'title': 'string',\n",
+					"            'date': 'datetime64[ns]',\n",
+					"            'notes': 'string',\n",
+					"            'bunting': 'bool'\n",
+					"        })\n",
+					"    )\n",
+					"\n",
+					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
+					"bh = get_england_and_wales(bank_holidays)\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"sparkDF=spark.createDataFrame(bh) \n",
+					"\n",
+					"sparkDF.createOrReplaceTempView('bank_holidays')"
+				],
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -208,38 +208,38 @@
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    f.AbsenceID,\n",
-					"    f.EmployeeID as staff_number,\n",
+					"    a.AbsenceID,\n",
+					"    a.EmployeeID,\n",
 					"    CASE\n",
-					"        WHEN sc.report_month_end_date >= f.AbsenceEndDate\n",
-					"        THEN f.Hours\n",
-					"        ELSE f.Hours - (f.HoursPerDay * datediff(f.AbsenceEndDate, sc.report_month_end_date))\n",
-					"    END AS leave_hours,\n",
-					"    f.Days, \n",
-					"    f.Hours,\n",
-					"    f.CalendarDays,\n",
-					"    f.AbsenceStartDate,\n",
-					"    f.AbsenceEndDate,\n",
-					"    sc.leave_start_date,\n",
-					"    B.title,\n",
+					"        WHEN sc.ReportMonthEndDate >= a.AbsenceEndDate\n",
+					"        THEN a.Hours\n",
+					"        ELSE a.Hours - (a.HoursPerDay * datediff(a.AbsenceEndDate, sc.ReportMonthEndDate))\n",
+					"    END AS LeaveHours,\n",
+					"    a.Days, \n",
+					"    a.Hours,\n",
+					"    a.CalendarDays,\n",
+					"    a.AbsenceStartDate,\n",
+					"    a.AbsenceEndDate,\n",
+					"    sc.LeaveStartDate,\n",
+					"    bh.title as HolidayTitle,\n",
 					"    CASE \n",
-					"        WHEN f.Days = 0 AND f.Hours = 0 THEN f.HoursPerDay * f.CalendarDays\n",
+					"        WHEN a.Days = 0 AND a.Hours = 0 THEN a.HoursPerDay * a.CalendarDays\n",
 					"        ELSE NULL\n",
 					"    END AS BankHolidaysHours\n",
 					"\n",
 					"\n",
-					"FROM odw_harmonised_db.hr_absence_dim f \n",
-					"LEFT JOIN staff_cost sc ON f.EmployeeID = sc.staff_number\n",
-					"LEFT JOIN bank_holidays B ON f.AbsenceStartDate = B.date\n",
+					"FROM odw_harmonised_db.hr_absence_dim a\n",
+					"LEFT JOIN staff_cost sc ON a.EmployeeID = sc.EmployeeID\n",
+					"LEFT JOIN bank_holidays bh ON a.AbsenceStartDate = bh.Date\n",
 					"WHERE\n",
-					"    f.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
+					"    a.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
 					"    AND \n",
-					"    f.AbsenceStartDate  BETWEEN sc.leave_start_date AND sc.report_month_end_date\n",
+					"    a.AbsenceStartDate  BETWEEN sc.LeaveStartDate AND sc.ReportMonthEndDate\n",
 					"GROUP BY \n",
-					"    f.EmployeeID,f.AbsenceID,f.Days,f.Hours,f.CalendarDays,f.AbsenceStartDate,f.AbsenceEndDate,sc.leave_start_date,B.title,f.HoursPerDay,sc.report_month_end_date\n",
+					"    a.EmployeeID,a.AbsenceID,a.Days,a.Hours,a.CalendarDays,a.AbsenceStartDate,a.AbsenceEndDate,sc.LeaveStartDate,bh.title,a.HoursPerDay,sc.ReportMonthEndDate\n",
 					"Order by AbsenceStartDate"
 				],
-				"execution_count": 215
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -304,21 +304,23 @@
 				},
 				"source": [
 					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW fixed_leave_taken -- adding bank holidays in leave_hours_taken\n",
+					"CREATE OR REPLACE TEMPORARY VIEW leave_taken_fixed -- adding bank holidays in leave_hours_taken\n",
 					"\n",
 					"    AS\n",
 					"\n",
 					"SELECT\n",
-					"staff_number,\n",
+					"EmployeeID,\n",
 					"SUM(CASE\n",
-					"        WHEN Days = 0 AND Hours = 0 AND title is not null AND leave_start_date<=AbsenceStartDate THEN leave_hours + BankHolidaysHours\n",
-					"        ELSE leave_hours\n",
-					"    END) AS leave_hours_taken\n",
+					"        WHEN Days = 0 AND Hours = 0 AND HolidayTitle is not null AND LeaveStartDate <= AbsenceStartDate \n",
+					"        THEN LeaveHours + BankHolidaysHours\n",
+					"        ELSE LeaveHours\n",
+					"    END) AS LeaveHoursTaken\n",
+					"\n",
 					"FROM leave_taken\n",
-					"Where staff_number is not null and leave_start_date<=AbsenceStartDate\n",
-					"GROUP BY staff_number;"
+					"Where EmployeeID is not null and LeaveStartDate <= AbsenceStartDate\n",
+					"GROUP BY EmployeeID;"
 				],
-				"execution_count": 216
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -423,21 +425,21 @@
 					"\th.payroll_area,\n",
 					"\th.assignment_number,\n",
 					"\th.fte_2,\n",
-					"\tsc.report_month_end_date as Report_MonthEnd_Date,\n",
-					"\tcoalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) as leave_entitlement_hrs,\n",
-					"\tcoalesce(lt.leave_hours_taken, 0) as leave_taken_hrs,\n",
-					"\tround((coalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) - coalesce(sc.expected_leave_hours_remaining, 0)  - coalesce(lt.leave_hours_taken, 0)), 2) as leave_remaining_hours,\n",
-					"\tcoalesce(round(sc.expected_leave_hours_remaining, 2), 0) as leave_remaining_prorata_hours\n",
-					"\t--,coalesce(round((coalesce(sc.leave_allowance, 0) + coalesce(co.carried_over_hours, 0) - coalesce(sc.expected_leave_hours_remaining, 0)  - coalesce(lt.leave_hours_taken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
+					"\tsc.ReportMonthEndDate as Report_MonthEnd_Date,\n",
+					"\tcoalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) as leave_entitlement_hrs,\n",
+					"\tcoalesce(lt.LeaveHoursTaken, 0) as leave_taken_hrs,\n",
+					"\tround((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)), 2) as leave_remaining_hours,\n",
+					"\tcoalesce(round(sc.ExpectedLeaveHoursRemaining, 2), 0) as leave_remaining_prorata_hours\n",
+					"\t--,coalesce(round((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
 					"from odw_standardised_db.hr_saphr h\n",
-					"\tleft join staff_cost sc on h.pers_no = sc.staff_number\n",
-					"\tleft join carried_over co on sc.staff_number = co.staff_number\n",
-					"\tleft join fixed_leave_taken lt on cast(sc.staff_number as int) = cast(lt.staff_number as int)\n",
-					"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.grade = p.Grade\n",
+					"\tleft join staff_cost sc on cast(h.pers_no as int) = cast(sc.EmployeeID as int)\n",
+					"\tleft join carried_over co on cast(sc.EmployeeID as int) = cast(co.EmployeeID as int)\n",
+					"\tleft join leave_taken_fixed lt on cast(sc.EmployeeID as int) = cast(lt.EmployeeID as int)\n",
+					"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.Grade = p.Grade\n",
 					"where \n",
-					"\tright(cast(cast(sc.report_month_end_date as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
+					"\tright(cast(cast(sc.ReportMonthEndDate as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
 				],
-				"execution_count": 217
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -459,15 +461,15 @@
 				"source": [
 					"%%sql\n",
 					"\t \n",
-					"-- SELECT DISTINCT\n",
-					"-- \tpers_no,\n",
-					"-- \tleave_taken_hrs,\n",
-					"-- \tleave_remaining_hours,\n",
-					"-- \tleave_remaining_prorata_hours\n",
-					"-- from sap_hr_historic\n",
-					"-- order by pers_no"
+					"SELECT DISTINCT\n",
+					"\tpers_no,\n",
+					"\tleave_taken_hrs,\n",
+					"\tleave_remaining_hours,\n",
+					"\tleave_remaining_prorata_hours\n",
+					"from sap_hr_historic\n",
+					"order by pers_no"
 				],
-				"execution_count": 218
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
