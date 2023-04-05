@@ -64,7 +64,7 @@ module "odt_pe_backoffice_sb" {
   tags = local.tags
   providers = {
     azurerm                = azurerm,
-    azurerm.odt_backoffice = azurerm.odt_backoffice
+    azurerm.odt_backoffice = azurerm.odt
   }
 }
 
@@ -87,6 +87,6 @@ module "odt_pe_backoffice_sb_failover" {
 
   providers = {
     azurerm                = azurerm,
-    azurerm.odt_backoffice = azurerm.odt_backoffice
+    azurerm.odt_backoffice = azurerm.odt
   }
 }
