@@ -41,6 +41,9 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 environment = "dev"
 location    = "uk-south"
 
+logic_app_service_plan_enabled = true
+logic_app_standard_enabled     = true
+
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators
@@ -58,7 +61,6 @@ odt_back_office_service_bus_name                         = "pins-sb-back-office-
 odt_back_office_service_bus_name_failover                = "pins-sb-back-office-dev-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-dev-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-dev-uks-001"
-odt_back_office_subscription_id                          = "962e477c-0f3b-4372-97fc-a198a58e259e"
 
 service_bus_failover_enabled = false
 service_bus_role_assignments = {
