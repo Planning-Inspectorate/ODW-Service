@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "75fc29e7-d76b-44b9-9d30-c7a75bc195c6"
+				"spark.autotune.trackingId": "60ac69e3-5589-458d-970c-d813f12c0afe"
 			}
 		},
 		"metadata": {
@@ -63,28 +63,6 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"tags": [
-						"parameters"
-					]
-				},
-				"source": [
-					"source_path=\"def\"\r\n",
-					"target_folder=\"\""
-				],
-				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
 					}
 				},
 				"source": [
@@ -93,7 +71,10 @@
 					"\n",
 					"path_to_file = \"abfss://odw-config@\"+storage_account+\"schema_creation/\"\n",
 					"file = mssparkutils.fs.ls(path_to_file)\n",
-					"path_to_target = \"abfss://odw-config@\"+storage_account+\"standardised_table_definitions/Casework_Adhoc/\""
+					"path_to_target = \"abfss://odw-config@\"+storage_account+\"standardised_table_definitions/Casework_Adhoc/\"\n",
+					"\n",
+					"# array of file names with corresponding sheet name\n",
+					"files_with_specific_sheets = [{\"filename\": \"Specialist_TPO.xlsx\", \"sheet\": \"MiPINS-SQL\"}]"
 				],
 				"execution_count": 11
 			},
@@ -111,101 +92,79 @@
 					}
 				},
 				"source": [
-					"from notebookutils import mssparkutils\n",
-					"\n",
-					"# array of file names with corresponding sheet name\n",
-					"files_with_specific_sheets = [{\"filename\": \"Specialist_TPO.xlsx\", \"sheet\": \"MiPINS-SQL\"}]\n",
-					""
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# import pandas as pd\r\n",
-					"# import json\r\n",
-					"# import re\r\n",
+					"import pandas as pd\r\n",
+					"import json\r\n",
+					"import re\r\n",
 					"\r\n",
-					"# jobId = mssparkutils.env.getJobId()\r\n",
-					"# mssparkutils.fs.unmount(\"/schema\") \r\n",
-					"# mssparkutils.fs.unmount(\"/source\") \r\n",
-					"# mssparkutils.fs.unmount(\"/target\") \r\n",
-					"# mssparkutils.fs.mount(path_to_file, \r\n",
-					"# \"/source\", \r\n",
-					"# {\"linkedService\":\"ls_storage\"} \r\n",
-					"# )   \r\n",
-					"# mssparkutils.fs.mount(path_to_target, \r\n",
-					"# \"/target\", \r\n",
-					"# {\"linkedService\":\"ls_storage\"} \r\n",
-					"# )   \r\n",
-					"# for fi in file:\r\n",
-					"#     f = fi.path\r\n",
-					"#     print(f)\r\n",
-					"#     if '.csv' in f:\r\n",
-					"#         ext = '.csv'\r\n",
-					"#         filename = f.split(\"/\")[-1]\r\n",
-					"#         df = pd.read_csv(f\"/synfs/{jobId}/source/{filename}\", quotechar='\"',escapechar='\\\\',encoding=\"utf8\",dtype=str)\r\n",
-					"#     elif '.xlsx' in f:\r\n",
-					"#         ext = '.xlsx'\r\n",
-					"#         filename = f.split(\"/\")[-1]\r\n",
-					"#         file_with_specific_sheet = next(filter(lambda fs: fs['filename'] == filename, files_with_specific_sheets), None)\r\n",
-					"#         sheet_name = file_with_specific_sheet['sheet'] if file_with_specific_sheet else 0\r\n",
-					"#         df = pd.read_excel(f\"/synfs/{jobId}/source/{filename}\", dtype=str, sheet_name=sheet_name)\r\n",
-					"#     else:\r\n",
-					"#         continue\r\n",
-					"#     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
-					"#     cols_orig = list(df.columns)\r\n",
-					"#     cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig]\r\n",
-					"#     cols=[colm.rstrip('_') for colm in cols]\r\n",
-					"#     newlist = []\r\n",
-					"#     for i, v in enumerate(cols):\r\n",
-					"#         totalcount = cols.count(v)\r\n",
-					"#         count = cols[:i].count(v)\r\n",
-					"#         newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
+					"jobId = mssparkutils.env.getJobId()\r\n",
+					"mssparkutils.fs.unmount(\"/schema\") \r\n",
+					"mssparkutils.fs.unmount(\"/source\") \r\n",
+					"mssparkutils.fs.unmount(\"/target\") \r\n",
+					"mssparkutils.fs.mount(path_to_file, \r\n",
+					"\"/source\", \r\n",
+					"{\"linkedService\":\"ls_storage\"} \r\n",
+					")   \r\n",
+					"mssparkutils.fs.mount(path_to_target, \r\n",
+					"\"/target\", \r\n",
+					"{\"linkedService\":\"ls_storage\"} \r\n",
+					")   \r\n",
+					"for fi in file:\r\n",
+					"    f = fi.path\r\n",
+					"    print(f)\r\n",
+					"    if '.csv' in f:\r\n",
+					"        ext = '.csv'\r\n",
+					"        filename = f.split(\"/\")[-1]\r\n",
+					"        df = pd.read_csv(f\"/synfs/{jobId}/source/{filename}\", quotechar='\"',escapechar='\\\\',encoding=\"utf8\",dtype=str)\r\n",
+					"    elif '.xlsx' in f:\r\n",
+					"        ext = '.xlsx'\r\n",
+					"        filename = f.split(\"/\")[-1]\r\n",
+					"        file_with_specific_sheet = next(filter(lambda fs: fs['filename'] == filename, files_with_specific_sheets), None)\r\n",
+					"        sheet_name = file_with_specific_sheet['sheet'] if file_with_specific_sheet else 0\r\n",
+					"        df = pd.read_excel(f\"/synfs/{jobId}/source/{filename}\", dtype=str, sheet_name=sheet_name)\r\n",
+					"    else:\r\n",
+					"        continue\r\n",
+					"    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
+					"    cols_orig = list(df.columns)\r\n",
+					"    cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig]\r\n",
+					"    cols=[colm.rstrip('_') for colm in cols]\r\n",
+					"    newlist = []\r\n",
+					"    for i, v in enumerate(cols):\r\n",
+					"        totalcount = cols.count(v)\r\n",
+					"        count = cols[:i].count(v)\r\n",
+					"        newlist.append(v + str(count + 1) if totalcount > 1 else v)\r\n",
 					"\r\n",
-					"#     jsonex = {\"fields\":[\r\n",
-					"#             {\r\n",
-					"#             \"metadata\": {},\r\n",
-					"#             \"name\": \"ingested_datetime\",\r\n",
-					"#             \"type\": \"timestamp\",\r\n",
-					"#             \"nullable\": False\r\n",
-					"#             },\r\n",
-					"#             {\r\n",
-					"#             \"metadata\": {},\r\n",
-					"#             \"name\": \"expected_from\",\r\n",
-					"#             \"type\": \"timestamp\",\r\n",
-					"#             \"nullable\": False\r\n",
-					"#             },\r\n",
-					"#             {\r\n",
-					"#             \"metadata\": {},\r\n",
-					"#             \"name\": \"expected_to\",\r\n",
-					"#             \"type\": \"timestamp\",\r\n",
-					"#             \"nullable\": False\r\n",
-					"#             }]}\r\n",
-					"#     for col in newlist:\r\n",
-					"#         obj = {\r\n",
-					"#             \"metadata\": {},\r\n",
-					"#             \"name\": col,\r\n",
-					"#             \"type\": \"string\",\r\n",
-					"#             \"nullable\": True\r\n",
-					"#             }\r\n",
-					"#         jsonex['fields'].append(obj)\r\n",
-					"#     filename_no_ext = f.split(\"/\")[-1].split(ext)[0]\r\n",
-					"#     json_to_write = json.dumps(jsonex)\r\n",
-					"#     f = open(f\"/synfs/{jobId}/target/{filename_no_ext}.json\", \"w\")\r\n",
-					"#     f.write(json_to_write)\r\n",
-					"#     f.close()"
+					"    jsonex = {\"fields\":[\r\n",
+					"            {\r\n",
+					"            \"metadata\": {},\r\n",
+					"            \"name\": \"ingested_datetime\",\r\n",
+					"            \"type\": \"timestamp\",\r\n",
+					"            \"nullable\": False\r\n",
+					"            },\r\n",
+					"            {\r\n",
+					"            \"metadata\": {},\r\n",
+					"            \"name\": \"expected_from\",\r\n",
+					"            \"type\": \"timestamp\",\r\n",
+					"            \"nullable\": False\r\n",
+					"            },\r\n",
+					"            {\r\n",
+					"            \"metadata\": {},\r\n",
+					"            \"name\": \"expected_to\",\r\n",
+					"            \"type\": \"timestamp\",\r\n",
+					"            \"nullable\": False\r\n",
+					"            }]}\r\n",
+					"    for col in newlist:\r\n",
+					"        obj = {\r\n",
+					"            \"metadata\": {},\r\n",
+					"            \"name\": col,\r\n",
+					"            \"type\": \"string\",\r\n",
+					"            \"nullable\": True\r\n",
+					"            }\r\n",
+					"        jsonex['fields'].append(obj)\r\n",
+					"    filename_no_ext = f.split(\"/\")[-1].split(ext)[0]\r\n",
+					"    json_to_write = json.dumps(jsonex)\r\n",
+					"    f = open(f\"/synfs/{jobId}/target/{filename_no_ext}.json\", \"w\")\r\n",
+					"    f.write(json_to_write)\r\n",
+					"    f.close()"
 				],
 				"execution_count": 13
 			},
