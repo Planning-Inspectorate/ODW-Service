@@ -41,3 +41,8 @@ variable "tags" {
   description = "A collection of tags to assign to taggable resources"
   type        = map(string)
 }
+
+variable "workflow_names" {
+  description = "The name of the workflows deployed"
+  type        = string
+}
