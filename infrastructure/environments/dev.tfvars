@@ -146,7 +146,7 @@ workflow_names = [
   {
     "name" : "zendesk-created"
   },
-  { 
+  {
     "name" : "zendesk-updated"
   }
 ]
