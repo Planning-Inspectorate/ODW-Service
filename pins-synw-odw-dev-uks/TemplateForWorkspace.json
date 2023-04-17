@@ -761,6 +761,10 @@
 			"type": "string",
 			"defaultValue": "pinssynspodw"
 		},
+		"py_1_copy_source_file_for_schema_creation_properties_bigDataPool_referenceName": {
+			"type": "string",
+			"defaultValue": "pinssynspodw"
+		},
 		"py_1_initial_run_raw_to_standardised_scheduling_properties_bigDataPool_referenceName": {
 			"type": "string",
 			"defaultValue": "pinssynspodw"
@@ -37880,6 +37884,487 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/pln_raw_to_standardised_e2e')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "Generate Schema",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Copy Source File",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_generate_schema_script",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"target_folder": {
+									"value": "Horizon/",
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Add Outstanding Entry",
+						"description": "Adds Entry in odw_config_db.raw_to_std_outstanding_files table",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Generate Schema",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "outstanding_files_add_entry",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"jsonId": {
+									"value": {
+										"value": "@variables('source_id')",
+										"type": "Expression"
+									},
+									"type": "int"
+								},
+								"year": {
+									"value": {
+										"value": "@formatDateTime(utcnow(), 'yyyy')",
+										"type": "Expression"
+									},
+									"type": "int"
+								},
+								"month": {
+									"value": {
+										"value": "@formatDateTime(utcnow(), 'MM')",
+										"type": "Expression"
+									},
+									"type": "int"
+								},
+								"day": {
+									"value": {
+										"value": "@formatDateTime(utcnow(), 'dd')",
+										"type": "Expression"
+									},
+									"type": "int"
+								},
+								"hour": {
+									"value": "0",
+									"type": "int"
+								},
+								"minute": {
+									"value": "0",
+									"type": "int"
+								},
+								"second": {
+									"value": "0",
+									"type": "int"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Set SourceID",
+						"description": "Set this variable as the ID of the new record added in orchestration.json",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "source_id",
+							"value": "82"
+						}
+					},
+					{
+						"name": "Create and Ingest",
+						"description": "Creates standardised table and ingests data",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Add Outstanding Entry",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_1_initial_run_raw_to_standardised_scheduling",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"source_id": {
+									"value": {
+										"value": "@variables('source_id')",
+										"type": "Expression"
+									},
+									"type": "int"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Create and Ingest failed",
+						"description": "py_1_initial_run_raw_to_standardised failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "Create and Ingest",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "py_1_initial_run_raw_to_standardised failed",
+							"errorCode": "py_1_initial_run_raw_to_standardised failed"
+						}
+					},
+					{
+						"name": "Add Outstanding Entry failed",
+						"description": "outstanding_files_add_entry failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "Add Outstanding Entry",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "outstanding_files_add_entry failed",
+							"errorCode": "outstanding_files_add_entry failed"
+						}
+					},
+					{
+						"name": "Generate Schema failed",
+						"description": "Generate Schema failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "Generate Schema",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "Generate Schema failed",
+							"errorCode": "Generate Schema failed"
+						}
+					},
+					{
+						"name": "Logging Failed Activities",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Generate Schema failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('Generate Schema failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Logging Failed Activities_copy1",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Create and Ingest failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('Create and Ingest failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Logging Failed Activities_copy2",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Add Outstanding Entry failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('Add Outstanding Entry failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Copy Source File",
+						"description": "copies source file to the schema_creation folder",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Set SourceID",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_1_copy_source_file_for_schema_creation",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"source_id": {
+									"value": {
+										"value": "@variables('source_id')",
+										"type": "Expression"
+									},
+									"type": "int"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "Copy Source File failed",
+						"description": "Copy Source File failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "Copy Source File",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "Copy Source File failed",
+							"errorCode": "Copy Source File failed"
+						}
+					},
+					{
+						"name": "Logging Failed Activities_copy3",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "Copy Source File failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('Copy Source File failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"orchestration_sourceid": {
+						"type": "String"
+					},
+					"source_id": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/notebooks/py_generate_schema_script')]",
+				"[concat(variables('workspaceId'), '/notebooks/outstanding_files_add_entry')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_1_initial_run_raw_to_standardised_scheduling')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_fail_activity_logging')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_1_copy_source_file_for_schema_creation')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/pln_temp_employee_syn_raw_to_curated')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -48740,7 +49225,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "ae3d8a7c-0564-45ac-9446-83b3971189d8"
+						"spark.autotune.trackingId": "d4726021-7b68-4fb2-a34b-68794cca5e89"
 					}
 				},
 				"metadata": {
@@ -48765,8 +49250,7 @@
 						"sparkVersion": "3.3",
 						"nodeCount": 3,
 						"cores": 4,
-						"memory": 28,
-						"automaticScaleJobs": false
+						"memory": 28
 					},
 					"sessionKeepAliveTimeout": 30
 				},
@@ -95318,7 +95802,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "1e95f757-e12b-48e3-868e-d3bb515d8882"
+						"spark.autotune.trackingId": "e75c29c8-f7a0-420e-91d3-2d15a9c4cd88"
 					}
 				},
 				"metadata": {
@@ -95343,7 +95827,8 @@
 						"sparkVersion": "3.3",
 						"nodeCount": 3,
 						"cores": 4,
-						"memory": 28
+						"memory": 28,
+						"automaticScaleJobs": false
 					},
 					"sessionKeepAliveTimeout": 30
 				},
@@ -95389,26 +95874,34 @@
 							"        WHEN T3.EmployeeID IS NULL\r\n",
 							"        THEN T7.EmployeeLeaversID\r\n",
 							"        ELSE NULL\r\n",
-							"    END as EmployeeLeaversID,     \r\n",
-							"    T1.Pers_No AS EmployeeID,\r\n",
-							"    T1.Pers_No AS EmployeeNumber,\r\n",
-							"    T1.Reason_For_Action AS ReasonForLeaving, \r\n",
+							"    END                     AS EmployeeLeaversID,     \r\n",
+							"    T1.Pers_No              AS EmployeeID,\r\n",
+							"    T1.Pers_No              AS EmployeeNumber,\r\n",
+							"    T1.Reason_For_Action    AS ReasonForLeaving, \r\n",
 							"    CASE \r\n",
 							"        WHEN T1.Org_Start_Date = '00/00/0000'\r\n",
 							"        THEN '1900-01-01 00:00:00'\r\n",
 							"        ELSE T1.Org_Start_Date\r\n",
-							"    END AS EmploymentStartDate,\r\n",
-							"    T1.Leaving AS EmploymentEndDate,\r\n",
-							"    T2.SourceSystemID as SourceSystemID,\r\n",
-							"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-							"    NULL AS ValidTo,\r\n",
-							"    md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'), IFNULL(T1.Leaving,'.'))) as RowID,\r\n",
+							"    END                     AS EmploymentStartDate,\r\n",
+							"    T1.Leaving              AS EmploymentEndDate,\r\n",
+							"    T2.SourceSystemID       AS SourceSystemID,\r\n",
+							"    CURRENT_TIMESTAMP       AS IngestionDate,\r\n",
+							"    NULL                    AS ValidTo,\r\n",
+							"    md5(concat(\r\n",
+							"        IFNULL(T3.EmployeeID,'.'),\r\n",
+							"        IFNULL(T1.Reason_For_Action,'.'),\r\n",
+							"        IFNULL(CAST(T1.Org_Start_Date AS varchar(20)),'.'), \r\n",
+							"        IFNULL(T1.Leaving,'.'))) as RowID,\r\n",
 							"    'Y' as IsActive,\r\n",
 							"    CASE\r\n",
 							"        WHEN T3.EmployeeID = T7.EmployeeID AND \r\n",
 							"             T1.Org_Start_Date = T7.EmploymentStartDate AND\r\n",
 							"             T1.Leaving = T7.EmploymentEndDate AND\r\n",
-							"             md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+							"             md5(concat(\r\n",
+							"                IFNULL(T3.EmployeeID,'.'),\r\n",
+							"                IFNULL(T1.Reason_For_Action,'.'),\r\n",
+							"                IFNULL(CAST(T1.Org_Start_Date AS varchar(20)),'.'),\r\n",
+							"                IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
 							"        THEN 'Y'\r\n",
 							"        WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
 							"        THEN 'Y'\r\n",
@@ -95433,16 +95926,20 @@
 							"        AND (\r\n",
 							"        \r\n",
 							"        -- flags new data        \r\n",
-							"        (       CASE\r\n",
-							"                    WHEN T3.EmployeeID = T7.EmployeeID AND \r\n",
-							"                            T1.Org_Start_Date = T7.EmploymentStartDate AND\r\n",
-							"                            T1.Leaving = T7.EmploymentEndDate AND\r\n",
-							"                            md5(concat(IFNULL(T3.EmployeeID,'.'),IFNULL(T1.Reason_For_Action,'.'),IFNULL(T1.Org_Start_Date,'.'),IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
-							"                    THEN 'Y'\r\n",
-							"                    WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
-							"                    THEN 'Y'\r\n",
-							"                    ELSE 'N'\r\n",
-							"                END  = 'Y' ) OR\r\n",
+							"        (   CASE\r\n",
+							"                WHEN T3.EmployeeID = T7.EmployeeID AND \r\n",
+							"                        T1.Org_Start_Date = T7.EmploymentStartDate AND\r\n",
+							"                        T1.Leaving = T7.EmploymentEndDate AND\r\n",
+							"                        md5(concat(\r\n",
+							"                            IFNULL(T3.EmployeeID,'.'),\r\n",
+							"                            IFNULL(T1.Reason_For_Action,'.'),\r\n",
+							"                            IFNULL(CAST(T1.Org_Start_Date AS varchar(20)),'.'),\r\n",
+							"                            IFNULL(T1.Leaving,'.'))) <> T7.RowID  -- same employee, changed data\r\n",
+							"                THEN 'Y'\r\n",
+							"                WHEN T7.EmployeeID  IS NULL -- new employee\r\n",
+							"                THEN 'Y'\r\n",
+							"                ELSE 'N'\r\n",
+							"            END  = 'Y' ) OR\r\n",
 							"        \r\n",
 							"        -- flags deleted data\r\n",
 							"        (   CASE\r\n",
@@ -95452,11 +95949,11 @@
 							"            END = 'Y' )\r\n",
 							");\r\n",
 							"\r\n",
-							"-- select count(*) from hr_employee_leavers_dim_new;\r\n",
-							"-- select * from hr_employee_leavers_dim_new;"
+							"select count(*) from hr_employee_leavers_dim_new;\r\n",
+							"select * from hr_employee_leavers_dim_new;"
 						],
 						"outputs": [],
-						"execution_count": 5
+						"execution_count": 17
 					},
 					{
 						"cell_type": "markdown",
@@ -95531,10 +96028,11 @@
 							"                                            T2.EmployeeLeaversID IS NULL AND \r\n",
 							"                                            T1.IsActive = 'Y'\r\n",
 							"; \r\n",
-							""
+							"\r\n",
+							"SELECT * FROM hr_employee_leavers_dim_changed_rows;"
 						],
 						"outputs": [],
-						"execution_count": 6
+						"execution_count": 18
 					},
 					{
 						"cell_type": "markdown",
@@ -95577,7 +96075,7 @@
 							"MERGE INTO odw_harmonised_db.hr_employee_leavers_dim AS Target\r\n",
 							"USING hr_employee_leavers_dim_changed_rows AS Source\r\n",
 							"\r\n",
-							"ON Source.EmployeeID = Target.EmployeeID\r\n",
+							"ON Source.EmployeeID = Target.EmployeeID AND Target.EmployeeID = 'Y'\r\n",
 							"\r\n",
 							"-- For Updates existing rows\r\n",
 							"\r\n",
@@ -95593,7 +96091,7 @@
 							""
 						],
 						"outputs": [],
-						"execution_count": 7
+						"execution_count": 19
 					},
 					{
 						"cell_type": "markdown",
@@ -95650,33 +96148,7 @@
 							""
 						],
 						"outputs": [],
-						"execution_count": 8
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"SELECT count(*)\n",
-							"from odw_harmonised_db.hr_employee_leavers_dim\n",
-							"where employeeid is null;"
-						],
-						"outputs": [],
-						"execution_count": 9
+						"execution_count": 20
 					}
 				]
 			},
@@ -106432,6 +106904,249 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/py_1_copy_source_file_for_schema_creation')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"folder": {
+					"name": "1-odw-raw-to-standardised"
+				},
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "[parameters('py_1_copy_source_file_for_schema_creation_properties_bigDataPool_referenceName')]",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "fc3602fa-e98a-40f0-af20-c58ae9891a5a"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+						"name": "pinssynspodw",
+						"type": "Spark",
+						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 3,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+						],
+						"outputs": [],
+						"execution_count": 115
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"%run /utils/py_logging_decorator"
+						],
+						"outputs": [],
+						"execution_count": 116
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"from pyspark.sql import SparkSession\n",
+							"from notebookutils import mssparkutils\n",
+							"spark = SparkSession.builder.getOrCreate()\n",
+							"\n",
+							"import json\n",
+							"import logging\n",
+							"logger = logging.getLogger(__name__)\n",
+							"\n",
+							"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+						],
+						"outputs": [],
+						"execution_count": 117
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"def get_latest_file_path(definition):\n",
+							"    import calendar\n",
+							"    from datetime import datetime, timedelta, date\n",
+							"\n",
+							"    source_container_path = \"abfss://odw-raw@\" + storage_account\n",
+							"    if definition[\"Source_Frequency_Folder\"] == \"\":\n",
+							"        source_folder = definition['Source_Folder'] + \"/\"\n",
+							"    else:\n",
+							"        source_folder = definition['Source_Folder'] + \"/\" + definition[\"Source_Frequency_Folder\"] + \"/\"\n",
+							"\n",
+							"    date_folders = mssparkutils.fs.ls(source_container_path + source_folder)\n",
+							"    date_folders = sorted(date_folders, key=lambda x: x.name, reverse=True)\n",
+							"\n",
+							"    file_found = False\n",
+							"\n",
+							"    for datex in date_folders:\n",
+							"        \n",
+							"        date_string = datex.name\n",
+							"        ### handle YYYY-MM-DD dates\n",
+							"        if len(date_string) == 10:\n",
+							"            folder_date = datetime.strptime(date_string, \"%Y-%m-%d\")\n",
+							"        ### handle YYYY-MM dates\n",
+							"        elif len(date_string) == 7:\n",
+							"            folder_date = datetime.strptime(date_string, \"%Y-%m\")\n",
+							"            folder_date = date(folder_date.year, folder_date.month,\n",
+							"                                calendar.monthrange(folder_date.year, folder_date.month)[-1]) + timedelta(days=1)\n",
+							"            folder_date = datetime.combine(folder_date, datetime.min.time())\n",
+							"        else:\n",
+							"            raise ValueError(\"Date format in raw folder is incorrect, should be YYYY-MM-DD or YYYY-MM\")\n",
+							"        \n",
+							"        source_folder_with_date = mssparkutils.fs.ls(source_container_path + source_folder + date_string)\n",
+							"        for file in source_folder_with_date:\n",
+							"            ### isolate the correct file\n",
+							"            filename = file.name\n",
+							"            if definition['Source_Filename_Start'] in filename:\n",
+							"                return file\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 118
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"@logging_to_appins\n",
+							"def copy_source_file_for_schema_creation(source_id): \n",
+							"\n",
+							"    # read orchestration data\n",
+							"    path_to_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+							"    df = spark.read.option(\"multiline\",\"true\").json(path_to_file)\n",
+							"\n",
+							"    definitions = json.loads(df.toJSON().first())['definitions']\n",
+							"    definition = next(d for d in definitions if d['Source_ID'] == source_id)\n",
+							"\n",
+							"    source_file = get_latest_file_path(definition)\n",
+							"    target_folder = \"abfss://odw-config@\"+storage_account+\"schema_creation/\"\n",
+							"\n",
+							"    if source_file and source_file.path:\n",
+							"        mssparkutils.fs.cp(source_file.path, target_folder)"
+						],
+						"outputs": [],
+						"execution_count": 119
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"tags": [
+								"parameters"
+							]
+						},
+						"source": [
+							"source_id=-1"
+						],
+						"outputs": [],
+						"execution_count": 120
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"copy_source_file_for_schema_creation(source_id)"
+						],
+						"outputs": [],
+						"execution_count": 121
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/py_1_initial_run_raw_to_standardised_scheduling')]",
 			"type": "Microsoft.Synapse/workspaces/notebooks",
 			"apiVersion": "2019-06-01-preview",
@@ -106456,7 +107171,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "cf4eeacd-28ee-4cfa-adbc-1bd59f80b0d6"
+						"spark.autotune.trackingId": "2e33919c-479c-496d-9196-401c0c83a90e"
 					}
 				},
 				"metadata": {
@@ -106539,11 +107254,11 @@
 						},
 						"source": [
 							"@logging_to_appins\r\n",
-							"def ingest_raw_to_standardised():\r\n",
+							"def ingest_raw_to_standardised(source_id):\r\n",
 							"    '''\r\n",
 							"    Function reads all the schedules for all files, and processes any new files into standardised, and adds outstanding files into an outstanding files table\r\n",
 							"    Parameters:\r\n",
-							"    None\r\n",
+							"    source_id: the id of the orchestration record. If not equal to -1, the function will only run for that source_id\r\n",
 							"\r\n",
 							"    Returns:\r\n",
 							"    None\r\n",
@@ -106590,7 +107305,7 @@
 							"            definitions = json_config_dict['definitions']\r\n",
 							"            for defs in definitions:\r\n",
 							"                ### isolate the scheduling config for the entry in the oustanding files table\r\n",
-							"                if defs['Source_ID'] == outstanding_source_id: \r\n",
+							"                if defs['Source_ID'] == outstanding_source_id and (source_id == -1 or source_id == outstanding_source_id): \r\n",
 							"                    standardised_container = \"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/\" # defs['Standardised_Container'] + \"/\"\r\n",
 							"                    standardised_table_name = defs['Standardised_Table_Name']\r\n",
 							"                    standardised_path = defs['Standardised_Path'] + \"/\"\r\n",
@@ -106735,13 +107450,35 @@
 								"transient": {
 									"deleting": false
 								}
-							}
+							},
+							"tags": [
+								"parameters"
+							]
 						},
 						"source": [
-							"ingest_raw_to_standardised()"
+							"source_id=-1 ## only run for one source if this parameter is provided"
 						],
 						"outputs": [],
 						"execution_count": 4
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"ingest_raw_to_standardised(source_id)"
+						],
+						"outputs": [],
+						"execution_count": 5
 					}
 				]
 			},
@@ -107440,7 +108177,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "33deb2dc-e37d-4489-ab6f-0de754fd8466"
+						"spark.autotune.trackingId": "7e259d40-14f6-40dc-aac5-63452f44cf95"
 					}
 				},
 				"metadata": {
@@ -107487,7 +108224,7 @@
 							"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
 						],
 						"outputs": [],
-						"execution_count": 1
+						"execution_count": 6
 					},
 					{
 						"cell_type": "code",
@@ -107506,7 +108243,7 @@
 							"%run /utils/py_logging_decorator"
 						],
 						"outputs": [],
-						"execution_count": 2
+						"execution_count": 7
 					},
 					{
 						"cell_type": "code",
@@ -107865,7 +108602,7 @@
 							"                outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 						],
 						"outputs": [],
-						"execution_count": 3
+						"execution_count": 9
 					},
 					{
 						"cell_type": "code",
@@ -107884,7 +108621,7 @@
 							"ingest_raw_to_standardised()"
 						],
 						"outputs": [],
-						"execution_count": 4
+						"execution_count": 10
 					}
 				]
 			},
@@ -111259,7 +111996,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "4247b228-2650-480c-bcde-17c0a099364c"
+						"spark.autotune.trackingId": "0bd1b0c7-7624-4442-adf3-058faac4c16b"
 					}
 				},
 				"metadata": {
@@ -111303,17 +112040,18 @@
 							}
 						},
 						"source": [
-							"from notebookutils import mssparkutils\r\n",
-							"path_to_file = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/\"\r\n",
-							"file = mssparkutils.fs.ls(path_to_file)\r\n",
-							"path_to_target = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/standardised_table_definitions/Casework_Adhoc/\"\r\n",
-							"\r\n",
-							"# array of file names with corresponding sheet name\r\n",
-							"files_with_specific_sheets = [{\"filename\": \"Specialist_TPO.xlsx\", \"sheet\": \"MiPINS-SQL\"}]\r\n",
-							""
+							"from notebookutils import mssparkutils\n",
+							"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+							"\n",
+							"path_to_file = \"abfss://odw-config@\"+storage_account+\"schema_creation/\"\n",
+							"file = mssparkutils.fs.ls(path_to_file)\n",
+							"path_to_target = \"abfss://odw-config@\"+storage_account+\"standardised_table_definitions/\"\n",
+							"\n",
+							"# array of file names with corresponding sheet name\n",
+							"files_with_specific_sheets = [{\"filename\": \"Specialist_TPO.xlsx\", \"sheet\": \"MiPINS-SQL\"}]"
 						],
 						"outputs": [],
-						"execution_count": 42
+						"execution_count": 6
 					},
 					{
 						"cell_type": "code",
@@ -111397,14 +112135,18 @@
 							"            \"nullable\": True\r\n",
 							"            }\r\n",
 							"        jsonex['fields'].append(obj)\r\n",
+							"\r\n",
 							"    filename_no_ext = f.split(\"/\")[-1].split(ext)[0]\r\n",
 							"    json_to_write = json.dumps(jsonex)\r\n",
+							"    mssparkutils.fs.rm(f)\r\n",
+							"\r\n",
 							"    f = open(f\"/synfs/{jobId}/target/{filename_no_ext}.json\", \"w\")\r\n",
 							"    f.write(json_to_write)\r\n",
-							"    f.close()"
+							"    f.close()\r\n",
+							""
 						],
 						"outputs": [],
-						"execution_count": 43
+						"execution_count": 7
 					},
 					{
 						"cell_type": "code",
