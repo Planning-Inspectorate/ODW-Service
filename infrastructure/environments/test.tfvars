@@ -1,7 +1,7 @@
 alert_group_platform_enabled             = true
 alert_group_platform_recipients          = ["nasir.rahman@planninginspectorate.gov.uk"]
 alert_group_synapse_enabled              = true
-alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk"]
+alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk", "alex.delany@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
@@ -41,6 +41,9 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-test-ukw"
 environment = "test"
 location    = "uk-south"
 
+logic_app_service_plan_enabled = true
+logic_app_standard_enabled     = true
+
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4" # pins-odw-preprod-administrators
@@ -58,7 +61,6 @@ odt_back_office_service_bus_name                         = "pins-sb-back-office-
 odt_back_office_service_bus_name_failover                = "pins-sb-back-office-test-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-test-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-test-uks-001"
-odt_back_office_subscription_id                          = "76cf28c6-6fda-42f1-bcd9-6d7dbed704ef"
 
 service_bus_failover_enabled = false
 service_bus_role_assignments = {
@@ -71,6 +73,10 @@ service_bus_topics_and_subscriptions = {
   "employee" = [
     "employee",
     "employee-verify"
+  ],
+  "zendesk" = [
+    "zendesk",
+    "zendesk-verify"
   ]
 }
 
