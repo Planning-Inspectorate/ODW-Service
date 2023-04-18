@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "62d5f511-9027-4da7-bd76-e9b077f79775"
+				"spark.autotune.trackingId": "7927e80d-0bdd-48b3-bcf7-a69fb4315971"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,48 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\n",
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"absences_table_loc = \"abfss://odw-standardised@\" + storage_account+'HR/hr_absences'\n",
+					"\n",
+					"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
+					"absences = spark.read.format('delta').load(absences_table_loc).toPandas()\n",
+					"\n",
+					"def get_absence_hrs(id, days, start, end, ws):\n",
+					"    ws = work_schedule[work_schedule[\"work_schedule_rule\"] == ws]\n",
+					"    sum = 0\n",
+					"    for d in pd.bdate_range(start, end):\n",
+					"        day_short_name = d.day_name()[0:2]\n",
+					"        hrs = float(ws[day_short_name.lower()])\n",
+					"        sum += hrs if days >= 1 else days*hrs\n",
+					"    return str(sum)\n",
+					"\n",
+					"for i, row in absences.iterrows():\n",
+					"    absences.at[i, 'hrs'] = get_absence_hrs(row['staff_number'], float(row['days']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
+					"\n",
+					"absencesDF = spark.createDataFrame(absences)\n",
+					"absencesDF.write.format(\"delta\").mode(\"overwrite\").save(absences_table_loc)"
+				],
+				"execution_count": 13
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -97,7 +139,31 @@
 					"FROM odw_standardised_db.hr_absences T1\r\n",
 					"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_absences) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 				],
-				"execution_count": 3
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select count(*) from odw_standardised_db.vw_absences;\n",
+					"select * from odw_standardised_db.vw_absences where Staff_Number = 500514 and cast(Start_date as date) > '2022-10-10';"
+				],
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
