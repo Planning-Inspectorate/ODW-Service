@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2e33919c-479c-496d-9196-401c0c83a90e"
+				"spark.autotune.trackingId": "3f0ba6db-e596-4df8-aa97-0015178efb85"
 			}
 		},
 		"metadata": {
@@ -68,7 +68,7 @@
 				"source": [
 					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
 				],
-				"execution_count": 1
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 2
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -137,7 +137,7 @@
 					"\r\n",
 					"    ### create outstanding files table\r\n",
 					"    outstanding_files_table_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/scheduling_outstanding_files_table.json\", wholetext=True).first().value\r\n",
-					"    create_table_from_schema(outstanding_files_table_json, \"odw_config_db\", \"raw_to_std_outstanding_files\", \"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/\", \"config/raw_to_std_outstanding_files\" )\r\n",
+					"    # create_table_from_schema(outstanding_files_table_json, \"odw_config_db\", \"raw_to_std_outstanding_files\", \"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/\", \"config/raw_to_std_outstanding_files\" )\r\n",
 					"\r\n",
 					"    ### loads json for scheduling\r\n",
 					"    orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
@@ -160,7 +160,7 @@
 					"                    standardised_path = defs['Standardised_Path'] + \"/\"\r\n",
 					"                    standardised_table_loc = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + defs['Standardised_Table_Definition']\r\n",
 					"                    standardised_table_def_json = spark.read.text(standardised_table_loc, wholetext=True).first().value\r\n",
-					"                    create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)\r\n",
+					"                    # create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)\r\n",
 					"                    deltadays = defs['Expected_Within_Weekdays']\r\n",
 					"\r\n",
 					"                    ### expected from - change from normal process\r\n",
@@ -174,7 +174,7 @@
 					"                        ### check if the file has already been ingested\r\n",
 					"                        rows = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"                        \r\n",
-					"                        if rows > 0 :\r\n",
+					"                        if False :\r\n",
 					"                            logger.info(\"File has already been ingested\")\r\n",
 					"                        else:\r\n",
 					"                            source_container_path = \"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/\" \r\n",
@@ -224,8 +224,11 @@
 					"                                            else:\r\n",
 					"                                                raise RuntimeError(f\"This file type for {filename} is unsupported\")\r\n",
 					"                                            ### drop headerless columns\r\n",
-					"                                            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
-					"                                            rows_raw = len(df.index)\r\n",
+					"                                            # df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\r\n",
+					"                                            # rows_raw = len(df.index)\r\n",
+					"                                            # print('rows_raw', rows_raw)\r\n",
+					"                                            print(filename)\r\n",
+					"                                            return df\r\n",
 					"                                            mssparkutils.fs.unmount(\"/temp_raw\") \r\n",
 					"                                            ### convert to pandas dataframe\r\n",
 					"                                            sparkDF=spark.createDataFrame(df)\r\n",
@@ -270,6 +273,8 @@
 					"                                            standardised_table_df_new = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\r\n",
 					"                                            rows_new = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\r\n",
 					"\r\n",
+					"                                            print(rows_raw)\r\n",
+					"                                            print(rows_new)\r\n",
 					"                                            ### test correct number of rows have written\r\n",
 					"                                            if rows_raw == rows_new:\r\n",
 					"                                                mssparkutils.fs.mkdirs(source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\")\r\n",
@@ -285,7 +290,7 @@
 					"                                                raise RuntimeError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -304,9 +309,9 @@
 					]
 				},
 				"source": [
-					"source_id=-1 ## only run for one source if this parameter is provided"
+					"source_id=84 ## only run for one source if this parameter is provided"
 				],
-				"execution_count": 4
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -322,9 +327,50 @@
 					}
 				},
 				"source": [
-					"ingest_raw_to_standardised(source_id)"
+					"df = ingest_raw_to_standardised(source_id)"
 				],
-				"execution_count": 5
+				"execution_count": 103
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# spark.createDataFrame(df).createOrReplaceTempView('a')"
+				],
+				"execution_count": 100
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from a where `Staff Number` = 500002 order by `Start Date` desc"
+				],
+				"execution_count": 101
 			}
 		]
 	}
