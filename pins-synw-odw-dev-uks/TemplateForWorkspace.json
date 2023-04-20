@@ -203,6 +203,24 @@
 		"hist_sap_hr_properties_content_currentConnection_poolName": {
 			"type": "string"
 		},
+		"mipins_hr_organisational_unit_properties_content_currentConnection_databaseName": {
+			"type": "string"
+		},
+		"mipins_hr_organisational_unit_properties_content_currentConnection_poolName": {
+			"type": "string"
+		},
+		"mipins_hr_personnel_area_properties_content_currentConnection_databaseName": {
+			"type": "string"
+		},
+		"mipins_hr_personnel_area_properties_content_currentConnection_poolName": {
+			"type": "string"
+		},
+		"mipins_hr_personnel_sub_area_properties_content_currentConnection_databaseName": {
+			"type": "string"
+		},
+		"mipins_hr_personnel_sub_area_properties_content_currentConnection_poolName": {
+			"type": "string"
+		},
 		"vw_mipins_hr_gender_properties_content_currentConnection_databaseName": {
 			"type": "string"
 		},
@@ -649,10 +667,6 @@
 			"type": "string",
 			"defaultValue": "pinssynspodw"
 		},
-		"hr_historic_sap_hr_properties_bigDataPool_referenceName": {
-			"type": "string",
-			"defaultValue": "pinssynspodw"
-		},
 		"hr_leave_entitlement_dim_properties_bigDataPool_referenceName": {
 			"type": "string",
 			"defaultValue": "pinssynspodw"
@@ -722,6 +736,22 @@
 			"defaultValue": "pinssynspodw"
 		},
 		"master_properties_bigDataPool_referenceName": {
+			"type": "string",
+			"defaultValue": "pinssynspodw"
+		},
+		"mipins_hr_measures_properties_bigDataPool_referenceName": {
+			"type": "string",
+			"defaultValue": "pinssynspodw"
+		},
+		"mipins_hr_organisation_unit_properties_bigDataPool_referenceName": {
+			"type": "string",
+			"defaultValue": "pinssynspodw"
+		},
+		"mipins_hr_personnel_area_properties_bigDataPool_referenceName": {
+			"type": "string",
+			"defaultValue": "pinssynspodw"
+		},
+		"mipins_hr_personnel_sub_area_properties_bigDataPool_referenceName": {
 			"type": "string",
 			"defaultValue": "pinssynspodw"
 		},
@@ -23654,6 +23684,250 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/pln_hr_run')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This pipeline has been created to run HR data from standardised to the ESB after the warehouse has been first created.",
+				"activities": [
+					{
+						"name": "sap-hr-views",
+						"type": "SynapseNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "sap-hr-views",
+								"type": "NotebookReference"
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "sap-hr-master",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-views",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "sap-hr-master",
+								"type": "NotebookReference"
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "sap-hr-views failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-views",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "sap-hr-views failed",
+							"errorCode": "sap-hr-views failed"
+						}
+					},
+					{
+						"name": "py_fail_activity_logging",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-views failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('sap-hr-views failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "sap-hr-master failed",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-master",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "sap-hr-master failed",
+							"errorCode": "sap-hr-master failed"
+						}
+					},
+					{
+						"name": "py_fail_activity_logging1",
+						"type": "SynapseNotebook",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-master failed",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebook": {
+								"referenceName": "py_fail_activity_logging",
+								"type": "NotebookReference"
+							},
+							"parameters": {
+								"output": {
+									"value": {
+										"value": "@activity('sap-hr-master failed').output.message",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
+							"snapshot": true,
+							"conf": {
+								"spark.dynamicAllocation.enabled": null,
+								"spark.dynamicAllocation.minExecutors": null,
+								"spark.dynamicAllocation.maxExecutors": null
+							},
+							"numExecutors": null
+						}
+					},
+					{
+						"name": "4_scheduling_harmonised_to_curated",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "sap-hr-master",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "4_scheduling_harmonised_to_curated",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "5_scheduling_curated_to_esb",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "4_scheduling_harmonised_to_curated",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "5_scheduling_curated_to_esb",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "post-deployment/19-04-2023"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/notebooks/sap-hr-views')]",
+				"[concat(variables('workspaceId'), '/notebooks/sap-hr-master')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_fail_activity_logging')]",
+				"[concat(variables('workspaceId'), '/pipelines/4_scheduling_harmonised_to_curated')]",
+				"[concat(variables('workspaceId'), '/pipelines/5_scheduling_curated_to_esb')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/pln_initial_end_to_end')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -24490,7 +24764,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "post-deployment"
+					"name": "post-deployment/18-04-2023"
 				},
 				"annotations": [],
 				"lastPublishTime": "2023-01-19T12:53:30Z"
@@ -37884,6 +38158,40 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/pln_post_deployment')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "pln_hr_run",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pln_hr_run",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "post-deployment"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/pipelines/pln_hr_run')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/pln_raw_to_standardised_e2e')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
@@ -48759,6 +49067,66 @@
 					"currentConnection": {
 						"databaseName": "[parameters('hist_sap_hr_properties_content_currentConnection_databaseName')]",
 						"poolName": "[parameters('hist_sap_hr_properties_content_currentConnection_poolName')]"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_organisational_unit')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "IF NOT EXISTS ( SELECT  *\n                FROM    sys.schemas\n                WHERE   name = 'mipins' )\n    EXEC('CREATE SCHEMA [mipins]');\nGO\n\n--CREATE VIEW FOR ORGANISATION UNIT--\n\nCREATE OR ALTER VIEW mipins.vw_mipins_hr_organisational_unit\nAS\n\nSELECT DISTINCT\n\nOrganisationUnitID      AS OrganisationKey,\nOrganisationUnit        AS OrganisationUnitCode,\nDescription             AS OrganisationUnitDesc,\nIsActive                AS IsActive,\nIngestionDate           AS IngestionDate,\nValidTo                 AS ValidTo\n\nFROM [odw_harmonised_db].[dbo].[hr_organisation_unit_dim]\n\nGO",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "[parameters('mipins_hr_organisational_unit_properties_content_currentConnection_databaseName')]",
+						"poolName": "[parameters('mipins_hr_organisational_unit_properties_content_currentConnection_poolName')]"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_personnel_area')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "IF NOT EXISTS ( SELECT  *\n                FROM    sys.schemas\n                WHERE   name = 'mipins' )\n    EXEC('CREATE SCHEMA [mipins]');\nGO\n\n--CREATE VIEW FOR PERSONNEL AREA--\n\nCREATE OR ALTER VIEW mipins.vw_mipins_hr_personnel_area\nAS\n\nSELECT DISTINCT\n\nPersonnelAreaID         AS PersonnelAreaKey,\nPersonnelAreaCode       AS PersonnelAreaCode, \nDescription             AS PersonnelArea,\nIsActive                AS IsActive,\nIngestionDate           AS IngestionDate,\nValidTo                 AS ValidTo\n\nFROM [odw_harmonised_db].[dbo].hr_personnel_area_dim\n\nGO",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "[parameters('mipins_hr_personnel_area_properties_content_currentConnection_databaseName')]",
+						"poolName": "[parameters('mipins_hr_personnel_area_properties_content_currentConnection_poolName')]"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_personnel_sub_area')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "IF NOT EXISTS ( SELECT  *\n                FROM    sys.schemas\n                WHERE   name = 'mipins' )\n    EXEC('CREATE SCHEMA [mipins]');\nGO\n\n--CREATE VIEW FOR PERSONNEL SUB AREA--\n\nCREATE OR ALTER VIEW mipins.vw_mipins_hr_personnel_sub_area\nAS\n\nSELECT DISTINCT\n\nPersonnelSubAreaID      AS PersonnelSubAreaKey,\nPersonnelSubAreaCode    AS PersonnelSubAreaCode,\nDescription             AS PersonnelSubAreaDesc,\nIsActive                AS IsActive,\nIngestionDate           AS IngestionDate,\nValidTo                 AS ValidTo\n\nFROM [odw_harmonised_db].[dbo].[hr_personnel_sub_area_dim]\n\nGO",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "[parameters('mipins_hr_personnel_sub_area_properties_content_currentConnection_databaseName')]",
+						"poolName": "[parameters('mipins_hr_personnel_sub_area_properties_content_currentConnection_poolName')]"
 					},
 					"resultLimit": 5000
 				},
@@ -92279,7 +92647,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "30ee9983-5376-432f-8ae7-f206999984ee"
+						"spark.autotune.trackingId": "df39c9bb-6137-4f02-867c-5ef7c86fffc3"
 					}
 				},
 				"metadata": {
@@ -92365,7 +92733,7 @@
 							"WHERE Staff_Number IS NOT NULL AND Attendance_or_Absence_Type IS NOT NULL;"
 						],
 						"outputs": [],
-						"execution_count": 50
+						"execution_count": 1
 					},
 					{
 						"cell_type": "markdown",
@@ -92407,14 +92775,12 @@
 							"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 							"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 							"\r\n",
-							"SELECT \r\n",
+							"SELECT DISTINCT\r\n",
 							"    CASE\r\n",
 							"        WHEN T1.Staff_Number IS NULL\r\n",
 							"        THEN T3.AbsenceID\r\n",
 							"        ELSE NULL\r\n",
 							"    END as AbsenceID, -- surrogate key\r\n",
-							"    T3.ROWID as a,\r\n",
-							"    md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(T1.Start_Date,'.'), IFNULL(T1.End_Date,'.'))) as b,\r\n",
 							"    T1.Staff_Number AS EmployeeID,\r\n",
 							"    T1.Attendance_or_Absence_Type AS AbsenceType,\r\n",
 							"    T1.Sickness_Group AS SicknessGroup,\r\n",
@@ -92428,13 +92794,13 @@
 							"    T2.SourceSystemID as SourceSystemID,\r\n",
 							"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
 							"    NULL AS ValidTo,\r\n",
-							"    md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(T1.Start_Date,'.'), IFNULL(T1.End_Date,'.'))) as RowID,\r\n",
+							"    md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(CAST(T1.Start_Date AS VARCHAR(20)),'.'), IFNULL(CAST(T1.End_Date AS VARCHAR(20)),'.'), IFNULL(T1.Hrs,'.'))) as RowID,\r\n",
 							"    'Y' as IsActive,\r\n",
 							"    CASE\r\n",
 							"        WHEN T1.Attendance_or_Absence_Type = T3.AbsenceType AND \r\n",
 							"                T1.Start_Date = T3.AbsenceStartDate AND \r\n",
 							"                T1.End_Date = T3.AbsenceEndDate AND \r\n",
-							"                md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(T1.Start_Date,'.'), IFNULL(T1.End_Date,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
+							"                md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(CAST(T1.Start_Date AS VARCHAR(20)),'.'), IFNULL(CAST(T1.End_Date AS VARCHAR(20)),'.'), IFNULL(T1.Hrs,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
 							"        THEN 'Y'\r\n",
 							"        WHEN T3.EmployeeID IS NULL -- new employee\r\n",
 							"        THEN 'Y'\r\n",
@@ -92457,7 +92823,8 @@
 							"FULL JOIN odw_harmonised_db.hr_absence_dim T3 ON T1.Staff_Number = T3.EmployeeID AND \r\n",
 							"                                                T1.Attendance_or_Absence_Type = T3.AbsenceType AND \r\n",
 							"                                                T1.Start_Date = T3.AbsenceStartDate AND \r\n",
-							"                                                T1.End_Date = T3.AbsenceEndDate\r\n",
+							"                                                T1.End_Date = T3.AbsenceEndDate AND\r\n",
+							"                                                T1.hrs = T3.Hours\r\n",
 							"                                                AND T3.IsActive = 'Y'\r\n",
 							"WHERE\r\n",
 							"    (\r\n",
@@ -92466,7 +92833,7 @@
 							"            WHEN T1.Staff_Number = T3.EmployeeID AND \r\n",
 							"                    T1.Attendance_or_Absence_Type = T3.AbsenceType AND \r\n",
 							"                    T1.Start_Date = T3.AbsenceStartDate AND \r\n",
-							"                    T1.End_Date = T3.AbsenceEndDate AND md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(T1.Start_Date,'.'), IFNULL(T1.End_Date,'.'))) <> T3.RowID    -- same employee, changed data\r\n",
+							"                    T1.End_Date = T3.AbsenceEndDate AND md5(concat(IFNULL(T1.Staff_Number,'.'), IFNULL(T1.Attendance_or_Absence_Type,'.'), IFNULL(CAST(T1.Start_Date AS VARCHAR(20)),'.'), IFNULL(CAST(T1.End_Date AS VARCHAR(20)),'.'), IFNULL(T1.Hrs,'.'))) <> T3.RowID    -- same employee, changed data\r\n",
 							"            THEN 'Y'\r\n",
 							"            WHEN T3.EmployeeID IS NULL -- new employee\r\n",
 							"            THEN 'Y'\r\n",
@@ -92480,10 +92847,10 @@
 							"            ELSE 'N'\r\n",
 							"        END = 'Y' )\r\n",
 							"    )\r\n",
-							";"
+							"AND T1.Staff_Number IS NOT NULL;"
 						],
 						"outputs": [],
-						"execution_count": 51
+						"execution_count": 6
 					},
 					{
 						"cell_type": "markdown",
@@ -92565,13 +92932,10 @@
 							"    T4.RowID,\r\n",
 							"    T4.IsActive\r\n",
 							"FROM odw_harmonised_db.hr_absence_dim T4\r\n",
-							"INNER JOIN absence_dim_new T5 ON T4.EmployeeID = T5.EmployeeID AND T4.AbsenceType = T5.AbsenceType AND\r\n",
-							" T4.AbsenceStartDate = T5.AbsenceStartDate AND T4.AbsenceEndDate = T5.AbsenceEndDate AND \r\n",
-							" T5.AbsenceID IS NULL AND T5.IsActive = 'Y'\r\n",
-							";"
+							"WHERE EmployeeID IN (SELECT EmployeeID FROM absence_dim_new WHERE AbsenceID IS NULL) AND IsActive = 'Y';"
 						],
 						"outputs": [],
-						"execution_count": 52
+						"execution_count": 88
 					},
 					{
 						"cell_type": "markdown",
@@ -92629,7 +92993,7 @@
 							""
 						],
 						"outputs": [],
-						"execution_count": 53
+						"execution_count": 90
 					},
 					{
 						"cell_type": "markdown",
@@ -92690,7 +93054,7 @@
 							"FROM odw_harmonised_db.hr_absence_dim;"
 						],
 						"outputs": [],
-						"execution_count": 54
+						"execution_count": 91
 					}
 				]
 			},
@@ -96515,1007 +96879,6 @@
 						],
 						"outputs": [],
 						"execution_count": 5
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('workspaceName'), '/hr_historic_sap_hr')]",
-			"type": "Microsoft.Synapse/workspaces/notebooks",
-			"apiVersion": "2019-06-01-preview",
-			"properties": {
-				"folder": {
-					"name": "odw-harmonised/SAP-HR"
-				},
-				"nbformat": 4,
-				"nbformat_minor": 2,
-				"bigDataPool": {
-					"referenceName": "[parameters('hr_historic_sap_hr_properties_bigDataPool_referenceName')]",
-					"type": "BigDataPoolReference"
-				},
-				"sessionProperties": {
-					"driverMemory": "28g",
-					"driverCores": 4,
-					"executorMemory": "28g",
-					"executorCores": 4,
-					"numExecutors": 2,
-					"conf": {
-						"spark.dynamicAllocation.enabled": "false",
-						"spark.dynamicAllocation.minExecutors": "2",
-						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "63b38156-70ad-4a9e-93cf-f5fec137b289"
-					}
-				},
-				"metadata": {
-					"saveOutput": true,
-					"enableDebugMode": false,
-					"kernelspec": {
-						"name": "synapse_pyspark",
-						"display_name": "Synapse PySpark"
-					},
-					"language_info": {
-						"name": "python"
-					},
-					"a365ComputeOptions": {
-						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-						"name": "pinssynspodw",
-						"type": "Spark",
-						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
-						"auth": {
-							"type": "AAD",
-							"authResource": "https://dev.azuresynapse.net"
-						},
-						"sparkVersion": "3.3",
-						"nodeCount": 3,
-						"cores": 4,
-						"memory": 28
-					},
-					"sessionKeepAliveTimeout": 30
-				},
-				"cells": [
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"\n",
-							"CREATE OR REPLACE TEMPORARY VIEW staff_cost\n",
-							"\n",
-							"     AS\n",
-							"\n",
-							"SELECT DISTINCT\n",
-							"    h.pers_no as EmployeeID,\n",
-							"    h.ps_group as Grade, \n",
-							"\th.annual_salary as Salary, \n",
-							"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as HourlyRate,\n",
-							"    cast(le.ExpectedFrom as date) as ReportMonthEndDate,\n",
-							"    le.LeaveDaysPerYear as LeaveAllowance,\n",
-							"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
-							"\t\t\t\twhen 1 then le.LeaveYearStart\n",
-							"\t\t\t\twhen 0 then le.LeaveYearStart\n",
-							"\t\t\t\telse dateadd(year, -1, le.LeaveYearStart)\n",
-							"\t\t\tend as date) as LeaveStartDate,\n",
-							"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
-							"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
-							"                                                    WHEN 1 THEN\n",
-							"                                                    le.leaveyearstart\n",
-							"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
-							"                                                    END\n",
-							"                                                    AS date), le.expectedfrom))/364.25)%1))) AS ExpectedLeaveHoursRemaining\n",
-							"    \n",
-							"FROM odw_standardised_db.hr_saphr h\n",
-							"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
-							"WHERE\n",
-							"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
-						],
-						"outputs": [],
-						"execution_count": 44
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"\n",
-							"CREATE OR REPLACE TEMPORARY VIEW carried_over\n",
-							"    \n",
-							"    AS\n",
-							"\n",
-							"SELECT DISTINCT\n",
-							"    h.pers_no as EmployeeID,\n",
-							"    case sign(le.LeaveDaysPerYear - 148)\n",
-							"        when 1 then 148\n",
-							"        when 0 then 148\n",
-							"        else le.LeaveDaysPerYear\n",
-							"    end as CarriedOverHours\n",
-							"\n",
-							"FROM odw_standardised_db.hr_saphr h\n",
-							"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
-							"WHERE\n",
-							"    le.AbsenceQuotaType = 'Brought Forward';"
-						],
-						"outputs": [],
-						"execution_count": 45
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							"import pandas as pd\n",
-							"from pyspark.sql import SparkSession\n",
-							"\n",
-							"def get_england_and_wales(data_frame):\n",
-							"    return (\n",
-							"        pd\n",
-							"        .json_normalize(\n",
-							"            data_frame.to_dict(),\n",
-							"            record_path=[['england-and-wales', 'events']]\n",
-							"        )\n",
-							"        .astype({\n",
-							"            'title': 'string',\n",
-							"            'date': 'datetime64[ns]',\n",
-							"            'notes': 'string',\n",
-							"            'bunting': 'bool'\n",
-							"        })\n",
-							"    )\n",
-							"\n",
-							"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
-							"bh = get_england_and_wales(bank_holidays)\n",
-							"\n",
-							"spark = SparkSession.builder.getOrCreate()\n",
-							"sparkDF=spark.createDataFrame(bh) \n",
-							"\n",
-							"sparkDF.createOrReplaceTempView('bank_holidays')"
-						],
-						"outputs": [],
-						"execution_count": 46
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"\n",
-							"CREATE OR REPLACE TEMPORARY VIEW leave_taken\n",
-							"\n",
-							"     AS\n",
-							"\n",
-							"SELECT DISTINCT\n",
-							"    a.AbsenceID,\n",
-							"    a.EmployeeID,\n",
-							"    CASE\n",
-							"        WHEN sc.ReportMonthEndDate >= a.AbsenceEndDate\n",
-							"        THEN a.Hours\n",
-							"        ELSE a.Hours - (w.WorkDayHours * datediff(a.AbsenceEndDate, sc.ReportMonthEndDate))\n",
-							"    END AS LeaveHours,\n",
-							"    a.Days, \n",
-							"    a.Hours,\n",
-							"    a.CalendarDays,\n",
-							"    a.AbsenceStartDate,\n",
-							"    a.AbsenceEndDate,\n",
-							"    sc.LeaveStartDate,\n",
-							"    bh.title as HolidayTitle,\n",
-							"    CASE \n",
-							"        WHEN a.Days = 0 AND a.Hours = 0 \n",
-							"        THEN w.WorkDayHours * a.CalendarDays\n",
-							"        ELSE NULL\n",
-							"    END AS BankHolidaysHours\n",
-							"\n",
-							"\n",
-							"FROM odw_harmonised_db.hr_absence_dim a\n",
-							"LEFT JOIN odw_harmonised_db.hr_work_schedule_dim w on a.WorkScheduleID = w.WorkScheduleID\n",
-							"LEFT JOIN staff_cost sc ON a.EmployeeID = sc.EmployeeID\n",
-							"LEFT JOIN bank_holidays bh ON a.AbsenceStartDate = bh.Date\n",
-							"WHERE\n",
-							"    a.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
-							"    AND \n",
-							"    a.AbsenceStartDate  BETWEEN sc.LeaveStartDate AND sc.ReportMonthEndDate\n",
-							"GROUP BY \n",
-							"    a.EmployeeID,a.AbsenceID,a.Days,a.Hours,a.CalendarDays,a.AbsenceStartDate,a.AbsenceEndDate,sc.LeaveStartDate,bh.title,w.WorkDayHours,sc.ReportMonthEndDate\n",
-							"Order by AbsenceStartDate"
-						],
-						"outputs": [],
-						"execution_count": 48
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"CREATE OR REPLACE TEMPORARY VIEW leave_taken_fixed -- adding bank holidays in leave_hours_taken\n",
-							"\n",
-							"    AS\n",
-							"\n",
-							"SELECT\n",
-							"EmployeeID,\n",
-							"SUM(CASE\n",
-							"        WHEN Days = 0 AND Hours = 0 AND HolidayTitle is not null AND LeaveStartDate <= AbsenceStartDate \n",
-							"        THEN LeaveHours + BankHolidaysHours\n",
-							"        ELSE LeaveHours\n",
-							"    END) AS LeaveHoursTaken\n",
-							"\n",
-							"FROM leave_taken\n",
-							"Where EmployeeID is not null and LeaveStartDate <= AbsenceStartDate\n",
-							"GROUP BY EmployeeID;"
-						],
-						"outputs": [],
-						"execution_count": 49
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"\n",
-							"CREATE OR REPLACE TEMPORARY VIEW sap_hr_historic\n",
-							"\n",
-							"     AS\n",
-							"\t \n",
-							"SELECT DISTINCT\n",
-							"\th.pers_no,\n",
-							"\th.first_name,\n",
-							"\th.last_name,\n",
-							"\th.employee_no,\n",
-							"\th.cocd,\n",
-							"\th.company_code,\n",
-							"\th.pa,\n",
-							"\th.personnel_area,\n",
-							"\th.psubarea,\n",
-							"\th.personnel_subarea,\n",
-							"\th.org_unit,\n",
-							"\th.organizational_unit,\n",
-							"\th.organizational_key1,\n",
-							"\th.organizational_key2,\n",
-							"\th.workc,\n",
-							"\th.work_contract,\n",
-							"\th.ct,\n",
-							"\th.contract_type,\n",
-							"\th.ps_group,\n",
-							"\th.pay_band_description,\n",
-							"\th.fte,\n",
-							"\th.wk_hrs,\n",
-							"\th.indicator_part_time_employee,\n",
-							"\th.s,\n",
-							"\th.employment_status,\n",
-							"\th.gender_key,\n",
-							"\th.tra_start_date,\n",
-							"\th.tra_end_date,\n",
-							"\th.tra_status,\n",
-							"\th.tra_grade,\n",
-							"\th.prev_persno,\n",
-							"\th.actr,\n",
-							"\th.reason_for_action,\n",
-							"\th.position,\n",
-							"\th.position_1,\n",
-							"\th.cost_ctr,\n",
-							"\th.cost_centre,\n",
-							"\th.civil_service_start,\n",
-							"\th.date_to_current_job,\n",
-							"\th.seniority_date,\n",
-							"\th.date_to_subst_grade,\n",
-							"\th.pers_no_1,\n",
-							"\th.name_of_manager_om,\n",
-							"\th.manager_position,\n",
-							"\th.manager_position_text,\n",
-							"\th.counter_sign_manager,\n",
-							"\th.loc,\n",
-							"\th.location,\n",
-							"\th.org_start_date,\n",
-							"\th.fix_term_end_date,\n",
-							"\th.loan_start_date,\n",
-							"\th.loan_end_date,\n",
-							"\th.eegrp,\n",
-							"\th.employee_group,\n",
-							"\th.annual_salary,\n",
-							"\th.curr,\n",
-							"\th.ni_number,\n",
-							"\th.birth_date,\n",
-							"\th.age_of_employee,\n",
-							"\th.eo,\n",
-							"\th.ethnic_origin,\n",
-							"\th.nid,\n",
-							"\th.rel,\n",
-							"\th.religious_denomination_key,\n",
-							"\th.sxo,\n",
-							"\th.wage_type,\n",
-							"\th.employee_subgroup,\n",
-							"\th.loa_abs_type,\n",
-							"\th.loa_absence_type_text,\n",
-							"\th.scheme_reference,\n",
-							"\th.pension_scheme_name,\n",
-							"\th.disability_code,\n",
-							"\th.disability_text,\n",
-							"\th.disability_code_description,\n",
-							"\th.parea,\n",
-							"\th.payroll_area,\n",
-							"\th.assignment_number,\n",
-							"\th.fte_2,\n",
-							"\tsc.ReportMonthEndDate as Report_MonthEnd_Date,\n",
-							"\tcoalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) as leave_entitlement_hrs,\n",
-							"\tcoalesce(lt.LeaveHoursTaken, 0) as leave_taken_hrs,\n",
-							"\tround((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)), 2) as leave_remaining_hours,\n",
-							"\tcoalesce(round(sc.ExpectedLeaveHoursRemaining, 2), 0) as leave_remaining_prorata_hours\n",
-							"\t--,coalesce(round((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
-							"from odw_standardised_db.hr_saphr h\n",
-							"\tleft join staff_cost sc on cast(h.pers_no as int) = cast(sc.EmployeeID as int)\n",
-							"\tleft join carried_over co on cast(sc.EmployeeID as int) = cast(co.EmployeeID as int)\n",
-							"\tleft join leave_taken_fixed lt on cast(sc.EmployeeID as int) = cast(lt.EmployeeID as int)\n",
-							"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.Grade = p.Grade\n",
-							"where \n",
-							"\tright(cast(cast(sc.ReportMonthEndDate as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
-						],
-						"outputs": [],
-						"execution_count": 50
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\n",
-							"\t \n",
-							"SELECT DISTINCT\n",
-							"\tpers_no,\n",
-							"\tleave_taken_hrs,\n",
-							"\tleave_remaining_hours,\n",
-							"\tleave_remaining_prorata_hours\n",
-							"from sap_hr_historic\n",
-							"order by pers_no"
-						],
-						"outputs": [],
-						"execution_count": 51
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\r\n",
-							"-- Gets modified or deleted from source rows\r\n",
-							"\r\n",
-							"CREATE OR REPLACE TEMPORARY VIEW hr_historic_sap_hr_new \r\n",
-							"\r\n",
-							"    AS\r\n",
-							"\r\n",
-							"-- gets data that matches of PersNo and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
-							"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
-							"\r\n",
-							"SELECT\r\n",
-							"    CASE\r\n",
-							"        WHEN h.pers_no IS NULL\r\n",
-							"        THEN T5.HistoricSAPHRID\r\n",
-							"        ELSE NULL\r\n",
-							"    END as HistoricSAPHRID, -- surrogate\r\n",
-							"    h.pers_no\tAS\tPersNo\t,\r\n",
-							"    h.first_name\tAS\tFirstName\t,\r\n",
-							"    h.last_name\tAS\tLastName\t,\r\n",
-							"    h.employee_no\tAS\tEmployeeNo\t,\r\n",
-							"    h.cocd\tAS\tCocd\t,\r\n",
-							"    h.company_code\tAS\tCompanyCode\t,\r\n",
-							"    h.pa\tAS\tPa\t,\r\n",
-							"    h.personnel_area\tAS\tPersonnelArea\t,\r\n",
-							"    h.psubarea\tAS\tPsubarea\t,\r\n",
-							"    h.personnel_subarea\tAS\tPersonnelSubarea\t,\r\n",
-							"    h.org_unit\tAS\tOrgUnit\t,\r\n",
-							"    h.organizational_unit\tAS\tOrganizationalUnit\t,\r\n",
-							"    h.organizational_key1\tAS\tOrganizationalKey1\t,\r\n",
-							"    h.organizational_key2\tAS\tOrganizationalKey2\t,\r\n",
-							"    h.workc\tAS\tWorkc\t,\r\n",
-							"    h.work_contract\tAS\tWorkContract\t,\r\n",
-							"    h.ct\tAS\tCt\t,\r\n",
-							"    h.contract_type\tAS\tContractType\t,\r\n",
-							"    h.ps_group\tAS\tPsGroup\t,\r\n",
-							"    h.pay_band_description\tAS\tPayBandDescription\t,\r\n",
-							"    h.fte\tAS\tFte\t,\r\n",
-							"    h.wk_hrs\tAS\tWkHrs\t,\r\n",
-							"    h.indicator_part_time_employee\tAS\tIndicatorPartTimeEmployee\t,\r\n",
-							"    h.s\tAS\tS\t,\r\n",
-							"    h.employment_status\tAS\tEmploymentStatus\t,\r\n",
-							"    h.gender_key\tAS\tGenderKey\t,\r\n",
-							"    h.tra_start_date\tAS\tTraStartDate\t,\r\n",
-							"    h.tra_end_date\tAS\tTraEndDate\t,\r\n",
-							"    h.tra_status\tAS\tTraStatus\t,\r\n",
-							"    h.tra_grade\tAS\tTraGrade\t,\r\n",
-							"    h.prev_persno\tAS\tPrevPersno\t,\r\n",
-							"    h.actr\tAS\tActr\t,\r\n",
-							"    h.reason_for_action\tAS\tReasonForAction\t,\r\n",
-							"    h.position\tAS\tPosition\t,\r\n",
-							"    h.position_1\tAS\tPosition1\t,\r\n",
-							"    h.cost_ctr\tAS\tCostCtr\t,\r\n",
-							"    h.cost_centre\tAS\tCostCentre\t,\r\n",
-							"    h.civil_service_start\tAS\tCivilServiceStart\t,\r\n",
-							"    h.date_to_current_job\tAS\tDateToCurrentJob\t,\r\n",
-							"    h.seniority_date\tAS\tSeniorityDate\t,\r\n",
-							"    h.date_to_subst_grade\tAS\tDateToSubstGrade\t,\r\n",
-							"    h.pers_no_1\tAS\tPersNo1\t,\r\n",
-							"    h.name_of_manager_om\tAS\tNameOfManagerOm\t,\r\n",
-							"    h.manager_position\tAS\tManagerPosition\t,\r\n",
-							"    h.manager_position_text\tAS\tManagerPositionText\t,\r\n",
-							"    h.counter_sign_manager\tAS\tCounterSignManager\t,\r\n",
-							"    h.loc\tAS\tLoc\t,\r\n",
-							"    h.location\tAS\tLocation\t,\r\n",
-							"    h.org_start_date\tAS\tOrgStartDate\t,\r\n",
-							"    h.fix_term_end_date\tAS\tFixTermEndDate\t,\r\n",
-							"    h.loan_start_date\tAS\tLoanStartDate\t,\r\n",
-							"    h.loan_end_date\tAS\tLoanEndDate\t,\r\n",
-							"    h.eegrp\tAS\tEegrp\t,\r\n",
-							"    h.employee_group\tAS\tEmployeeGroup\t,\r\n",
-							"    h.annual_salary\tAS\tAnnualSalary\t,\r\n",
-							"    h.curr\tAS\tCurr\t,\r\n",
-							"    h.ni_number\tAS\tNiNumber\t,\r\n",
-							"    h.birth_date\tAS\tBirthDate\t,\r\n",
-							"    h.age_of_employee\tAS\tAgeOfEmployee\t,\r\n",
-							"    h.eo\tAS\tEo\t,\r\n",
-							"    h.ethnic_origin\tAS\tEthnicOrigin\t,\r\n",
-							"    h.nid\tAS\tNid\t,\r\n",
-							"    h.rel\tAS\tRel\t,\r\n",
-							"    h.religious_denomination_key\tAS\tReligiousDenominationKey\t,\r\n",
-							"    h.sxo\tAS\tSxo\t,\r\n",
-							"    h.wage_type\tAS\tWageType\t,\r\n",
-							"    h.employee_subgroup\tAS\tEmployeeSubgroup\t,\r\n",
-							"    h.loa_abs_type\tAS\tLoaAbsType\t,\r\n",
-							"    h.loa_absence_type_text\tAS\tLoaAbsenceTypeText\t,\r\n",
-							"    h.scheme_reference\tAS\tSchemeReference\t,\r\n",
-							"    h.pension_scheme_name\tAS\tPensionSchemeName\t,\r\n",
-							"    h.disability_code\tAS\tDisabilityCode\t,\r\n",
-							"    h.disability_text\tAS\tDisabilityText\t,\r\n",
-							"    h.disability_code_description\tAS\tDisabilityCodeDescription\t,\r\n",
-							"    h.parea\tAS\tParea\t,\r\n",
-							"    h.payroll_area\tAS\tPayrollArea\t,\r\n",
-							"    h.assignment_number\tAS\tAssignmentNumber\t,\r\n",
-							"    h.fte_2\tAS\tFte2\t,\r\n",
-							"    h.Report_MonthEnd_Date\tAS\tReportMonthendDate\t,\r\n",
-							"    h.leave_entitlement_hrs\tAS\tLeaveEntitlementHrs\t,\r\n",
-							"    h.leave_taken_hrs\tAS\tLeaveTakenHrs\t,\r\n",
-							"    h.leave_remaining_hours\tAS\tLeaveRemainingHours\t,\r\n",
-							"    h.leave_remaining_prorata_hours\tAS\tLeaveRemainingProrataHours,\r\n",
-							"\r\n",
-							"    T2.SourceSystemID as SourceSystemID,\r\n",
-							"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
-							"    NULL AS ValidTo,\r\n",
-							"    md5(concat(IFNULL(h.pers_no,'.'),IFNULL(h.employee_no,'.'))) AS RowID,\r\n",
-							"    'Y' AS IsActive,\r\n",
-							"    CASE\r\n",
-							"        WHEN h.pers_no = T5.PersNo AND md5(concat(IFNULL(h.pers_no,'.'),IFNULL(h.employee_no,'.'))) <> T5.RowID-- same employee, changed data\r\n",
-							"        THEN 'Y'\r\n",
-							"        WHEN T5.PersNo IS NULL -- new comment\r\n",
-							"        THEN 'Y'\r\n",
-							"        ELSE 'N'\r\n",
-							"    END as NewData,\r\n",
-							"    CASE\r\n",
-							"        WHEN h.pers_no IS NULL\r\n",
-							"        THEN 'Y'\r\n",
-							"        ELSE 'N'\r\n",
-							"    END AS  DeletedData, \r\n",
-							"    T5.IsActive as HistoricIsActive\r\n",
-							"\r\n",
-							"FROM sap_hr_historic h\r\n",
-							"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-							"LEFT JOIN odw_harmonised_db.hr_historic_sap_hr T5 ON h.pers_no = T5.PersNo AND T5.IsActive = 'Y'\r\n",
-							"\r\n",
-							"\r\n",
-							"WHERE\r\n",
-							"    (\r\n",
-							"        \r\n",
-							"        -- flags new data        \r\n",
-							"        (   CASE\r\n",
-							"                WHEN h.pers_no = T5.PersNo AND md5(concat(IFNULL(h.pers_no,'.'),IFNULL(h.employee_no,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
-							"                THEN 'Y'\r\n",
-							"                WHEN T5.PersNo IS NULL -- new employee\r\n",
-							"                THEN 'Y'\r\n",
-							"                ELSE 'N'\r\n",
-							"            END  = 'Y' ) OR\r\n",
-							"        \r\n",
-							"        -- flags deleted data\r\n",
-							"        (   CASE\r\n",
-							"                WHEN h.pers_no IS NULL\r\n",
-							"                THEN 'Y'\r\n",
-							"                ELSE 'N'\r\n",
-							"            END = 'Y' )\r\n",
-							"    )\r\n",
-							";"
-						],
-						"outputs": [],
-						"execution_count": 52
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\r\n",
-							"\r\n",
-							"-- Create new and updated dataset\r\n",
-							"\r\n",
-							"CREATE OR REPLACE TEMPORARY VIEW hr_historic_sap_hr_changed_rows\r\n",
-							"\r\n",
-							"    AS\r\n",
-							"\r\n",
-							"-- gets updated, deleted and new rows \r\n",
-							"\r\n",
-							"Select \r\n",
-							"    HistoricSAPHRID, -- surrogate \r\n",
-							"    PersNo\t,\r\n",
-							"    FirstName\t,\r\n",
-							"    LastName\t,\r\n",
-							"    EmployeeNo\t,\r\n",
-							"    Cocd\t,\r\n",
-							"    CompanyCode\t,\r\n",
-							"    Pa\t,\r\n",
-							"    PersonnelArea\t,\r\n",
-							"    Psubarea\t,\r\n",
-							"    PersonnelSubarea\t,\r\n",
-							"    OrgUnit\t,\r\n",
-							"    OrganizationalUnit\t,\r\n",
-							"    OrganizationalKey1\t,\r\n",
-							"    OrganizationalKey2\t,\r\n",
-							"    Workc\t,\r\n",
-							"    WorkContract\t,\r\n",
-							"    Ct\t,\r\n",
-							"    ContractType\t,\r\n",
-							"    PsGroup\t,\r\n",
-							"    PayBandDescription\t,\r\n",
-							"    Fte\t,\r\n",
-							"    WkHrs\t,\r\n",
-							"    IndicatorPartTimeEmployee\t,\r\n",
-							"    S\t,\r\n",
-							"    EmploymentStatus\t,\r\n",
-							"    GenderKey\t,\r\n",
-							"    TraStartDate\t,\r\n",
-							"    TraEndDate\t,\r\n",
-							"    TraStatus\t,\r\n",
-							"    TraGrade\t,\r\n",
-							"    PrevPersno\t,\r\n",
-							"    Actr\t,\r\n",
-							"    ReasonForAction\t,\r\n",
-							"    Position\t,\r\n",
-							"    Position1\t,\r\n",
-							"    CostCtr\t,\r\n",
-							"    CostCentre\t,\r\n",
-							"    CivilServiceStart\t,\r\n",
-							"    DateToCurrentJob\t,\r\n",
-							"    SeniorityDate\t,\r\n",
-							"    DateToSubstGrade\t,\r\n",
-							"    PersNo1\t,\r\n",
-							"    NameOfManagerOm\t,\r\n",
-							"    ManagerPosition\t,\r\n",
-							"    ManagerPositionText\t,\r\n",
-							"    CounterSignManager\t,\r\n",
-							"    Loc\t,\r\n",
-							"    Location\t,\r\n",
-							"    OrgStartDate\t,\r\n",
-							"    FixTermEndDate\t,\r\n",
-							"    LoanStartDate\t,\r\n",
-							"    LoanEndDate\t,\r\n",
-							"    Eegrp\t,\r\n",
-							"    EmployeeGroup\t,\r\n",
-							"    AnnualSalary\t,\r\n",
-							"    Curr\t,\r\n",
-							"    NiNumber\t,\r\n",
-							"    BirthDate\t,\r\n",
-							"    AgeOfEmployee\t,\r\n",
-							"    Eo\t,\r\n",
-							"    EthnicOrigin\t,\r\n",
-							"    Nid\t,\r\n",
-							"    Rel\t,\r\n",
-							"    ReligiousDenominationKey\t,\r\n",
-							"    Sxo\t,\r\n",
-							"    WageType\t,\r\n",
-							"    EmployeeSubgroup\t,\r\n",
-							"    LoaAbsType\t,\r\n",
-							"    LoaAbsenceTypeText\t,\r\n",
-							"    SchemeReference\t,\r\n",
-							"    PensionSchemeName\t,\r\n",
-							"    DisabilityCode\t,\r\n",
-							"    DisabilityText\t,\r\n",
-							"    DisabilityCodeDescription\t,\r\n",
-							"    Parea\t,\r\n",
-							"    PayrollArea\t,\r\n",
-							"    AssignmentNumber\t,\r\n",
-							"    Fte2\t,\r\n",
-							"    ReportMonthendDate\t,\r\n",
-							"    LeaveEntitlementHrs\t,\r\n",
-							"    LeaveTakenHrs\t,\r\n",
-							"    LeaveRemainingHours\t,\r\n",
-							"    LeaveRemainingProrataHours\t,\r\n",
-							"    SourceSystemID,\r\n",
-							"    IngestionDate,\r\n",
-							"    ValidTo,\r\n",
-							"    RowID,\r\n",
-							"    IsActive\r\n",
-							"From hr_historic_sap_hr_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
-							"\r\n",
-							"    UNION ALL\r\n",
-							"\r\n",
-							"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
-							"\r\n",
-							"SELECT\r\n",
-							"    HistoricSAPHRID, -- surrogate \r\n",
-							"    PersNo\t,\r\n",
-							"    FirstName\t,\r\n",
-							"    LastName\t,\r\n",
-							"    EmployeeNo\t,\r\n",
-							"    Cocd\t,\r\n",
-							"    CompanyCode\t,\r\n",
-							"    Pa\t,\r\n",
-							"    PersonnelArea\t,\r\n",
-							"    Psubarea\t,\r\n",
-							"    PersonnelSubarea\t,\r\n",
-							"    OrgUnit\t,\r\n",
-							"    OrganizationalUnit\t,\r\n",
-							"    OrganizationalKey1\t,\r\n",
-							"    OrganizationalKey2\t,\r\n",
-							"    Workc\t,\r\n",
-							"    WorkContract\t,\r\n",
-							"    Ct\t,\r\n",
-							"    ContractType\t,\r\n",
-							"    PsGroup\t,\r\n",
-							"    PayBandDescription\t,\r\n",
-							"    Fte\t,\r\n",
-							"    WkHrs\t,\r\n",
-							"    IndicatorPartTimeEmployee\t,\r\n",
-							"    S\t,\r\n",
-							"    EmploymentStatus\t,\r\n",
-							"    GenderKey\t,\r\n",
-							"    TraStartDate\t,\r\n",
-							"    TraEndDate\t,\r\n",
-							"    TraStatus\t,\r\n",
-							"    TraGrade\t,\r\n",
-							"    PrevPersno\t,\r\n",
-							"    Actr\t,\r\n",
-							"    ReasonForAction\t,\r\n",
-							"    Position\t,\r\n",
-							"    Position1\t,\r\n",
-							"    CostCtr\t,\r\n",
-							"    CostCentre\t,\r\n",
-							"    CivilServiceStart\t,\r\n",
-							"    DateToCurrentJob\t,\r\n",
-							"    SeniorityDate\t,\r\n",
-							"    DateToSubstGrade\t,\r\n",
-							"    PersNo1\t,\r\n",
-							"    NameOfManagerOm\t,\r\n",
-							"    ManagerPosition\t,\r\n",
-							"    ManagerPositionText\t,\r\n",
-							"    CounterSignManager\t,\r\n",
-							"    Loc\t,\r\n",
-							"    Location\t,\r\n",
-							"    OrgStartDate\t,\r\n",
-							"    FixTermEndDate\t,\r\n",
-							"    LoanStartDate\t,\r\n",
-							"    LoanEndDate\t,\r\n",
-							"    Eegrp\t,\r\n",
-							"    EmployeeGroup\t,\r\n",
-							"    AnnualSalary\t,\r\n",
-							"    Curr\t,\r\n",
-							"    NiNumber\t,\r\n",
-							"    BirthDate\t,\r\n",
-							"    AgeOfEmployee\t,\r\n",
-							"    Eo\t,\r\n",
-							"    EthnicOrigin\t,\r\n",
-							"    Nid\t,\r\n",
-							"    Rel\t,\r\n",
-							"    ReligiousDenominationKey\t,\r\n",
-							"    Sxo\t,\r\n",
-							"    WageType\t,\r\n",
-							"    EmployeeSubgroup\t,\r\n",
-							"    LoaAbsType\t,\r\n",
-							"    LoaAbsenceTypeText\t,\r\n",
-							"    SchemeReference\t,\r\n",
-							"    PensionSchemeName\t,\r\n",
-							"    DisabilityCode\t,\r\n",
-							"    DisabilityText\t,\r\n",
-							"    DisabilityCodeDescription\t,\r\n",
-							"    Parea\t,\r\n",
-							"    PayrollArea\t,\r\n",
-							"    AssignmentNumber\t,\r\n",
-							"    Fte2\t,\r\n",
-							"    ReportMonthendDate\t,\r\n",
-							"    LeaveEntitlementHrs\t,\r\n",
-							"    LeaveTakenHrs\t,\r\n",
-							"    LeaveRemainingHours\t,\r\n",
-							"    LeaveRemainingProrataHours\t,\r\n",
-							"    SourceSystemID,\r\n",
-							"    IngestionDate,\r\n",
-							"    ValidTo,\r\n",
-							"    RowID,\r\n",
-							"    IsActive\r\n",
-							"FROM odw_harmonised_db.hr_historic_sap_hr\r\n",
-							"WHERE PersNo IN (SELECT PersNo FROM hr_historic_sap_hr_new WHERE HistoricSAPHRID IS NULL) AND IsActive = 'Y';"
-						],
-						"outputs": [],
-						"execution_count": 53
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\r\n",
-							"-- merge into fact table\r\n",
-							"\r\n",
-							"MERGE INTO odw_harmonised_db.hr_historic_sap_hr AS Target\r\n",
-							"USING hr_historic_sap_hr_changed_rows AS Source\r\n",
-							"\r\n",
-							"ON Source.PersNo = Target.PersNo\r\n",
-							"\r\n",
-							"-- For Updates existing rows\r\n",
-							"\r\n",
-							"WHEN MATCHED\r\n",
-							"    THEN \r\n",
-							"    UPDATE SET\r\n",
-							"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
-							"    Target.IsActive = 'N'\r\n",
-							"\r\n",
-							"-- Insert completely new rows\r\n",
-							"WHEN NOT MATCHED \r\n",
-							"    THEN INSERT * ;   "
-						],
-						"outputs": [],
-						"execution_count": 54
-					},
-					{
-						"cell_type": "code",
-						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							},
-							"microsoft": {
-								"language": "sparksql"
-							},
-							"collapsed": false
-						},
-						"source": [
-							"%%sql\r\n",
-							"-- Insert new HistoricSAPHRID\r\n",
-							"\r\n",
-							"INSERT OVERWRITE odw_harmonised_db.hr_historic_sap_hr\r\n",
-							"\r\n",
-							"SELECT \r\n",
-							"    ROW_NUMBER() OVER (ORDER BY HistoricSAPHRID NULLS LAST) AS HistoricSAPHRID, -- surrogate key\r\n",
-							"    PersNo\t,\r\n",
-							"    FirstName\t,\r\n",
-							"    LastName\t,\r\n",
-							"    EmployeeNo\t,\r\n",
-							"    Cocd\t,\r\n",
-							"    CompanyCode\t,\r\n",
-							"    Pa\t,\r\n",
-							"    PersonnelArea\t,\r\n",
-							"    Psubarea\t,\r\n",
-							"    PersonnelSubarea\t,\r\n",
-							"    OrgUnit\t,\r\n",
-							"    OrganizationalUnit\t,\r\n",
-							"    OrganizationalKey1\t,\r\n",
-							"    OrganizationalKey2\t,\r\n",
-							"    Workc\t,\r\n",
-							"    WorkContract\t,\r\n",
-							"    Ct\t,\r\n",
-							"    ContractType\t,\r\n",
-							"    PsGroup\t,\r\n",
-							"    PayBandDescription\t,\r\n",
-							"    Fte\t,\r\n",
-							"    WkHrs\t,\r\n",
-							"    IndicatorPartTimeEmployee\t,\r\n",
-							"    S\t,\r\n",
-							"    EmploymentStatus\t,\r\n",
-							"    GenderKey\t,\r\n",
-							"    TraStartDate\t,\r\n",
-							"    TraEndDate\t,\r\n",
-							"    TraStatus\t,\r\n",
-							"    TraGrade\t,\r\n",
-							"    PrevPersno\t,\r\n",
-							"    Actr\t,\r\n",
-							"    ReasonForAction\t,\r\n",
-							"    Position\t,\r\n",
-							"    Position1\t,\r\n",
-							"    CostCtr\t,\r\n",
-							"    CostCentre\t,\r\n",
-							"    CivilServiceStart\t,\r\n",
-							"    DateToCurrentJob\t,\r\n",
-							"    SeniorityDate\t,\r\n",
-							"    DateToSubstGrade\t,\r\n",
-							"    PersNo1\t,\r\n",
-							"    NameOfManagerOm\t,\r\n",
-							"    ManagerPosition\t,\r\n",
-							"    ManagerPositionText\t,\r\n",
-							"    CounterSignManager\t,\r\n",
-							"    Loc\t,\r\n",
-							"    Location\t,\r\n",
-							"    OrgStartDate\t,\r\n",
-							"    FixTermEndDate\t,\r\n",
-							"    LoanStartDate\t,\r\n",
-							"    LoanEndDate\t,\r\n",
-							"    Eegrp\t,\r\n",
-							"    EmployeeGroup\t,\r\n",
-							"    AnnualSalary\t,\r\n",
-							"    Curr\t,\r\n",
-							"    NiNumber\t,\r\n",
-							"    BirthDate\t,\r\n",
-							"    AgeOfEmployee\t,\r\n",
-							"    Eo\t,\r\n",
-							"    EthnicOrigin\t,\r\n",
-							"    Nid\t,\r\n",
-							"    Rel\t,\r\n",
-							"    ReligiousDenominationKey\t,\r\n",
-							"    Sxo\t,\r\n",
-							"    WageType\t,\r\n",
-							"    EmployeeSubgroup\t,\r\n",
-							"    LoaAbsType\t,\r\n",
-							"    LoaAbsenceTypeText\t,\r\n",
-							"    SchemeReference\t,\r\n",
-							"    PensionSchemeName\t,\r\n",
-							"    DisabilityCode\t,\r\n",
-							"    DisabilityText\t,\r\n",
-							"    DisabilityCodeDescription\t,\r\n",
-							"    Parea\t,\r\n",
-							"    PayrollArea\t,\r\n",
-							"    AssignmentNumber\t,\r\n",
-							"    Fte2\t,\r\n",
-							"    ReportMonthendDate\t,\r\n",
-							"    LeaveEntitlementHrs\t,\r\n",
-							"    LeaveTakenHrs\t,\r\n",
-							"    LeaveRemainingHours\t,\r\n",
-							"    LeaveRemainingProrataHours\t,\r\n",
-							"    SourceSystemID,\r\n",
-							"    IngestionDate,\r\n",
-							"    ValidTo,\r\n",
-							"    RowID,\r\n",
-							"    IsActive\r\n",
-							"FROM odw_harmonised_db.hr_historic_sap_hr;"
-						],
-						"outputs": [],
-						"execution_count": null
-					},
-					{
-						"cell_type": "markdown",
-						"metadata": {
-							"nteract": {
-								"transient": {
-									"deleting": false
-								}
-							}
-						},
-						"source": [
-							"Checking for day and hours in absenence_dim which = 0 "
-						]
 					}
 				]
 			},
@@ -104957,6 +104320,1316 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_measures')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"folder": {
+					"name": "odw-curated"
+				},
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "[parameters('mipins_hr_measures_properties_bigDataPool_referenceName')]",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "0dc90429-8e19-4c1c-9190-d8102fc83a0e"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+						"name": "pinssynspodw",
+						"type": "Spark",
+						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 3,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\n",
+							"\n",
+							"CREATE OR REPLACE TEMPORARY VIEW staff_cost\n",
+							"\n",
+							"     AS\n",
+							"\n",
+							"SELECT DISTINCT\n",
+							"    h.pers_no as EmployeeID,\n",
+							"    h.ps_group as Grade, \n",
+							"\th.annual_salary as Salary, \n",
+							"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as HourlyRate,\n",
+							"    cast(le.ExpectedFrom as date) as ReportMonthEndDate,\n",
+							"    le.LeaveDaysPerYear as LeaveAllowance,\n",
+							"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
+							"\t\t\t\twhen 1 then le.LeaveYearStart\n",
+							"\t\t\t\twhen 0 then le.LeaveYearStart\n",
+							"\t\t\t\telse dateadd(year, -1, le.LeaveYearStart)\n",
+							"\t\t\tend as date) as LeaveStartDate,\n",
+							"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
+							"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
+							"                                                    WHEN 1 THEN\n",
+							"                                                    le.leaveyearstart\n",
+							"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
+							"                                                    END\n",
+							"                                                    AS date), le.expectedfrom))/364.25)%1))) AS ExpectedLeaveHoursRemaining\n",
+							"    \n",
+							"FROM odw_standardised_db.hr_saphr h\n",
+							"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
+							"WHERE\n",
+							"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
+						],
+						"outputs": [],
+						"execution_count": 4
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\n",
+							"\n",
+							"CREATE OR REPLACE TEMPORARY VIEW carried_over\n",
+							"    \n",
+							"    AS\n",
+							"\n",
+							"SELECT DISTINCT\n",
+							"    h.pers_no as EmployeeID,\n",
+							"    case sign(le.LeaveDaysPerYear - 148)\n",
+							"        when 1 then 148\n",
+							"        when 0 then 148\n",
+							"        else le.LeaveDaysPerYear\n",
+							"    end as CarriedOverHours\n",
+							"\n",
+							"FROM odw_standardised_db.hr_saphr h\n",
+							"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
+							"WHERE\n",
+							"    le.AbsenceQuotaType = 'Brought Forward';"
+						],
+						"outputs": [],
+						"execution_count": 5
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"- Getting a list of Bank Holidays from Gov.UK\n",
+							"## View bank_holidays is created\n",
+							""
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"import pandas as pd\n",
+							"from pyspark.sql import SparkSession\n",
+							"\n",
+							"def get_england_and_wales(data_frame):\n",
+							"    return (\n",
+							"        pd\n",
+							"        .json_normalize(\n",
+							"            data_frame.to_dict(),\n",
+							"            record_path=[['england-and-wales', 'events']]\n",
+							"        )\n",
+							"        .astype({\n",
+							"            'title': 'string',\n",
+							"            'date': 'datetime64[ns]',\n",
+							"            'notes': 'string',\n",
+							"            'bunting': 'bool'\n",
+							"        })\n",
+							"    )\n",
+							"\n",
+							"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
+							"bh = get_england_and_wales(bank_holidays)\n",
+							"\n",
+							"spark = SparkSession.builder.getOrCreate()\n",
+							"sparkDF=spark.createDataFrame(bh) \n",
+							"\n",
+							"sparkDF.createOrReplaceTempView('bank_holidays')"
+						],
+						"outputs": [],
+						"execution_count": 6
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\n",
+							"\n",
+							"CREATE OR REPLACE TEMPORARY VIEW leave_taken\n",
+							"\n",
+							"     AS\n",
+							"\n",
+							"SELECT DISTINCT\n",
+							"    a.AbsenceID,\n",
+							"    a.EmployeeID,\n",
+							"    CASE\n",
+							"        WHEN sc.ReportMonthEndDate >= a.AbsenceEndDate\n",
+							"        THEN a.Hours\n",
+							"        ELSE a.Hours - (w.WorkDayHours * datediff(a.AbsenceEndDate, sc.ReportMonthEndDate))\n",
+							"    END AS LeaveHours,\n",
+							"    a.Days, \n",
+							"    a.Hours,\n",
+							"    a.CalendarDays,\n",
+							"    a.AbsenceStartDate,\n",
+							"    a.AbsenceEndDate,\n",
+							"    sc.LeaveStartDate,\n",
+							"    bh.title as HolidayTitle,\n",
+							"    CASE \n",
+							"        WHEN a.Days = 0 AND a.Hours = 0 \n",
+							"        THEN w.WorkDayHours * a.CalendarDays\n",
+							"        ELSE NULL\n",
+							"    END AS BankHolidaysHours\n",
+							"\n",
+							"\n",
+							"FROM odw_harmonised_db.hr_absence_dim a\n",
+							"LEFT JOIN odw_harmonised_db.hr_work_schedule_dim w on a.WorkScheduleID = w.WorkScheduleID\n",
+							"LEFT JOIN staff_cost sc ON a.EmployeeID = sc.EmployeeID\n",
+							"LEFT JOIN bank_holidays bh ON a.AbsenceStartDate = bh.Date\n",
+							"WHERE\n",
+							"    a.AbsenceType IN ('PT Annual / P&P Leave', 'FT Annual / Priv Leave')\n",
+							"    AND \n",
+							"    a.AbsenceStartDate  BETWEEN sc.LeaveStartDate AND sc.ReportMonthEndDate\n",
+							"GROUP BY \n",
+							"    a.EmployeeID,a.AbsenceID,a.Days,a.Hours,a.CalendarDays,a.AbsenceStartDate,a.AbsenceEndDate,sc.LeaveStartDate,bh.title,w.WorkDayHours,sc.ReportMonthEndDate\n",
+							"Order by AbsenceStartDate"
+						],
+						"outputs": [],
+						"execution_count": 7
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\n",
+							"CREATE OR REPLACE TEMPORARY VIEW leave_taken_fixed -- adding bank holidays in leave_hours_taken\n",
+							"\n",
+							"    AS\n",
+							"\n",
+							"SELECT\n",
+							"EmployeeID,\n",
+							"SUM(CASE\n",
+							"        WHEN Days = 0 AND Hours = 0 AND HolidayTitle is not null AND LeaveStartDate <= AbsenceStartDate \n",
+							"        THEN LeaveHours + BankHolidaysHours\n",
+							"        ELSE LeaveHours\n",
+							"    END) AS LeaveHoursTaken\n",
+							"\n",
+							"FROM leave_taken\n",
+							"Where EmployeeID is not null and LeaveStartDate <= AbsenceStartDate\n",
+							"GROUP BY EmployeeID;"
+						],
+						"outputs": [],
+						"execution_count": 8
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\n",
+							"\n",
+							"CREATE OR REPLACE TEMPORARY VIEW mipins_hr_measures\n",
+							"\n",
+							"     AS\n",
+							"\t \n",
+							"SELECT DISTINCT\n",
+							"\th.pers_no,\n",
+							"\th.first_name,\n",
+							"\th.last_name,\n",
+							"\th.employee_no,\n",
+							"\th.cocd,\n",
+							"\th.company_code,\n",
+							"\th.pa,\n",
+							"\th.personnel_area,\n",
+							"\th.psubarea,\n",
+							"\th.personnel_subarea,\n",
+							"\th.org_unit,\n",
+							"\th.organizational_unit,\n",
+							"\th.organizational_key1,\n",
+							"\th.organizational_key2,\n",
+							"\th.workc,\n",
+							"\th.work_contract,\n",
+							"\th.ct,\n",
+							"\th.contract_type,\n",
+							"\th.ps_group,\n",
+							"\th.pay_band_description,\n",
+							"\th.fte,\n",
+							"\th.wk_hrs,\n",
+							"\th.indicator_part_time_employee,\n",
+							"\th.s,\n",
+							"\th.employment_status,\n",
+							"\th.gender_key,\n",
+							"\th.tra_start_date,\n",
+							"\th.tra_end_date,\n",
+							"\th.tra_status,\n",
+							"\th.tra_grade,\n",
+							"\th.prev_persno,\n",
+							"\th.actr,\n",
+							"\th.reason_for_action,\n",
+							"\th.position,\n",
+							"\th.position_1,\n",
+							"\th.cost_ctr,\n",
+							"\th.cost_centre,\n",
+							"\th.civil_service_start,\n",
+							"\th.date_to_current_job,\n",
+							"\th.seniority_date,\n",
+							"\th.date_to_subst_grade,\n",
+							"\th.pers_no_1,\n",
+							"\th.name_of_manager_om,\n",
+							"\th.manager_position,\n",
+							"\th.manager_position_text,\n",
+							"\th.counter_sign_manager,\n",
+							"\th.loc,\n",
+							"\th.location,\n",
+							"\th.org_start_date,\n",
+							"\th.fix_term_end_date,\n",
+							"\th.loan_start_date,\n",
+							"\th.loan_end_date,\n",
+							"\th.eegrp,\n",
+							"\th.employee_group,\n",
+							"\th.annual_salary,\n",
+							"\th.curr,\n",
+							"\th.ni_number,\n",
+							"\th.birth_date,\n",
+							"\th.age_of_employee,\n",
+							"\th.eo,\n",
+							"\th.ethnic_origin,\n",
+							"\th.nid,\n",
+							"\th.rel,\n",
+							"\th.religious_denomination_key,\n",
+							"\th.sxo,\n",
+							"\th.wage_type,\n",
+							"\th.employee_subgroup,\n",
+							"\th.loa_abs_type,\n",
+							"\th.loa_absence_type_text,\n",
+							"\th.scheme_reference,\n",
+							"\th.pension_scheme_name,\n",
+							"\th.disability_code,\n",
+							"\th.disability_text,\n",
+							"\th.disability_code_description,\n",
+							"\th.parea,\n",
+							"\th.payroll_area,\n",
+							"\th.assignment_number,\n",
+							"\th.fte_2,\n",
+							"\tsc.ReportMonthEndDate as Report_MonthEnd_Date,\n",
+							"\tcoalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) as leave_entitlement_hrs,\n",
+							"\tcoalesce(lt.LeaveHoursTaken, 0) as leave_taken_hrs,\n",
+							"\tround((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)), 2) as leave_remaining_hours,\n",
+							"\tcoalesce(round(sc.ExpectedLeaveHoursRemaining, 2), 0) as leave_remaining_prorata_hours\n",
+							"\t--,coalesce(round((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
+							"from odw_standardised_db.hr_saphr h\n",
+							"\tleft join staff_cost sc on cast(h.pers_no as int) = cast(sc.EmployeeID as int)\n",
+							"\tleft join carried_over co on cast(sc.EmployeeID as int) = cast(co.EmployeeID as int)\n",
+							"\tleft join leave_taken_fixed lt on cast(sc.EmployeeID as int) = cast(lt.EmployeeID as int)\n",
+							"\tleft join odw_standardised_db.bis_pension_ernic_rates p on sc.Grade = p.Grade\n",
+							"where \n",
+							"\tright(cast(cast(sc.ReportMonthEndDate as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
+						],
+						"outputs": [],
+						"execution_count": 9
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Check for new, updated or deleted data\n",
+							"- This script checks for new, updated or deleted data by checking the source data (horizon tables) against the target (odw_harmonised_db.casework tables)\n",
+							"- **New Data:** where an main Reference in the source does not exist in the target, then NewData flag is set to 'Y'\n",
+							"- **Updated data:** Comparison occurs on Reference Fields in source and in target where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+							"- **Deleted data:** where an Reference info in the target exists but the same identifyers don't exist in the source. DeletedData flag is set to 'Y'\n",
+							"\n",
+							"## View mipins_hr_measures_new is created"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"-- Gets modified or deleted from source rows\r\n",
+							"\r\n",
+							"CREATE OR REPLACE TEMPORARY VIEW mipins_hr_measures_new \r\n",
+							"\r\n",
+							"    AS\r\n",
+							"\r\n",
+							"-- gets data that matches of EmployeeID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
+							"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
+							"\r\n",
+							"SELECT\r\n",
+							"    CASE\r\n",
+							"        WHEN h.pers_no IS NULL\r\n",
+							"        THEN T5.MeasureID\r\n",
+							"        ELSE NULL\r\n",
+							"    END as MeasureID, -- surrogate\r\n",
+							"    h.pers_no\tAS\tEmployeeID\t,\r\n",
+							"    h.first_name\tAS\tFirstName\t,\r\n",
+							"    h.last_name\tAS\tLastName\t,\r\n",
+							"    h.employee_no\tAS\tEmployeeNo\t,\r\n",
+							"    h.cocd\tAS\tCoCd\t,\r\n",
+							"    h.company_code\tAS\tCompanyCode\t,\r\n",
+							"    h.pa\tAS\tPA\t,\r\n",
+							"    h.personnel_area\tAS\tPersonnelArea\t,\r\n",
+							"    h.psubarea\tAS\tPSubArea\t,\r\n",
+							"    h.personnel_subarea\tAS\tPersonnelSubArea\t,\r\n",
+							"    h.org_unit\tAS\tOrgUnit\t,\r\n",
+							"    h.organizational_unit\tAS\tOrganizationalUnit\t,\r\n",
+							"    h.organizational_key1\tAS\tOrganizationalKey1\t,\r\n",
+							"    h.organizational_key2\tAS\tOrganizationalKey2\t,\r\n",
+							"    h.workc\tAS\tWorkC\t,\r\n",
+							"    h.work_contract\tAS\tWorkContract\t,\r\n",
+							"    h.ct\tAS\tCT\t,\r\n",
+							"    h.contract_type\tAS\tContractType\t,\r\n",
+							"    h.ps_group\tAS\tPSGroup\t,\r\n",
+							"    h.pay_band_description\tAS\tPayBandDescription\t,\r\n",
+							"    h.fte\tAS\tFTE\t,\r\n",
+							"    h.wk_hrs\tAS\tWeekHours\t,\r\n",
+							"    h.indicator_part_time_employee\tAS\tIndicatorPartTimeEmployee\t,\r\n",
+							"    h.s\tAS\tS\t,\r\n",
+							"    h.employment_status\tAS\tEmploymentStatus\t,\r\n",
+							"    h.gender_key\tAS\tGenderKey\t,\r\n",
+							"    h.tra_start_date\tAS\tTRAStartDate\t,\r\n",
+							"    h.tra_end_date\tAS\tTRAEndDate\t,\r\n",
+							"    h.tra_status\tAS\tTRAStatus\t,\r\n",
+							"    h.tra_grade\tAS\tTRAGrade\t,\r\n",
+							"    h.prev_persno\tAS\tPrevPersNo\t,\r\n",
+							"    h.actr\tAS\tActr\t,\r\n",
+							"    h.reason_for_action\tAS\tReasonForAction\t,\r\n",
+							"    h.position\tAS\tPosition\t,\r\n",
+							"    h.position_1\tAS\tPosition1\t,\r\n",
+							"    h.cost_ctr\tAS\tCostCtr\t,\r\n",
+							"    h.cost_centre\tAS\tCostCentre\t,\r\n",
+							"    h.civil_service_start\tAS\tCivilServiceStart\t,\r\n",
+							"    h.date_to_current_job\tAS\tDateToCurrentJob\t,\r\n",
+							"    h.seniority_date\tAS\tSeniorityDate\t,\r\n",
+							"    h.date_to_subst_grade\tAS\tDateToSubstGrade\t,\r\n",
+							"    h.pers_no_1\tAS\tPersNo1\t,\r\n",
+							"    h.name_of_manager_om\tAS\tNameOfManagerOm\t,\r\n",
+							"    h.manager_position\tAS\tManagerPosition\t,\r\n",
+							"    h.manager_position_text\tAS\tManagerPositionText\t,\r\n",
+							"    h.counter_sign_manager\tAS\tCounterSignManager\t,\r\n",
+							"    h.loc\tAS\tLoc\t,\r\n",
+							"    h.location\tAS\tLocation\t,\r\n",
+							"    h.org_start_date\tAS\tOrgStartDate\t,\r\n",
+							"    h.fix_term_end_date\tAS\tFixTermEndDate\t,\r\n",
+							"    h.loan_start_date\tAS\tLoanStartDate\t,\r\n",
+							"    h.loan_end_date\tAS\tLoanEndDate\t,\r\n",
+							"    h.eegrp\tAS\tEEGrp\t,\r\n",
+							"    h.employee_group\tAS\tEmployeeGroup\t,\r\n",
+							"    h.annual_salary\tAS\tAnnualSalary\t,\r\n",
+							"    h.curr\tAS\tCurr\t,\r\n",
+							"    h.ni_number\tAS\tNINumber\t,\r\n",
+							"    h.birth_date\tAS\tBirthDate\t,\r\n",
+							"    h.age_of_employee\tAS\tAgeOfEmployee\t,\r\n",
+							"    h.eo\tAS\tEO\t,\r\n",
+							"    h.ethnic_origin\tAS\tEthnicOrigin\t,\r\n",
+							"    h.nid\tAS\tNID\t,\r\n",
+							"    h.rel\tAS\tRel\t,\r\n",
+							"    h.religious_denomination_key\tAS\tReligiousDenominationKey\t,\r\n",
+							"    h.sxo\tAS\tSxo\t,\r\n",
+							"    h.wage_type\tAS\tWageType\t,\r\n",
+							"    h.employee_subgroup\tAS\tEmployeeSubgroup\t,\r\n",
+							"    h.loa_abs_type\tAS\tLoaAbsType\t,\r\n",
+							"    h.loa_absence_type_text\tAS\tLoaAbsenceTypeText\t,\r\n",
+							"    h.scheme_reference\tAS\tSchemeReference\t,\r\n",
+							"    h.pension_scheme_name\tAS\tPensionSchemeName\t,\r\n",
+							"    h.disability_code\tAS\tDisabilityCode\t,\r\n",
+							"    h.disability_text\tAS\tDisabilityText\t,\r\n",
+							"    h.disability_code_description\tAS\tDisabilityCodeDescription\t,\r\n",
+							"    h.parea\tAS\tPArea\t,\r\n",
+							"    h.payroll_area\tAS\tPayrollArea\t,\r\n",
+							"    h.assignment_number\tAS\tAssignmentNumber\t,\r\n",
+							"    h.fte_2\tAS\tFTE2\t,\r\n",
+							"    h.Report_MonthEnd_Date\tAS\tReportMonthEndDate\t,\r\n",
+							"    h.leave_entitlement_hrs\tAS\tLeaveEntitlementHours\t,\r\n",
+							"    h.leave_taken_hrs\tAS\tLeaveTakenHours\t,\r\n",
+							"    h.leave_remaining_hours\tAS\tLeaveRemainingHours\t,\r\n",
+							"    h.leave_remaining_prorata_hours\tAS\tLeaveRemainingProrataHours,\r\n",
+							"\r\n",
+							"    T2.SourceSystemID as SourceSystemID,\r\n",
+							"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+							"    NULL AS ValidTo,\r\n",
+							"    md5(concat(IFNULL(h.pers_no,'.'),IFNULL(CAST(h.Report_MonthEnd_Date as VARCHAR(20)),'.'),IFNULL(h.leave_entitlement_hrs,'.'),IFNULL(h.leave_taken_hrs,'.'),IFNULL(h.leave_remaining_hours,'.'),IFNULL(h.leave_remaining_prorata_hours,'.'))) AS RowID,\r\n",
+							"    'Y' AS IsActive,\r\n",
+							"    CASE\r\n",
+							"        WHEN h.pers_no = T5.EmployeeID AND md5(concat(IFNULL(h.pers_no,'.'),IFNULL(CAST(h.Report_MonthEnd_Date as VARCHAR(20)),'.'),IFNULL(h.leave_entitlement_hrs,'.'),IFNULL(h.leave_taken_hrs,'.'),IFNULL(h.leave_remaining_hours,'.'),IFNULL(h.leave_remaining_prorata_hours,'.'))) <> T5.RowID-- same employee, changed data\r\n",
+							"        THEN 'Y'\r\n",
+							"        WHEN T5.EmployeeID IS NULL \r\n",
+							"        THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END as NewData,\r\n",
+							"    CASE\r\n",
+							"        WHEN h.pers_no IS NULL\r\n",
+							"        THEN 'Y'\r\n",
+							"        ELSE 'N'\r\n",
+							"    END AS  DeletedData, \r\n",
+							"    T5.IsActive as HistoricIsActive\r\n",
+							"\r\n",
+							"FROM mipins_hr_measures h\r\n",
+							"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
+							"LEFT JOIN odw_curated_db.mipins_hr_measures T5 ON h.pers_no = T5.EmployeeID AND T5.IsActive = 'Y'\r\n",
+							"\r\n",
+							"\r\n",
+							"WHERE\r\n",
+							"    (\r\n",
+							"        \r\n",
+							"        -- flags new data        \r\n",
+							"        (   CASE\r\n",
+							"                WHEN h.pers_no = T5.EmployeeID AND md5(concat(IFNULL(h.pers_no,'.'),IFNULL(CAST(h.Report_MonthEnd_Date as VARCHAR(20)),'.'),IFNULL(h.leave_entitlement_hrs,'.'),IFNULL(h.leave_taken_hrs,'.'),IFNULL(h.leave_remaining_hours,'.'),IFNULL(h.leave_remaining_prorata_hours,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+							"                THEN 'Y'\r\n",
+							"                WHEN T5.EmployeeID IS NULL \r\n",
+							"                THEN 'Y'\r\n",
+							"                ELSE 'N'\r\n",
+							"            END  = 'Y' ) OR\r\n",
+							"        \r\n",
+							"        -- flags deleted data\r\n",
+							"        (   CASE\r\n",
+							"                WHEN h.pers_no IS NULL\r\n",
+							"                THEN 'Y'\r\n",
+							"                ELSE 'N'\r\n",
+							"            END = 'Y' )\r\n",
+							"    )\r\n",
+							";"
+						],
+						"outputs": [],
+						"execution_count": 10
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Dataset is created that contains changed data and corresponding target data\n",
+							"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
+							"- View **mipins_hr_measures_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+							"## View mipins_hr_measures_changed_rows is created"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"\r\n",
+							"-- Create new and updated dataset\r\n",
+							"\r\n",
+							"CREATE OR REPLACE TEMPORARY VIEW mipins_hr_measures_changed_rows\r\n",
+							"\r\n",
+							"    AS\r\n",
+							"\r\n",
+							"-- gets updated, deleted and new rows \r\n",
+							"\r\n",
+							"Select \r\n",
+							"    MeasureID, -- surrogate \r\n",
+							"    EmployeeID\t,\r\n",
+							"    FirstName\t,\r\n",
+							"    LastName\t,\r\n",
+							"    EmployeeNo\t,\r\n",
+							"    CoCd\t,\r\n",
+							"    CompanyCode\t,\r\n",
+							"    PA\t,\r\n",
+							"    PersonnelArea\t,\r\n",
+							"    PSubArea\t,\r\n",
+							"    PersonnelSubArea\t,\r\n",
+							"    OrgUnit\t,\r\n",
+							"    OrganizationalUnit\t,\r\n",
+							"    OrganizationalKey1\t,\r\n",
+							"    OrganizationalKey2\t,\r\n",
+							"    WorkC\t,\r\n",
+							"    WorkContract\t,\r\n",
+							"    CT\t,\r\n",
+							"    ContractType\t,\r\n",
+							"    PSGroup\t,\r\n",
+							"    PayBandDescription\t,\r\n",
+							"    FTE\t,\r\n",
+							"    WeekHours\t,\r\n",
+							"    IndicatorPartTimeEmployee\t,\r\n",
+							"    S\t,\r\n",
+							"    EmploymentStatus\t,\r\n",
+							"    GenderKey\t,\r\n",
+							"    TRAStartDate\t,\r\n",
+							"    TRAEndDate\t,\r\n",
+							"    TRAStatus\t,\r\n",
+							"    TRAGrade\t,\r\n",
+							"    PrevPersNo\t,\r\n",
+							"    Actr\t,\r\n",
+							"    ReasonForAction\t,\r\n",
+							"    Position\t,\r\n",
+							"    Position1\t,\r\n",
+							"    CostCtr\t,\r\n",
+							"    CostCentre\t,\r\n",
+							"    CivilServiceStart\t,\r\n",
+							"    DateToCurrentJob\t,\r\n",
+							"    SeniorityDate\t,\r\n",
+							"    DateToSubstGrade\t,\r\n",
+							"    PersNo1\t,\r\n",
+							"    NameOfManagerOm\t,\r\n",
+							"    ManagerPosition\t,\r\n",
+							"    ManagerPositionText\t,\r\n",
+							"    CounterSignManager\t,\r\n",
+							"    Loc\t,\r\n",
+							"    Location\t,\r\n",
+							"    OrgStartDate\t,\r\n",
+							"    FixTermEndDate\t,\r\n",
+							"    LoanStartDate\t,\r\n",
+							"    LoanEndDate\t,\r\n",
+							"    EEGrp\t,\r\n",
+							"    EmployeeGroup\t,\r\n",
+							"    AnnualSalary\t,\r\n",
+							"    Curr\t,\r\n",
+							"    NINumber\t,\r\n",
+							"    BirthDate\t,\r\n",
+							"    AgeOfEmployee\t,\r\n",
+							"    EO\t,\r\n",
+							"    EthnicOrigin\t,\r\n",
+							"    NID\t,\r\n",
+							"    Rel\t,\r\n",
+							"    ReligiousDenominationKey\t,\r\n",
+							"    Sxo\t,\r\n",
+							"    WageType\t,\r\n",
+							"    EmployeeSubgroup\t,\r\n",
+							"    LoaAbsType\t,\r\n",
+							"    LoaAbsenceTypeText\t,\r\n",
+							"    SchemeReference\t,\r\n",
+							"    PensionSchemeName\t,\r\n",
+							"    DisabilityCode\t,\r\n",
+							"    DisabilityText\t,\r\n",
+							"    DisabilityCodeDescription\t,\r\n",
+							"    PArea\t,\r\n",
+							"    PayrollArea\t,\r\n",
+							"    AssignmentNumber\t,\r\n",
+							"    FTE2\t,\r\n",
+							"    ReportMonthEndDate\t,\r\n",
+							"    LeaveEntitlementHours\t,\r\n",
+							"    LeaveTakenHours\t,\r\n",
+							"    LeaveRemainingHours\t,\r\n",
+							"    LeaveRemainingProrataHours\t,\r\n",
+							"    SourceSystemID,\r\n",
+							"    IngestionDate,\r\n",
+							"    ValidTo,\r\n",
+							"    RowID,\r\n",
+							"    IsActive\r\n",
+							"From mipins_hr_measures_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+							"\r\n",
+							"    UNION ALL\r\n",
+							"\r\n",
+							"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
+							"\r\n",
+							"SELECT\r\n",
+							"    MeasureID, -- surrogate \r\n",
+							"    EmployeeID\t,\r\n",
+							"    FirstName\t,\r\n",
+							"    LastName\t,\r\n",
+							"    EmployeeNo\t,\r\n",
+							"    CoCd\t,\r\n",
+							"    CompanyCode\t,\r\n",
+							"    PA\t,\r\n",
+							"    PersonnelArea\t,\r\n",
+							"    PSubArea\t,\r\n",
+							"    PersonnelSubArea\t,\r\n",
+							"    OrgUnit\t,\r\n",
+							"    OrganizationalUnit\t,\r\n",
+							"    OrganizationalKey1\t,\r\n",
+							"    OrganizationalKey2\t,\r\n",
+							"    WorkC\t,\r\n",
+							"    WorkContract\t,\r\n",
+							"    CT\t,\r\n",
+							"    ContractType\t,\r\n",
+							"    PSGroup\t,\r\n",
+							"    PayBandDescription\t,\r\n",
+							"    FTE\t,\r\n",
+							"    WeekHours\t,\r\n",
+							"    IndicatorPartTimeEmployee\t,\r\n",
+							"    S\t,\r\n",
+							"    EmploymentStatus\t,\r\n",
+							"    GenderKey\t,\r\n",
+							"    TRAStartDate\t,\r\n",
+							"    TRAEndDate\t,\r\n",
+							"    TRAStatus\t,\r\n",
+							"    TRAGrade\t,\r\n",
+							"    PrevPersNo\t,\r\n",
+							"    Actr\t,\r\n",
+							"    ReasonForAction\t,\r\n",
+							"    Position\t,\r\n",
+							"    Position1\t,\r\n",
+							"    CostCtr\t,\r\n",
+							"    CostCentre\t,\r\n",
+							"    CivilServiceStart\t,\r\n",
+							"    DateToCurrentJob\t,\r\n",
+							"    SeniorityDate\t,\r\n",
+							"    DateToSubstGrade\t,\r\n",
+							"    PersNo1\t,\r\n",
+							"    NameOfManagerOm\t,\r\n",
+							"    ManagerPosition\t,\r\n",
+							"    ManagerPositionText\t,\r\n",
+							"    CounterSignManager\t,\r\n",
+							"    Loc\t,\r\n",
+							"    Location\t,\r\n",
+							"    OrgStartDate\t,\r\n",
+							"    FixTermEndDate\t,\r\n",
+							"    LoanStartDate\t,\r\n",
+							"    LoanEndDate\t,\r\n",
+							"    EEGrp\t,\r\n",
+							"    EmployeeGroup\t,\r\n",
+							"    AnnualSalary\t,\r\n",
+							"    Curr\t,\r\n",
+							"    NINumber\t,\r\n",
+							"    BirthDate\t,\r\n",
+							"    AgeOfEmployee\t,\r\n",
+							"    EO\t,\r\n",
+							"    EthnicOrigin\t,\r\n",
+							"    NID\t,\r\n",
+							"    Rel\t,\r\n",
+							"    ReligiousDenominationKey\t,\r\n",
+							"    Sxo\t,\r\n",
+							"    WageType\t,\r\n",
+							"    EmployeeSubgroup\t,\r\n",
+							"    LoaAbsType\t,\r\n",
+							"    LoaAbsenceTypeText\t,\r\n",
+							"    SchemeReference\t,\r\n",
+							"    PensionSchemeName\t,\r\n",
+							"    DisabilityCode\t,\r\n",
+							"    DisabilityText\t,\r\n",
+							"    DisabilityCodeDescription\t,\r\n",
+							"    PArea\t,\r\n",
+							"    PayrollArea\t,\r\n",
+							"    AssignmentNumber\t,\r\n",
+							"    FTE2\t,\r\n",
+							"    ReportMonthEndDate\t,\r\n",
+							"    LeaveEntitlementHours\t,\r\n",
+							"    LeaveTakenHours\t,\r\n",
+							"    LeaveRemainingHours\t,\r\n",
+							"    LeaveRemainingProrataHours\t,\r\n",
+							"    SourceSystemID,\r\n",
+							"    IngestionDate,\r\n",
+							"    ValidTo,\r\n",
+							"    RowID,\r\n",
+							"    IsActive\r\n",
+							"FROM odw_curated_db.mipins_hr_measures\r\n",
+							"WHERE EmployeeID IN (SELECT EmployeeID FROM mipins_hr_measures_new WHERE MeasureID IS NULL) AND IsActive = 'Y';"
+						],
+						"outputs": [],
+						"execution_count": 11
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# View mipins_hr_measures_changed_rows is used in a merge (Upsert) statement into the target table\n",
+							"- **WHEN MATCHED** ON the surrogate Key (i.e. EmployeeID), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+							"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
+							"## Table odw_curated_db.mipins_hr_measures is updated"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"-- merge into fact table\r\n",
+							"\r\n",
+							"MERGE INTO odw_curated_db.mipins_hr_measures AS Target\r\n",
+							"USING mipins_hr_measures_changed_rows AS Source\r\n",
+							"\r\n",
+							"ON Source.EmployeeID = Target.EmployeeID\r\n",
+							"\r\n",
+							"-- For Updates existing rows\r\n",
+							"\r\n",
+							"WHEN MATCHED\r\n",
+							"    THEN \r\n",
+							"    UPDATE SET\r\n",
+							"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+							"    Target.IsActive = 'N'\r\n",
+							"\r\n",
+							"-- Insert completely new rows\r\n",
+							"WHEN NOT MATCHED \r\n",
+							"    THEN INSERT * ;   "
+						],
+						"outputs": [],
+						"execution_count": 12
+					},
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"# Fix the IDs\n",
+							"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
+							"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
+							"## Table odw_curated_db.mipins_hr_measures is updated"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"-- Insert new MeasureID\r\n",
+							"\r\n",
+							"INSERT OVERWRITE odw_curated_db.mipins_hr_measures\r\n",
+							"\r\n",
+							"SELECT \r\n",
+							"    ROW_NUMBER() OVER (ORDER BY MeasureID NULLS LAST) AS MeasureID, -- surrogate key\r\n",
+							"    EmployeeID\t,\r\n",
+							"    FirstName\t,\r\n",
+							"    LastName\t,\r\n",
+							"    EmployeeNo\t,\r\n",
+							"    CoCd\t,\r\n",
+							"    CompanyCode\t,\r\n",
+							"    PA\t,\r\n",
+							"    PersonnelArea\t,\r\n",
+							"    PSubArea\t,\r\n",
+							"    PersonnelSubArea\t,\r\n",
+							"    OrgUnit\t,\r\n",
+							"    OrganizationalUnit\t,\r\n",
+							"    OrganizationalKey1\t,\r\n",
+							"    OrganizationalKey2\t,\r\n",
+							"    WorkC\t,\r\n",
+							"    WorkContract\t,\r\n",
+							"    CT\t,\r\n",
+							"    ContractType\t,\r\n",
+							"    PSGroup\t,\r\n",
+							"    PayBandDescription\t,\r\n",
+							"    FTE\t,\r\n",
+							"    WeekHours\t,\r\n",
+							"    IndicatorPartTimeEmployee\t,\r\n",
+							"    S\t,\r\n",
+							"    EmploymentStatus\t,\r\n",
+							"    GenderKey\t,\r\n",
+							"    TRAStartDate\t,\r\n",
+							"    TRAEndDate\t,\r\n",
+							"    TRAStatus\t,\r\n",
+							"    TRAGrade\t,\r\n",
+							"    PrevPersNo\t,\r\n",
+							"    Actr\t,\r\n",
+							"    ReasonForAction\t,\r\n",
+							"    Position\t,\r\n",
+							"    Position1\t,\r\n",
+							"    CostCtr\t,\r\n",
+							"    CostCentre\t,\r\n",
+							"    CivilServiceStart\t,\r\n",
+							"    DateToCurrentJob\t,\r\n",
+							"    SeniorityDate\t,\r\n",
+							"    DateToSubstGrade\t,\r\n",
+							"    PersNo1\t,\r\n",
+							"    NameOfManagerOm\t,\r\n",
+							"    ManagerPosition\t,\r\n",
+							"    ManagerPositionText\t,\r\n",
+							"    CounterSignManager\t,\r\n",
+							"    Loc\t,\r\n",
+							"    Location\t,\r\n",
+							"    OrgStartDate\t,\r\n",
+							"    FixTermEndDate\t,\r\n",
+							"    LoanStartDate\t,\r\n",
+							"    LoanEndDate\t,\r\n",
+							"    EEGrp\t,\r\n",
+							"    EmployeeGroup\t,\r\n",
+							"    AnnualSalary\t,\r\n",
+							"    Curr\t,\r\n",
+							"    NINumber\t,\r\n",
+							"    BirthDate\t,\r\n",
+							"    AgeOfEmployee\t,\r\n",
+							"    EO\t,\r\n",
+							"    EthnicOrigin\t,\r\n",
+							"    NID\t,\r\n",
+							"    Rel\t,\r\n",
+							"    ReligiousDenominationKey\t,\r\n",
+							"    Sxo\t,\r\n",
+							"    WageType\t,\r\n",
+							"    EmployeeSubgroup\t,\r\n",
+							"    LoaAbsType\t,\r\n",
+							"    LoaAbsenceTypeText\t,\r\n",
+							"    SchemeReference\t,\r\n",
+							"    PensionSchemeName\t,\r\n",
+							"    DisabilityCode\t,\r\n",
+							"    DisabilityText\t,\r\n",
+							"    DisabilityCodeDescription\t,\r\n",
+							"    PArea\t,\r\n",
+							"    PayrollArea\t,\r\n",
+							"    AssignmentNumber\t,\r\n",
+							"    FTE2\t,\r\n",
+							"    ReportMonthEndDate\t,\r\n",
+							"    LeaveEntitlementHours\t,\r\n",
+							"    LeaveTakenHours\t,\r\n",
+							"    LeaveRemainingHours\t,\r\n",
+							"    LeaveRemainingProrataHours\t,\r\n",
+							"    SourceSystemID,\r\n",
+							"    IngestionDate,\r\n",
+							"    ValidTo,\r\n",
+							"    RowID,\r\n",
+							"    IsActive\r\n",
+							"FROM odw_curated_db.mipins_hr_measures;"
+						],
+						"outputs": [],
+						"execution_count": 13
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_organisation_unit')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "Creation of a view of organisation unit for PBI Reports",
+				"folder": {
+					"name": "odw-curated"
+				},
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "[parameters('mipins_hr_organisation_unit_properties_bigDataPool_referenceName')]",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "4cf3ca4a-181d-4809-8ba8-89d5630bb9e4"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+						"name": "pinssynspodw",
+						"type": "Spark",
+						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 3,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"\r\n",
+							"CREATE OR REPLACE VIEW odw_curated_db.vw_mipins_hr_organisational_unit\r\n",
+							"\r\n",
+							"AS\r\n",
+							"\r\n",
+							"SELECT DISTINCT\r\n",
+							"\r\n",
+							"OrganisationUnitID      AS OrganisationKey,\r\n",
+							"OrganisationUnit        AS OrganisationUnitCode,\r\n",
+							"Description             AS OrganisationUnitDesc,\r\n",
+							"IsActive                AS IsActive,\r\n",
+							"IngestionDate           AS IngestionDate,\r\n",
+							"ValidTo                 AS ValidTo\r\n",
+							"\r\n",
+							"FROM odw_harmonised_db.hr_organisation_unit_dim\r\n",
+							"\r\n",
+							"ORDER BY OrganisationKey ASC"
+						],
+						"outputs": [],
+						"execution_count": 4
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_personnel_area')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "creating a view of personnel area for PBI reports",
+				"folder": {
+					"name": "odw-curated"
+				},
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "[parameters('mipins_hr_personnel_area_properties_bigDataPool_referenceName')]",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "0d674508-b0a8-4d34-9f2f-00978771641b"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+						"name": "pinssynspodw",
+						"type": "Spark",
+						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 3,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"\r\n",
+							"CREATE OR REPLACE VIEW odw_curated_db.vw_mipins_hr_personnel_area\r\n",
+							"\r\n",
+							"AS\r\n",
+							"\r\n",
+							"SELECT DISTINCT\r\n",
+							"\r\n",
+							"PersonnelAreaID         AS PersonnelAreaKey,\r\n",
+							"PersonnelAreaCode       AS PersonnelAreaCode, \r\n",
+							"Description             AS PersonnelArea,\r\n",
+							"IsActive                AS IsActive,\r\n",
+							"IngestionDate           AS IngestionDate,\r\n",
+							"ValidTo                 AS ValidTo\r\n",
+							"\r\n",
+							"FROM odw_harmonised_db.hr_personnel_area_dim\r\n",
+							"\r\n",
+							"ORDER BY PersonnelAreaKey ASC\r\n",
+							""
+						],
+						"outputs": [],
+						"execution_count": 2
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/mipins_hr_personnel_sub_area')]",
+			"type": "Microsoft.Synapse/workspaces/notebooks",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "Creating HR_Personnel_Sub_Area view for PBI Reports",
+				"folder": {
+					"name": "odw-curated"
+				},
+				"nbformat": 4,
+				"nbformat_minor": 2,
+				"bigDataPool": {
+					"referenceName": "[parameters('mipins_hr_personnel_sub_area_properties_bigDataPool_referenceName')]",
+					"type": "BigDataPoolReference"
+				},
+				"sessionProperties": {
+					"driverMemory": "28g",
+					"driverCores": 4,
+					"executorMemory": "28g",
+					"executorCores": 4,
+					"numExecutors": 2,
+					"conf": {
+						"spark.dynamicAllocation.enabled": "false",
+						"spark.dynamicAllocation.minExecutors": "2",
+						"spark.dynamicAllocation.maxExecutors": "2",
+						"spark.autotune.trackingId": "2da22616-9564-4081-87ee-f6bf66015882"
+					}
+				},
+				"metadata": {
+					"saveOutput": true,
+					"enableDebugMode": false,
+					"kernelspec": {
+						"name": "synapse_pyspark",
+						"display_name": "Synapse PySpark"
+					},
+					"language_info": {
+						"name": "python"
+					},
+					"a365ComputeOptions": {
+						"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+						"name": "pinssynspodw",
+						"type": "Spark",
+						"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+						"auth": {
+							"type": "AAD",
+							"authResource": "https://dev.azuresynapse.net"
+						},
+						"sparkVersion": "3.3",
+						"nodeCount": 3,
+						"cores": 4,
+						"memory": 28
+					},
+					"sessionKeepAliveTimeout": 30
+				},
+				"cells": [
+					{
+						"cell_type": "code",
+						"metadata": {
+							"microsoft": {
+								"language": "sparksql"
+							},
+							"collapsed": false
+						},
+						"source": [
+							"%%sql\r\n",
+							"\r\n",
+							"CREATE OR REPLACE VIEW odw_curated_db.vw_mipins_hr_personnel_sub_area\r\n",
+							"\r\n",
+							"AS\r\n",
+							"\r\n",
+							"SELECT DISTINCT\r\n",
+							"\r\n",
+							"PersonnelSubAreaID      AS PersonnelSubAreaKey,\r\n",
+							"PersonnelSubAreaCode    AS PersonnelSubAreaCode,\r\n",
+							"Description             AS PersonnelSubAreaDesc,\r\n",
+							"IsActive                AS IsActive,\r\n",
+							"IngestionDate           AS IngestionDate,\r\n",
+							"ValidTo                 AS ValidTo\r\n",
+							"\r\n",
+							"FROM odw_harmonised_db.hr_personnel_sub_area_dim\r\n",
+							"\r\n",
+							"ORDER BY PersonnelSubAreaKey ASC"
+						],
+						"outputs": [],
+						"execution_count": 2
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/mipins_views')]",
 			"type": "Microsoft.Synapse/workspaces/notebooks",
 			"apiVersion": "2019-06-01-preview",
@@ -107170,7 +107843,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "2e33919c-479c-496d-9196-401c0c83a90e"
+						"spark.autotune.trackingId": "1c5d2595-f890-4481-aa78-e4dc135b56b4"
 					}
 				},
 				"metadata": {
@@ -107217,7 +107890,7 @@
 							"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
 						],
 						"outputs": [],
-						"execution_count": 1
+						"execution_count": 225
 					},
 					{
 						"cell_type": "code",
@@ -107236,7 +107909,7 @@
 							"%run /utils/py_logging_decorator"
 						],
 						"outputs": [],
-						"execution_count": 2
+						"execution_count": 226
 					},
 					{
 						"cell_type": "code",
@@ -107436,7 +108109,7 @@
 							""
 						],
 						"outputs": [],
-						"execution_count": 3
+						"execution_count": 227
 					},
 					{
 						"cell_type": "code",
@@ -107458,7 +108131,7 @@
 							"source_id=-1 ## only run for one source if this parameter is provided"
 						],
 						"outputs": [],
-						"execution_count": 4
+						"execution_count": 228
 					},
 					{
 						"cell_type": "code",
@@ -107477,7 +108150,7 @@
 							"ingest_raw_to_standardised(source_id)"
 						],
 						"outputs": [],
-						"execution_count": 5
+						"execution_count": 229
 					}
 				]
 			},
@@ -119722,7 +120395,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "62d5f511-9027-4da7-bd76-e9b077f79775"
+						"spark.autotune.trackingId": "3085ca4d-4473-49cf-b6cc-fc26eada98a0"
 					}
 				},
 				"metadata": {
@@ -119752,6 +120425,64 @@
 					"sessionKeepAliveTimeout": 30
 				},
 				"cells": [
+					{
+						"cell_type": "markdown",
+						"metadata": {
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"## Fix Absence Hours in odw-standardised.hr_absences\n",
+							"\n",
+							"**Some absences might have incorrect number of hours. This cell calculates the absence hours between a `start_date` and `end_date` based on the `work_schedule_rule` of the Employee and updates the table**"
+						]
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							}
+						},
+						"source": [
+							"import pandas as pd\n",
+							"from pyspark.sql import SparkSession\n",
+							"spark = SparkSession.builder.getOrCreate()\n",
+							"\n",
+							"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+							"\n",
+							"absences_table_loc = \"abfss://odw-standardised@\" + storage_account+'HR/hr_absences'\n",
+							"\n",
+							"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
+							"absences = spark.read.format('delta').load(absences_table_loc).toPandas()\n",
+							"\n",
+							"def get_absence_hrs(id, days, start, end, ws):\n",
+							"    ws = work_schedule[work_schedule[\"work_schedule_rule\"] == ws]\n",
+							"    sum = 0\n",
+							"    for d in pd.bdate_range(start, end):\n",
+							"        day_short_name = d.day_name()[0:2]\n",
+							"        hrs = float(ws[day_short_name.lower()])\n",
+							"        sum += days*hrs if  0 < days < 1 else hrs\n",
+							"    return str(sum)\n",
+							"\n",
+							"for i, row in absences.iterrows():\n",
+							"    absences.at[i, 'hrs'] = get_absence_hrs(row['staff_number'], float(row['days']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
+							"\n",
+							"absencesDF = spark.createDataFrame(absences)\n",
+							"absencesDF.write.format(\"delta\").mode(\"overwrite\").save(absences_table_loc)"
+						],
+						"outputs": [],
+						"execution_count": 73
+					},
 					{
 						"cell_type": "code",
 						"metadata": {
@@ -119798,7 +120529,7 @@
 							"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_absences) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 						],
 						"outputs": [],
-						"execution_count": 3
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -119856,7 +120587,7 @@
 							""
 						],
 						"outputs": [],
-						"execution_count": 4
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -119903,7 +120634,7 @@
 							"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_email) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 						],
 						"outputs": [],
-						"execution_count": 5
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -119950,7 +120681,7 @@
 							"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_leave) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 						],
 						"outputs": [],
-						"execution_count": 6
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -120027,7 +120758,7 @@
 							"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_leavers) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 						],
 						"outputs": [],
-						"execution_count": 7
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -120073,7 +120804,7 @@
 							"INNER JOIN (SELECT MAX(expected_from) AS Max_expectedfrom FROM odw_standardised_db.hr_protected_characteristics) MEF ON T1.expected_from = MEF.Max_expectedfrom"
 						],
 						"outputs": [],
-						"execution_count": 8
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -123726,6 +124457,120 @@
 			"apiVersion": "2019-06-01-preview",
 			"properties": {},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-sql-sqlServer--sql-odw-dev-uks')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-sqlserver-odw-dev-uks/providers/Microsoft.Sql/servers/sql-odw-dev-uks",
+				"groupId": "sqlServer"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-sql-sqlServer--sql-odw-dev-ukw')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-sqlserver-odw-dev-ukw/providers/Microsoft.Sql/servers/sql-odw-dev-ukw",
+				"groupId": "sqlServer"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-st-dfs--pinsstodwdevuks9h80mb')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Storage/storageAccounts/pinsstodwdevuks9h80mb",
+				"groupId": "dfs",
+				"fqdns": [
+					"pinsstodwdevuks9h80mb.dfs.core.windows.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-st-dfs--pinsstodwdevukwdvzrjm')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-ukw/providers/Microsoft.Storage/storageAccounts/pinsstodwdevukwdvzrjm",
+				"groupId": "dfs",
+				"fqdns": [
+					"pinsstodwdevukwdvzrjm.dfs.core.windows.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sql--pins-synw-odw-dev-uks')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks",
+				"groupId": "sql",
+				"fqdns": [
+					"pins-synw-odw-dev-uks.9f8d10ea-bfcb-46a2-9943-9bf5b8f34290.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sql--pins-synw-odw-dev-ukw')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-ukw/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-ukw",
+				"groupId": "sql",
+				"fqdns": [
+					"pins-synw-odw-dev-ukw.6be15ff7-1910-40e5-b2df-d1282b76587b.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sqlOnDemand--pins-synw-odw-dev-uks')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks",
+				"groupId": "sqlOnDemand",
+				"fqdns": [
+					"pins-synw-odw-dev-uks-ondemand.9f8d10ea-bfcb-46a2-9943-9bf5b8f34290.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/default/synapse-ws-sqlOnDemand--pins-synw-odw-dev-ukw')]",
+			"type": "Microsoft.Synapse/workspaces/managedVirtualNetworks/managedPrivateEndpoints",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"privateLinkResourceId": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-ukw/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-ukw",
+				"groupId": "sqlOnDemand",
+				"fqdns": [
+					"pins-synw-odw-dev-ukw-ondemand.6be15ff7-1910-40e5-b2df-d1282b76587b.sql.azuresynapse.net"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/managedVirtualNetworks/default')]"
+			]
 		}
 	]
 }
