@@ -12,7 +12,7 @@ resource "azurerm_api_connection" "servicebus2" {
 
   lifecycle {
     # NOTE: since the connectionString is a secure value it's not returned from the API
-    ignore_changes = ["parameter_values"]
+    ignore_changes = [parameter_values]
   }
 }
 
@@ -30,6 +30,6 @@ resource "azurerm_api_connection" "zendesk" {
 
   lifecycle {
     # NOTE: since the connectionString is a secure value it's not returned from the API
-    ignore_changes = ["parameter_values"]
+    ignore_changes = [parameter_values]
   }
 }
