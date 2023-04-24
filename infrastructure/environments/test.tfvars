@@ -4,6 +4,8 @@ alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["abdullah.pakwashee@planninginspectorate.gov.uk", "alex.delany@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
+api_connection_display_name              = true
+api_connection_name                      = true
 
 bastion_host_enabled = false
 bastion_vm_username  = "basadmin"

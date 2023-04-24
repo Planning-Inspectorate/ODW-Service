@@ -1,8 +1,9 @@
 resource "azurerm_api_connection" "servicebus2" {
-  name                = var.name
+  count               = var.api_connection_servicebus2_enabled ? 1 : 0
+  name                = "servicebus2"
   resource_group_name = var.resource_group_name
   managed_api_id      = data.azurerm_managed_api.servicebus2.id
-  display_name        = var.display_name
+  display_name        = "ESB"
 
   parameter_values = {
     connectionString = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/servicebus/32eeb0120347401eb61c2e2ba18188f8"
@@ -17,10 +18,11 @@ resource "azurerm_api_connection" "servicebus2" {
 }
 
 resource "azurerm_api_connection" "zendesk" {
-  name                = var.name
+  count               = var.api_connection_zendesk_enabled ? 1 : 0
+  name                = "zendesk"
   resource_group_name = var.resource_group_name
   managed_api_id      = data.azurerm_managed_api.zendesk.id
-  display_name        = var.display_name
+  display_name        = "pinssupport"
 
   parameter_values = {
     connectionString = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/zendesk/27b0df658eb24f1fbc0e9287b57c6074"

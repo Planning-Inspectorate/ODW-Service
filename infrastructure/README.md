@@ -252,6 +252,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_alert_group_synapse_recipients"></a> [alert\_group\_synapse\_recipients](#input\_alert\_group\_synapse\_recipients) | A list of email recipients to recieve Synapse alerts | `list(string)` | `[]` | no |
 | <a name="input_alert_scope_service_health"></a> [alert\_scope\_service\_health](#input\_alert\_scope\_service\_health) | The resource scope at which to alert on service health events | `string` | n/a | yes |
 | <a name="input_alert_threshold_data_lake_capacity_bytes"></a> [alert\_threshold\_data\_lake\_capacity\_bytes](#input\_alert\_threshold\_data\_lake\_capacity\_bytes) | The threshold at which to trigger an alert for exceeding Data Lake capacity in bytes | `number` | `1099511627776` | no |
+| <a name="input_api_connection_servicebus2_enabled"></a> [api\_connection\_servicebus2\_enabled](#input\_api\_connection\_servicebus2\_enabled) | Determines whether a Logic App Standard function should be deployed | `bool` | `false` | no |
+| <a name="input_api_connection_zendesk_enabled"></a> [api\_connection\_zendesk\_enabled](#input\_api\_connection\_zendesk\_enabled) | Determines whether a Logic App Standard function should be deployed | `bool` | `false` | no |
 | <a name="input_bastion_host_enabled"></a> [bastion\_host\_enabled](#input\_bastion\_host\_enabled) | Determines if a Bastion Host should be provisioned for management purposes | `bool` | `false` | no |
 | <a name="input_bastion_vm_image"></a> [bastion\_vm\_image](#input\_bastion\_vm\_image) | An object describing the image specification to use for the Bastion jumpbox VM | `map(string)` | <pre>{<br>  "offer": "windows-11",<br>  "publisher": "MicrosoftWindowsDesktop",<br>  "sku": "win11-21h2-ent",<br>  "version": "latest"<br>}</pre> | no |
 | <a name="input_bastion_vm_size"></a> [bastion\_vm\_size](#input\_bastion\_vm\_size) | The size of the Bastion jumpbox VM to be deployed | `string` | `"Standard_F2s_v2"` | no |
@@ -268,14 +270,12 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_devops_agent_pool_resource_group_name"></a> [devops\_agent\_pool\_resource\_group\_name](#input\_devops\_agent\_pool\_resource\_group\_name) | The name of the resource group into which the Azure DevOps agents VMs will be deployed | `string` | n/a | yes |
 | <a name="input_devops_agent_pool_resource_group_name_failover"></a> [devops\_agent\_pool\_resource\_group\_name\_failover](#input\_devops\_agent\_pool\_resource\_group\_name\_failover) | The name of the failover resource group into which the Azure DevOps agents VMs will be deployed | `string` | n/a | yes |
 | <a name="input_devops_agent_vm_sku"></a> [devops\_agent\_vm\_sku](#input\_devops\_agent\_vm\_sku) | The size of the devops agent VMs to be deployed | `string` | `"Standard_F2s_v2"` | no |
-| <a name="input_display_name"></a> [display\_name](#input\_display\_name) | The display name of the resources which will be deployed | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | The name of the environment in which resources will be deployed | `string` | n/a | yes |
 | <a name="input_failover_deployment"></a> [failover\_deployment](#input\_failover\_deployment) | Determines if this is a failover deployment such that resources will deployed to the failover region | `bool` | `false` | no |
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_logic_app_service_plan_enabled"></a> [logic\_app\_service\_plan\_enabled](#input\_logic\_app\_service\_plan\_enabled) | Determines whether an App Service Plan should be deployed | `bool` | `false` | no |
 | <a name="input_logic_app_standard_enabled"></a> [logic\_app\_standard\_enabled](#input\_logic\_app\_standard\_enabled) | Determines whether a Logic App Standard function should be deployed | `bool` | `false` | no |
-| <a name="input_name"></a> [name](#input\_name) | The display name of the resources which will be deployed | `string` | n/a | yes |
 | <a name="input_network_watcher_enabled"></a> [network\_watcher\_enabled](#input\_network\_watcher\_enabled) | Determines whether a Network Watcher resource will be deployed | `bool` | `false` | no |
 | <a name="input_odt_back_office_service_bus_enabled"></a> [odt\_back\_office\_service\_bus\_enabled](#input\_odt\_back\_office\_service\_bus\_enabled) | Determines whether the ODT Service Bus Namespace will be deployed | `bool` | `false` | no |
 | <a name="input_odt_back_office_service_bus_failover_enabled"></a> [odt\_back\_office\_service\_bus\_failover\_enabled](#input\_odt\_back\_office\_service\_bus\_failover\_enabled) | Whether or not to enable failover for the Service Bus namespace | `bool` | `false` | no |
@@ -309,6 +309,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_vnet_base_cidr_block"></a> [vnet\_base\_cidr\_block](#input\_vnet\_base\_cidr\_block) | The base IPv4 range for the Virtual Network in CIDR notation | `string` | `"10.90.0.0/24"` | no |
 | <a name="input_vnet_base_cidr_block_failover"></a> [vnet\_base\_cidr\_block\_failover](#input\_vnet\_base\_cidr\_block\_failover) | The base IPv4 range for the failover Virtual Network in CIDR notation | `string` | `"10.90.1.0/24"` | no |
 | <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | `list(map(string))` | <pre>[<br>  {<br>    "name": "ManagementSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": "SynapseEndpointSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  }<br>]</pre> | no |
+| <a name="input_workflow_names"></a> [workflow\_names](#input\_workflow\_names) | The name of the workflows deployed | `list(map(any))` | n/a | yes |
 
 ## Outputs
 

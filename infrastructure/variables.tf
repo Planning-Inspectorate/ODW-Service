@@ -33,6 +33,18 @@ variable "alert_threshold_data_lake_capacity_bytes" {
   type        = number
 }
 
+variable "api_connection_servicebus2_enabled" {
+  default     = false
+  description = "Determines whether a Logic App Standard function should be deployed"
+  type        = bool
+}
+
+variable "api_connection_zendesk_enabled" {
+  default     = false
+  description = "Determines whether a Logic App Standard function should be deployed"
+  type        = bool
+}
+
 variable "bastion_host_enabled" {
   default     = false
   description = "Determines if a Bastion Host should be provisioned for management purposes"
@@ -132,11 +144,6 @@ variable "devops_agent_vm_sku" {
   type        = string
 }
 
-variable "display_name" {
-  description = "The display name of the resources which will be deployed"
-  type        = string
-}
-
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string
@@ -169,11 +176,6 @@ variable "logic_app_standard_enabled" {
   default     = false
   description = "Determines whether a Logic App Standard function should be deployed"
   type        = bool
-}
-
-variable "name" {
-  description = "The display name of the resources which will be deployed"
-  type        = string
 }
 
 variable "network_watcher_enabled" {
