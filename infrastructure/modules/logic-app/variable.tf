@@ -1,3 +1,7 @@
+variable "display_name" {
+  description = "The display name of the resources which will be deployed"
+  type        = string
+}
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string
@@ -18,6 +22,11 @@ variable "logic_app_standard_enabled" {
   default     = false
   description = "Determines whether a Logic App Standard function should be deployed"
   type        = bool
+}
+
+variable "name" {
+  description = "The display name of the resources which will be deployed"
+  type        = string
 }
 
 variable "resource_group_name" {
@@ -44,5 +53,5 @@ variable "tags" {
 
 variable "workflow_names" {
   description = "The name of the workflows deployed"
-  type        = string
+  type        = list(map(any))
 }
