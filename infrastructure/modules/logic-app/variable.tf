@@ -32,6 +32,11 @@ variable "logic_app_standard_enabled" {
   type        = bool
 }
 
+variable "name" {
+  description = "The display name of the resources which will be deployed"
+  type        = string
+}
+
 variable "resource_group_name" {
   description = "The name of the resource group into which resources will be deployed"
   type        = string
