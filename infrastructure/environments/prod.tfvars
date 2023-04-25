@@ -4,6 +4,8 @@ alert_group_synapse_enabled              = true
 alert_group_synapse_recipients           = ["odw_support@planninginspectorate.gov.uk"]
 alert_scope_service_health               = "/subscriptions/a82fd28d-5989-4e06-a0bb-1a5d859f9e0c"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
+api_connection_servicebus2_enabled       = true
+api_connection_zendesk_enabled           = true
 
 bastion_host_enabled = false
 bastion_vm_username  = "basadmin"
