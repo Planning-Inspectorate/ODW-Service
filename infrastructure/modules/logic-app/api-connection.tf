@@ -1,8 +1,8 @@
-resource "azurerm_api_connection" "servicebus2" {
-  count               = var.api_connection_servicebus2_enabled ? 1 : 0
+resource "azurerm_api_connection" "servicebus" {
+  count               = var.api_connection_servicebus_enabled ? 1 : 0
   name                = "servicebus"
   resource_group_name = var.resource_group_name
-  managed_api_id      = data.azurerm_managed_api.servicebus2.id
+  managed_api_id      = data.azurerm_managed_api.servicebus.id
   display_name        = "ESB"
 
   parameter_values = {

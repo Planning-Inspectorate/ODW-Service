@@ -1,5 +1,5 @@
-data "azurerm_managed_api" "servicebus2" {
-  name     = "servicebus-2"
+data "azurerm_managed_api" "servicebus" {
+  name     = "servicebus"
   location = var.location
 }
 

@@ -1,4 +1,4 @@
-variable "api_connection_servicebus2_enabled" {
+variable "api_connection_servicebus_enabled" {
   default     = false
   description = "Determines whether a Logic App Standard function should be deployed"
   type        = bool
