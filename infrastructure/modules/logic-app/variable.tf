@@ -56,5 +56,5 @@ variable "tags" {
 
 variable "workflow_names" {
   description = "The name of the workflows deployed"
-  type        = list(map(any))
+  type        = list(map(string))
 }
