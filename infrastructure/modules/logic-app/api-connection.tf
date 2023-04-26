@@ -19,7 +19,7 @@ resource "azurerm_api_connection" "servicebus" {
 
 resource "azurerm_api_connection" "zendesk" {
   count               = var.api_connection_zendesk_enabled ? 1 : 0
-  name                = "zendesk"
+  name                = "zendesk2"
   resource_group_name = var.resource_group_name
   managed_api_id      = data.azurerm_managed_api.zendesk.id
   display_name        = "pinssupport"
