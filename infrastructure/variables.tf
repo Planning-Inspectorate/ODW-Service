@@ -389,5 +389,5 @@ variable "vnet_subnets" {
 
 variable "workflow_names" {
   description = "The name of the workflows deployed"
-  type        = list(map(string))
+  type        = list(map(any))
 }
