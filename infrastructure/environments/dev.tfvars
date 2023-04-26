@@ -144,11 +144,4 @@ vnet_subnets = [
   }
 ]
 
-workflow_names = [
-  {
-    "name" : "zendesk-created"
-  },
-  {
-    "name" : "zendesk-updated"
-  }
-]
+workflow_names = ["zendesk-created", "zendesk-updated"]
