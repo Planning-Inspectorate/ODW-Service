@@ -143,3 +143,6 @@ vnet_subnets = [
     "new_bits" : 2 # /26
   }
 ]
+
+workflow_zendesk_created_enabled = true
+workflow_zendesk_updated_enabled = true

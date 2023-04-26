@@ -144,4 +144,5 @@ vnet_subnets = [
   }
 ]
 
-workflow_names = ["zendesk-created", "zendesk-updated"]
+workflow_zendesk_created_enabled = true
+workflow_zendesk_updated_enabled = true

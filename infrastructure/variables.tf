@@ -387,7 +387,14 @@ variable "vnet_subnets" {
   type        = list(map(string))
 }
 
-variable "workflow_names" {
-  description = "The name of the workflows deployed"
-  type        = list(any)
+variable "workflow_zendesk_created_enabled" {
+  default     = false
+  description = "Determines whether Workflow zendesk-created will be deployed"
+  type        = bool
+}
+
+variable "workflow_zendesk_updated_enabled" {
+  default     = false
+  description = "Determines whether Workflow zendesk-updated will be deployed"
+  type        = bool
 }

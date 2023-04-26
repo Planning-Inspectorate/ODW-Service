@@ -24,9 +24,10 @@ module "logic_app" {
   location                          = module.azure_region.location_cli
   service_name                      = local.service_name
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
-  workflow_names                 = var.workflow_names
+  logic_app_service_plan_enabled   = var.logic_app_service_plan_enabled
+  logic_app_standard_enabled       = var.logic_app_standard_enabled
+  workflow_zendesk_created_enabled = var.workflow_zendesk_created_enabled
+  workflow_zendesk_updated_enabled = var.workflow_zendesk_updated_enabled
 
   tags = local.tags
 }
@@ -43,9 +44,10 @@ module "logic_app_failover" {
   location                          = module.azure_region.paired_location.location_cli
   service_name                      = local.service_name
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
-  workflow_names                 = var.workflow_names
+  logic_app_service_plan_enabled   = var.logic_app_service_plan_enabled
+  logic_app_standard_enabled       = var.logic_app_standard_enabled
+  workflow_zendesk_created_enabled = var.workflow_zendesk_created_enabled
+  workflow_zendesk_updated_enabled = var.workflow_zendesk_updated_enabled
 
   tags = local.tags
 }

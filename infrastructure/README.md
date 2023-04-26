@@ -309,7 +309,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_vnet_base_cidr_block"></a> [vnet\_base\_cidr\_block](#input\_vnet\_base\_cidr\_block) | The base IPv4 range for the Virtual Network in CIDR notation | `string` | `"10.90.0.0/24"` | no |
 | <a name="input_vnet_base_cidr_block_failover"></a> [vnet\_base\_cidr\_block\_failover](#input\_vnet\_base\_cidr\_block\_failover) | The base IPv4 range for the failover Virtual Network in CIDR notation | `string` | `"10.90.1.0/24"` | no |
 | <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | `list(map(string))` | <pre>[<br>  {<br>    "name": "ManagementSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": "SynapseEndpointSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  }<br>]</pre> | no |
-| <a name="input_workflow_names"></a> [workflow\_names](#input\_workflow\_names) | The name of the workflows deployed | `list(map(any))` | n/a | yes |
+| <a name="input_workflow_zendesk_created_enabled"></a> [workflow\_zendesk\_created\_enabled](#input\_workflow\_zendesk\_created\_enabled) | Determines whether Workflow zendesk-created will be deployed | `bool` | `false` | no |
+| <a name="input_workflow_zendesk_updated_enabled"></a> [workflow\_zendesk\_updated\_enabled](#input\_workflow\_zendesk\_updated\_enabled) | Determines whether Workflow zendesk-updated will be deployed | `bool` | `false` | no |
 
 ## Outputs
 
