@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "494a6b7a-bbf1-4a90-9243-040d123fe905"
+				"spark.autotune.trackingId": "b50fe93f-71a7-4d83-815b-f339fa465d76"
 			}
 		},
 		"metadata": {
@@ -55,90 +55,15 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
+					"from notebookutils import mssparkutils\r\n",
 					"\r\n",
-					"CREATE OR REPLACE VIEW fact_sickness\r\n",
-					"\r\n",
-					"AS\r\n",
-					"\r\n",
-					"SELECT \r\n",
-					"-- CASE\r\n",
-					"--             WHEN (AbsenceEndDate >= (SELECT  dateadd(yyyy,-2, cast(cast(YEAR(getdate())-\r\n",
-					"--                                         (CASE \r\n",
-					"--                                             WHEN month(getDate()) between 1 and 3 then 1\r\n",
-					"--                                             ELSE 0\r\n",
-					"--                                         end) as varchar)+'0401' as date)))) \r\n",
-					"--                 and\r\n",
-					"--                 (AbsenceEndDate < (SELECT  dateadd(yyyy,0, cast(cast(YEAR(getdate())-\r\n",
-					"--                                         (CASE \r\n",
-					"--                                             WHEN month(getDate()) between 1 and 3 then 1\r\n",
-					"--                                             ELSE 0\r\n",
-					"--                                         end) as varchar)+'0401' as date))))\r\n",
-					"--                 then 'Previous FY'\r\n",
-					"--             WHEN \r\n",
-					"--                 (AbsenceEndDate < (SELECT  dateadd(yyyy,-1, cast(cast(YEAR(getdate())-\r\n",
-					"--                                         (CASE \r\n",
-					"--                                             WHEN month(getDate()) between 1 and 3 then 1\r\n",
-					"--                                             ELSE 0\r\n",
-					"--                                         end) as varchar)+'0401' as date))))\r\n",
-					"--                 then 'Older FY'\r\n",
-					"--                 WHEN \r\n",
-					"--                 (AbsenceEndDate >= (SELECT  dateadd(yyyy,-1, cast(cast(YEAR(getdate())-\r\n",
-					"--                                         (CASE \r\n",
-					"--                                             WHEN month(getDate()) between 1 and 3 then 1\r\n",
-					"--                                             ELSE 0\r\n",
-					"--                                         end) as varchar)+'0401' as date))))\r\n",
-					"--                     and\r\n",
-					"--                 (AbsenceEndDate < (SELECT  dateadd(yyyy,+1, cast(cast(YEAR(getdate())-\r\n",
-					"--                                         (CASE \r\n",
-					"--                                             WHEN month(getDate()) between 1 and 3 then 1\r\n",
-					"--                                             ELSE 0\r\n",
-					"--                                         end) as varchar)+'0401' as date))))\r\n",
-					"--                 then 'Current FY'\r\n",
-					"--             ELSE 'Next FY'\r\n",
-					"-- END AS FinancialYear,\r\n",
-					"CASE\r\n",
-					"      WHEN (AbsenceEndDate >= (cast(dateadd(yyyy,-2, getDate()) as date))) and (AbsenceEndDate < (cast(dateadd(yyyy,-1, getDate()) as date)))then 'Previous CY'\r\n",
-					"      WHEN (AbsenceEndDate < (cast(dateadd(yyyy,-2, getDate()) as date))) then 'Older CY'\r\n",
-					"      WHEN (AbsenceEndDate >= (cast(dateadd(yyyy,-1, getDate()) as date))) and (AbsenceEndDate < (cast(getDate() as date))) then 'Current CY' \r\n",
-					"      ELSE 'Future CY'\r\n",
-					"END AS CalendarYear\r\n",
-					"FROM odw_harmonised_db.hr_absence_dim "
+					"# Builds protected characteristic DIMs\r\n",
+					"mssparkutils.notebook.run('/Calendar')"
 				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\r\n",
-					"\r\n",
-					"SELECT\r\n",
-					"    CASE \r\n",
-					"        WHEN (AbsenceEndDate >= (cast(dateadd(yyyy,-2, getDate()) as date))) and (AbsenceEndDate < (cast(dateadd(yyyy,-1, getDate()) as date)))then 'Previous CY'\r\n",
-					"    END AS CalendarYear\r\n",
-					"FROM odw_harmonised_db.hr_absence_dim "
-				],
-				"execution_count": 6
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -172,7 +97,7 @@
 					"\r\n",
 					"\r\n",
 					"FROM odw_harmonised_db.hr_absence_dim abs\r\n",
-					"FULL JOIN default.calendar_dim_plus date on date.CalendarDate = abs.AbsenceStartDate\r\n",
+					"FULL JOIN default.calendar_dim_plus date on date.calendarDate = abs.AbsenceStartDate\r\n",
 					"WHERE AbsenceType in  ('Sickness')\r\n",
 					"-- WHERE FinancialYear in ('CalendarYear')\r\n",
 					"GROUP BY EmployeeID\r\n",
@@ -189,7 +114,7 @@
 					"\r\n",
 					"\r\n",
 					"FROM odw_harmonised_db.hr_absence_dim abs\r\n",
-					"FULL JOIN default.calendar_dim_plus date on date.CalendarDate = abs.AbsenceStartDate\r\n",
+					"FULL JOIN default.calendar_dim_plus date on date.calendarDate = abs.AbsenceStartDate\r\n",
 					"-- WHERE FinancialYear in ('CalendarYear','CalendarYear')\r\n",
 					"WHERE AbsenceType in  ('Sickness')\r\n",
 					"GROUP BY EmployeeID\r\n",
