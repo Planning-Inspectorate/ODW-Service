@@ -1043,65 +1043,11 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('workspaceName'), '/000_top_level_pipeline')]",
+			"name": "[concat(parameters('workspaceName'), '/000_top_level_casework')]",
 			"type": "Microsoft.Synapse/workspaces/pipelines",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
-				"description": "the top dog",
 				"activities": [
-					{
-						"name": "0_Source_To_Raw_Fileshare",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "0_pln_source_to_raw_fileshare",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "1_scheduling_raw_to_standardised",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Timesheets - Mondays",
-								"dependencyConditions": [
-									"Completed"
-								]
-							},
-							{
-								"activity": "py_daily_files_into_date_folders",
-								"dependencyConditions": [
-									"Completed"
-								]
-							},
-							{
-								"activity": "0_Raw_Horizon_Main",
-								"dependencyConditions": [
-									"Completed"
-								]
-							},
-							{
-								"activity": "0_Raw_Checkmark_Data_part2",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "1_scheduling_raw_to_standardised",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
 					{
 						"name": "0_Raw_Checkmark_Data",
 						"type": "ExecutePipeline",
@@ -1119,14 +1065,7 @@
 					{
 						"name": "0_Raw_Checkmark_Data_part2",
 						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "0_Raw_Checkmark_Data",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
+						"dependsOn": [],
 						"userProperties": [],
 						"typeProperties": {
 							"pipeline": {
@@ -1166,11 +1105,85 @@
 						}
 					},
 					{
+						"name": "0_Raw_Horizon_Main",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "0_Raw_Horizon_Main",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "0_0_daily_runs"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Checkmark_Data_part1')]",
+				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Checkmark_Data_part2')]",
+				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Horizon_Main')]",
+				"[concat(variables('workspaceId'), '/pipelines/0_Timesheets_Data_Copy_RAW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/000_top_level_hr')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"activities": [
+					{
+						"name": "0_Source_To_Raw_Fileshare",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "0_pln_source_to_raw_fileshare",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "1_scheduling_raw_to_standardised_hr",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "py_daily_files_into_date_folders",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "1_scheduling_raw_to_standardised",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"table_grouping": "HR"
+							}
+						}
+					},
+					{
 						"name": "Harmonised - HR",
 						"type": "IfCondition",
 						"dependsOn": [
 							{
-								"activity": "1_scheduling_raw_to_standardised",
+								"activity": "1_scheduling_raw_to_standardised_hr",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -1412,7 +1425,7 @@
 							{
 								"activity": "0_Source_To_Raw_Fileshare",
 								"dependencyConditions": [
-									"Completed"
+									"Succeeded"
 								]
 							}
 						],
@@ -1437,15 +1450,57 @@
 							},
 							"numExecutors": null
 						}
-					},
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "0_0_daily_runs"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/pipelines/0_pln_source_to_raw_fileshare')]",
+				"[concat(variables('workspaceId'), '/pipelines/1_scheduling_raw_to_standardised')]",
+				"[concat(variables('workspaceId'), '/pipelines/4_scheduling_harmonised_to_curated')]",
+				"[concat(variables('workspaceId'), '/pipelines/5_scheduling_curated_to_esb')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_daily_files_into_date_folders')]",
+				"[concat(variables('workspaceId'), '/notebooks/sap-hr-views')]",
+				"[concat(variables('workspaceId'), '/notebooks/sap-hr-master')]",
+				"[concat(variables('workspaceId'), '/notebooks/py_fail_activity_logging')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/000_top_level_pipeline')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "the top dog",
+				"activities": [
 					{
-						"name": "0_Raw_Horizon_Main",
+						"name": "000_top_level_hr",
 						"type": "ExecutePipeline",
 						"dependsOn": [],
 						"userProperties": [],
 						"typeProperties": {
 							"pipeline": {
-								"referenceName": "0_Raw_Horizon_Main",
+								"referenceName": "000_top_level_hr",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "000_top_level_casework",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "000_top_level_casework",
 								"type": "PipelineReference"
 							},
 							"waitOnCompletion": true,
@@ -1457,22 +1512,15 @@
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
 				},
+				"folder": {
+					"name": "0_0_daily_runs"
+				},
 				"annotations": [],
 				"lastPublishTime": "2023-01-19T13:06:54Z"
 			},
 			"dependsOn": [
-				"[concat(variables('workspaceId'), '/pipelines/0_pln_source_to_raw_fileshare')]",
-				"[concat(variables('workspaceId'), '/pipelines/1_scheduling_raw_to_standardised')]",
-				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Checkmark_Data_part1')]",
-				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Checkmark_Data_part2')]",
-				"[concat(variables('workspaceId'), '/pipelines/4_scheduling_harmonised_to_curated')]",
-				"[concat(variables('workspaceId'), '/pipelines/5_scheduling_curated_to_esb')]",
-				"[concat(variables('workspaceId'), '/notebooks/py_daily_files_into_date_folders')]",
-				"[concat(variables('workspaceId'), '/pipelines/0_Raw_Horizon_Main')]",
-				"[concat(variables('workspaceId'), '/pipelines/0_Timesheets_Data_Copy_RAW')]",
-				"[concat(variables('workspaceId'), '/notebooks/sap-hr-views')]",
-				"[concat(variables('workspaceId'), '/notebooks/sap-hr-master')]",
-				"[concat(variables('workspaceId'), '/notebooks/py_fail_activity_logging')]"
+				"[concat(variables('workspaceId'), '/pipelines/000_top_level_hr')]",
+				"[concat(variables('workspaceId'), '/pipelines/000_top_level_casework')]"
 			]
 		},
 		{
@@ -22401,6 +22449,15 @@
 								"referenceName": "py_1_raw_to_standardised_scheduling",
 								"type": "NotebookReference"
 							},
+							"parameters": {
+								"table_grouping": {
+									"value": {
+										"value": "@pipeline().parameters.table_grouping",
+										"type": "Expression"
+									},
+									"type": "string"
+								}
+							},
 							"snapshot": true,
 							"conf": {
 								"spark.dynamicAllocation.enabled": null,
@@ -22414,6 +22471,11 @@
 				"policy": {
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
+				},
+				"parameters": {
+					"table_grouping": {
+						"type": "string"
+					}
 				},
 				"annotations": [],
 				"lastPublishTime": "2023-01-19T12:53:26Z"
@@ -98661,7 +98723,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "bf747881-a280-49c3-b3a8-42b1d88c814b"
+						"spark.autotune.trackingId": "3fbe9368-c8ef-4315-8204-7e9eb89223f4"
 					}
 				},
 				"metadata": {
@@ -98950,12 +99012,8 @@
 						"execution_count": 4
 					},
 					{
-						"cell_type": "code",
+						"cell_type": "markdown",
 						"metadata": {
-							"jupyter": {
-								"source_hidden": false,
-								"outputs_hidden": false
-							},
 							"nteract": {
 								"transient": {
 									"deleting": false
@@ -98964,12 +99022,10 @@
 						},
 						"source": [
 							"# Fix the IDs\n",
-							"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
-							"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
+							"# - No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
+							"# - This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
 							"## Table odw_harmonised.payroll_area_dim is updated"
-						],
-						"outputs": [],
-						"execution_count": null
+						]
 					},
 					{
 						"cell_type": "code",
@@ -109388,7 +109444,7 @@
 						"spark.dynamicAllocation.enabled": "false",
 						"spark.dynamicAllocation.minExecutors": "2",
 						"spark.dynamicAllocation.maxExecutors": "2",
-						"spark.autotune.trackingId": "7e259d40-14f6-40dc-aac5-63452f44cf95"
+						"spark.autotune.trackingId": "a2c7a677-4077-4610-b81d-28b4161ca02b"
 					}
 				},
 				"metadata": {
@@ -109455,6 +109511,28 @@
 						],
 						"outputs": [],
 						"execution_count": 7
+					},
+					{
+						"cell_type": "code",
+						"metadata": {
+							"jupyter": {
+								"source_hidden": false,
+								"outputs_hidden": false
+							},
+							"nteract": {
+								"transient": {
+									"deleting": false
+								}
+							},
+							"tags": [
+								"parameters"
+							]
+						},
+						"source": [
+							"table_grouping = \"\""
+						],
+						"outputs": [],
+						"execution_count": null
 					},
 					{
 						"cell_type": "code",
@@ -109659,7 +109737,9 @@
 							"    definitions = json_config_dict['definitions']\r\n",
 							"    for defs in definitions:\r\n",
 							"        standardised_container = \"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/\" \r\n",
-							"        standardised_table_name = defs['Standardised_Table_Name']\r\n",
+							"        standardised_table_name = defs['Standardised_Table_Name']                 \r\n",
+							"        if defs['Standardised_Path'] != table_grouping:\r\n",
+							"            continue\r\n",
 							"        standardised_path = defs['Standardised_Path'] + \"/\"\r\n",
 							"        standardised_table_loc = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + defs['Standardised_Table_Definition']\r\n",
 							"        standardised_table_def_json = spark.read.text(standardised_table_loc, wholetext=True).first().value\r\n",
@@ -109813,7 +109893,7 @@
 							"                outstanding_df.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@\"+storage_acc_name+\".dfs.core.windows.net/config/raw_to_std_outstanding_files\")"
 						],
 						"outputs": [],
-						"execution_count": 9
+						"execution_count": 1
 					},
 					{
 						"cell_type": "code",
