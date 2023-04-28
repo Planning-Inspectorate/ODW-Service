@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6adf0dd6-3170-4575-8d89-73effe61c93f"
+				"spark.autotune.trackingId": "a64661e9-dbe5-4003-ab3f-bd6c6e9e63ba"
 			}
 		},
 		"metadata": {
@@ -62,42 +62,6 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
-				],
-				"execution_count": 29
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"%run /utils/py_logging_decorator"
-				],
-				"execution_count": 30
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
 					},
 					"tags": [
 						"parameters"
@@ -109,7 +73,7 @@
 					"month=datetime.now().month\n",
 					"year=datetime.now().year"
 				],
-				"execution_count": 66
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -142,31 +106,22 @@
 					"df = spark.sql(\"select count(*) as count from odw_curated_db.mipins_hr_measures where cast(ReportMonthEndDate as date) ='\"+month_end_date+\"'\");\n",
 					"if df.first().asDict()['count'] > 0:\n",
 					"    logger.info(\"Data already exists for the ReportMonthEndDate \" + month_end_date)\n",
-					"    return\n",
+					"    mssparkutils.notebook.exit(False)\n",
 					"\n",
 					"# check if the latest data is in the standardised tables\n",
-					"df = spark.sql(\"select count(*) as count from odw_standardised_db.hr_absences where cast(ReportMonthEndDate as date) ='\"+month_end_date+\"'\");\n",
-					""
+					"df = spark.sql(\"select count(*) as count from odw_standardised_db.hr_absences where date_add(expected_from, -1) ='\"+month_end_date+\"'\");\n",
+					"absences_count = df.first().asDict()['count']\n",
+					"\n",
+					"df = spark.sql(\"select count(*) as count from odw_standardised_db.hr_leave where date_add(expected_from, -1) ='\"+month_end_date+\"'\");\n",
+					"leave_count = df.first().asDict()['count']\n",
+					"\n",
+					"if leave_count == 0 or absences_count == 0:\n",
+					"    logger.info(\"Data doesn't exist in standardised tables for \" + month_end_date)\n",
+					"    mssparkutils.notebook.exit(False)\n",
+					"\n",
+					"mssparkutils.notebook.exit(True)"
 				],
-				"execution_count": 65
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df.first().asDict()['count']"
-				],
-				"execution_count": 58
+				"execution_count": 92
 			}
 		]
 	}
