@@ -1,5 +1,5 @@
 {
-	"name": "hr_measures",
+	"name": "pln_hr_measures",
 	"properties": {
 		"activities": [
 			{
@@ -36,7 +36,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@activity(‘Look_For_New_Data’).output.status.Output.result.exitValue",
+						"value": "@activity('Look_For_New_Data').output.status.Output.result.exitValue",
 						"type": "Expression"
 					},
 					"ifFalseActivities": [
@@ -63,9 +63,29 @@
 					],
 					"ifTrueActivities": [
 						{
-							"name": "INGEST NEW DATA",
-							"type": "SynapseNotebook",
+							"name": "Execute pln_sap_hr_views_and_master",
+							"type": "ExecutePipeline",
 							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_sap_hr_views_and_master",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						},
+						{
+							"name": "Ingest_Into_HR_Measures",
+							"type": "SynapseNotebook",
+							"dependsOn": [
+								{
+									"activity": "Execute pln_sap_hr_views_and_master",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -76,7 +96,52 @@
 							"userProperties": [],
 							"typeProperties": {
 								"notebook": {
-									"referenceName": "py_logging_decorator",
+									"referenceName": "mipins_hr_measures",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						},
+						{
+							"name": "Ingest_Into_HR_Measures Failed",
+							"description": "Ingest_Into_HR_Measures Failed",
+							"type": "Fail",
+							"dependsOn": [
+								{
+									"activity": "Ingest_Into_HR_Measures",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Ingest_Into_HR_Measures Failed",
+								"errorCode": "Ingest_Into_HR_Measures Failed"
+							}
+						},
+						{
+							"name": "Ingest_Into_HR_Measures Failure Logs",
+							"type": "SynapseNotebook",
+							"dependsOn": [
+								{
+									"activity": "Ingest_Into_HR_Measures Failed",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_fail_activity_logging",
 									"type": "NotebookReference"
 								},
 								"snapshot": true
