@@ -10,6 +10,18 @@ variable "api_connection_zendesk_enabled" {
   type        = bool
 }
 
+variable "connection_string_servicebus" {
+  default     = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/servicebus/32eeb0120347401eb61c2e2ba18188f8"
+  description = "The connection string for the servicebus api resource"
+  type        = string
+}
+
+variable "connection_string_zendesk" {
+  default     = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/zendesk/27b0df658eb24f1fbc0e9287b57c6074"
+  description = "The connection string for the zendesk api resource"
+  type        = string
+}
+
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string

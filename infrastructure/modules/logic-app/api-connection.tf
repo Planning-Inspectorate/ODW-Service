@@ -6,7 +6,7 @@ resource "azurerm_api_connection" "servicebus" {
   display_name        = "ESB"
 
   parameter_values = {
-    connectionString = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/servicebus/32eeb0120347401eb61c2e2ba18188f8"
+    connectionString = var.connection_string_servicebus
   }
 
   tags = local.tags
@@ -25,7 +25,7 @@ resource "azurerm_api_connection" "zendesk" {
   display_name        = "pinssupport"
 
   parameter_values = {
-    connectionString = "https://363f4178262a1d08.12.common.logic-uksouth.azure-apihub.net/apim/zendesk/27b0df658eb24f1fbc0e9287b57c6074"
+    connectionString = var.connection_string_zendesk
   }
 
   tags = local.tags
