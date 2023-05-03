@@ -17,13 +17,17 @@ resource "azurerm_resource_group" "logic_app_failover" {
 module "logic_app" {
   source = "./modules/logic-app"
 
-  environment         = var.environment
-  resource_group_name = azurerm_resource_group.logic_app.name
-  location            = module.azure_region.location_cli
-  service_name        = local.service_name
+  api_connection_servicebus_enabled = var.api_connection_servicebus_enabled
+  api_connection_zendesk_enabled    = var.api_connection_zendesk_enabled
+  environment                       = var.environment
+  resource_group_name               = azurerm_resource_group.logic_app.name
+  location                          = module.azure_region.location_cli
+  service_name                      = local.service_name
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
+  logic_app_service_plan_enabled   = var.logic_app_service_plan_enabled
+  logic_app_standard_enabled       = var.logic_app_standard_enabled
+  workflow_zendesk_created_enabled = var.workflow_zendesk_created_enabled
+  workflow_zendesk_updated_enabled = var.workflow_zendesk_updated_enabled
 
   tags = local.tags
 }
@@ -33,13 +37,17 @@ module "logic_app_failover" {
 
   source = "./modules/logic-app"
 
-  environment         = var.environment
-  resource_group_name = azurerm_resource_group.logic_app_failover[0].name
-  location            = module.azure_region.paired_location.location_cli
-  service_name        = local.service_name
+  api_connection_servicebus_enabled = var.api_connection_servicebus_enabled
+  api_connection_zendesk_enabled    = var.api_connection_zendesk_enabled
+  environment                       = var.environment
+  resource_group_name               = azurerm_resource_group.logic_app_failover[0].name
+  location                          = module.azure_region.paired_location.location_cli
+  service_name                      = local.service_name
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
+  logic_app_service_plan_enabled   = var.logic_app_service_plan_enabled
+  logic_app_standard_enabled       = var.logic_app_standard_enabled
+  workflow_zendesk_created_enabled = var.workflow_zendesk_created_enabled
+  workflow_zendesk_updated_enabled = var.workflow_zendesk_updated_enabled
 
   tags = local.tags
 }

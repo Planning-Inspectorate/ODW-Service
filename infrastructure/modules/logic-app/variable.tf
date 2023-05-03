@@ -1,3 +1,15 @@
+variable "api_connection_servicebus_enabled" {
+  default     = false
+  description = "Determines whether a Logic App Standard function should be deployed"
+  type        = bool
+}
+
+variable "api_connection_zendesk_enabled" {
+  default     = false
+  description = "Determines whether a Logic App Standard function should be deployed"
+  type        = bool
+}
+
 variable "environment" {
   description = "The name of the environment in which resources will be deployed"
   type        = string
@@ -40,4 +52,16 @@ variable "tags" {
   default     = {}
   description = "A collection of tags to assign to taggable resources"
   type        = map(string)
+}
+
+variable "workflow_zendesk_created_enabled" {
+  default     = false
+  description = "Determines whether Workflow zendesk-created will be deployed"
+  type        = bool
+}
+
+variable "workflow_zendesk_updated_enabled" {
+  default     = false
+  description = "Determines whether Workflow zendesk-updated will be deployed"
+  type        = bool
 }
