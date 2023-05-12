@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ee811416-b2cf-4dd4-870f-bd7f63b8f024"
+				"spark.autotune.trackingId": "3e304543-e5a7-4b16-89d4-875d87b78ecf"
 			}
 		},
 		"metadata": {
@@ -105,18 +105,6 @@
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(FIRST(T3.EmployeeID),'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) as RowID,\r\n",
 					"    first('Y') as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN FIRST(T3.EmployeeID) = first(T7.EmployeeID) AND  md5(concat(IFNULL(FIRST(T3.EmployeeID),'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) <> first(T7.RowID)    -- same employee, changed data\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN first(T7.EmployeeID) IS NULL -- new employee\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN FIRST(T3.EmployeeID) IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData, \r\n",
 					"    first(T7.IsActive) as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_specialisms T1\r\n",
@@ -124,8 +112,6 @@
 					"LEFT JOIN odw_harmonised_db.hr_employee_fact T3 ON T1.Staff_Number = T3.EmployeeNumber and T3.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.hr_specialism_dim T7 ON T1.Staff_Number = T7.EmployeeID AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (\r\n",
-					"        \r\n",
 					"        -- flags new data        \r\n",
 					"        ( CASE\r\n",
 					"            WHEN T3.EmployeeID = T7.EmployeeID AND  md5(concat(IFNULL(T3.EmployeeID,'.'), IFNULL(T1.Qualification_Name,'.'), IFNULL(T1.Proficien,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
@@ -133,15 +119,7 @@
 					"            WHEN T7.EmployeeID IS NULL -- new employee\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
-					"        END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        ( CASE\r\n",
-					"            WHEN T3.EmployeeID IS NULL\r\n",
-					"            THEN 'Y'\r\n",
-					"            ELSE 'N'\r\n",
-					"        END = 'Y' )\r\n",
-					"    )\r\n",
+					"        END  = 'Y' )\r\n",
 					"    AND\r\n",
 					"        T1.Staff_Number IS NOT NULL\r\n",
 					"\r\n",
@@ -453,7 +431,7 @@
 					"%%sql\r\n",
 					"-- Insert new employee_hr_hierarchy_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_specialism_dim\r\n",
+					"INSERT INTO odw_harmonised_db.hr_specialism_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY SpecialismID NULLS LAST) AS SpecialismID,\r\n",
@@ -465,7 +443,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.hr_specialism_dim;"
+					"FROM specialism_dim_changed_rows;"
 				],
 				"execution_count": 6
 			}
