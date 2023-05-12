@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a93e9573-a4cf-458a-97ed-a32bc395f169"
+				"spark.autotune.trackingId": "db5c5003-0a2b-46f5-aa0e-7a60b3a61668"
 			}
 		},
 		"metadata": {
@@ -57,7 +57,9 @@
 					"from collections.abc import Mapping\r\n",
 					"from itertools import chain\r\n",
 					"from operator import add\r\n",
-					"\r\n",
+					"#ignore FutureWarning messages \r\n",
+					"import warnings\r\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					"\r\n",
 					"_FLAG_FIRST = object()\r\n",
 					"\r\n",
@@ -74,7 +76,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 13
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +102,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 14
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +128,7 @@
 					"#flat dict statment for zendesk_dict flattening \r\n",
 					"FlatDict = dict( flattenDict(zendesk_dict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )"
 				],
-				"execution_count": 15
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -144,7 +146,7 @@
 				"source": [
 					"# pp(dict( flattenDict(zendesk_dict, join=lambda a,b:a+'_'+b, lift=lambda x:x) ))"
 				],
-				"execution_count": 16
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -190,7 +192,7 @@
 					"FlatAssigneeDict = dict( flattenDict(AssigneeDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -239,13 +241,14 @@
 					"except TypeError:\r\n",
 					"    print('no assignee dict')\r\n",
 					"\r\n",
-					"\r\n",
 					"try:\r\n",
 					"    dfOrganizationDict = pd.DataFrame.from_records(OrganizationDict)\r\n",
 					"except TypeError:\r\n",
 					"    print('no organization column data in file')\r\n",
 					"\r\n",
 					"dfFlatAssigneeDict = pd.DataFrame.from_records(FlatAssigneeDict)\r\n",
+					"\r\n",
+					"# Delete the columns which are arrays from the dcit which will be flaten so we can create data farmes and tables out of them \r\n",
 					"\r\n",
 					"if 'comments' in FlatDict:\r\n",
 					"    del FlatDict['comments']\r\n",
@@ -287,7 +290,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 93
 			},
 			{
 				"cell_type": "code",
@@ -308,7 +311,7 @@
 					"# print(dfFlatDict)\r\n",
 					"# keysList = list(dfFlatDict.keys())"
 				],
-				"execution_count": 25
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
@@ -326,9 +329,10 @@
 				"source": [
 					"#create table for fist output and insert data into it\r\n",
 					"spark.sql(f\"drop table if exists odw_standardised_db.output_0;\")\r\n",
-					"spark.createDataFrame(dfFlatDict).write.saveAsTable(\"odw_standardised_db.output_0\")"
+					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_output_0;\")\r\n",
+					"spark.createDataFrame(dfFlatDict).write.saveAsTable(\"odw_standardised_db.zendesk_output_0\")"
 				],
-				"execution_count": 20
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -344,7 +348,7 @@
 					}
 				},
 				"source": [
-					"#create table for the arrays which were in the table\r\n",
+					"#create tags table for the tags array\r\n",
 					"TagsDict = {}\r\n",
 					"TagsDict['id'] = FlatDict['id']\r\n",
 					"TagsDict['value'] = TagsList\r\n",
@@ -352,10 +356,33 @@
 					"dfTagsDict= pd.DataFrame({ key:pd.Series(value) for key, value in TagsDict.items() })\r\n",
 					"#fill in the NaN Values with the same ID \r\n",
 					"dfTagsDict[\"id\"].fillna(TagsDict['id'], inplace = True)\r\n",
+					"#convert the id column from float to int\r\n",
+					"dfTagsDict = dfTagsDict.astype({\"id\": int})\r\n",
+					"#create table zendesk_tags\r\n",
+					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_tags;\")\r\n",
+					"spark.createDataFrame(dfTagsDict).write.saveAsTable(\"odw_standardised_db.zendesk_tags\")\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 44
+				"execution_count": 96
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
