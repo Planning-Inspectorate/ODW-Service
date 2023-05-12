@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ee309643-b2ce-4fea-a6f4-3b9786abef6f"
+				"spark.autotune.trackingId": "8820eaab-193f-4d06-9b1a-f92494d75e77"
 			}
 		},
 		"metadata": {
@@ -107,18 +107,6 @@
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.Ref_No,'.'), IFNULL(T3.DisabilityID,'.'), IFNULL(T4.DiversityID,'.'), IFNULL(T5.ReligionID,'.'), IFNULL(T6.SXOID,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.Ref_No = T7.SourceID AND md5(concat(IFNULL(T1.Ref_No,'.'), IFNULL(T3.DisabilityID,'.'), IFNULL(T4.DiversityID,'.'), IFNULL(T5.ReligionID,'.'), IFNULL(T6.SXOID,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T7.SourceID IS NULL -- new employee\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.Ref_No IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData, \r\n",
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_protected_characteristics T1\r\n",
@@ -131,53 +119,17 @@
 					"LEFT JOIN odw_harmonised_db.hr_sxo_dim T6 ON T1.SxO = T6.Description AND T6.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.hr_secure_info_fact T7 ON T1.Ref_No = T7.SourceID AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (\r\n",
-					"        \r\n",
-					"        -- flags new data        \r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.Ref_No = T7.SourceID AND md5(concat(IFNULL(T1.Ref_No,'.'), IFNULL(T3.DisabilityID,'.'), IFNULL(T4.DiversityID,'.'), IFNULL(T5.ReligionID,'.'), IFNULL(T6.SXOID,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
-					"                THEN 'Y'\r\n",
-					"                WHEN T7.SourceID IS NULL -- new employee\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.Ref_No IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
-					"    )\r\n",
+					"    -- flags new data        \r\n",
+					"    CASE\r\n",
+					"        WHEN T1.Ref_No = T7.SourceID AND md5(concat(IFNULL(T1.Ref_No,'.'), IFNULL(T3.DisabilityID,'.'), IFNULL(T4.DiversityID,'.'), IFNULL(T5.ReligionID,'.'), IFNULL(T6.SXOID,'.'))) <> T7.RowID    -- same employee, changed data\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN T7.SourceID IS NULL -- new employee\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END  = 'Y' \r\n",
 					";"
 				],
 				"execution_count": 9
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT *\n",
-					"FROM odw_standardised_db.vw_protected_characteristics\n",
-					"WHERE ref_no = '2303-1101'"
-				],
-				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -353,7 +305,7 @@
 					"\r\n",
 					"-- Insert new SecureInfoID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_secure_info_fact \r\n",
+					"INSERT INTO odw_harmonised_db.hr_secure_info_fact \r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY SecureInfoID NULLS LAST) AS SecureInfoID, \r\n",
@@ -367,7 +319,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.hr_secure_info_fact;"
+					"FROM secureinfo_fact_changed_rows;"
 				],
 				"execution_count": 13
 			}
