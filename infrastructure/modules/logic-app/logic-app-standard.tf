@@ -15,4 +15,8 @@ resource "azurerm_logic_app_standard" "logic_app" {
   }
 
   tags = local.tags
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
