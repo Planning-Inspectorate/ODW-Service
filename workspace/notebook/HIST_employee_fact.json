@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bac68dd8-368f-4d26-b9e0-b3fb34ad7e99"
+				"spark.autotune.trackingId": "50db2e18-0cb7-4a82-81a4-b1c2d01a2853"
 			}
 		},
 		"metadata": {
@@ -134,20 +134,62 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"-- CREATE OR REPLACE TEMPORARY VIEW employee_fact_from_leavers\n",
+					"CREATE OR REPLACE TEMPORARY VIEW employee_fact_from_leavers\n",
 					"\n",
-					"--     AS\n",
+					"    AS\n",
 					"\n",
-					"-- SELECT DISTINCT\n",
-					"--     Pers_No,\n",
-					"--     Employee_No\n",
+					"SELECT DISTINCT\n",
+					"    Pers_No,\n",
+					"    Employee_No,\n",
+					"    expected_from\n",
 					"\n",
-					"-- FROM odw_standardised_db.vw_leavers\n",
-					"-- WHERE Pers_No NOT IN (SELECT EmployeeID FROM odw_harmonised_db.hr_employee_fact)\n",
+					"FROM odw_standardised_db.vw_leavers\n",
+					"WHERE Pers_No NOT IN (SELECT EmployeeID FROM odw_harmonised_db.hr_employee_fact)\n",
 					"\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"-- INSERT INTO odw_harmonised_db.hr_employee_fact\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    T10.Pers_No AS EmployeeID,\n",
+					"    'N/A' AS DOB,\n",
+					"    'N/A' AS NINumber,\n",
+					"    'N/A' AS PersNumber,\n",
+					"    T2.Staff_Number as EmployeeNumber,\n",
+					"    T10.Employee_No as LegacyEmployeeNumber,\n",
+					"    NULL AS NewSAPEmployeeNumber,\n",
+					"    T4.SourceSystemID,\n",
+					"    to_timestamp(T10.expected_from) AS IngestionDate,\n",
+					"    NULL AS ValidTo,\n",
+					"    md5(concat(IFNULL(T10.Pers_No,'.'), IFNULL(T2.Staff_Number, '.'), IFNULL(T1.Employee_No,'.'))) AS RowID, \n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM employee_fact_from_leavers T10\n",
+					"LEFT JOIN odw_standardised_db.vw_addresses T2 ON T10.Pers_No = T2.Staff_Number\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T4 ON \"SAP HR\" = T4.Description and T4.IsActive = 'Y'"
+				],
+				"execution_count": null
 			}
 		]
 	}
