@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "94073f58-f72b-4f68-8b05-cb8eaae14f3a"
+				"spark.autotune.trackingId": "00dd74f3-85e7-4704-8c2f-f9ecc2a09257"
 			}
 		},
 		"metadata": {
@@ -109,7 +109,7 @@
 					"FROM odw_standardised_db.vw_leavers_temp\n",
 					"WHERE Pers_No NOT IN (SELECT EmployeeID FROM odw_harmonised_db.hr_record_fact) AND RN = 1;"
 				],
-				"execution_count": 2
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -135,7 +135,7 @@
 					"SELECT * FROM record_fact_from_leavers;\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -169,10 +169,13 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"INSERT INTO odw_harmonised_db.hr_record_fact\n",
+					"-- INSERT INTO odw_harmonised_db.hr_record_fact\n",
+					"CREATE OR REPLACE TEMPORARY VIEW record_fact_from_leavers_final\n",
+					"\n",
+					"    AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    Row_Number() over (order by T1.Pers_No AS EmployeeID,) as HRRecordID,\n",
+					"    -- Row_Number() over (order by T1.Pers_No AS EmployeeID,) as HRRecordID,\n",
 					"    T1.Pers_No AS EmployeeID,\n",
 					"    T1.CoCd,\n",
 					"    T1.Company_Code,\n",
@@ -187,14 +190,26 @@
 					"    TempMPID.PositionID AS ManagerPositionID,\n",
 					"    T11.LocationID AS LocationID,\n",
 					"    T12.WorkScheduleID AS WorkScheduleID,\n",
-					"    T13.EmployeeGroupID,\n",
-					"    T13b.PayrollAreaID,\n",
+					"    NULL AS EmployeeGroupID,\n",
+					"    '99' AS PayrollAreaID,\n",
 					"    T14.SourceSystemID,\n",
 					"    to_timestamp(T1.expected_from) AS IngestionDate,\n",
 					"    NULL as ValidTo,\n",
-					"    md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\n",
-					"                IFNULL(T7.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),IFNULL(TempMPID.PositionID, '.'),\n",
-					"                IFNULL(NULL, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'),IFNULL(T13.EmployeeGroupID, '.'),IFNULL(T13b.PayrollAreaID, '.'))) as RowID, \n",
+					"    md5(\n",
+					"        concat(\n",
+					"            IFNULL(T1.Pers_No, '.'),\n",
+					"            IFNULL(T3.PersonnelAreaID, '.'),\n",
+					"            IFNULL(T4.PersonnelSubAreaID, '.'), \n",
+					"            IFNULL(T5.OrganisationUnitID, '.'),\n",
+					"            IFNULL(T6.ContractID, '.'),\n",
+					"            IFNULL(T7.PayBandID, '.'),\n",
+					"            IFNULL(T9.PositionID, '.'),\n",
+					"            IFNULL(T10.ManagerEmployeeID, '.'),\n",
+					"            IFNULL(TempMPID.PositionID, '.'),\n",
+					"            IFNULL(T11.LocationID, '.'),\n",
+					"            IFNULL(T12.WorkScheduleID, '.')\n",
+					"            )\n",
+					"        ) as RowID, \n",
 					"    'Y' as IsActive\n",
 					"\n",
 					"FROM record_fact_from_leavers T1 \n",
@@ -210,24 +225,34 @@
 					"LEFT JOIN odw_harmonised_db.hr_position_dim TempMPID ON T1.Manager_Position = TempMPID.PositionCode AND TempMPID.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_employee_hr_hierarchy_dim T10 ON T2.EmployeeID = T10.EmployeeID AND T10.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_pins_location_dim T11 ON T1.Loc = T11.LocationCode AND T11.IsActive = 'Y'\n",
-					"LEFT JOIN (\n",
-					"            SELECT T1.EmployeeID, T1.WorkScheduleID\n",
-					"            FROM odw_harmonised_db.hr_absence_dim T1\n",
-					"            INNER JOIN ( SELECT EmployeeID, Max(AbsenceEndDate) as Max_AbsenceEndDate\n",
-					"                         FROM odw_harmonised_db.hr_absence_dim\n",
-					"                         Where IsActive = 'Y'\n",
-					"                         GROUP BY EmployeeID ) T3        ON  T1.EmployeeID = T3.EmployeeID AND\n",
-					"                                                             T1.AbsenceEndDate = T3.Max_AbsenceEndDate\n",
-					"            where IsActive = 'Y'\n",
-					"            GROUP BY T1.EmployeeID, T1.WorkScheduleID\n",
-					"            \n",
-					"    ) T12 ON T2.EmployeeID = T12.EmployeeID  -- NULLS occur as no data for some employees in the absence file\n",
-					"\n",
-					"LEFT JOIN odw_harmonised_db.hr_EmployeeGroup_dim T13 ON T1.EEGrp = T13.EEGrp and T13.IsActive = 'Y'\n",
-					"LEFT JOIN odw_harmonised_db.hr_payroll_area_dim T13b ON T1.PArea = T13b.PayrollAreaCode and T13b.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T14 ON \"SAP HR\" = T14.Description AND T14.IsActive = 'Y'\n",
 					"\n",
 					"WHERE T2.EmployeeID IS NOT NULL;"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"SELECT count(*) FROM record_fact_from_leavers_final;\n",
+					"\n",
+					"SELECT * FROM record_fact_from_leavers_final;"
 				],
 				"execution_count": null
 			}
