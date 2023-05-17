@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "97248fef-b243-44d7-b82f-59620a54d702"
+				"spark.autotune.trackingId": "94073f58-f72b-4f68-8b05-cb8eaae14f3a"
 			}
 		},
 		"metadata": {
@@ -79,21 +79,21 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"\n",
-					"-- CREATE OR REPLACE TEMPORARY VIEW record_fact_from_leavers\n",
+					"CREATE OR REPLACE TEMPORARY VIEW record_fact_from_leavers\n",
 					"\n",
-					"--     AS\n",
+					"    AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
 					"    Pers_No, --- YES\n",
 					"    CoCd, --- YES\n",
 					"    Company_Code, --- YES\n",
 					"    Loc, --- YES\n",
-					"    Location,\n",
 					"    PS_group, --- YES\n",
 					"    Pay_Band_Description,\n",
 					"    Org_unit, --- YES\n",
@@ -102,35 +102,40 @@
 					"    Personnel_Area,\n",
 					"    Personnel_Subarea, --- YES\n",
 					"    WorkC, --- YES\n",
-					"    Work_Contract,\n",
-					"    to_timestamp(Org_Start_Date) AS Org_Start_Date,\n",
-					"    Leaving,\n",
-					"    Act,\n",
-					"    Action_Type,\n",
-					"    ActR,\n",
-					"    Reason_for_Action,\n",
-					"    S,\n",
-					"    Employment_Status,\n",
-					"    Employee_No,\n",
 					"    Position, --- YES\n",
-					"    Position_1,\n",
-					"    Annual_salary,\n",
-					"    Curr,\n",
-					"    User_ID,\n",
-					"    Email_Address,\n",
-					"    Pers_No_1,\n",
-					"    Name_of_Manager_OM,\n",
 					"    Manager_Position, --- YES\n",
-					"    MAnager_Position_Text,\n",
-					"    LM_E_mail,\n",
-					"    ingested_datetime,\n",
-					"    expected_from,\n",
-					"    expected_to\n",
+					"    expected_from\n",
 					"\n",
 					"FROM odw_standardised_db.vw_leavers_temp\n",
 					"WHERE Pers_No NOT IN (SELECT EmployeeID FROM odw_harmonised_db.hr_record_fact) AND RN = 1;"
 				],
-				"execution_count": null
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"SELECT count(*) FROM record_fact_from_leavers;\n",
+					"SELECT * FROM record_fact_from_leavers;\n",
+					""
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -164,34 +169,11 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_record_fact (\n",
-					"    HRRecordID, -- surrogate key\n",
-					"    EmployeeID,\n",
-					"    CoCd,\n",
-					"    CompanyCode,\n",
-					"    PersonnelAreaID,\n",
-					"    PersonnelSubAreaID,\n",
-					"    OrganisationalUnitID,\n",
-					"    ContractID,\n",
-					"    PayBandID,\n",
-					"    CostCenterID,\n",
-					"    PositionID,\n",
-					"    ManagerEmployeeID,\n",
-					"    ManagerPositionID,\n",
-					"    LocationID,\n",
-					"    WorkScheduleID,\n",
-					"    EmployeeGroupID,\n",
-					"    PayrollAreaID,\n",
-					"    SourceSystemID,\n",
-					"    IngestionDate,\n",
-					"    ValidTo,\n",
-					"    RowID,\n",
-					"    IsActive\n",
-					"    )\n",
+					"INSERT INTO odw_harmonised_db.hr_record_fact\n",
 					"\n",
-					"SELECT\n",
-					"    Row_Number() over (order by T2.EmployeeID) as HRRecordID,\n",
-					"    T2.EmployeeID AS EmployeeID,\n",
+					"SELECT DISTINCT\n",
+					"    Row_Number() over (order by T1.Pers_No AS EmployeeID,) as HRRecordID,\n",
+					"    T1.Pers_No AS EmployeeID,\n",
 					"    T1.CoCd,\n",
 					"    T1.Company_Code,\n",
 					"    T3.PersonnelAreaID AS PersonnelAreaID,\n",
@@ -199,7 +181,7 @@
 					"    T5.OrganisationUnitID AS OrganisationalUnitID,\n",
 					"    T6.ContractID AS ContractID,\n",
 					"    T7.PayBandID AS PayBandID, -- NULLS occur due to contractors\n",
-					"    T8.CostCenterID AS CostCenterID,\n",
+					"    NULL AS CostCenterID,\n",
 					"    T9.PositionID AS PositionID,\n",
 					"    T10.ManagerEmployeeID AS ManagerEmployeeID,\n",
 					"    TempMPID.PositionID AS ManagerPositionID,\n",
@@ -215,18 +197,13 @@
 					"                IFNULL(NULL, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'),IFNULL(T13.EmployeeGroupID, '.'),IFNULL(T13b.PayrollAreaID, '.'))) as RowID, \n",
 					"    'Y' as IsActive\n",
 					"\n",
-					"FROM odw_standardised_db.vw_saphr_historic T1 \n",
+					"FROM record_fact_from_leavers T1 \n",
 					"LEFT JOIN odw_harmonised_db.hr_employee_fact T2 ON T1.Pers_No = T2.EmployeeNumber AND T2.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_personnel_area_dim T3 ON T1.PA = T3.PersonnelAreaCode AND T3.IsActive = 'Y'\n",
-					"LEFT JOIN odw_harmonised_db.hr_personnel_sub_area_dim T4 ON T1.PSubArea = T4.PersonnelSubAreaCode AND T1.Personnel_SubArea = T4.Description AND T4.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_personnel_sub_area_dim T4 ON T1.Personnel_SubArea = T4.Description AND T4.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_organisation_unit_dim T5 ON T1.Org_unit = T5.OrganisationUnit and\n",
 					"                                                        T1.Organizational_Unit = T5.Description AND T5.IsActive = 'Y'\n",
-					"LEFT JOIN odw_harmonised_db.hr_contract_dim T6 ON T1.WorkC = T6.ContractCode AND \n",
-					"                                                CASE \n",
-					"                                                        WHEN T1.CT IS NULL\n",
-					"                                                        THEN 'N/A'\n",
-					"                                                        ELSE T1.CT\n",
-					"                                                END = T6.ContractTypeCode AND T6.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_contract_dim T6 ON T1.WorkC = T6.ContractCode AND T6.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_payband_dim T7 ON T1.PS_group = T7.PSGroupCode AND T7.IsActive = 'Y' -- NULLS occur due to contractors\n",
 					"LEFT JOIN odw_harmonised_db.hr_costcenter_dim T8 ON T1.Cost_Ctr = T8.CostCenterCode AND T8.IsActive = 'Y'\n",
 					"LEFT JOIN odw_harmonised_db.hr_position_dim T9 ON T1.Position= T9.PositionCode AND T9.IsActive = 'Y'\n",
