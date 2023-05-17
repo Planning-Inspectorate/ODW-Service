@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "48ca745b-f9df-4c09-a5e7-292cbdc4dc00"
+				"spark.autotune.trackingId": "4bc3464f-8005-4a4c-ba5c-974ef90812c3"
 			}
 		},
 		"metadata": {
@@ -90,8 +90,6 @@
 					"\n",
 					"SELECT DISTINCT\n",
 					"    Pers_No,\n",
-					"    Last_name,\n",
-					"    First_name,\n",
 					"    CoCd,\n",
 					"    Company_Code,\n",
 					"    Loc,\n",
@@ -146,6 +144,115 @@
 				"source": [
 					"## Load new lines for leavers not in hr_record_fact"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_record_fact (\n",
+					"    HRRecordID, -- surrogate key\n",
+					"    EmployeeID,\n",
+					"    CoCd,\n",
+					"    CompanyCode,\n",
+					"    PersonnelAreaID,\n",
+					"    PersonnelSubAreaID,\n",
+					"    OrganisationalUnitID,\n",
+					"    ContractID,\n",
+					"    PayBandID,\n",
+					"    CostCenterID,\n",
+					"    PositionID,\n",
+					"    ManagerEmployeeID,\n",
+					"    ManagerPositionID,\n",
+					"    LocationID,\n",
+					"    WorkScheduleID,\n",
+					"    EmployeeGroupID,\n",
+					"    PayrollAreaID,\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive\n",
+					"    )\n",
+					"\n",
+					"SELECT\n",
+					"    Row_Number() over (order by T2.EmployeeID) as HRRecordID,\n",
+					"    T2.EmployeeID AS EmployeeID,\n",
+					"    T1.CoCd,\n",
+					"    T1.Company_Code,\n",
+					"    T3.PersonnelAreaID AS PersonnelAreaID,\n",
+					"    T4.PersonnelSubAreaID AS PersonnelSubAreaID,\n",
+					"    T5.OrganisationUnitID AS OrganisationalUnitID,\n",
+					"    T6.ContractID AS ContractID,\n",
+					"    T7.PayBandID AS PayBandID, -- NULLS occur due to contractors\n",
+					"    T8.CostCenterID AS CostCenterID,\n",
+					"    T9.PositionID AS PositionID,\n",
+					"    T10.ManagerEmployeeID AS ManagerEmployeeID,\n",
+					"    TempMPID.PositionID AS ManagerPositionID,\n",
+					"    T11.LocationID AS LocationID,\n",
+					"    T12.WorkScheduleID AS WorkScheduleID,\n",
+					"    T13.EmployeeGroupID,\n",
+					"    T13b.PayrollAreaID,\n",
+					"    T14.SourceSystemID,\n",
+					"    to_timestamp(T1.expected_from) AS IngestionDate,\n",
+					"    NULL as ValidTo,\n",
+					"    md5(concat(T2.EmployeeID, IFNULL(T3.PersonnelAreaID, '.'), IFNULL(T4.PersonnelSubAreaID, '.'), IFNULL(T5.OrganisationUnitID, '.'),IFNULL(T6.ContractID, '.'),\n",
+					"                IFNULL(T7.PayBandID, '.'),IFNULL(T8.CostCenterID, '.'),IFNULL(T9.PositionID, '.'),IFNULL(T10.ManagerEmployeeID, '.'),IFNULL(TempMPID.PositionID, '.'),\n",
+					"                IFNULL(NULL, '.'), IFNULL(T11.LocationID, '.'),IFNULL(T12.WorkScheduleID, '.'),IFNULL(T13.EmployeeGroupID, '.'),IFNULL(T13b.PayrollAreaID, '.'))) as RowID, \n",
+					"    'Y' as IsActive\n",
+					"\n",
+					"FROM odw_standardised_db.vw_saphr_historic T1 \n",
+					"LEFT JOIN odw_harmonised_db.hr_employee_fact T2 ON T1.Pers_No = T2.EmployeeNumber AND T2.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_personnel_area_dim T3 ON T1.PA = T3.PersonnelAreaCode AND T3.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_personnel_sub_area_dim T4 ON T1.PSubArea = T4.PersonnelSubAreaCode AND T1.Personnel_SubArea = T4.Description AND T4.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_organisation_unit_dim T5 ON T1.Org_unit = T5.OrganisationUnit and\n",
+					"                                                        T1.Organizational_Unit = T5.Description AND T5.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_contract_dim T6 ON T1.WorkC = T6.ContractCode AND \n",
+					"                                                CASE \n",
+					"                                                        WHEN T1.CT IS NULL\n",
+					"                                                        THEN 'N/A'\n",
+					"                                                        ELSE T1.CT\n",
+					"                                                END = T6.ContractTypeCode AND T6.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_payband_dim T7 ON T1.PS_group = T7.PSGroupCode AND T7.IsActive = 'Y' -- NULLS occur due to contractors\n",
+					"LEFT JOIN odw_harmonised_db.hr_costcenter_dim T8 ON T1.Cost_Ctr = T8.CostCenterCode AND T8.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_position_dim T9 ON T1.Position= T9.PositionCode AND T9.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_position_dim TempMPID ON T1.Manager_Position = TempMPID.PositionCode AND TempMPID.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_employee_hr_hierarchy_dim T10 ON T2.EmployeeID = T10.EmployeeID AND T10.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_pins_location_dim T11 ON T1.Loc = T11.LocationCode AND T11.IsActive = 'Y'\n",
+					"LEFT JOIN (\n",
+					"            SELECT T1.EmployeeID, T1.WorkScheduleID\n",
+					"            FROM odw_harmonised_db.hr_absence_dim T1\n",
+					"            INNER JOIN ( SELECT EmployeeID, Max(AbsenceEndDate) as Max_AbsenceEndDate\n",
+					"                         FROM odw_harmonised_db.hr_absence_dim\n",
+					"                         Where IsActive = 'Y'\n",
+					"                         GROUP BY EmployeeID ) T3        ON  T1.EmployeeID = T3.EmployeeID AND\n",
+					"                                                             T1.AbsenceEndDate = T3.Max_AbsenceEndDate\n",
+					"            where IsActive = 'Y'\n",
+					"            GROUP BY T1.EmployeeID, T1.WorkScheduleID\n",
+					"            \n",
+					"    ) T12 ON T2.EmployeeID = T12.EmployeeID  -- NULLS occur as no data for some employees in the absence file\n",
+					"\n",
+					"LEFT JOIN odw_harmonised_db.hr_EmployeeGroup_dim T13 ON T1.EEGrp = T13.EEGrp and T13.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_payroll_area_dim T13b ON T1.PArea = T13b.PayrollAreaCode and T13b.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T14 ON \"SAP HR\" = T14.Description AND T14.IsActive = 'Y'\n",
+					"\n",
+					"WHERE T2.EmployeeID IS NOT NULL;"
+				],
+				"execution_count": null
 			}
 		]
 	}
