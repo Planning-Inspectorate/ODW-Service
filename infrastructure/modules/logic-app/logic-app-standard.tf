@@ -4,7 +4,7 @@ resource "azurerm_logic_app_standard" "logic_app" {
   name                       = "pins-logic-app-${local.resource_suffix}"
   location                   = var.location
   resource_group_name        = var.resource_group_name
-  app_service_plan_id        = azurerm_app_service_plan.logic_app[count.index].id
+  app_service_plan_id        = azurerm_service_plan.logic_app[count.index].id
   storage_account_name       = azurerm_storage_account.logic_app[count.index].name
   storage_account_access_key = azurerm_storage_account.logic_app[count.index].primary_access_key
 
