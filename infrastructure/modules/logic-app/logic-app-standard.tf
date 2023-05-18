@@ -14,6 +14,10 @@ resource "azurerm_logic_app_standard" "logic_app" {
     "WEBSITE_NODE_DEFAULT_VERSION" = "~16"
   }
 
+  site_config {
+    use_32_bit_worker_process = true
+  }
+
   tags = local.tags
 
   identity {
