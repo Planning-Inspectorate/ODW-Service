@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "126e7a62-edfc-4fd2-ab0b-51e3f80b56a9"
+				"spark.autotune.trackingId": "f0b9e39b-c1ba-46a6-be18-ec25b6ede5e3"
 			}
 		},
 		"metadata": {
@@ -209,6 +209,43 @@
 					"fields_table()"
 				],
 				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pyspark.sql.functions as F \r\n",
+					"def custom_fields_table():\r\n",
+					"    custom_fields = shows.select(\r\n",
+					"    \"id\", F.explode(\"custom_fields\").alias(\"custom_fields\")\r\n",
+					"    )\r\n",
+					"\r\n",
+					"    custom_fields_id_value = shows.select(F.col(\"id\").alias(\"ticket_id\"),\r\n",
+					"        F.map_from_arrays(\r\n",
+					"        F.col(\"custom_fields.id\"), F.col(\"custom_fields.value\")\r\n",
+					"        ).alias(\"ID_VALUE\")\r\n",
+					"        )\r\n",
+					"    # custom_fields_id_value.show()\r\n",
+					"    custom_fields_id_value = custom_fields_id_value.select(\"ticket_id\",\r\n",
+					"        F.posexplode(\"ID_VALUE\").alias(\"position\", \"id\", \"value\")\r\n",
+					"        )\r\n",
+					"    # custom_fields_id_value.show()\r\n",
+					"    custom_fields_id_value.drop(\"position\")\r\n",
+					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_custom_fields_id_value;\")\r\n",
+					"    custom_fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_custom_fields_id_value\")\r\n",
+					"custom_fields_table()"
+				],
+				"execution_count": null
 			}
 		]
 	}
