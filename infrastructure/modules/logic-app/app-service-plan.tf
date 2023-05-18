@@ -5,8 +5,7 @@ resource "azurerm_app_service_plan" "logic_app" {
   location            = var.location
   resource_group_name = var.resource_group_name
   kind                = "elastic"
-
-
+  
   sku {
     tier = "WorkflowStandard"
     size = "WS1"
