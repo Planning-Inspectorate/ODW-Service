@@ -5,10 +5,8 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
   resource_group_name = var.resource_group_name
   tags                = local.tags
 
-  workflow_parameters = jsondecode(
+  workflow_parameters = <<PARAMETERS
     {
-      "definition" : {
-        "$schema" : "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
         "actions" : {
           "Send_message" : {
             "inputs" : {
@@ -52,7 +50,8 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
         }
       },
       "kind" : "Stateful"
-  })
+    }
+PARAMETERS
 }
 
 # resource "azurerm_logic_app_workflow" "zendesk_updated" {
