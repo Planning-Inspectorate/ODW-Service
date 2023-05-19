@@ -5,7 +5,7 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
   resource_group_name = var.resource_group_name
   tags                = local.tags
 
-  workflow_parameters = jsonencode(
+  workflow_parameters = jsondecode(
     {
       "definition" : {
         "$schema" : "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
