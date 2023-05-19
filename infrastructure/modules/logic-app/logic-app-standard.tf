@@ -15,7 +15,7 @@ resource "azurerm_logic_app_standard" "logic_app" {
   }
 
   site_config {
-    always_on = false
+    always_on                 = false
     use_32_bit_worker_process = true
   }
 
