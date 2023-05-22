@@ -7,8 +7,8 @@ resource "azurerm_resource_group_template_deployment" "service_bus" {
     "service_bus_connection_name" = {
       value = "servicebus-1"
     }
-    "service_bus_api_id" = {
-      value = var.service_bus_id
+    "service_bus_connection_string" = {
+      value = "https://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net:443/"
     }
     "location" = {
       value = var.location
