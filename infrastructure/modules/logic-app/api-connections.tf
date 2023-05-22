@@ -4,17 +4,17 @@ resource "azurerm_resource_group_template_deployment" "service_bus_3" {
 
   template_content = file("${path.module}/api-connections/servicebus-3.json")
   parameters_content = jsonencode({
-"service_bus_connection_name" = {
-value = "servicebus-3"
-}
-"service_bus_namespace_endpoint" = {
-value = "https://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net:443/"
-}
-"location" = {
-value = var.location
-}
-})
-  deployment_mode  = "Incremental"
+    "service_bus_connection_name" = {
+      value = "servicebus-3"
+    }
+    "service_bus_namespace_endpoint" = {
+      value = "https://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net:443/"
+    }
+    "location" = {
+      value = var.location
+    }
+  })
+  deployment_mode = "Incremental"
 }
 
 resource "azurerm_resource_group_template_deployment" "zendesk" {
