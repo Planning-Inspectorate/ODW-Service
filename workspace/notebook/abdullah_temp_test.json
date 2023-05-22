@@ -1,0 +1,325 @@
+{
+	"name": "abdullah_temp_test",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "76409874-8032-467e-86d2-786747d27d7d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"jsonschema = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
+					"target_container = \"abfss://odw-standardised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"\r\n",
+					"table_name = \"abdullah_test\"\r\n",
+					"target_folder = \"config/\" + table_name"
+				],
+				"execution_count": 49
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"create_table_from_schema(jsonschema, \"odw_config_db\", table_name, target_container, target_folder)"
+				],
+				"execution_count": 50
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- select * from odw_config_db.abdullah_test\r\n",
+					"insert into odw_config_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello World')"
+				],
+				"execution_count": 51
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# test new column\r\n",
+					"from pyspark.sql.types import StructType\r\n",
+					"import json\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"# df_original = spark.read\r\n",
+					"jsonschema_new_column = jsonschema = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"New_Column\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
+					"schema = StructType.fromJson(json.loads(jsonschema_new_column))\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"# df_original = spark.table(\"odw_config_db.abdullah_test\")\r\n",
+					"df = spark.createDataFrame([], schema)\r\n",
+					"# df.unionByName(df_original, allowMissingColumns=True)\r\n",
+					"df.write.option(\"mergeSchema\", \"true\").mode(\"append\").format('delta').save('odw_config_db.abdullah_test')"
+				],
+				"execution_count": 56
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_config_db.abdullah_test"
+				],
+				"execution_count": 60
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- select * from odw_config_db.abdullah_test\r\n",
+					"insert into odw_config_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello World', \"My name is...\")"
+				],
+				"execution_count": 59
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# test change column type "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# test drop column"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run \"utils/py_logging_decorator\""
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\r\n",
+					"def delete_table(db_name, table_name):\r\n",
+					"    import logging\r\n",
+					"    logger = logging.getLogger(__name__)\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    if spark._jsparkSession.catalog().tableExists(db_name, table_name):\r\n",
+					"        table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\r\n",
+					"        if len(table_details) > 1:\r\n",
+					"            raise RuntimeError(\"too many locations associated with the table!\")\r\n",
+					"        else:\r\n",
+					"            loc = table_details['location'][0]\r\n",
+					"            mssparkutils.fs.rm(loc, True)\r\n",
+					"            spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")\r\n",
+					"    else:\r\n",
+					"        logger.info(\"Table does not exist\")"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"db_name=\"odw_config_db\"\r\n",
+					"table_name=\"abdullah_test\""
+				],
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"delete_table(db_name,table_name)"
+				],
+				"execution_count": 61
+			}
+		]
+	}
+}
