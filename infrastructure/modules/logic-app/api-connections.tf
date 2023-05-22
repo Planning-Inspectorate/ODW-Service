@@ -14,7 +14,7 @@ resource "azurerm_resource_group_template_deployment" "service_bus_3" {
       value = var.location
     }
   })
-  deployment_mode = "Incremental"
+  deployment_mode = "Complete"
 }
 
 resource "azurerm_resource_group_template_deployment" "zendesk" {
