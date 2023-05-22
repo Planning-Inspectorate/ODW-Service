@@ -13,7 +13,6 @@ resource "azurerm_logic_app_action_custom" "action" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = <<BODY
-    {
       "Send_message": {
         "type": "ApiConnection",
         "inputs": {
@@ -33,7 +32,6 @@ resource "azurerm_logic_app_action_custom" "action" {
         },
         "runAfter": {}
       }
-    }
 BODY
 
 }
@@ -45,7 +43,6 @@ resource "azurerm_logic_app_trigger_custom" "trigger" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = <<BODY
-    {
       "When_an_item_is_created": {
         "type": "ApiConnection",
         "inputs": {
@@ -62,7 +59,6 @@ resource "azurerm_logic_app_trigger_custom" "trigger" {
           "interval": 1
         }
       }
-    }
 BODY
 
 }
