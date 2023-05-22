@@ -1,4 +1,4 @@
-resource "azurerm_resource_group_template_deployment" "service_bus_3" {
+resource "azurerm_resource_group_template_deployment" "service_bus" {
   name                = "servicebus-1"
   resource_group_name = var.resource_group_name
 
@@ -8,7 +8,7 @@ resource "azurerm_resource_group_template_deployment" "service_bus_3" {
       value = "servicebus-1"
     }
     "service_bus_api_id" = {
-      value = module.synapse.service_bus_namespace_id
+      value = var.service_bus_id
     }
     "location" = {
       value = var.location
