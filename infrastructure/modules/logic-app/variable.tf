@@ -33,7 +33,7 @@ variable "service_bus_id" {
   description = "The ID of the Service Bus namespace"
   type        = string
 }
-  
+
 variable "service_name" {
   description = "The short-format name of the overarching service being deployed"
   type        = string
