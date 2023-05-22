@@ -27,5 +27,5 @@ resource "azurerm_resource_group_template_deployment" "zendesk" {
       value = "zendesk"
     }
   })
-  deployment_mode  = "Incremental"
+  deployment_mode = "Incremental"
 }
