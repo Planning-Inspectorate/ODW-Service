@@ -8,7 +8,7 @@ resource "azurerm_resource_group_template_deployment" "service_bus_3" {
       value = "servicebus-1"
     }
     "service_bus_api_id" = {
-      value = module.synapse_ingestion.service_bus_namespace_id
+      value = module.synapse.service_bus_namespace_id
     }
     "location" = {
       value = var.location
