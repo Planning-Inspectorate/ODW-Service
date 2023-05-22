@@ -48,12 +48,25 @@ resource "azurerm_logic_app_trigger_custom" "trigger" {
 
   body = <<BODY
   {
-  "recurrence": {
-    "frequency": "Day",
-    "interval": 1
-  },
-  "type": "Recurrence"
- }
+    "triggers": {
+      "When_an_item_is_created": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "referenceName": "zendesk"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
+        },
+        "recurrence": {
+          "frequency": "Minute",
+          "interval": 1
+        }
+      }
+    }
+  }
 BODY
 
 }
