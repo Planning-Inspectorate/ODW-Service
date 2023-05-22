@@ -13,26 +13,24 @@ resource "azurerm_logic_app_action_custom" "action" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = jsonencode({
-    "action": {
-      "Send_message": {
-        "type": "ApiConnection",
-        "inputs": {
-          "host": {
-            "connection": {
-              "referenceName": "servicebus-1"
-            }
-          },
-          "method": "post",
-          "body": {
-            "SessionId": "@{guid()}",
-            "MessageId": "@{guid()}",
-            "Label": "Created",
-            "ContentData": "@{base64(triggerOutputs())}"
-          },
-          "path": "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages"
+    "Send_message" : {
+      "type" : "ApiConnection",
+      "inputs" : {
+        "host" : {
+          "connection" : {
+            "referenceName" : "servicebus-1"
+          }
         },
-        "runAfter": {}
-      }
+        "method" : "post",
+        "body" : {
+          "SessionId" : "@{guid()}",
+          "MessageId" : "@{guid()}",
+          "Label" : "Created",
+          "ContentData" : "@{base64(triggerOutputs())}"
+        },
+        "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages"
+      },
+      "runAfter" : {}
     }
   })
 }
@@ -44,22 +42,20 @@ resource "azurerm_logic_app_trigger_custom" "trigger" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = jsonencode({
-    "triggers": {
-      "When_an_item_is_created": {
-        "type": "ApiConnection",
-        "inputs": {
-          "host": {
-            "connection": {
-              "referenceName": "zendesk"
-            }
-          },
-          "method": "get",
-          "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
+    "When_an_item_is_created" : {
+      "type" : "ApiConnection",
+      "inputs" : {
+        "host" : {
+          "connection" : {
+            "referenceName" : "zendesk"
+          }
         },
-        "recurrence": {
-          "frequency": "Minute",
-          "interval": 1
-        }
+        "method" : "get",
+        "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
+      },
+      "recurrence" : {
+        "frequency" : "Minute",
+        "interval" : 1
       }
     }
   })
