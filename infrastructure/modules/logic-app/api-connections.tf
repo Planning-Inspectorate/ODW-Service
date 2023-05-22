@@ -22,5 +22,10 @@ resource "azurerm_resource_group_template_deployment" "zendesk" {
   resource_group_name = var.resource_group_name
 
   template_content = file("${path.module}/api-connections/zendesk.json")
+  parameters_content = jsonencode({
+    "connections_zendesk_name" = {
+      value = "zendesk"
+    }
+  })
   deployment_mode  = "Incremental"
 }
