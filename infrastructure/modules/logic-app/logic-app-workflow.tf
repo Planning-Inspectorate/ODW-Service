@@ -13,49 +13,43 @@ resource "azurerm_logic_app_action_custom" "action" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = jsonencode({
-    "Send_message" : {
-      "type" : "ApiConnection",
-      "inputs" : {
-        "host" : {
-          "connection" : {
-            "referenceName" : "servicebus-1"
-          }
+    "actions" : {
+      "Send_message" : {
+        "type" : "ApiConnection",
+        "inputs" : {
+          "host" : {
+            "connection" : {
+              "referenceName" : "servicebus-1"
+            }
+          },
+          "method" : "post",
+          "body" : {
+            "SessionId" : "@{guid()}",
+            "MessageId" : "@{guid()}",
+            "Label" : "Created",
+            "ContentData" : "@{base64(triggerOutputs())}"
+          },
+          "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages"
         },
-        "method" : "post",
-        "body" : {
-          "SessionId" : "@{guid()}",
-          "MessageId" : "@{guid()}",
-          "Label" : "Created",
-          "ContentData" : "@{base64(triggerOutputs())}"
+        "runAfter" : {}
+      }
+    },
+    "triggers" : {
+      "When_an_item_is_created" : {
+        "type" : "ApiConnection",
+        "inputs" : {
+          "host" : {
+            "connection" : {
+              "referenceName" : "zendesk"
+            }
+          },
+          "method" : "get",
+          "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
         },
-        "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages"
-      },
-      "runAfter" : {}
-    }
-  })
-}
-
-resource "azurerm_logic_app_trigger_custom" "trigger" {
-  count = var.logic_app_enabled ? 1 : 0
-
-  name         = "zendesk-trigger"
-  logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
-
-  body = jsonencode({
-    "When_an_item_is_created" : {
-      "type" : "ApiConnection",
-      "inputs" : {
-        "host" : {
-          "connection" : {
-            "referenceName" : "zendesk"
-          }
-        },
-        "method" : "get",
-        "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
-      },
-      "recurrence" : {
-        "frequency" : "Minute",
-        "interval" : 1
+        "recurrence" : {
+          "frequency" : "Minute",
+          "interval" : 1
+        }
       }
     }
   })
