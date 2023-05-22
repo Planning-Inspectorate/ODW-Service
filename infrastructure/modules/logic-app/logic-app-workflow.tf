@@ -34,24 +34,6 @@ resource "azurerm_logic_app_action_custom" "action" {
         "runAfter" : {}
       }
     },
-    "triggers" : {
-      "When_an_item_is_created" : {
-        "type" : "ApiConnection",
-        "inputs" : {
-          "host" : {
-            "connection" : {
-              "referenceName" : "zendesk"
-            }
-          },
-          "method" : "get",
-          "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
-        },
-        "recurrence" : {
-          "frequency" : "Minute",
-          "interval" : 1
-        }
-      }
-    }
   })
 }
 
