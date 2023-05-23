@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a487eb77-b48d-45aa-bb90-ad2be36919b0"
+				"spark.autotune.trackingId": "f6b60c61-17a6-401a-a90f-0744f89cb0be"
 			}
 		},
 		"metadata": {
@@ -123,22 +123,10 @@
 					"    T1.organisationname AS OrganisationName,\r\n",
 					"    T1.organisationtypename AS OrganisationTypeName,\r\n",
 					"    T2.SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    to_timestamp(T1.expected_from) AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.case_number,'.'),\tIFNULL(T1.case_created_date,'.'),\tIFNULL(T1.contactid,'.'),\tIFNULL(T1.typeofinvolvement,'.'),\tIFNULL(T1.contacttype,'.'),\tIFNULL(T1.firstname,'.'),\tIFNULL(T1.lastname,'.'),\tIFNULL(T1.postname,'.'),\tIFNULL(T1.title,'.'),\tIFNULL(T1.salutation,'.'),\tIFNULL(T1.suffix,'.'),\tIFNULL(T1.pobox,'.'),\tIFNULL(T1.address1,'.'),\tIFNULL(T1.address2,'.'),\tIFNULL(T1.city,'.'),\tIFNULL(T1.county,'.'),\tIFNULL(T1.postcode,'.'),\tIFNULL(T1.country,'.'),\tIFNULL(T1.telephoneoffice,'.'),\tIFNULL(T1.telephonemobile,'.'),\tIFNULL(T1.fax,'.'),\tIFNULL(T1.email,'.'),\tIFNULL(T10.LPAID,'.'),\tIFNULL(T1.organisationname,'.'),\tIFNULL(T1.organisationtypename,'.'))) as RowID, -- this hash should contain all the defining fields, so needs to be done\r\n",
 					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.contactid = T3.ContactID AND md5(concat(IFNULL(T1.case_number,'.'),\tIFNULL(T1.case_created_date,'.'),\tIFNULL(T1.contactid,'.'),\tIFNULL(T1.typeofinvolvement,'.'),\tIFNULL(T1.contacttype,'.'),\tIFNULL(T1.firstname,'.'),\tIFNULL(T1.lastname,'.'),\tIFNULL(T1.postname,'.'),\tIFNULL(T1.title,'.'),\tIFNULL(T1.salutation,'.'),\tIFNULL(T1.suffix,'.'),\tIFNULL(T1.pobox,'.'),\tIFNULL(T1.address1,'.'),\tIFNULL(T1.address2,'.'),\tIFNULL(T1.city,'.'),\tIFNULL(T1.county,'.'),\tIFNULL(T1.postcode,'.'),\tIFNULL(T1.country,'.'),\tIFNULL(T1.telephoneoffice,'.'),\tIFNULL(T1.telephonemobile,'.'),\tIFNULL(T1.fax,'.'),\tIFNULL(T1.email,'.'),\tIFNULL(T10.LPAID,'.'),\tIFNULL(T1.organisationname,'.'),\tIFNULL(T1.organisationtypename,'.'))) <> T3.RowID   -- same employee, changed data\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T3.ContactID IS NULL -- new AppealRef\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.contactid IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData, \r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.horizon_contact_information T1\r\n",
@@ -146,7 +134,6 @@
 					"LEFT JOIN odw_harmonised_db.casework_local_planning_authority_fact T10 ON T1.lpacode = T10.LPACode AND T10.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.casework_contact_information_dim T3 ON T1.contactid = T3.ContactID AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
 					"                WHEN T1.contactid = T3.ContactID AND md5(concat(IFNULL(T1.case_number,'.'),\tIFNULL(T1.case_created_date,'.'),\tIFNULL(T1.contactid,'.'),\tIFNULL(T1.typeofinvolvement,'.'),\tIFNULL(T1.contacttype,'.'),\tIFNULL(T1.firstname,'.'),\tIFNULL(T1.lastname,'.'),\tIFNULL(T1.postname,'.'),\tIFNULL(T1.title,'.'),\tIFNULL(T1.salutation,'.'),\tIFNULL(T1.suffix,'.'),\tIFNULL(T1.pobox,'.'),\tIFNULL(T1.address1,'.'),\tIFNULL(T1.address2,'.'),\tIFNULL(T1.city,'.'),\tIFNULL(T1.county,'.'),\tIFNULL(T1.postcode,'.'),\tIFNULL(T1.country,'.'),\tIFNULL(T1.telephoneoffice,'.'),\tIFNULL(T1.telephonemobile,'.'),\tIFNULL(T1.fax,'.'),\tIFNULL(T1.email,'.'),\tIFNULL(T10.LPAID,'.'),\tIFNULL(T1.organisationname,'.'),\tIFNULL(T1.organisationtypename,'.'))) <> T3.RowID  -- same employee, changed data\r\n",
@@ -154,15 +141,8 @@
 					"                WHEN T3.ContactID IS NULL -- new PositionCode\r\n",
 					"                THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.contactid IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
-					"    );\r\n",
+					"            END  = 'Y' )\r\n",
+					";\r\n",
 					""
 				],
 				"execution_count": 1
@@ -401,10 +381,6 @@
 					"    UPDATE SET\r\n",
 					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"\r\n",
-					"-- Insert completely new rows\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;  \r\n",
 					""
 				],
 				"execution_count": 3
@@ -446,7 +422,7 @@
 					"%%sql\r\n",
 					"-- Insert new casework_contact_information_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.casework_contact_information_dim\r\n",
+					"INSERT INTO odw_harmonised_db.casework_contact_information_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY ContactID NULLS LAST) AS ContactInformationID,\r\n",
@@ -480,7 +456,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.casework_contact_information_dim;\r\n",
+					"FROM casework_contact_information_dim_changed_rows;\r\n",
 					""
 				],
 				"execution_count": 4
