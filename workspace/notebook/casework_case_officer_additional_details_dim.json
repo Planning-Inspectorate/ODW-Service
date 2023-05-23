@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ea01ffdc-94b4-4f39-8dd2-ff5f29cf6f59"
+				"spark.autotune.trackingId": "d11f0f11-c571-4e95-b5e4-21681d87b12f"
 			}
 		},
 		"metadata": {
@@ -83,9 +83,8 @@
 					"    T1.caseofficerlogin AS CaseOfficerLogin,\r\n",
 					"    T1.caseofficername AS CaseOfficerName,\r\n",
 					"    T1.email AS Email,\r\n",
-					"\r\n",
 					"    T2.SourceSystemID,\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    to_timestamp(T1.expected_from) AS IngestionDate,,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.caseref,'.'), IFNULL(T1.caseofficerlogin,'.'),IFNULL(T1.caseofficername,'.'),IFNULL(T1.email,'.'))) as RowID, -- this hash should contain all the defining fields, so needs to be done\r\n",
 					"    'Y' as IsActive,\r\n",
@@ -115,14 +114,7 @@
 					"                WHEN T3.AppealRefNumber IS NULL -- new PositionCode\r\n",
 					"                THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.appealrefnumber IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
+					"            END  = 'Y' ) \r\n",
 					"    );\r\n",
 					""
 				],
@@ -386,12 +378,7 @@
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
 					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
-					"    Target.IsActive = 'N'\r\n",
-					"\r\n",
-					"-- Insert completely new rows\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;  \r\n",
-					""
+					"    Target.IsActive = 'N'"
 				],
 				"execution_count": 6
 			},
@@ -432,7 +419,7 @@
 					"%%sql\r\n",
 					"-- Insert new casework_case_officer_additional_details_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.casework_case_officer_additional_details_dim\r\n",
+					"INSERT INTO odw_harmonised_db.casework_case_officer_additional_details_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY AppealRefNumber NULLS LAST) AS CaseOfficerAdditionalDetailsID,\r\n",
@@ -446,7 +433,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.casework_case_officer_additional_details_dim;\r\n",
+					"FROM casework_case_officer_additional_details_dim_changed_rows;\r\n",
 					""
 				],
 				"execution_count": 7
