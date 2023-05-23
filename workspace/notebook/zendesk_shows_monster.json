@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "37cdc634-923e-4914-b14c-5878f86f84d5"
+				"spark.autotune.trackingId": "3f806442-6770-4512-8589-0d4984bb4cad"
 			}
 		},
 		"metadata": {
@@ -62,9 +62,10 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					"from notebookutils import mssparkutils\r\n",
 					"from pprint import pprint as pp\r\n",
-					"import json"
+					"import json\r\n",
+					"import pyspark.sql.functions as F "
 				],
-				"execution_count": 11
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -90,7 +91,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 12
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +131,7 @@
 					"\r\n",
 					"# write_to_single_file()"
 				],
-				"execution_count": 13
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +152,7 @@
 					"shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -171,7 +172,7 @@
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_shows;\")\r\n",
 					"# shows.write.saveAsTable(\"odw_standardised_db.zendesk_shows\")"
 				],
-				"execution_count": 15
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -187,28 +188,28 @@
 					}
 				},
 				"source": [
-					"import pyspark.sql.functions as F \r\n",
-					"def fields_table():\r\n",
-					"    fields = shows.select(\r\n",
-					"    \"id\", F.explode(\"fields\").alias(\"fields\")\r\n",
-					"    )\r\n",
+					"# import pyspark.sql.functions as F \r\n",
+					"# def fields_table():\r\n",
+					"#     fields = shows.select(\r\n",
+					"#     \"id\", F.explode(\"fields\").alias(\"fields\")\r\n",
+					"#     )\r\n",
 					"\r\n",
-					"    fields_id_value = shows.select(F.col(\"id\").alias(\"ticket_id\"),\r\n",
-					"        F.map_from_arrays(\r\n",
-					"        F.col(\"fields.id\"), F.col(\"fields.value\")\r\n",
-					"        ).alias(\"ID_VALUE\")\r\n",
-					"        )\r\n",
-					"    # fields_id_value.show()\r\n",
-					"    fields_id_value = fields_id_value.select(\"ticket_id\",\r\n",
-					"        F.posexplode(\"ID_VALUE\").alias(\"position\", \"id\", \"value\")\r\n",
-					"        )\r\n",
-					"    # fields_id_value.show()\r\n",
-					"    fields_id_value.drop(\"position\")\r\n",
-					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_fields_id_value;\")\r\n",
-					"    fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_fields_id_value\")\r\n",
-					"fields_table()"
+					"#     fields_id_value = shows.select(F.col(\"id\").alias(\"ticket_id\"),\r\n",
+					"#         F.map_from_arrays(\r\n",
+					"#         F.col(\"fields.id\"), F.col(\"fields.value\")\r\n",
+					"#         ).alias(\"ID_VALUE\")\r\n",
+					"#         )\r\n",
+					"#     # fields_id_value.show()\r\n",
+					"#     fields_id_value = fields_id_value.select(\"ticket_id\",\r\n",
+					"#         F.posexplode(\"ID_VALUE\").alias(\"position\", \"id\", \"value\")\r\n",
+					"#         )\r\n",
+					"#     # fields_id_value.show()\r\n",
+					"#     fields_id_value.drop(\"position\")\r\n",
+					"#     spark.sql(f\"drop table if exists odw_standardised_db.zendesk_fields_id_value;\")\r\n",
+					"#     fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_fields_id_value\")\r\n",
+					"# fields_table()"
 				],
-				"execution_count": 18
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -224,26 +225,47 @@
 					}
 				},
 				"source": [
-					"import pyspark.sql.functions as F \r\n",
-					"def custom_fields_table():\r\n",
-					"    custom_fields = shows.select(\r\n",
-					"    \"id\", F.explode(\"custom_fields\").alias(\"custom_fields\")\r\n",
-					"    )\r\n",
+					"# import pyspark.sql.functions as F \r\n",
+					"# def custom_fields_table():\r\n",
+					"#     custom_fields = shows.select(\r\n",
+					"#     \"id\", F.explode(\"custom_fields\").alias(\"custom_fields\")\r\n",
+					"#     )\r\n",
 					"\r\n",
-					"    custom_fields_id_value = shows.select(F.col(\"id\").alias(\"ticket_id\"),\r\n",
-					"        F.map_from_arrays(\r\n",
-					"        F.col(\"custom_fields.id\"), F.col(\"custom_fields.value\")\r\n",
-					"        ).alias(\"ID_VALUE\")\r\n",
-					"        )\r\n",
-					"    # custom_fields_id_value.show()\r\n",
-					"    custom_fields_id_value = custom_fields_id_value.select(\"ticket_id\",\r\n",
-					"        F.posexplode(\"ID_VALUE\").alias(\"position\", \"id\", \"value\")\r\n",
-					"        )\r\n",
-					"    # custom_fields_id_value.show()\r\n",
-					"    custom_fields_id_value.drop(\"position\")\r\n",
-					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_custom_fields_id_value;\")\r\n",
-					"    custom_fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_custom_fields_id_value\")\r\n",
-					"custom_fields_table()"
+					"#     custom_fields_id_value = shows.select(F.col(\"id\").alias(\"ticket_id\"),\r\n",
+					"#         F.map_from_arrays(\r\n",
+					"#         F.col(\"custom_fields.id\"), F.col(\"custom_fields.value\")\r\n",
+					"#         ).alias(\"ID_VALUE\")\r\n",
+					"#         )\r\n",
+					"#     # custom_fields_id_value.show()\r\n",
+					"#     custom_fields_id_value = custom_fields_id_value.select(\"ticket_id\",\r\n",
+					"#         F.posexplode(\"ID_VALUE\").alias(\"position\", \"id\", \"value\")\r\n",
+					"#         )\r\n",
+					"#     # custom_fields_id_value.show()\r\n",
+					"#     custom_fields_id_value.drop(\"position\")\r\n",
+					"#     spark.sql(f\"drop table if exists odw_standardised_db.zendesk_custom_fields_id_value;\")\r\n",
+					"#     custom_fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_custom_fields_id_value\")\r\n",
+					"# custom_fields_table()"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"CommentsListOfDict = shows.select(F.explode(\"comments\").alias(\"comments\"))\r\n",
+					"# CommentsListOfDict = CommentsListOfDict.select(F.explode(\"comments\"))\r\n",
+					"CommentsListOfDict.show()\r\n",
+					""
 				],
 				"execution_count": 19
 			}
