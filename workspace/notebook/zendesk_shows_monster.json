@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c3b4c293-db1f-4642-b032-6c53fccba112"
+				"spark.autotune.trackingId": "4e8b17a4-5ff7-4234-aab6-784243c89e48"
 			}
 		},
 		"metadata": {
@@ -64,9 +64,10 @@
 					"from pprint import pprint as pp\r\n",
 					"import json\r\n",
 					"import pyspark.sql.functions as F \r\n",
-					"import pandas as pd"
+					"import pandas as pd\r\n",
+					"from pyspark.sql.types import *"
 				],
-				"execution_count": 34
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +98,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 31
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -123,7 +124,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 26
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -163,7 +164,7 @@
 					"\r\n",
 					"# write_to_single_file()"
 				],
-				"execution_count": 3
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -181,10 +182,10 @@
 				"source": [
 					"from pyspark.sql import SparkSession \r\n",
 					"spark = SparkSession.builder.getOrCreate() \r\n",
-					"shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
+					"# shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
@@ -202,9 +203,9 @@
 				"source": [
 					"# Create mega table\r\n",
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_shows;\")\r\n",
-					"# shows.write.saveAsTable(\"odw_standardised_db.zendesk_shows\")"
+					"# shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_shows\")"
 				],
-				"execution_count": 5
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -241,7 +242,7 @@
 					"#     fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_fields_id_value\")\r\n",
 					"# fields_table()"
 				],
-				"execution_count": 6
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -278,7 +279,7 @@
 					"#     custom_fields_id_value.write.saveAsTable(\"odw_standardised_db.zendesk_custom_fields_id_value\")\r\n",
 					"# custom_fields_table()"
 				],
-				"execution_count": 7
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -294,12 +295,12 @@
 					}
 				},
 				"source": [
-					"CommentsListOfDict = shows.select(F.explode(\"comments\").alias(\"comments\"))\r\n",
-					"# CommentsListOfDict = CommentsListOfDict.select(F.explode(\"comments\")) \r\n",
-					"CommentsListOfDict.printSchema()\r\n",
+					"# CommentsListOfDict = shows.select(F.explode(\"comments\").alias(\"comments\"))\r\n",
+					"# # CommentsListOfDict = CommentsListOfDict.select(F.explode(\"comments\")) \r\n",
+					"# CommentsListOfDict.printSchema()\r\n",
 					""
 				],
-				"execution_count": 22
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -315,14 +316,17 @@
 					}
 				},
 				"source": [
-					"def load_all_outputs():\r\n",
+					"# def load_all_outputs():\r\n",
 					"    #create empty list to store the values of the comments \r\n",
-					"    FlatCommentsDictList=[]\r\n",
-					"    #create empty list to store the value of the attachments array within the commments column\r\n",
-					"    FlatCommentsDictAttachmentsList=[]\r\n",
-					"    for i in range(2918):\r\n",
-					"        print(i)\r\n",
-					"        with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\") as big_json:\r\n",
+					"FlatCommentsDictList=[]\r\n",
+					"#create empty list to store the value of the attachments array within the commments column\r\n",
+					"FlatCommentsDictAttachmentsList=[]\r\n",
+					"for i in range(2918):\r\n",
+					"    print(i)\r\n",
+					"    if i == 2802:\r\n",
+					"        i=i+1\r\n",
+					"    else:\r\n",
+					"        with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
 					"            zendesk_dict = json.load(big_json)\r\n",
 					"        CommentsListOfDict = zendesk_dict['comments']\r\n",
 					"        for CommentsDict in CommentsListOfDict:\r\n",
@@ -339,25 +343,79 @@
 					"            del FlatCommentsDict['attachments']\r\n",
 					"            #flatten the comments column so we can make a table out of it \r\n",
 					"            FlatCommentsDictList.append(FlatCommentsDict)\r\n",
-					"        #create a dataframe out of all comments of a file to put them in a table \r\n",
-					"        dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
-					"        #create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
-					"        dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
-					"    #create tables for the comments and comments_attachments\r\n",
-					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments;\")\r\n",
-					"    spark.createDataFrame(dfFlatCommentsDictList).write.saveAsTable(\"odw_standardised_db.zendesk_comments\")\r\n",
+					"#create a dataframe out of all comments of a file to put them in a table \r\n",
+					"dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
+					"#create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
+					"dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
 					"\r\n",
-					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments_attachments;\")\r\n",
-					"    sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
-					"    sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
-					"    sparkDF1.printSchema\r\n",
-					"    sparkDF1.write.saveAsTable(\"odw_standardised_db.zendesk_comments_attachments\")\r\n",
-					"  \r\n",
+					"    \r\n",
 					"\r\n",
-					"load_all_outputs()\r\n",
+					"# load_all_outputs()\r\n",
 					""
 				],
-				"execution_count": 36
+				"execution_count": 105
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# pp(type(dfFlatCommentsDictList.via_source_from_subject))\r\n",
+					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments;\")\r\n",
+					"spark.createDataFrame(FlatCommentsDictList).write.saveAsTable(\"odw_standardised_db.zendesk_comments\")\r\n",
+					"\r\n",
+					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments_attachments;\")\r\n",
+					"# sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
+					"# sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
+					"# sparkDF1.printSchema\r\n",
+					"# sparkDF1.write.saveAsTable(\"odw_standardised_db.zendesk_comments_attachments\")"
+				],
+				"execution_count": 108
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"print(FlatCommentsDictList[1]['via_source_to_email_ccs'])"
+				],
+				"execution_count": 112
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"[dict_item['via_source_to_email_ccs'] for dict_item in FlatCommentsDictList]"
+				],
+				"execution_count": 113
 			}
 		]
 	}
