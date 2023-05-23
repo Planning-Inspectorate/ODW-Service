@@ -13,7 +13,6 @@ resource "azurerm_logic_app_action_custom" "action" {
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
 
   body = jsonencode({
-    "$schema" : "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
     "actions" : {
       "Send_message" : {
         "type" : "ApiConnection",
