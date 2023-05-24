@@ -28,7 +28,6 @@ module "synapse_management" {
   key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.key_vault.id
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network.name
-  synapse_managed_private_endpoint_name  = azurerm_synapse_managed_private_endpoint.key_vault.name
   synapse_private_endpoint_subnet_name   = module.synapse_network.synapse_private_endpoint_subnet_name
   vnet_subnet_ids                        = module.synapse_network.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network_failover.vnet_subnets
@@ -52,7 +51,6 @@ module "synapse_management_failover" {
   key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.key_vault.id
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network_failover.name
-  synapse_managed_private_endpoint_name  = azurerm_synapse_managed_private_endpoint.key_vault.name
   synapse_private_endpoint_subnet_name   = module.synapse_network_failover.synapse_private_endpoint_subnet_name
   vnet_subnet_ids                        = module.synapse_network_failover.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network.vnet_subnets
