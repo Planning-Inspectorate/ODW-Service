@@ -7,40 +7,27 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
   tags                = local.tags
 }
 
-# resource "azurerm_logic_app_action_custom" "action" {
-#   count = var.logic_app_enabled ? 1 : 0
+data "azurerm_managed_api" "zendesk-managed-api" {
+  location = var.location
+  name     = "zendesk"
+}
 
-#   name         = "zendesk-action"
-#   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
+resource "azurerm_api_connection" "zendesk_api_connection" {
+  name                = "zendesk"
+  resource_group_name = azurerm_resource_group.rg.name
+  managed_api_id      = data.azurerm_managed_api.zendesk-managed-api.id
+  display_name        = "zendesk"
 
-#   body = jsonencode({
-#     "actions" : {
-#       "Send_message" : {
-#         "runAfter" : {},
-#         "type" : "ApiConnection",
-#         "inputs" : {
-#           "body" : {
-#             "ContentData" : "@{base64(triggerOutputs())}",
-#             "Label" : "Created",
-#             "MessageId" : "@{guid()}",
-#             "SessionId" : "@{guid()}"
-#           },
-#           "host" : {
-#             "connection" : {
-#               "name" : "@parameters('$connections')['servicebus']['connectionId']"
-#             }
-#           },
-#           "method" : "post",
-#           "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages",
-#           "queries" : {
-#             "systemProperties" : "None"
-#           }
-#         }
-#       }
-#     },
-#     "outputs" : {}
-#   })
-# }
+  parameter_values = {
+    "token:Subdomain" = "pinssupport"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      parameter_values
+    ]
+  }
+}
 
 # resource "azurerm_logic_app_workflow" "zendesk_updated" {
 #   count               = var.logic_app_enabled ? 1 : 0
