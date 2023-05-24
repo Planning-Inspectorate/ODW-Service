@@ -16,7 +16,7 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
   name                = "zendesk"
   resource_group_name = var.resource_group_name
   managed_api_id      = data.azurerm_managed_api.zendesk-managed-api.id
-  display_name        = "zendesk"
+  display_name        = "pinssupport"
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
