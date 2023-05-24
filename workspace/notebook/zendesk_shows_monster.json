@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ab887148-940f-4c74-a303-62f1c9a96e48"
+				"spark.autotune.trackingId": "2edeba42-4a07-4291-b409-e868fdb22908"
 			}
 		},
 		"metadata": {
@@ -421,124 +421,51 @@
 					}
 				},
 				"source": [
-					"# def comments_and_attachments():\r\n",
+					"def comments_and_attachments():\r\n",
 					"    #create empty list to store the values of the comments \r\n",
-					"FlatCommentsDictList=[]\r\n",
-					"#create empty list to store the value of the attachments array within the commments column\r\n",
-					"FlatCommentsDictAttachmentsList=[]\r\n",
-					"for i in range(2918):\r\n",
-					"    # print(i)\r\n",
-					"    if i == 2802:\r\n",
-					"        i=i+1\r\n",
-					"    else:\r\n",
-					"        with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
-					"            zendesk_dict = json.load(big_json)\r\n",
-					"        CommentsListOfDict = zendesk_dict['comments']\r\n",
-					"        for CommentsDict in CommentsListOfDict:\r\n",
-					"            #adding the file id to the dictionary before converting into df and then table\r\n",
-					"            CommentsDict['file_id']=zendesk_dict['id']\r\n",
-					"            FlatCommentsDict = dict( flattenDict(CommentsDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
-					"            #go through all attachments within the comments column \r\n",
-					"            for attachments in CommentsDict['attachments']:\r\n",
-					"                #add the comments id and file id so we can late join the tables on them\r\n",
-					"                attachments['file_id']=zendesk_dict['id']\r\n",
-					"                attachments['comment_id']=CommentsDict['id']\r\n",
-					"                FlatCommentsDictAttachmentsList.append(attachments)\r\n",
-					"            #delete the attachment column because we already stored it in a list which will be made in a table \r\n",
-					"            del FlatCommentsDict['attachments']\r\n",
-					"            #flatten the comments column so we can make a table out of it \r\n",
-					"            FlatCommentsDictList.append(FlatCommentsDict)\r\n",
-					"#create a dataframe out of all comments of a file to put them in a table \r\n",
-					"dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
-					"#create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
-					"dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
+					"    FlatCommentsDictList=[]\r\n",
+					"    #create empty list to store the value of the attachments array within the commments column\r\n",
+					"    FlatCommentsDictAttachmentsList=[]\r\n",
+					"    for i in range(2918):\r\n",
+					"        # print(i)\r\n",
+					"        if i == 2802:\r\n",
+					"            i=i+1\r\n",
+					"        else:\r\n",
+					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
+					"                zendesk_dict = json.load(big_json)\r\n",
+					"            CommentsListOfDict = zendesk_dict['comments']\r\n",
+					"            for CommentsDict in CommentsListOfDict:\r\n",
+					"                #adding the file id to the dictionary before converting into df and then table\r\n",
+					"                CommentsDict['file_id']=zendesk_dict['id']\r\n",
+					"                FlatCommentsDict = dict( flattenDict(CommentsDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
+					"                #go through all attachments within the comments column \r\n",
+					"                for attachments in CommentsDict['attachments']:\r\n",
+					"                    #add the comments id and file id so we can late join the tables on them\r\n",
+					"                    attachments['file_id']=zendesk_dict['id']\r\n",
+					"                    attachments['comment_id']=CommentsDict['id']\r\n",
+					"                    FlatCommentsDictAttachmentsList.append(attachments)\r\n",
+					"                #delete the attachment column because we already stored it in a list which will be made in a table \r\n",
+					"                del FlatCommentsDict['attachments']\r\n",
+					"                #flatten the comments column so we can make a table out of it \r\n",
+					"                FlatCommentsDictList.append(FlatCommentsDict)\r\n",
+					"    #create a dataframe out of all comments of a file to put them in a table \r\n",
+					"    dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
+					"    #create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
+					"    dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
+					"    dfFlatCommentsDictList.via_source_to_email_ccs = dfFlatCommentsDictList.via_source_to_email_ccs.astype(str)\r\n",
+					"    sFlatCommentsDictList = spark.createDataFrame(dfFlatCommentsDictList)\r\n",
+					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments;\")\r\n",
+					"    sFlatCommentsDictList.write.saveAsTable(\"odw_standardised_db.zendesk_comments\")\r\n",
+					"    spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments_attachments;\")\r\n",
+					"    sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
+					"    sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
+					"    sparkDF1.printSchema\r\n",
+					"    sparkDF1.write.saveAsTable(\"odw_standardised_db.zendesk_comments_attachments\")      \r\n",
 					"\r\n",
-					"    \r\n",
-					"\r\n",
-					"# comments_and_attachments()\r\n",
+					"comments_and_attachments()\r\n",
 					""
 				],
-				"execution_count": 23
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"dfFlatCommentsDictList['via_source_to_email_ccs'] = dfFlatCommentsDictList['via_source_to_email_ccs'].astype('string')"
-				],
-				"execution_count": 34
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# print(dfFlatCommentsDictList.dtypes)\r\n",
-					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments;\")\r\n",
-					"spark.createDataFrame(FlatCommentsDictList).write.saveAsTable(\"odw_standardised_db.zendesk_comments\")\r\n",
-					"\r\n",
-					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_comments_attachments;\")\r\n",
-					"# sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
-					"# sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
-					"# sparkDF1.printSchema\r\n",
-					"# sparkDF1.write.saveAsTable(\"odw_standardised_db.zendesk_comments_attachments\")"
-				],
-				"execution_count": 38
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"print(FlatCommentsDictList[1]['via_source_to_email_ccs'])"
-				],
-				"execution_count": 112
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"[dict_item['via_source_to_email_ccs'] for dict_item in FlatCommentsDictList]"
-				],
-				"execution_count": 25
+				"execution_count": 67
 			}
 		]
 	}
