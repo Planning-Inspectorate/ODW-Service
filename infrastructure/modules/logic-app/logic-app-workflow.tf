@@ -20,14 +20,13 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
-    "token:User"      = "svc_zendesk@planninginspectorate.gov.uk"
   }
 
-  # lifecycle {
-  #   ignore_changes = [
-  #     parameter_values
-  #   ]
-  # }
+  lifecycle {
+    ignore_changes = [
+      parameter_values
+    ]
+  }
 }
 
 # resource "azurerm_logic_app_workflow" "zendesk_updated" {
