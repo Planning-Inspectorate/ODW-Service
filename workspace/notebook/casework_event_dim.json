@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cb9ef48e-c6f7-4fa4-90d0-72d259673a1a"
+				"spark.autotune.trackingId": "f08e5d14-6b9d-4f3d-bf4d-b57d989a7cde"
 			}
 		},
 		"metadata": {
@@ -132,16 +132,29 @@
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.casework_event_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"        -- flags new data        \r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.appealrefnumber = T3.AppealRefNumber AND md5(concat(IFNULL(T1.appealrefnumber,'.'), IFNULL(T1.casereference,'.'), IFNULL(T1.chartstatus,'.'), IFNULL(T1.parentkeyid,'.'), IFNULL(T1.startdateofevent,'.'), \r\n",
-					"    IFNULL(T1.starttimeofevent,'.'),IFNULL(T1.enddateofevent,'.'), IFNULL(T1.actualduration,'.'), IFNULL(T1.estpreptime,'.'), IFNULL(T1.estsittime,'.'), \r\n",
-					"    IFNULL(T1.estreptime,'.'))) <> T3.RowID  -- same record, changed data\r\n",
-					"                THEN 'Y'\r\n",
-					"                WHEN T3.AppealRefNumber IS NULL -- new record\r\n",
-					"                THEN 'Y'\r\n",
-					"            ELSE 'N'\r\n",
-					"            END  = 'Y' )\r\n",
+					"    -- flags new data        \r\n",
+					"    (CASE\r\n",
+					"        WHEN T1.appealrefnumber = T3.AppealRefNumber AND \r\n",
+					"            md5(\r\n",
+					"                concat(\r\n",
+					"                    IFNULL(T1.appealrefnumber,'.'),\r\n",
+					"                    IFNULL(T1.casereference,'.'),\r\n",
+					"                    IFNULL(T1.chartstatus,'.'),\r\n",
+					"                    IFNULL(T1.parentkeyid,'.'),\r\n",
+					"                    IFNULL(T1.startdateofevent,'.'),\r\n",
+					"                    IFNULL(T1.starttimeofevent,'.'),\r\n",
+					"                    IFNULL(T1.enddateofevent,'.'),\r\n",
+					"                    IFNULL(T1.actualduration,'.'),\r\n",
+					"                    IFNULL(T1.estpreptime,'.'),\r\n",
+					"                    IFNULL(T1.estsittime,'.'),\r\n",
+					"                    IFNULL(T1.estreptime,'.')\r\n",
+					"                )\r\n",
+					"            ) <> T3.RowID  -- same record, changed data\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN T3.AppealRefNumber IS NULL -- new record\r\n",
+					"        THEN 'Y'\r\n",
+					"    ELSE 'N'\r\n",
+					"    END  = 'Y' )\r\n",
 					";"
 				],
 				"execution_count": 2
@@ -417,10 +430,6 @@
 					"    UPDATE SET\r\n",
 					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"\r\n",
-					"-- Insert completely new rows\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;  \r\n",
 					""
 				],
 				"execution_count": 6
@@ -462,7 +471,7 @@
 					"%%sql\r\n",
 					"-- Insert new casework_event_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.casework_event_dim\r\n",
+					"INSERT INTO odw_harmonised_db.casework_event_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY AppealRefNumber NULLS LAST) AS EventID,\r\n",
@@ -482,7 +491,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.casework_event_dim;\r\n",
+					"FROM casework_event_dim_changed_rows;\r\n",
 					""
 				],
 				"execution_count": 7
