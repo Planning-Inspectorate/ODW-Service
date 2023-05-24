@@ -20,13 +20,14 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
+    "token:Client_secret" = "C9yZPMVcE5UPPTiundacEJ0wHyNGsKJuELvP07tD"
   }
 
-  lifecycle {
-    ignore_changes = [
-      parameter_values
-    ]
-  }
+  # lifecycle {
+  #   ignore_changes = [
+  #     parameter_values
+  #   ]
+  # }
 }
 
 # resource "azurerm_logic_app_workflow" "zendesk_updated" {
