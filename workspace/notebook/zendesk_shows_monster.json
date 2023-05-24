@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "460bdba8-615f-45d1-bc6b-662997afb2ca"
+				"spark.autotune.trackingId": "8f91a79a-8bc1-4e8e-8c9c-692582d7a9a3"
 			}
 		},
 		"metadata": {
@@ -206,12 +206,17 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql import SparkSession \r\n",
-					"spark = SparkSession.builder.getOrCreate() \r\n",
-					"# shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
-					""
+					"def read_zendesk():\r\n",
+					"    for i in range(2918):\r\n",
+					"        if i == 2802:\r\n",
+					"            i=i+1\r\n",
+					"        else:\r\n",
+					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
+					"                zendesk_dict = json.load(big_json)\r\n",
+					"    return zendesk_dict\r\n",
+					"zendesk_dict = read_zendesk()"
 				],
-				"execution_count": 4
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -227,11 +232,67 @@
 					}
 				},
 				"source": [
+					"def read_schema():\r\n",
+					"\r\n",
+					"    with open(f\"/synfs/{jobId}/zendesk_schema/output_schema.json\", 'r') as schema:\r\n",
+					"\r\n",
+					"        schema_dict = json.load(schema)\r\n",
+					"\r\n",
+					"    return schema_dict\r\n",
+					"schema_dict = read_schema()"
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def apply_schema_check(zendesk_dict, schema_dict):\r\n",
+					"\r\n",
+					"    import json\r\n",
+					"    import jsonschema\r\n",
+					"    from jsonschema import validate\r\n",
+					"    try:\r\n",
+					"        validate(instance=zendesk_dict, schema=schema_dict)\r\n",
+					"    except jsonschema.exceptions.ValidationError as err:\r\n",
+					"        print(False)\r\n",
+					"    print(True)\r\n",
+					"apply_schema_check(zendesk_dict, schema_dict)"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession \r\n",
+					"spark = SparkSession.builder.getOrCreate() \r\n",
+					"# shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
 					"# Create mega table\r\n",
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_shows;\")\r\n",
 					"# shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_shows\")"
 				],
-				"execution_count": 101
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -306,106 +367,6 @@
 					"# custom_fields_table()"
 				],
 				"execution_count": 103
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# CommentsListOfDict = shows.select(F.explode(\"comments\").alias(\"comments\"))\r\n",
-					"# # CommentsListOfDict = CommentsListOfDict.select(F.explode(\"comments\")) \r\n",
-					"# CommentsListOfDict.printSchema()\r\n",
-					""
-				],
-				"execution_count": 104
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def read_zendesk():\r\n",
-					"    for i in range(2918):\r\n",
-					"        if i == 2802:\r\n",
-					"            i=i+1\r\n",
-					"        else:\r\n",
-					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
-					"                zendesk_dict = json.load(big_json)\r\n",
-					"    return zendesk_dict\r\n",
-					"zendesk_dict = read_zendesk()"
-				],
-				"execution_count": 9
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def read_schema():\r\n",
-					"\r\n",
-					"    with open(f\"/synfs/{jobId}/zendesk_schema/output_schema.json\", 'r') as schema:\r\n",
-					"\r\n",
-					"        schema_dict = json.load(schema)\r\n",
-					"\r\n",
-					"    return schema_dict\r\n",
-					"schema_dict = read_schema()"
-				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def apply_schema_check(zendesk_dict, schema_dict):\r\n",
-					"\r\n",
-					"    import json\r\n",
-					"    import jsonschema\r\n",
-					"    from jsonschema import validate\r\n",
-					"    try:\r\n",
-					"        validate(instance=zendesk_dict, schema=schema_dict)\r\n",
-					"    except jsonschema.exceptions.ValidationError as err:\r\n",
-					"        print(False)\r\n",
-					"    print(True)\r\n",
-					"apply_schema_check(zendesk_dict, schema_dict)"
-				],
-				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
