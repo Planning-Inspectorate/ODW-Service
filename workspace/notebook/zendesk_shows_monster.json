@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8f91a79a-8bc1-4e8e-8c9c-692582d7a9a3"
+				"spark.autotune.trackingId": "4bcd45e1-042a-498d-9903-50215901dab2"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 1
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -98,7 +98,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 2
+				"execution_count": 80
 			},
 			{
 				"cell_type": "code",
@@ -124,7 +124,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 14
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -150,7 +150,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 13
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -190,7 +190,7 @@
 					"\r\n",
 					"# write_to_single_file()"
 				],
-				"execution_count": 99
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -206,17 +206,27 @@
 					}
 				},
 				"source": [
-					"def read_zendesk():\r\n",
+					"import json\r\n",
+					"import jsonschema\r\n",
+					"from jsonschema import validate\r\n",
+					"list_with_all_zendesk_dict = []\r\n",
+					"def read_zendesk(schema_dict):\r\n",
 					"    for i in range(2918):\r\n",
 					"        if i == 2802:\r\n",
 					"            i=i+1\r\n",
 					"        else:\r\n",
 					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
 					"                zendesk_dict = json.load(big_json)\r\n",
-					"    return zendesk_dict\r\n",
-					"zendesk_dict = read_zendesk()"
+					"                try:\r\n",
+					"                    validate(instance=zendesk_dict, schema=schema_dict)\r\n",
+					"                except jsonschema.exceptions.ValidationError as err:\r\n",
+					"                    print(False)\r\n",
+					"                    print(i)\r\n",
+					"                list_with_all_zendesk_dict.append(zendesk_dict)\r\n",
+					"    return list_with_all_zendesk_dict\r\n",
+					"zendesk_dict = read_zendesk(schema_dict)"
 				],
-				"execution_count": 9
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -241,7 +251,7 @@
 					"    return schema_dict\r\n",
 					"schema_dict = read_schema()"
 				],
-				"execution_count": 15
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -257,19 +267,19 @@
 					}
 				},
 				"source": [
-					"def apply_schema_check(zendesk_dict, schema_dict):\r\n",
+					"# def apply_schema_check(zendesk_dict, schema_dict):\r\n",
 					"\r\n",
-					"    import json\r\n",
-					"    import jsonschema\r\n",
-					"    from jsonschema import validate\r\n",
-					"    try:\r\n",
-					"        validate(instance=zendesk_dict, schema=schema_dict)\r\n",
-					"    except jsonschema.exceptions.ValidationError as err:\r\n",
-					"        print(False)\r\n",
-					"    print(True)\r\n",
-					"apply_schema_check(zendesk_dict, schema_dict)"
+					"#     import json\r\n",
+					"#     import jsonschema\r\n",
+					"#     from jsonschema import validate\r\n",
+					"#     try:\r\n",
+					"#         validate(instance=zendesk_dict, schema=schema_dict)\r\n",
+					"#     except jsonschema.exceptions.ValidationError as err:\r\n",
+					"#         print(False)\r\n",
+					"#     print(True)\r\n",
+					"# apply_schema_check(zendesk_dict, schema_dict)"
 				],
-				"execution_count": 17
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -292,7 +302,7 @@
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_shows;\")\r\n",
 					"# shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_shows\")"
 				],
-				"execution_count": 4
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -329,7 +339,7 @@
 					"#     fields_id_value.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_fields_id_value\")\r\n",
 					"# fields_table()"
 				],
-				"execution_count": 102
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -366,7 +376,7 @@
 					"#     custom_fields_id_value.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_custom_fields_id_value\")\r\n",
 					"# custom_fields_table()"
 				],
-				"execution_count": 103
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -426,7 +436,41 @@
 					"comments_and_attachments()\r\n",
 					""
 				],
-				"execution_count": 72
+				"execution_count": 116
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def assignee_table(list_with_all_zendesk_dict):\r\n",
+					"    assigneelist=[]\r\n",
+					"    for assigneecolumn in list_with_all_zendesk_dict:\r\n",
+					"        AssigneeDict= assigneecolumn['assignee']\r\n",
+					"        if AssigneeDict is None:\r\n",
+					"            continue\r\n",
+					"        else:\r\n",
+					"            assigneelist.append(AssigneeDict)\r\n",
+					"\r\n",
+					"    dfassigneelist=pd.DataFrame(assigneelist)\r\n",
+					"    print(dfassigneelist.dtypes)\r\n",
+					"\r\n",
+					"    sassigneelist = spark.createDataFrame(dfassigneelist)\r\n",
+					"    # spark.sql(f\"drop table if exists odw_standardised_db.zendesk_assignee;\")\r\n",
+					"    # sassigneelist.write.saveAsTable(\"odw_standardised_db.zendesk_assignee\")\r\n",
+					"\r\n",
+					"assignee_table(list_with_all_zendesk_dict)"
+				],
+				"execution_count": 118
 			}
 		]
 	}
