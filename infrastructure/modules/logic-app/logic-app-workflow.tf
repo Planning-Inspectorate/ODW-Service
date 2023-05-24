@@ -14,7 +14,7 @@ data "azurerm_managed_api" "zendesk-managed-api" {
 
 resource "azurerm_api_connection" "zendesk_api_connection" {
   name                = "zendesk"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = var.resource_group_name
   managed_api_id      = data.azurerm_managed_api.zendesk-managed-api.id
   display_name        = "zendesk"
 
