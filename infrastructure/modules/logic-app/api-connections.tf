@@ -22,8 +22,8 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
   display_name        = "servicebus"
 
   parameter_values = {
-    "ConnectionString"   = "sb://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net"
-    "authentication"     = "ManagedServiceIdentity"
+    "connectionString" = "sb://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net"
+    "authType"         = "ManagedServiceIdentity"
   }
 
 
