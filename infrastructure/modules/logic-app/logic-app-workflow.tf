@@ -41,59 +41,55 @@ resource "azurerm_logic_app_trigger_custom" "zendesk_created_trigger" {
   name         = "When_an_item_is_created"
 
   body = jsonencode({
-    "When_an_item_is_created" : {
-      "evaluatedRecurrence" : {
-        "frequency" : "Minute",
-        "interval" : 1
+    "evaluatedRecurrence" : {
+      "frequency" : "Minute",
+      "interval" : 1
+    },
+    "inputs" : {
+      "host" : {
+        "connection" : {
+          "name" : "@parameters('$connections')['zendesk']['connectionId']"
+        }
       },
-      "inputs" : {
-        "host" : {
-          "connection" : {
-            "name" : "@parameters('$connections')['zendesk']['connectionId']"
-          }
-        },
-        "method" : "get",
-        "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
-      },
-      "recurrence" : {
-        "frequency" : "Minute",
-        "interval" : 1
-      },
-      "splitOn" : "@triggerBody()?['value']",
-      "type" : "ApiConnection"
-    }
+      "method" : "get",
+      "path" : "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('tickets'))}/onnewitems"
+    },
+    "recurrence" : {
+      "frequency" : "Minute",
+      "interval" : 1
+    },
+    "splitOn" : "@triggerBody()?['value']",
+    "type" : "ApiConnection"
   })
 }
 
-resource "azurerm_logic_app_action_custom" "zendesk_created_trigger" {
+resource "azurerm_logic_app_action_custom" "zendesk_created_action" {
   count = var.logic_app_enabled ? 1 : 0
 
   logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
   name         = "Send_message"
 
   body = jsonencode({
-    "Send_message" : {
-      "inputs" : {
-        "body" : {
-          "ContentData" : "@{base64(triggerOutputs())}",
-          "Label" : "Created",
-          "MessageId" : "@{guid()}",
-          "SessionId" : "@{guid()}"
-        },
-        "host" : {
-          "connection" : {
-            "name" : "@parameters('$connections')['servicebus_1']['connectionId']"
-          }
-        },
-        "method" : "post",
-        "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages",
-        "queries" : {
-          "systemProperties" : "None"
+    "inputs" : {
+      "body" : {
+        "ContentData" : "@{base64(triggerOutputs())}",
+        "Label" : "Created",
+        "MessageId" : "@{guid()}",
+        "SessionId" : "@{guid()}"
+      },
+      "host" : {
+        "connection" : {
+          "name" : "@parameters('$connections')['servicebus_1']['connectionId']"
         }
       },
-      "runAfter" : {},
-      "type" : "ApiConnection"
-    }
+      "method" : "post",
+      "path" : "/@{encodeURIComponent(encodeURIComponent('zendesk'))}/messages",
+      "queries" : {
+        "systemProperties" : "None"
+      }
+    },
+    "runAfter" : {},
+    "type" : "ApiConnection"
   })
 }
 
