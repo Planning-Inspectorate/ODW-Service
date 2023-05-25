@@ -23,6 +23,11 @@ variable "service_name" {
   type        = string
 }
 
+variable "service_bus_primary_connection_string" {
+  description = "The primary connection string for the Service Bus Namespace"
+  type        = string
+}
+
 variable "tags" {
   default     = {}
   description = "A collection of tags to assign to taggable resources"

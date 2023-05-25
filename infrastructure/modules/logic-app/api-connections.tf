@@ -22,7 +22,7 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
   display_name        = "servicebus"
 
   parameter_values = {
-    connectionString = azurerm_servicebus_namespace.synapse.default_primary_connection_string
+    connectionString = var.service_bus_primary_connection_string
   }
 
 
