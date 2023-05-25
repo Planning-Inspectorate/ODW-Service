@@ -79,7 +79,7 @@ resource "azurerm_logic_app_action_custom" "zendesk_created_action" {
       },
       "host" : {
         "connection" : {
-          "name" : "@parameters('$connections')['servicebus_1']['connectionId']"
+          "name" : "@parameters('$connections')['servicebus']['connectionId']"
         }
       },
       "method" : "post",
