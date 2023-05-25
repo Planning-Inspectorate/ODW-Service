@@ -41,7 +41,6 @@ resource "azurerm_logic_app_trigger_custom" "zendesk_created_trigger" {
   name         = "When_an_item_is_created"
 
   body = jsonencode({
-    "triggers" : {
       "When_an_item_is_created" : {
         "evaluatedRecurrence" : {
           "frequency" : "Minute",
@@ -63,7 +62,6 @@ resource "azurerm_logic_app_trigger_custom" "zendesk_created_trigger" {
         "splitOn" : "@triggerBody()?['value']",
         "type" : "ApiConnection"
       }
-    }
   })
 }
 
@@ -74,7 +72,6 @@ resource "azurerm_logic_app_action_custom" "zendesk_created_trigger" {
   name         = "Send_message"
 
   body = jsonencode({
-    "actions" : {
       "Send_message" : {
         "inputs" : {
           "body" : {
@@ -97,15 +94,6 @@ resource "azurerm_logic_app_action_custom" "zendesk_created_trigger" {
         "runAfter" : {},
         "type" : "ApiConnection"
       }
-    },
-    "contentVersion" : "1.0.0.0",
-    "outputs" : {},
-    "parameters" : {
-      "$connections" : {
-        "defaultValue" : {},
-        "type" : "Object"
-      }
-    },
   })
 }
 
