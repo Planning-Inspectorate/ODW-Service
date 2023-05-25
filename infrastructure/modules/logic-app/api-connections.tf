@@ -22,7 +22,7 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
   display_name        = "servicebus"
 
   parameter_values = {
-    "connectionString" = "sb://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net"
+    connectionString = azurerm_servicebus_namespace.synapse.default_primary_connection_string
   }
 
 
