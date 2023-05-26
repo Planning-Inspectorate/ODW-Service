@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "affed2ff-caf5-4b93-b9d1-2c36e34db4f0"
+				"spark.autotune.trackingId": "400e3285-afaf-4244-b2f6-9240e92a4ef1"
 			}
 		},
 		"metadata": {
@@ -449,10 +449,29 @@
 					"    '''\r\n",
 					"    doc string\r\n",
 					"    '''\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    storage_account= spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net\"\r\n",
+					"    config_storage_container = 'abfss://odw-config@' + storage_account + '/'\r\n",
+					"    \r\n",
+					"\r\n",
+					"    # json_schema_folder='harmonised_table_definitions'\r\n",
+					"    # json_schema_path = config_storage_container + '/' + json_schema_folder\r\n",
 					"    # read orchestration json to determine schema location \r\n",
-					"    storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"    orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
-					"    json_config_dict = json.loads(orchestration_json)\r\n",
+					"    if db_name.lower() == 'odw_standardised_db':\r\n",
+					"        storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
+					"        orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
+					"        json_config_dict = json.loads(orchestration_json)\r\n",
+					"        table_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == 'hr_addresses')\r\n",
+					"\r\n",
+					"    elif db_name.lower() == 'odw_harmonised_db':\r\n",
+					"        schema = spark.read.text(file.path, wholetext=True).first().value\r\n",
+					"        files = mssparkutils.fs.ls(json_schema_path)\r\n",
+					"\r\n",
+					"    elif db_name.lower() == 'odw_curated_db':\r\n",
+					"        schema = spark.read.text(file.path, wholetext=True).first().value\r\n",
+					"        files = mssparkutils.fs.ls(json_schema_path)\r\n",
 					"    # attempt to cast existing columns with new type type \r\n",
 					"    \r\n",
 					"    # if successful, add new columns from new schema schema \r\n",
@@ -474,11 +493,14 @@
 					}
 				},
 				"source": [
+					"import json\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
-					"json_config_dict = json.loads(orchestration_json)"
+					"json_config_dict = json.loads(orchestration_json)\r\n",
+					"# next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == 'hr_addresses')\r\n",
+					"json_config_dict"
 				],
-				"execution_count": 11
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
