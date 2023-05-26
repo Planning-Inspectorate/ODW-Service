@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "549cd306-65eb-44ee-9c9c-2b3731edac91"
+				"spark.autotune.trackingId": "92a250c4-463d-4175-9f87-6f19d800fe96"
 			}
 		},
 		"metadata": {
@@ -329,11 +329,14 @@
 					"\th.payroll_area,\n",
 					"\th.assignment_number,\n",
 					"\th.fte_2,\n",
-					"\tsc.ReportMonthEndDate as Report_MonthEnd_Date,\n",
-					"\tcoalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) as leave_entitlement_hrs,\n",
-					"\tcoalesce(lt.LeaveHoursTaken, 0) as leave_taken_hrs,\n",
-					"\tround((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)), 2) as leave_remaining_hours,\n",
-					"\tcoalesce(round(sc.ExpectedLeaveHoursRemaining, 2), 0) as leave_remaining_prorata_hours,\n",
+					"\tsc.ReportMonthEndDate \t\t\t\t\t\t\t\t\t\t\t\tAS Report_MonthEnd_Date,\n",
+					"\tcoalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) \tAS leave_entitlement_hrs,\n",
+					"\tcoalesce(lt.LeaveHoursTaken, 0) \t\t\t\t\t\t\t\t\tAS leave_taken_hrs,\n",
+					"\tround((coalesce(sc.LeaveAllowance, 0) + \n",
+					"\t\tcoalesce(co.CarriedOverHours, 0) - \n",
+					"\t\tcoalesce(sc.ExpectedLeaveHoursRemaining, 0)  - \n",
+					"\t\tcoalesce(lt.LeaveHoursTaken, 0)), 2) \t\t\t\t\t\t\tAS leave_remaining_hours,\n",
+					"\tcoalesce(round(sc.ExpectedLeaveHoursRemaining, 2), 0) \t\t\t\tAS leave_remaining_prorata_hours,\n",
 					"\th.expected_from\n",
 					"\t--,coalesce(round((coalesce(sc.LeaveAllowance, 0) + coalesce(co.CarriedOverHours, 0) - coalesce(sc.ExpectedLeaveHoursRemaining, 0)  - coalesce(lt.LeaveHoursTaken, 0)) * (sc.hourly_rate) * (1 + p.Total), 2),0.0) as cost_untaken_al\n",
 					"from odw_standardised_db.vw_saphr h\n",
@@ -344,7 +347,7 @@
 					"where \n",
 					"\tright(cast(cast(sc.ReportMonthEndDate as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
 				],
-				"execution_count": 9
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -505,7 +508,15 @@
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
 					"    CASE\r\n",
-					"        WHEN h.pers_no = T5.EmployeeID AND md5(concat(IFNULL(h.pers_no,'.'),IFNULL(CAST(h.Report_MonthEnd_Date as VARCHAR(20)),'.'),IFNULL(h.leave_entitlement_hrs,'.'),IFNULL(h.leave_taken_hrs,'.'),IFNULL(h.leave_remaining_hours,'.'),IFNULL(h.leave_remaining_prorata_hours,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+					"        WHEN h.pers_no = T5.EmployeeID AND md5(\r\n",
+					"            concat(\r\n",
+					"                IFNULL(h.pers_no,'.'),\r\n",
+					"                IFNULL(CAST(h.Report_MonthEnd_Date as VARCHAR(20)),'.'),\r\n",
+					"                IFNULL(h.leave_entitlement_hrs,'.'),\r\n",
+					"                IFNULL(h.leave_taken_hrs,'.'),\r\n",
+					"                IFNULL(h.leave_remaining_hours,'.'),\r\n",
+					"                IFNULL(h.leave_remaining_prorata_hours,'.')\r\n",
+					"            )) <> T5.RowID    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T5.EmployeeID IS NULL \r\n",
 					"        THEN 'Y'\r\n",
