@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9691ff51-1ce2-45ad-84ab-8db9613f9ba2"
+				"spark.autotune.trackingId": "b827b6dc-0db8-43c1-9b03-1b03048b38ca"
 			}
 		},
 		"metadata": {
@@ -139,7 +139,7 @@
 					"%%sql\r\n",
 					"SELECT * FROM odw_harmonised_db.abdullah_test"
 				],
-				"execution_count": 69
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
@@ -155,10 +155,10 @@
 					}
 				},
 				"source": [
-					"df = spark.read.format('delta').table('odw_standardised_db.abdullah_test')\r\n",
+					"df = spark.read.format('delta').table('odw_harmonised_db.abdullah_test')\r\n",
 					"df.schema.jsonValue()"
 				],
-				"execution_count": 60
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -486,10 +486,8 @@
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
 					"\r\n",
 					"    import json\r\n",
-					"    print(type(new_schema), new_schema)\r\n",
-					"    new_fields = json.loads(new_schema)\r\n",
-					"    print(new_fields)\r\n",
-					"    new_fields = new_fields['fields']\r\n",
+					"    new_fields = json.loads(json.loads(new_schema))['fields']\r\n",
+					"\r\n",
 					"    \r\n",
 					"    old_fields = old_schema['fields']\r\n",
 					"\r\n",
@@ -514,6 +512,7 @@
 					"    '''\r\n",
 					"    from pyspark.sql import SparkSession\r\n",
 					"    from notebookutils import mssparkutils\r\n",
+					"    from pyspark.sql.types import StructType\r\n",
 					"    import json\r\n",
 					"    spark = SparkSession.builder.getOrCreate()\r\n",
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
@@ -548,14 +547,12 @@
 					"        else:\r\n",
 					"            raise RuntimeError(\"\")\r\n",
 					"\r\n",
-					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()\r\n",
-					"    print(schema, '\\n', json.loads(schema), type(json.loads(schema)))\r\n",
-					"    \r\n",
+					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()    \r\n",
 					"    new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
 					"    # attempt to cast existing columns with new type type \r\n",
 					"    \r\n",
 					"    # if successful, add new columns from new schema schema \r\n",
-					"    new_struct = StructType.fromJson(json.loads(schema))\r\n",
+					"    new_struct = StructType.fromJson(json.loads(json.loads(schema)))\r\n",
 					"    spark = SparkSession.builder.getOrCreate()\r\n",
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
 					"    df = spark.createDataFrame([], new_struct)\r\n",
@@ -563,7 +560,7 @@
 					"\r\n",
 					"apply_new_schema(\"odw_harmonised_db\",\"abdullah_test\")"
 				],
-				"execution_count": 112
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
