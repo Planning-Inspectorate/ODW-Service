@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3cd1353a-1c21-43fb-b16c-73cff3f676bf"
+				"spark.autotune.trackingId": "0d4c52bf-fa51-41b9-8a9b-9126559d1a81"
 			}
 		},
 		"metadata": {
@@ -423,7 +423,10 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"tags": [
+						"parameters"
+					]
 				},
 				"source": [
 					"db_name = ''\r\n",
@@ -471,7 +474,7 @@
 					"    # save df with new types overwriting the schema\r\n",
 					"    df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable(f'{db_name}.{table_name}')"
 				],
-				"execution_count": null
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -493,6 +496,7 @@
 					"    '''\r\n",
 					"    from pyspark.sql import SparkSession\r\n",
 					"    from notebookutils import mssparkutils\r\n",
+					"    import json\r\n",
 					"    spark = SparkSession.builder.getOrCreate()\r\n",
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
 					"\r\n",
@@ -518,15 +522,44 @@
 					"        schema_location = next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/curated_table_definitions/\") if file.name.lower().split('.json')[0] == table_name)\r\n",
 					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
 					"\r\n",
+					"    elif db_name.lower() == 'odw_config_db':\r\n",
+					"        if table_name.lower() == 'datalabs_log':\r\n",
+					"            schema = \r\n",
+					"        elif table_name.lower() == 'raw_to_std_outstanding_files':\r\n",
+					"            schema = \r\n",
+					"\r\n",
 					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()\r\n",
 					"\r\n",
 					"    new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
 					"    # attempt to cast existing columns with new type type \r\n",
 					"    \r\n",
 					"    # if successful, add new columns from new schema schema \r\n",
+					"    new_schema = StructType.fromJson(json.loads(schema))\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"    df = spark.createDataFrame([], schema)\r\n",
+					"    df.write.option(\"mergeSchema\", \"true\").mode(\"append\").format('delta').saveAsTable(f'{db_name}.{table_name}')\r\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"apply_new_schema"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
