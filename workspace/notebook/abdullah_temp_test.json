@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "400e3285-afaf-4244-b2f6-9240e92a4ef1"
+				"spark.autotune.trackingId": "3648438a-2ded-4b27-9e59-0c4bd5f0d63d"
 			}
 		},
 		"metadata": {
@@ -241,7 +241,7 @@
 					"df = spark.read.format('delta').table('odw_config_db.abdullah_test')\r\n",
 					"df.show()"
 				],
-				"execution_count": 58
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -259,7 +259,7 @@
 				"source": [
 					"spark.read.format(\"delta\").load(\"odw_config_db.abdullah_test\").show()"
 				],
-				"execution_count": 13
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -404,6 +404,7 @@
 					"    for old_field in old_fields:\r\n",
 					"        if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
 					"            change_column_type.append(new_field['name'])\r\n",
+					"        \r\n",
 					"\r\n",
 					"    # print(new_field)\r\n",
 					"    # changed_old_columns = [old_field for old_field in old_fields if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type'])]\r\n",
@@ -463,15 +464,16 @@
 					"        storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"        orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
 					"        json_config_dict = json.loads(orchestration_json)\r\n",
-					"        table_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == 'hr_addresses')\r\n",
+					"        schema_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
 					"\r\n",
 					"    elif db_name.lower() == 'odw_harmonised_db':\r\n",
-					"        schema = spark.read.text(file.path, wholetext=True).first().value\r\n",
-					"        files = mssparkutils.fs.ls(json_schema_path)\r\n",
+					"        schema_location = next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/harmonised_table_definitions/\") if file.name.lower().split('.json')[0] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
 					"\r\n",
 					"    elif db_name.lower() == 'odw_curated_db':\r\n",
-					"        schema = spark.read.text(file.path, wholetext=True).first().value\r\n",
-					"        files = mssparkutils.fs.ls(json_schema_path)\r\n",
+					"        schema_location = next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/curated_table_definitions/\") if file.name.lower().split('.json')[0] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
 					"    # attempt to cast existing columns with new type type \r\n",
 					"    \r\n",
 					"    # if successful, add new columns from new schema schema \r\n",
@@ -498,9 +500,47 @@
 					"orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
 					"json_config_dict = json.loads(orchestration_json)\r\n",
 					"# next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == 'hr_addresses')\r\n",
-					"json_config_dict"
+					"json_config_dict\r\n",
+					"table_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == 'hr_addresses')"
 				],
-				"execution_count": 27
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from notebookutils import mssparkutils\r\n",
+					"next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/harmonised_table_definitions/\") if file.name.lower().split('.json')[0] == \"casework_additional_fields_dim\")"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_location"
+				],
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -540,7 +580,44 @@
 					"string_from_json = json.dumps(json_for_df)\r\n",
 					"string_from_json"
 				],
-				"execution_count": 64
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"json_for_df['fields']"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"jsonschema_new_type = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"PleaseWork\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
+					"json.loads(jsonschema_new_type)['fields']"
+				],
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
