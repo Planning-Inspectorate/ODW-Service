@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3648438a-2ded-4b27-9e59-0c4bd5f0d63d"
+				"spark.autotune.trackingId": "1607f67d-4412-4ef4-b872-e6ad33a63b8c"
 			}
 		},
 		"metadata": {
@@ -211,9 +211,10 @@
 					"\r\n",
 					"# set dataset location and columns with new types\r\n",
 					"types_to_change = {\r\n",
-					"  'Date' : 'timestamp'\r\n",
+					"  'Date' : 'timestamp',\r\n",
+					"  'Time' : 'string'\r\n",
 					"}\r\n",
-					"\r\n",
+					"from pyspark.sql.functions import col\r\n",
 					"# load to dataframe, change types\r\n",
 					"df = spark.read.format('delta').table('odw_config_db.abdullah_test')\r\n",
 					"for column in types_to_change:\r\n",
@@ -222,7 +223,7 @@
 					"# save df with new types overwriting the schema\r\n",
 					"df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable('odw_config_db.abdullah_test')"
 				],
-				"execution_count": 57
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -393,25 +394,23 @@
 					"jsonschema = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
 					"jsonschema_new_column = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"PleaseWork\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
 					"new_fields = json.loads(jsonschema_new_column)['fields']\r\n",
-					"new_field_names = [new_field['name'] for new_field in new_fields]\r\n",
 					"old_fields = json.loads(jsonschema)['fields']\r\n",
-					"old_field_names = [old_field['name'] for old_field in old_fields]\r\n",
-					"new_columns = [field for field in new_field_names if field not in old_field_names]\r\n",
-					"# dont care about old new_fields\r\n",
-					"change_column_type = []\r\n",
-					"new_column = []\r\n",
+					"\r\n",
+					"column_type_changed = {}\r\n",
 					"for new_field in new_fields:\r\n",
 					"    for old_field in old_fields:\r\n",
 					"        if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
-					"            change_column_type.append(new_field['name'])\r\n",
-					"        \r\n",
-					"\r\n",
-					"    # print(new_field)\r\n",
-					"    # changed_old_columns = [old_field for old_field in old_fields if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type'])]\r\n",
-					"    # print(matched_old_field)\r\n",
-					"print(new_columns, change_column_type)"
+					"            column_type_changed.update(dict({old_field['name']: new_field['type']}))\r\n",
+					"from pyspark.sql.functions import col\r\n",
+					"# load to dataframe, change types\r\n",
+					"df = spark.read.format('delta').table('odw_config_db.abdullah_test')\r\n",
+					"for column in types_to_change:\r\n",
+					"  df = df.withColumn(column,col(column).cast(types_to_change[column]))\r\n",
+					"  \r\n",
+					"# save df with new types overwriting the schema\r\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable('odw_config_db.abdullah_test')"
 				],
-				"execution_count": 8
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
