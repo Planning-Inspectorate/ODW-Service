@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1607f67d-4412-4ef4-b872-e6ad33a63b8c"
+				"spark.autotune.trackingId": "7da5b4dd-79c9-4a7a-9b5b-b985eea9ff59"
 			}
 		},
 		"metadata": {
@@ -428,6 +428,46 @@
 				"source": [
 					"db_name = ''\r\n",
 					"table_name = ''"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def new_schema_cast_columns(old_schema:str, new_schema:str, db_name:str, table_name:str):\r\n",
+					"    '''\r\n",
+					"    '''\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"\r\n",
+					"    import json\r\n",
+					"    new_fields = json.loads(new_schema)['fields']\r\n",
+					"    old_fields = json.loads(old_schema)['fields']\r\n",
+					"\r\n",
+					"    column_type_changed = {}\r\n",
+					"    for new_field in new_fields:\r\n",
+					"        for old_field in old_fields:\r\n",
+					"            if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
+					"                column_type_changed.update(dict({old_field['name']: new_field['type']}))\r\n",
+					"    from pyspark.sql.functions import col\r\n",
+					"    # load to dataframe, change types\r\n",
+					"    df = spark.read.format('delta').table(f'{db_name}.{table_name')\r\n",
+					"    for column in types_to_change:\r\n",
+					"        df = df.withColumn(column,col(column).cast(types_to_change[column]))\r\n",
+					"    \r\n",
+					"    # save df with new types overwriting the schema\r\n",
+					"    df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable('odw_config_db.abdullah_test')"
 				],
 				"execution_count": null
 			},
