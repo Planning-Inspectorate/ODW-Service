@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8301bc57-ddd9-4b95-b8cf-90c84b5820cc"
+				"spark.autotune.trackingId": "9691ff51-1ce2-45ad-84ab-8db9613f9ba2"
 			}
 		},
 		"metadata": {
@@ -70,11 +70,11 @@
 				},
 				"source": [
 					"jsonschema = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
-					"target_container = \"abfss://odw-standardised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"\r\n",
+					"target_container = \"abfss://odw-harmonised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"\r\n",
 					"table_name = \"abdullah_test\"\r\n",
 					"target_folder = \"config/\" + table_name"
 				],
-				"execution_count": 54
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -90,9 +90,9 @@
 					}
 				},
 				"source": [
-					"create_table_from_schema(jsonschema, \"odw_standardised_db\", table_name, target_container, target_folder)"
+					"create_table_from_schema(jsonschema, \"odw_harmonised_db\", table_name, target_container, target_folder)"
 				],
-				"execution_count": 55
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
@@ -114,9 +114,9 @@
 				"source": [
 					"%%sql\r\n",
 					"-- select * from odw_config_db.abdullah_test\r\n",
-					"insert into odw_standardised_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello World')"
+					"insert into odw_harmonised_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello World')"
 				],
-				"execution_count": 56
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -137,9 +137,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.abdullah_test"
+					"SELECT * FROM odw_harmonised_db.abdullah_test"
 				],
-				"execution_count": 58
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -460,33 +460,9 @@
 					}
 				},
 				"source": [
-					"def new_schema_cast_columns(old_schema:str, new_schema:str, db_name:str, table_name:str):\r\n",
-					"    '''\r\n",
-					"    '''\r\n",
-					"    from pyspark.sql import SparkSession\r\n",
-					"    spark = SparkSession.builder.getOrCreate()\r\n",
-					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
-					"\r\n",
-					"    import json\r\n",
-					"    new_fields = json.loads(new_schema)['fields']\r\n",
-					"    old_fields = json.loads(old_schema)['fields']\r\n",
-					"\r\n",
-					"    column_type_changed = {}\r\n",
-					"    for new_field in new_fields:\r\n",
-					"        for old_field in old_fields:\r\n",
-					"            if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
-					"                column_type_changed.update(dict({old_field['name']: new_field['type']}))\r\n",
-					"    if column_type_changed != {}:\r\n",
-					"        from pyspark.sql.functions import col\r\n",
-					"        # load to dataframe, change types\r\n",
-					"        df = spark.read.format('delta').table(f'{db_name}.{table_name}')\r\n",
-					"        for column in column_type_changed:\r\n",
-					"            df = df.withColumn(column,col(column).cast(types_to_change[column]))\r\n",
-					"        \r\n",
-					"        # save df with new types overwriting the schema\r\n",
-					"        df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable(f'{db_name}.{table_name}')"
+					""
 				],
-				"execution_count": 36
+				"execution_count": 80
 			},
 			{
 				"cell_type": "code",
@@ -502,6 +478,36 @@
 					}
 				},
 				"source": [
+					"def new_schema_cast_columns(old_schema:dict, new_schema:str, db_name:str, table_name:str):\r\n",
+					"    '''\r\n",
+					"    '''\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"\r\n",
+					"    import json\r\n",
+					"    print(type(new_schema), new_schema)\r\n",
+					"    new_fields = json.loads(new_schema)\r\n",
+					"    print(new_fields)\r\n",
+					"    new_fields = new_fields['fields']\r\n",
+					"    \r\n",
+					"    old_fields = old_schema['fields']\r\n",
+					"\r\n",
+					"    column_type_changed = {}\r\n",
+					"    for new_field in new_fields:\r\n",
+					"        for old_field in old_fields:\r\n",
+					"            if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
+					"                column_type_changed.update(dict({old_field['name']: new_field['type']}))\r\n",
+					"    if column_type_changed != {}:\r\n",
+					"        from pyspark.sql.functions import col\r\n",
+					"        # load to dataframe, change types\r\n",
+					"        df = spark.read.format('delta').table(f'{db_name}.{table_name}')\r\n",
+					"        for column in column_type_changed:\r\n",
+					"            df = df.withColumn(column,col(column).cast(types_to_change[column]))\r\n",
+					"        \r\n",
+					"        # save df with new types overwriting the schema\r\n",
+					"        df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable(f'{db_name}.{table_name}')\r\n",
+					"\r\n",
 					"def apply_new_schema(db_name, table_name):\r\n",
 					"    '''\r\n",
 					"    doc string\r\n",
@@ -514,13 +520,13 @@
 					"\r\n",
 					"    storage_account= spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net\"\r\n",
 					"    config_storage_container = 'abfss://odw-config@' + storage_account + '/'\r\n",
-					"    \r\n",
+					"    storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"\r\n",
 					"    # json_schema_folder='harmonised_table_definitions'\r\n",
 					"    # json_schema_path = config_storage_container + '/' + json_schema_folder\r\n",
 					"    # read orchestration json to determine schema location \r\n",
 					"    if db_name.lower() == 'odw_standardised_db':\r\n",
-					"        storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
+					"        \r\n",
 					"        orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
 					"        json_config_dict = json.loads(orchestration_json)\r\n",
 					"        schema_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == table_name)\r\n",
@@ -536,26 +542,28 @@
 					"\r\n",
 					"    elif db_name.lower() == 'odw_config_db':\r\n",
 					"        if table_name.lower() == 'datalabs_log':\r\n",
-					"            schema = \r\n",
+					"            schema = 'hello'\r\n",
 					"        elif table_name.lower() == 'raw_to_std_outstanding_files':\r\n",
-					"            schema = \r\n",
+					"            schema = 'world'\r\n",
 					"        else:\r\n",
 					"            raise RuntimeError(\"\")\r\n",
 					"\r\n",
 					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()\r\n",
-					"\r\n",
+					"    print(schema, '\\n', json.loads(schema), type(json.loads(schema)))\r\n",
+					"    \r\n",
 					"    new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
 					"    # attempt to cast existing columns with new type type \r\n",
 					"    \r\n",
 					"    # if successful, add new columns from new schema schema \r\n",
-					"    new_schema = StructType.fromJson(json.loads(schema))\r\n",
+					"    new_struct = StructType.fromJson(json.loads(schema))\r\n",
 					"    spark = SparkSession.builder.getOrCreate()\r\n",
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
-					"    df = spark.createDataFrame([], schema)\r\n",
+					"    df = spark.createDataFrame([], new_struct)\r\n",
 					"    df.write.option(\"mergeSchema\", \"true\").mode(\"append\").format('delta').saveAsTable(f'{db_name}.{table_name}')\r\n",
-					""
+					"\r\n",
+					"apply_new_schema(\"odw_harmonised_db\",\"abdullah_test\")"
 				],
-				"execution_count": 37
+				"execution_count": 112
 			},
 			{
 				"cell_type": "code",
@@ -571,9 +579,9 @@
 					}
 				},
 				"source": [
-					"apply_new_schema"
+					""
 				],
-				"execution_count": null
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
@@ -708,10 +716,10 @@
 					}
 				},
 				"source": [
-					"# jsonschema_new_type = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"PleaseWork\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
-					"# json.loads(jsonschema_new_type)['fields']"
+					"jsonschema_new_type = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"timestamp\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"PleaseWork\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
+					"json.loads(jsonschema_new_type)"
 				],
-				"execution_count": 26
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -792,7 +800,7 @@
 					"db_name=\"odw_standardised_db\"\r\n",
 					"table_name=\"abdullah_test\""
 				],
-				"execution_count": 52
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -810,7 +818,7 @@
 				"source": [
 					"delete_table(db_name,table_name)"
 				],
-				"execution_count": 53
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
