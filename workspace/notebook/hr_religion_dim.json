@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e239e380-3e25-4fba-9a95-6e7de8d140b2"
+				"spark.autotune.trackingId": "be9f7f2d-11ed-4663-9ef6-684bcca12527"
 			}
 		},
 		"metadata": {
@@ -77,9 +77,11 @@
 					"    AS\r\n",
 					"\r\n",
 					"SELECT Religious_denomination_key as ReligionCode,\r\n",
-					"        Religion as Description\r\n",
+					"        Religion as Description,\r\n",
+					"        last(expected_from) AS expected_from\r\n",
 					"\r\n",
 					" FROM odw_standardised_db.vw_protected_characteristics\r\n",
+					" WHERE Religious_denomination_key IS NOT NULL AND Religion IS NOT NULL\r\n",
 					" group by Religious_denomination_key, religion"
 				],
 				"execution_count": 1
@@ -123,7 +125,7 @@
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
-					"SELECT\r\n",
+					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.ReligionCode IS NULL\r\n",
 					"        THEN T3.ReligionID\r\n",
@@ -131,46 +133,25 @@
 					"    T1.ReligionCode,\r\n",
 					"    T1.Description,\r\n",
 					"    T2.SourceSystemID, -- NOT CORRECT\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    to_timestamp(T1.expected_from) AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.ReligionCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.ReligionCode = T3.ReligionCode AND md5(concat(IFNULL(T1.ReligionCode,'.'), IFNULL(T1.Description,'.'))) <> T3.RowID\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T3.ReligionCode IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.ReligionCode IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData,\r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM religion_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.hr_religion_dim T3 ON T1.ReligionCode = T3.ReligionCode and T3.IsActive = 'Y'\r\n",
 					"WHERE  \r\n",
-					"    (\r\n",
-					"        \r\n",
-					"        -- flags new data        \r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.ReligionCode = T3.ReligionCode AND md5(concat(IFNULL(T1.ReligionCode,'.'), IFNULL(T1.Description,'.'))) <> T3.RowID\r\n",
-					"                THEN 'Y'\r\n",
-					"                WHEN T3.ReligionCode IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.ReligionCode IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
-					"    )\r\n",
+					"    -- flags new data        \r\n",
+					"    (CASE\r\n",
+					"        WHEN T1.ReligionCode = T3.ReligionCode AND md5(concat(IFNULL(T1.ReligionCode,'.'), IFNULL(T1.Description,'.'))) <> T3.RowID\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN T3.ReligionCode IS NULL\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END  = 'Y')\r\n",
+					"    AND T1.ReligionCode IS NOT NULL\r\n",
 					";"
 				],
 				"execution_count": 2
@@ -384,7 +365,7 @@
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -434,12 +415,9 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
-					"-- Insert completely new rows\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
 					""
 				],
 				"execution_count": 6
@@ -481,7 +459,7 @@
 					"%%sql\r\n",
 					"-- Insert new ReligionID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_religion_dim\r\n",
+					"INSERT INTO odw_harmonised_db.hr_religion_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY Description NULLS LAST) AS ReligionID, \r\n",
@@ -492,9 +470,9 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.hr_religion_dim;"
+					"FROM religion_dim_changed_rows;"
 				],
-				"execution_count": 7
+				"execution_count": 4
 			}
 		]
 	}

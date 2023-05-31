@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bab34fc6-7d27-4ca5-8c3f-f5d0c3e4388f"
+				"spark.autotune.trackingId": "2427589a-9d91-423a-872f-64b5fac5aca1"
 			}
 		},
 		"metadata": {
@@ -41,14 +41,13 @@
 				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -79,7 +78,8 @@
 					"\r\n",
 					"SELECT \r\n",
 					"    PS_group AS PSGroupCode,\r\n",
-					"    First(Pay_Band_Description) AS Description\r\n",
+					"    First(Pay_Band_Description) AS Description,\r\n",
+					"    last(expected_from) AS expected_from\r\n",
 					"    \r\n",
 					"FROM odw_standardised_db.vw_saphr\r\n",
 					"WHERE PS_group IS NOT NULL\r\n",
@@ -126,7 +126,7 @@
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
-					"SELECT \r\n",
+					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
 					"        WHEN T1.PSGroupCode IS NULL\r\n",
 					"        THEN T7.PayBandID\r\n",
@@ -139,18 +139,6 @@
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.PSGroupCode IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData, \r\n",
 					"    T7.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM payband_grouped T1\r\n",
@@ -158,23 +146,15 @@
 					"FULL JOIN odw_harmonised_db.hr_payband_dim T7 ON T1.PSGroupCode = T7.PSGroupCode AND\r\n",
 					"                                                T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (\r\n",
-					"        -- flags new data        \r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
-					"                THEN 'Y'\r\n",
-					"                WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END  = 'Y' ) OR\r\n",
-					"        \r\n",
-					"        -- flags deleted data\r\n",
-					"        (   CASE\r\n",
-					"                WHEN T1.PSGroupCode IS NULL\r\n",
-					"                THEN 'Y'\r\n",
-					"                ELSE 'N'\r\n",
-					"            END = 'Y' )\r\n",
-					"    );"
+					"    -- flags new data        \r\n",
+					"    CASE\r\n",
+					"        WHEN T1.PSGroupCode = T7.PSGroupCode AND md5(concat(IFNULL(T1.PSGroupCode,'.'), IFNULL(T1.Description,'.')))  <> T7.RowID   -- same employee, changed data\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN T7.PSGroupCode IS NULL -- new employee\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END  = 'Y' \r\n",
+					";"
 				],
 				"execution_count": 2
 			},
@@ -312,7 +292,8 @@
 					"#         print(j + \" to be added is not in the current records\")\r\n",
 					"#     else:\r\n",
 					"#         #raise RuntimeError(\"Records to Add do not match\")"
-				]
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -381,7 +362,8 @@
 					"WHERE PSGroupCode IN (SELECT PSGroupCode FROM payband_dim_new WHERE PayBandID IS NULL) \r\n",
 					"AND IsActive = 'Y' ; \r\n",
 					""
-				]
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -433,11 +415,9 @@
 					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
-					"-- Insert completely new rows\r\n",
-					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;  \r\n",
 					""
-				]
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -476,7 +456,7 @@
 					"%%sql\r\n",
 					"-- Insert new PersonnelAreaID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.hr_payband_dim\r\n",
+					"INSERT INTO odw_harmonised_db.hr_payband_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY PayBandID NULLS LAST) AS PayBandID,\r\n",
@@ -487,9 +467,10 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.hr_payband_dim;\r\n",
+					"FROM payband_dim_changed_rows;\r\n",
 					""
-				]
+				],
+				"execution_count": null
 			}
 		]
 	}
