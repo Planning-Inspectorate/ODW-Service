@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ded54a6a-c859-4f6d-a6d8-a12a8ac31f2a"
+				"spark.autotune.trackingId": "ec9b16a7-9fca-4706-9fac-be0ea1bd4f86"
 			}
 		},
 		"metadata": {
@@ -83,8 +83,8 @@
 					]
 				},
 				"source": [
-					"db_name=\"odw_harmonised_db\"\r\n",
-					"table_name=\"hr_employee_leavers_dim\""
+					"db_name=\"\"\r\n",
+					"table_name=\"\""
 				],
 				"execution_count": 43
 			},
@@ -219,6 +219,7 @@
 					"            # attempt to cast existing columns with new column type\r\n",
 					"            new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
 					"        except Exception as e:\r\n",
+					"            # if casting fails, raise error and restore to last stable version in case any transactions have happened\r\n",
 					"            logger.info(\"casting columns failed\")\r\n",
 					"            delta_table.restoreToVersion(last_stable_version)\r\n",
 					"            raise e\r\n",
@@ -232,6 +233,7 @@
 					"            df = spark.createDataFrame([], new_struct)\r\n",
 					"            df.write.option(\"mergeSchema\", \"true\").mode(\"append\").format('delta').saveAsTable(f'{db_name}.{table_name}')\r\n",
 					"        except Exception as e:\r\n",
+					"            # if adding new columns, raise error and restore to last stable version in case any transactions have happened\r\n",
 					"            delta_table.restoreToVersion(last_stable_version)\r\n",
 					"            logger.info(\"Failed to apply new schema, have rolled backed changes\")\r\n",
 					"            raise e\r\n",
@@ -257,66 +259,6 @@
 					"apply_new_schema(db_name,table_name)"
 				],
 				"execution_count": 45
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()"
-				],
-				"execution_count": 57
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from delta.tables import DeltaTable\r\n",
-					"deltaTable_standardised = DeltaTable.forPath(spark, \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/Checkmark/checkmark_case_comment/\")\r\n",
-					"fullHistoryDF = deltaTable_standardised.history()\r\n",
-					"fullHistoryDF.select(\"version\").first()['version']\r\n",
-					"deltaTable_standardised.restoreToVersion(76)"
-				],
-				"execution_count": 55
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"fullHistoryDF = deltaTable_standardised.history()\r\n",
-					"# fullHistoryDF.select(\"version\").first()['version']\r\n",
-					"fullHistoryDF.toPandas()"
-				],
-				"execution_count": 54
 			}
 		]
 	}
