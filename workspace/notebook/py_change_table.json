@@ -1,0 +1,139 @@
+{
+	"name": "py_change_table",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "78239587-6222-43db-a838-82d5e45a6836"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def new_schema_cast_columns(old_schema:dict, new_schema:str, db_name:str, table_name:str):\r\n",
+					"    '''\r\n",
+					"    '''\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"\r\n",
+					"    import json\r\n",
+					"    new_fields = json.loads(new_schema)['fields']\r\n",
+					"\r\n",
+					"    \r\n",
+					"    old_fields = old_schema['fields']\r\n",
+					"\r\n",
+					"    column_type_changed = {}\r\n",
+					"    for new_field in new_fields:\r\n",
+					"        for old_field in old_fields:\r\n",
+					"            if old_field['name'] == new_field['name'] and old_field['type'] != new_field['type']:\r\n",
+					"                column_type_changed.update(dict({old_field['name']: new_field['type']}))\r\n",
+					"    if column_type_changed != {}:\r\n",
+					"        from pyspark.sql.functions import col\r\n",
+					"        # load to dataframe, change types\r\n",
+					"        df = spark.read.format('delta').table(f'{db_name}.{table_name}')\r\n",
+					"        for column in column_type_changed:\r\n",
+					"            df = df.withColumn(column,col(column).cast(types_to_change[column]))\r\n",
+					"        \r\n",
+					"        # save df with new types overwriting the schema\r\n",
+					"        df.write.format(\"delta\").mode(\"overwrite\").option(\"overwriteSchema\",True).saveAsTable(f'{db_name}.{table_name}')\r\n",
+					"\r\n",
+					"def apply_new_schema(db_name, table_name):\r\n",
+					"    '''\r\n",
+					"    doc string\r\n",
+					"    '''\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    from pyspark.sql.types import StructType\r\n",
+					"    import json\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"\r\n",
+					"    storage_account= spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net\"\r\n",
+					"    config_storage_container = 'abfss://odw-config@' + storage_account + '/'\r\n",
+					"    storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
+					"\r\n",
+					"    # json_schema_folder='harmonised_table_definitions'\r\n",
+					"    # json_schema_path = config_storage_container + '/' + json_schema_folder\r\n",
+					"    # read orchestration json to determine schema location \r\n",
+					"    if db_name.lower() == 'odw_standardised_db':\r\n",
+					"        \r\n",
+					"        orchestration_json = spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/orchestration/orchestration.json\", wholetext=True).first().value\r\n",
+					"        json_config_dict = json.loads(orchestration_json)\r\n",
+					"        schema_location = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + next(config['Standardised_Table_Definition'] for config in json_config_dict['definitions'] if config['Standardised_Table_Name'] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
+					"\r\n",
+					"    elif db_name.lower() == 'odw_harmonised_db':\r\n",
+					"        schema_location = next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/harmonised_table_definitions/\") if file.name.lower().split('.json')[0] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
+					"\r\n",
+					"    elif db_name.lower() == 'odw_curated_db':\r\n",
+					"        schema_location = next(file.path for file in mssparkutils.fs.ls(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/curated_table_definitions/\") if file.name.lower().split('.json')[0] == table_name)\r\n",
+					"        schema = spark.read.text(schema_location, wholetext=True).first().value\r\n",
+					"\r\n",
+					"    elif db_name.lower() == 'odw_config_db':\r\n",
+					"        if table_name.lower() == 'datalabs_log':\r\n",
+					"            schema = 'hello'\r\n",
+					"        elif table_name.lower() == 'raw_to_std_outstanding_files':\r\n",
+					"            schema = 'world'\r\n",
+					"        else:\r\n",
+					"            raise RuntimeError(\"No Schema Found\")\r\n",
+					"\r\n",
+					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()    \r\n",
+					"    new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
+					"    # attempt to cast existing columns with new type type \r\n",
+					"    \r\n",
+					"    # if successful, add new columns from new schema schema \r\n",
+					"    new_struct = StructType.fromJson(json.loads(schema))\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
+					"    df = spark.createDataFrame([], new_struct)\r\n",
+					"    df.write.option(\"mergeSchema\", \"true\").mode(\"append\").format('delta').saveAsTable(f'{db_name}.{table_name}')\r\n",
+					"\r\n",
+					"apply_new_schema(\"odw_harmonised_db\",\"abdullah_test\")"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
