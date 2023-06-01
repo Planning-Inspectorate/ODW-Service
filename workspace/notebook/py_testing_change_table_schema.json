@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6c4c8f4c-afdf-429e-8cf3-6c72afd0f83e"
+				"spark.autotune.trackingId": "72a6e1f1-35e7-4f64-b305-4070ee0a1e84"
 			}
 		},
 		"metadata": {
@@ -53,7 +53,7 @@
 				"source": [
 					"%run  \"0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\""
 				],
-				"execution_count": 48
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -70,11 +70,11 @@
 				},
 				"source": [
 					"jsonschema = \"\"\"{\"fields\": [{\"metadata\": {},\"name\": \"Date\",\"nullable\": false,\"type\": \"string\"}, {\"metadata\": {},\"name\": \"Text\",\"nullable\":false,\"type\": \"string\"}]}\"\"\"\r\n",
-					"target_container = \"abfss://odw-harmonised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"\r\n",
+					"target_container = \"abfss://odw-standardised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"\r\n",
 					"table_name = \"abdullah_test\"\r\n",
 					"target_folder = \"config/\" + table_name"
 				],
-				"execution_count": 66
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -90,9 +90,9 @@
 					}
 				},
 				"source": [
-					"create_table_from_schema(jsonschema, \"odw_harmonised_db\", table_name, target_container, target_folder)"
+					"create_table_from_schema(jsonschema, \"odw_standardised_db\", table_name, target_container, target_folder)"
 				],
-				"execution_count": 67
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -114,9 +114,69 @@
 				"source": [
 					"%%sql\r\n",
 					"-- select * from odw_config_db.abdullah_test\r\n",
-					"insert into odw_harmonised_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello World')"
+					"insert into odw_standardised_db.abdullah_test VALUES (CAST('2022-10-10' AS TIMESTAMP), 'Hello1 World')"
 				],
-				"execution_count": 68
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from delta.tables import DeltaTable\r\n",
+					"deltaTable_standardised = DeltaTable.forPath(spark, \"abfss://odw-standardised@\" + spark.sparkContext.environment.get('dataLakeAccountName', 'get') + \".dfs.core.windows.net/\"+\"config/\" + table_name)\r\n",
+					"fullHistoryDF = deltaTable_standardised.history()\r\n",
+					"# fullHistoryDF.select(\"version\").first()['version']\r\n",
+					"deltaTable_standardised.restoreToVersion(2)"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_details = spark.sql(f\"DESCRIBE DETAIL odw_standardised_db.abdullah_test\").toPandas()\r\n",
+					"table_details['location'][0]"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"fullHistoryDF = deltaTable_standardised.history()\r\n",
+					"fullHistoryDF.toPandas()"
+				],
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
