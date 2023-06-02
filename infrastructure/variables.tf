@@ -144,6 +144,7 @@ variable "failover_deployment" {
 }
 
 variable "key_vault_name" {
+  default     = ""
   description = "The name of the Key Vault to use for secret storage"
   type        = string
 }
