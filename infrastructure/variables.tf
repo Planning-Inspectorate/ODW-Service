@@ -379,6 +379,11 @@ variable "synapse_sql_administrator_username" {
   type        = string
 }
 
+variable "synapse_workspace_id" {
+  description = "The Synapse Workspace ID"
+  type        = string
+}
+
 variable "tags" {
   default     = {}
   description = "A collection of tags to assign to taggable resources"
