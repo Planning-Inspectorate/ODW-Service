@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0cb1f368-369b-455f-a2f2-a269f64662b9"
+				"spark.autotune.trackingId": "131a1c92-2df5-4efe-b9fd-1a0f96e823d3"
 			}
 		},
 		"metadata": {
@@ -64,7 +64,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 42
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -83,10 +83,10 @@
 					]
 				},
 				"source": [
-					"db_name=\"\"\r\n",
-					"table_name=\"\""
+					"db_name=\"odw_harmonised_db\"\r\n",
+					"table_name=\"casework_case_info_dim\""
 				],
-				"execution_count": 43
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -206,6 +206,10 @@
 					"\r\n",
 					"    # check the table to see if there are any changes in the schema at all\r\n",
 					"    current_json_str = spark.read.format('delta').table(f'{db_name}.{table_name}').schema.jsonValue()    \r\n",
+					"    # print('\\n',json.loads(schema)['fields'],'\\n',current_json_str['fields'])\r\n",
+					"    current_table_schma = json.dumps(current_json_str, sort_keys=True)\r\n",
+					"    latest_json_schema = json.dumps(json.loads(schema), sort_keys=True)\r\n",
+					"    print(current_table_schma,latest_json_schema)\r\n",
 					"    if json.loads(schema)['fields'] == current_json_str['fields']:\r\n",
 					"        logger.info(\"no changes in schema\")\r\n",
 					"    else:\r\n",
@@ -217,6 +221,7 @@
 					"        last_stable_version = fullHistoryDF.select(\"version\").first()['version']\r\n",
 					"        try:\r\n",
 					"            # attempt to cast existing columns with new column type\r\n",
+					"            logger.info(\"casting columns\")\r\n",
 					"            new_schema_cast_columns(current_json_str, schema, db_name, table_name)\r\n",
 					"        except Exception as e:\r\n",
 					"            # if casting fails, raise error and restore to last stable version in case any transactions have happened\r\n",
@@ -227,6 +232,7 @@
 					"        \r\n",
 					"        # if successful, add new columns from new schema schema \r\n",
 					"        try:\r\n",
+					"            logger.info(\"adding new columns\")\r\n",
 					"            new_struct = StructType.fromJson(json.loads(schema))\r\n",
 					"            spark = SparkSession.builder.getOrCreate()\r\n",
 					"            spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\r\n",
@@ -240,7 +246,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 44
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -258,7 +264,43 @@
 				"source": [
 					"apply_new_schema(db_name,table_name)"
 				],
-				"execution_count": 45
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.sql(f\"DESCRIBE HISTORY {db_name}.{table_name}\").toPandas()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
