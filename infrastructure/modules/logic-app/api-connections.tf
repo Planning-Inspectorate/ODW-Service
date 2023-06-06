@@ -8,13 +8,15 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
+    "token:GrantType" = "code"
+    "token:code"      = "C9yZPMVcE5UPPTiundacEJ0wHyNGsKJuELvP07tD"
   }
 
-  lifecycle {
-    ignore_changes = [
-      parameter_values
-    ]
-  }
+  # lifecycle {
+  #   ignore_changes = [
+  #     parameter_values
+  #   ]
+  # }
 }
 
 resource "azurerm_api_connection" "service_bus_api_connection" {
@@ -29,8 +31,8 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
     connectionString = var.service_bus_primary_connection_string
   }
 
-  # lifecycle {
-  # ignore_changes = [
-  #   parameter_values
-  # ]
+  lifecycle {
+  ignore_changes = [
+    parameter_values
+  ]
 }
