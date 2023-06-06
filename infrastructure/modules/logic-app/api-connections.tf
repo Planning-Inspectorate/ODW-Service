@@ -32,7 +32,8 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
   }
 
   lifecycle {
-  ignore_changes = [
-    parameter_values
-  ]
+    ignore_changes = [
+      parameter_values
+    ]
+  }
 }
