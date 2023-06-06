@@ -15,14 +15,14 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
   parameters = {
     "$connections" = jsonencode({
       "zendesk" : {
-        "connectionId" : azurerm_api_connection.zendesk_api_connection.id,
-        "connectionName" : azurerm_api_connection.zendesk_api_connection.name,
-        "id" : azurerm_api_connection.zendesk_api_connection.managed_api_id
+        "connectionId" : azurerm_api_connection.zendesk_api_connection[count.index].id,
+        "connectionName" : azurerm_api_connection.zendesk_api_connection[count.index].name,
+        "id" : azurerm_api_connection.zendesk_api_connection[count.index].managed_api_id
       },
       "servicebus" : {
-        "connectionId" : azurerm_api_connection.service_bus_api_connection.id,
-        "connectionName" : azurerm_api_connection.service_bus_api_connection.name,
-        "id" : azurerm_api_connection.service_bus_api_connection.managed_api_id
+        "connectionId" : azurerm_api_connection.service_bus_api_connection[count.index].id,
+        "connectionName" : azurerm_api_connection.service_bus_api_connection[count.index].name,
+        "id" : azurerm_api_connection.service_bus_api_connection[count.index].managed_api_id
       }
     })
   }
