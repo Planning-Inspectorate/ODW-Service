@@ -25,7 +25,6 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
     connectionString = var.service_bus_primary_connection_string
   }
 
-
   # lifecycle {
   # ignore_changes = [
   #   parameter_values

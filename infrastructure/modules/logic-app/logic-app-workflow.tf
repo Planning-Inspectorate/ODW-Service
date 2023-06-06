@@ -23,11 +23,6 @@ resource "azurerm_logic_app_workflow" "zendesk_created" {
         "connectionId" : azurerm_api_connection.service_bus_api_connection.id,
         "connectionName" : azurerm_api_connection.service_bus_api_connection.name,
         "id" : azurerm_api_connection.service_bus_api_connection.managed_api_id
-        "connectionProperties" : {
-          "authentication" : {
-            "type" : "ManagedServiceIdentity"
-          }
-        }
       }
     })
   }
