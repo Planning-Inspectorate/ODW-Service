@@ -7,9 +7,9 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
   display_name        = "pinssupport"
 
   parameter_values = {
-    "token:Subdomain" = "pinssupport"
-    "token:grantType" = "authorization_code"
-    "token:code"      = "C9yZPMVcE5UPPTiundacEJ0wHyNGsKJuELvP07tD"
+    "token:Subdomain"   = "pinssupport"
+    "token:grantType"   = "authorization_code"
+    "token:accessToken" = "C9yZPMVcE5UPPTiundacEJ0wHyNGsKJuELvP07tD"
   }
 
   # lifecycle {
