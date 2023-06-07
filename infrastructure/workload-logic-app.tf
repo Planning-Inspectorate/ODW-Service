@@ -1,45 +1,45 @@
-resource "azurerm_resource_group" "logic_app" {
-  name     = "pins-rg-logic-app-${local.resource_suffix}"
-  location = module.azure_region.location_cli
+# resource "azurerm_resource_group" "logic_app" {
+#   count = var.logic_app_enabled ? 1 : 0
 
-  tags = local.tags
-}
+#   name     = "pins-rg-logic-app-${local.resource_suffix}"
+#   location = module.azure_region.location_cli
 
-resource "azurerm_resource_group" "logic_app_failover" {
-  count = var.failover_deployment ? 1 : 0
+#   tags = local.tags
+# }
 
-  name     = "pins-rg-logic-app-${local.resource_suffix_failover}"
-  location = module.azure_region.paired_location.location_cli
+# resource "azurerm_resource_group" "logic_app_failover" {
+#   count = var.failover_deployment ? 1 : 0
 
-  tags = local.tags
-}
+#   name     = "pins-rg-logic-app-${local.resource_suffix_failover}"
+#   location = module.azure_region.paired_location.location_cli
 
-module "logic_app" {
-  source = "./modules/logic-app"
+#   tags = local.tags
+# }
 
-  environment         = var.environment
-  resource_group_name = azurerm_resource_group.logic_app.name
-  location            = module.azure_region.location_cli
-  service_name        = local.service_name
+# module "logic_app" {
+#   count = var.logic_app_enabled ? 1 : 0
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
+#   source = "./modules/logic-app"
 
-  tags = local.tags
-}
+#   environment         = var.environment
+#   resource_group_name = azurerm_resource_group.logic_app[0].name
+#   location            = module.azure_region.location_cli
+#   logic_app_enabled   = var.logic_app_enabled
+#   service_name        = local.service_name
 
-module "logic_app_failover" {
-  count = var.failover_deployment ? 1 : 0
+#   tags = local.tags
+# }
 
-  source = "./modules/logic-app"
+# module "logic_app_failover" {
+#   count = var.logic_app_enabled && var.failover_deployment ? 1 : 0
 
-  environment         = var.environment
-  resource_group_name = azurerm_resource_group.logic_app_failover[0].name
-  location            = module.azure_region.paired_location.location_cli
-  service_name        = local.service_name
+#   source = "./modules/logic-app"
 
-  logic_app_service_plan_enabled = var.logic_app_service_plan_enabled
-  logic_app_standard_enabled     = var.logic_app_standard_enabled
+#   environment         = var.environment
+#   resource_group_name = azurerm_resource_group.logic_app_failover[0].name
+#   location            = module.azure_region.paired_location.location_cli
+#   logic_app_enabled   = var.logic_app_enabled
+#   service_name        = local.service_name
 
-  tags = local.tags
-}
+#   tags = local.tags
+# }
