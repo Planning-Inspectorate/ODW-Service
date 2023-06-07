@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0dc951bb-8650-4ae0-9942-26a1c385fa3c"
+				"spark.autotune.trackingId": "f07d2427-e7cc-4ddc-b186-79dad847048a"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 27
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 2
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +118,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 3
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -172,7 +172,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 4
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -226,7 +226,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 5
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -355,7 +355,7 @@
 					"    return schema_dict\r\n",
 					"schema_dict = read_schema()"
 				],
-				"execution_count": 6
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -465,7 +465,7 @@
 					"    return list_with_all_zendesk_dict\r\n",
 					"zendesk_dict = read_zendesk(schema_dict)"
 				],
-				"execution_count": 8
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -536,11 +536,11 @@
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"shows = spark.read.json(\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
 					"# Create mega table\r\n",
-					"shows = shows.withColumn('IngestionDate', F.current_date())\r\n",
+					"shows = shows.withColumn('IngestionDate', F.current_timestamp())\r\n",
 					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_system_extract;\")\r\n",
 					"shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_system_extract\")"
 				],
-				"execution_count": 28
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -563,7 +563,7 @@
 					"%%sql\r\n",
 					"SELECT * FROM odw_standardised_db.zendesk_system_extract LIMIT 10"
 				],
-				"execution_count": null
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -616,11 +616,12 @@
 					"        )\r\n",
 					"    # fields_id_value.show()\r\n",
 					"    fields_id_value.drop(\"position\")\r\n",
+					"    fields_id_value = fields_id_value.withColumn('IngestionDate', F.current_timestamp())\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_fields_id_value;\")\r\n",
 					"    fields_id_value.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_fields_id_value\")\r\n",
 					"fields_table()"
 				],
-				"execution_count": 8
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -654,11 +655,12 @@
 					"        )\r\n",
 					"    # custom_fields_id_value.show()\r\n",
 					"    custom_fields_id_value.drop(\"position\")\r\n",
+					"    custom_fields_id_value = custom_fields_id_value.withColumn('IngestionDate', F.current_timestamp())\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_custom_fields_id_value;\")\r\n",
 					"    custom_fields_id_value.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_custom_fields_id_value\")\r\n",
 					"custom_fields_table()"
 				],
-				"execution_count": 9
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -758,11 +760,11 @@
 						"99e88483-8d34-41b4-882e-7e79a22f8872": {
 							"text": "sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")",
 							"start": {
-								"line": 36,
+								"line": 37,
 								"column": 5
 							},
 							"end": {
-								"line": 36,
+								"line": 37,
 								"column": 82
 							}
 						}
@@ -803,6 +805,7 @@
 					"    dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
 					"    dfFlatCommentsDictList.via_source_to_email_ccs = dfFlatCommentsDictList.via_source_to_email_ccs.astype(str)\r\n",
 					"    sFlatCommentsDictList = spark.createDataFrame(dfFlatCommentsDictList)\r\n",
+					"    # dfFlatCommentsDictList = dfFlatCommentsDictList.withColumn('IngestionDate', F.current_timestamp())\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments;\")\r\n",
 					"    sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments_attachments;\")\r\n",
@@ -813,7 +816,7 @@
 					"comments_and_attachments()\r\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
