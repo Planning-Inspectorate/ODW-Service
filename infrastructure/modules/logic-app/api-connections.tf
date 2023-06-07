@@ -8,6 +8,7 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
+    "token:userName"  = "test"
   }
 
   # lifecycle {
