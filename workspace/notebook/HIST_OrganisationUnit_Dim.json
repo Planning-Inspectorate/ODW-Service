@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bd92569b-2cd4-438f-82fe-86291c6d4250"
+				"spark.autotune.trackingId": "9ae2ab18-e0a6-4274-9419-2e26a77daf95"
 			}
 		},
 		"metadata": {
@@ -76,20 +76,44 @@
 					")\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    Row_Number() over (Order By T1.Org_Unit, T1.Organizational_Unit) AS OrganisationUnitID,\r\n",
-					"    T1.Org_unit as OrganisationUnit,\r\n",
-					"    T1.Organizational_Unit AS Description,\r\n",
+					"    Row_Number() over (Order By T1.Org_Unit) AS OrganisationUnitID,\r\n",
+					"    IFNULL(T1.Org_unit, 'No Value') as OrganisationUnit,\r\n",
+					"    First(IFNULL(T1.Organizational_Unit, 'No Value')) AS Description,\r\n",
 					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"    to_timestamp(T1.expected_from) AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,md5(concat(IFNULL(T1.Org_unit,'.'), IFNULL(T1.Organizational_Unit,'.'))) as RowID, -- check this\r\n",
+					"    First(to_timestamp(T1.expected_from)) AS IngestionDate,\r\n",
+					"    NULL AS ValidTo,md5(concat(IFNULL(T1.Org_unit,'.'), First(IFNULL(T1.Organizational_Unit, 'No Value')))) as RowID, -- check this\r\n",
 					"    'Y' as IsActive\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_saphr_historic T1 \r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
 					"WHERE T1.Org_Unit is not null\r\n",
-					"GROUP BY T1.Org_unit, T1.Organizational_Unit"
+					"GROUP BY T1.Org_unit"
 				],
-				"execution_count": 4
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from odw_standardised_db.vw_saphr_historic"
+				],
+				"execution_count": 17
 			}
 		]
 	}
