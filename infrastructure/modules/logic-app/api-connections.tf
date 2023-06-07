@@ -9,7 +9,6 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
   parameter_values = {
     "token:Subdomain" = "pinssupport"
     "token:Username"  = "SVC_Zendesk@planninginspectorate.gov.uk"
-    "token:Password"  = "test"
   }
 
   # lifecycle {
