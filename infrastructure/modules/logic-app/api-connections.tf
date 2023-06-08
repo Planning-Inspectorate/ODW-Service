@@ -8,7 +8,6 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
 
   parameter_values = {
     "token:Subdomain" = "pinssupport"
-    "token:email_id"  = "SVC_Zendesk@planninginspectorate.gov.uk"
   }
 
   # lifecycle {
