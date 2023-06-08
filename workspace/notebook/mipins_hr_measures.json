@@ -1,5 +1,5 @@
 {
-	"name": "mipins_hr_measures",
+	"name": "mipins_hr_measures_OLD",
 	"properties": {
 		"folder": {
 			"name": "odw-curated"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f9f68366-6597-4bce-af1a-fdae7b83cc7c"
+				"spark.autotune.trackingId": "3bdaaaec-d932-421b-8c7e-4ecffbeed9ea"
 			}
 		},
 		"metadata": {
@@ -76,58 +76,31 @@
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.EmployeeID                                                AS EmployeeID,\n",
-					"    p.PSGroupCode                                               AS Grade, \n",
-					"\th.AnnualSalary                                              AS Salary, \n",
-					"    cast(cast(h.AnnualSalary as float)/(365.0*7.4) as float)    AS HourlyRate,\n",
-					"    cast(le.ExpectedFrom as date)                               AS ReportMonthEndDate,\n",
-					"    le.LeaveDaysPerYear                                         AS LeaveAllowance,\n",
+					"    h.pers_no as EmployeeID,\n",
+					"    h.ps_group as Grade, \n",
+					"\th.annual_salary as Salary, \n",
+					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as HourlyRate,\n",
+					"    cast(le.ExpectedFrom as date) as ReportMonthEndDate,\n",
+					"    le.LeaveDaysPerYear as LeaveAllowance,\n",
 					"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
 					"\t\t\t\twhen 1 then le.LeaveYearStart\n",
 					"\t\t\t\twhen 0 then le.LeaveYearStart\n",
 					"\t\t\t\telse dateadd(year, -1, le.LeaveYearStart)\n",
 					"\t\t\tend as date) as LeaveStartDate,\n",
 					"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
-					"            CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
-					"                WHEN 1 \n",
-					"                THEN le.leaveyearstart\n",
-					"            ELSE dateadd(year, -1, le.leaveyearstart)\n",
-					"            END AS date), le.expectedfrom))/364.25)%1)))        AS ExpectedLeaveHoursRemaining\n",
+					"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
+					"                                                    WHEN 1 THEN\n",
+					"                                                    le.leaveyearstart\n",
+					"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
+					"                                                    END\n",
+					"                                                    AS date), le.expectedfrom))/364.25)%1))) AS ExpectedLeaveHoursRemaining\n",
 					"    \n",
-					"FROM odw_harmonised_db.hr_employee_dim h\n",
-					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.EmployeeID = le.EmployeeID\n",
-					"LEFT JOIN odw_harmonised_db.hr_record_fact r ON h.EmployeeID = r.EmployeeID AND r.IsActive = 'Y'\n",
-					"LEFT JOIN odw_harmonised_db.hr_payband_dim p ON r.PayBandID = r.PayBandID\n",
+					"FROM odw_standardised_db.vw_saphr h\n",
+					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
 					"WHERE\n",
-					"    h.IsActive = 'Y' AND\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 6
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT COUNT(*) FROM staff_cost;\n",
-					"SELECT * FROM staff_cost"
-				],
-				"execution_count": 7
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -154,15 +127,15 @@
 					"    AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.EmployeeID as EmployeeID,\n",
+					"    h.pers_no as EmployeeID,\n",
 					"    case sign(le.LeaveDaysPerYear - 148)\n",
 					"        when 1 then 148\n",
 					"        when 0 then 148\n",
 					"        else le.LeaveDaysPerYear\n",
 					"    end as CarriedOverHours\n",
 					"\n",
-					"FROM odw_harmonised_db.hr_employee_dim h\n",
-					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.EmployeeID = le.EmployeeID\n",
+					"FROM odw_standardised_db.vw_saphr h\n",
+					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
