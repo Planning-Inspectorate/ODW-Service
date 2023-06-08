@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cf89929c-29d9-4e29-8c02-3f08949eed1a"
+				"spark.autotune.trackingId": "264da934-35a3-4119-836f-3da918f82f25"
 			}
 		},
 		"metadata": {
@@ -74,7 +74,7 @@
 					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW organisation_grouped\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"AS\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"        Org_unit AS OrganisationUnit,\r\n",
@@ -82,10 +82,10 @@
 					"        last(expected_from) AS expected_from\r\n",
 					"    \r\n",
 					"FROM odw_standardised_db.vw_saphr\r\n",
-					"WHERE Org_Unit IS NOT NULL\r\n",
+					"WHERE Org_Unit IS NOT NULL AND Org_unit <> 00000000\r\n",
 					"GROUP BY Org_unit, Organizational_Unit;"
 				],
-				"execution_count": 1
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -126,30 +126,30 @@
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
 					"\r\n",
 					"SELECT DISTINCT\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.OrganisationUnit IS NULL\r\n",
-					"        THEN T7.OrganisationUnitID\r\n",
-					"        ELSE NULL\r\n",
-					"    END as OrganisationUnitID, -- surrogate key\r\n",
+					"   \r\n",
+					"    NULL                                                                            AS OrganisationUnitID, -- surrogate key\r\n",
 					"    T1.OrganisationUnit,\r\n",
 					"    T1.Description,\r\n",
-					"    T2.SourceSystemID as SourceSystemID,\r\n",
-					"    to_timestamp(T1.expected_from) AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T1.OrganisationUnit,'.'), IFNULL(T1.Description,'.'))) as RowID,\r\n",
-					"    'Y' as IsActive,\r\n",
-					"    T7.IsActive as HistoricIsActive\r\n",
+					"    T2.SourceSystemID                                                               AS SourceSystemID,\r\n",
+					"    to_timestamp(T1.expected_from)                                                  AS IngestionDate,\r\n",
+					"    NULL                                                                            AS ValidTo,\r\n",
+					"    md5(concat(IFNULL(T1.OrganisationUnit,'.'), IFNULL(T1.Description,'.')))        AS RowID,\r\n",
+					"    'Y'                                                                             AS IsActive,\r\n",
+					"    T7.IsActive                                                                     AS HistoricIsActive\r\n",
 					"\r\n",
 					"FROM organisation_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description and T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.hr_organisation_unit_dim T7 ON T1.OrganisationUnit = T7.OrganisationUnit AND\r\n",
-					"                                                        T1.Description = T7.Description AND\r\n",
-					"                                                        T7.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2   ON \"SAP HR\" = T2.Description \r\n",
+					"        AND T2.IsActive = 'Y'\r\n",
+					"\r\n",
+					"LEFT JOIN odw_harmonised_db.hr_organisation_unit_dim T7 ON T1.OrganisationUnit = T7.OrganisationUnit \r\n",
+					"        --AND T1.Description = T7.Description \r\n",
+					"            AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
 					"    CASE\r\n",
-					"        WHEN T1.OrganisationUnit = T7.OrganisationUnit AND T1.Description = T7.Description AND  \r\n",
-					"            md5(concat(IFNULL(T1.OrganisationUnit,'.'), IFNULL(T1.Description,'.'))) <> T7.RowID    -- same unit, changed data\r\n",
+					"        WHEN T1.OrganisationUnit = T7.OrganisationUnit \r\n",
+					"            AND T1.Description = T7.Description \r\n",
+					"                AND md5(concat(IFNULL(T1.OrganisationUnit,'.'), IFNULL(T1.Description,'.'))) <> T7.RowID    -- same unit, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.OrganisationUnit IS NULL -- new organisational unit\r\n",
 					"        THEN 'Y'\r\n",
@@ -157,7 +157,7 @@
 					"    END  = 'Y' \r\n",
 					";"
 				],
-				"execution_count": 2
+				"execution_count": 68
 			},
 			{
 				"cell_type": "markdown",
@@ -202,7 +202,7 @@
 					"\r\n",
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
-					"Select \r\n",
+					"Select DISTINCT\r\n",
 					"    OrganisationUnitID,\r\n",
 					"    OrganisationUnit,\r\n",
 					"    Description,\r\n",
@@ -218,7 +218,7 @@
 					"\r\n",
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
-					"SELECT\r\n",
+					"SELECT DISTINCT\r\n",
 					"    T1.OrganisationUnitID,\r\n",
 					"    T1.OrganisationUnit,\r\n",
 					"    T1.Description,\r\n",
@@ -234,7 +234,7 @@
 					"                                            T1.IsActive = 'Y' ;\r\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -274,10 +274,12 @@
 					"\r\n",
 					"-- merge into dim table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.hr_organisation_unit_dim AS Target\r\n",
-					"USING OrganisationUnit_dim_changed_rows AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.hr_organisation_unit_dim   AS Target\r\n",
+					"USING OrganisationUnit_dim_changed_rows                 AS Source\r\n",
 					"\r\n",
-					"ON Source.OrganisationUnitID = Target.OrganisationUnitID\r\n",
+					"ON Source.OrganisationUnitID = Target.OrganisationUnitID \r\n",
+					"AND Source.OrganisationUnit = Target.OrganisationUnit\r\n",
+					"--AND Source.Description = Target.Description\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -289,7 +291,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 70
 			},
 			{
 				"cell_type": "markdown",
@@ -330,7 +332,7 @@
 					"\r\n",
 					"INSERT INTO odw_harmonised_db.hr_organisation_unit_dim\r\n",
 					"\r\n",
-					"SELECT \r\n",
+					"SELECT DISTINCT\r\n",
 					"    ROW_NUMBER() OVER (ORDER BY OrganisationUnitID NULLS LAST) AS OrganisationUnitID,\r\n",
 					"    OrganisationUnit,\r\n",
 					"    Description,\r\n",
@@ -341,7 +343,84 @@
 					"    IsActive\r\n",
 					"FROM OrganisationUnit_dim_changed_rows;"
 				],
-				"execution_count": 7
+				"execution_count": 71
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"-- Build OrganisationUnit_dim table\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_organisation_unit_dim (\r\n",
+					"\r\n",
+					"    OrganisationUnitID,\r\n",
+					"\r\n",
+					"    OrganisationUnit,\r\n",
+					"\r\n",
+					"    Description,\r\n",
+					"\r\n",
+					"    SourceSystemID,\r\n",
+					"\r\n",
+					"    IngestionDate,\r\n",
+					"\r\n",
+					"    ValidTo,\r\n",
+					"\r\n",
+					"    RowID,\r\n",
+					"\r\n",
+					"    IsActive\r\n",
+					"\r\n",
+					")\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"\r\n",
+					"    Row_Number() over (Order By T1.Org_Unit) AS OrganisationUnitID,\r\n",
+					"\r\n",
+					"    IFNULL(T1.Org_unit, 'No Value') as OrganisationUnit,\r\n",
+					"\r\n",
+					"    First(IFNULL(T1.Organizational_Unit, 'No Value')) AS Description,\r\n",
+					"\r\n",
+					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
+					"\r\n",
+					"    First(to_timestamp(T1.expected_from)) AS IngestionDate,\r\n",
+					"\r\n",
+					"    NULL AS ValidTo,md5(concat(IFNULL(T1.Org_unit,'.'), First(IFNULL(T1.Organizational_Unit, 'No Value')))) as RowID, -- check this\r\n",
+					"\r\n",
+					"    'Y' as IsActive\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"FROM odw_standardised_db.vw_saphr_historic T1\r\n",
+					"\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
+					"\r\n",
+					"WHERE T1.Org_Unit is not null\r\n",
+					"\r\n",
+					"GROUP BY T1.Org_unit"
+				],
+				"execution_count": 66
 			}
 		]
 	}
