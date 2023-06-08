@@ -1,5 +1,5 @@
 {
-	"name": "mipins_hr_measures",
+	"name": "mipins_hr_measures_NEW",
 	"properties": {
 		"folder": {
 			"name": "odw-curated"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "951e158d-81c9-4eba-b2a9-8db91e6d8b79"
+				"spark.autotune.trackingId": "10db3208-b740-46df-8602-fa73e922a653"
 			}
 		},
 		"metadata": {
@@ -76,31 +76,58 @@
 					"     AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.pers_no as EmployeeID,\n",
-					"    h.ps_group as Grade, \n",
-					"\th.annual_salary as Salary, \n",
-					"    cast(cast(h.annual_salary as float)/(365.0*7.4) as float) as HourlyRate,\n",
-					"    cast(le.ExpectedFrom as date) as ReportMonthEndDate,\n",
-					"    le.LeaveDaysPerYear as LeaveAllowance,\n",
+					"    h.EmployeeID                                                AS EmployeeID,\n",
+					"    p.PSGroupCode                                               AS Grade, \n",
+					"\th.AnnualSalary                                              AS Salary, \n",
+					"    cast(cast(h.AnnualSalary as float)/(365.0*7.4) as float)    AS HourlyRate,\n",
+					"    cast(le.ExpectedFrom as date)                               AS ReportMonthEndDate,\n",
+					"    le.LeaveDaysPerYear                                         AS LeaveAllowance,\n",
 					"    cast(case sign(datediff(day, cast(le.LeaveYearStart as date), le.expectedfrom))\n",
 					"\t\t\t\twhen 1 then le.LeaveYearStart\n",
 					"\t\t\t\twhen 0 then le.LeaveYearStart\n",
 					"\t\t\t\telse dateadd(year, -1, le.LeaveYearStart)\n",
 					"\t\t\tend as date) as LeaveStartDate,\n",
 					"    le.leavedaysperyear*(1 - abs((((datediff(day, cast(\n",
-					"                                                    CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
-					"                                                    WHEN 1 THEN\n",
-					"                                                    le.leaveyearstart\n",
-					"                                                    ELSE dateadd(year, -1, le.leaveyearstart)\n",
-					"                                                    END\n",
-					"                                                    AS date), le.expectedfrom))/364.25)%1))) AS ExpectedLeaveHoursRemaining\n",
+					"            CASE sign(datediff(day, cast(le.leaveyearstart AS date), le.expectedfrom))\n",
+					"                WHEN 1 \n",
+					"                THEN le.leaveyearstart\n",
+					"            ELSE dateadd(year, -1, le.leaveyearstart)\n",
+					"            END AS date), le.expectedfrom))/364.25)%1)))        AS ExpectedLeaveHoursRemaining\n",
 					"    \n",
-					"FROM odw_standardised_db.vw_saphr h\n",
-					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
+					"FROM odw_harmonised_db.hr_employee_dim h\n",
+					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.EmployeeID = le.EmployeeID\n",
+					"LEFT JOIN odw_harmonised_db.hr_record_fact r ON h.EmployeeID = r.EmployeeID AND r.IsActive = 'Y'\n",
+					"LEFT JOIN odw_harmonised_db.hr_payband_dim p ON r.PayBandID = r.PayBandID\n",
 					"WHERE\n",
+					"    h.IsActive = 'Y' AND\n",
 					"    le.AbsenceQuotaType = 'Annual Leave / P&P';"
 				],
-				"execution_count": 34
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT COUNT(*) FROM staff_cost;\n",
+					"SELECT * FROM staff_cost"
+				],
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -127,19 +154,19 @@
 					"    AS\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    h.pers_no as EmployeeID,\n",
+					"    h.EmployeeID as EmployeeID,\n",
 					"    case sign(le.LeaveDaysPerYear - 148)\n",
 					"        when 1 then 148\n",
 					"        when 0 then 148\n",
 					"        else le.LeaveDaysPerYear\n",
 					"    end as CarriedOverHours\n",
 					"\n",
-					"FROM odw_standardised_db.vw_saphr h\n",
-					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.pers_no = le.EmployeeID\n",
+					"FROM odw_harmonised_db.hr_employee_dim h\n",
+					"LEFT JOIN odw_harmonised_db.hr_leave_entitlement_dim le on h.EmployeeID = le.EmployeeID\n",
 					"WHERE\n",
 					"    le.AbsenceQuotaType = 'Brought Forward';"
 				],
-				"execution_count": 35
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -191,7 +218,7 @@
 					"    a.EmployeeID,a.AbsenceID,a.Days,a.Hours,a.CalendarDays,a.AbsenceStartDate,a.AbsenceEndDate,sc.LeaveStartDate,w.WorkDayHours,sc.ReportMonthEndDate\n",
 					"Order by AbsenceStartDate"
 				],
-				"execution_count": 36
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +251,7 @@
 					"Where EmployeeID is not null and LeaveStartDate <= AbsenceStartDate\n",
 					"GROUP BY EmployeeID;"
 				],
-				"execution_count": 37
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -347,31 +374,7 @@
 					"where \n",
 					"\tright(cast(cast(sc.ReportMonthEndDate as date) as varchar(10)),5) in ('01-31','02-28','02-29','03-31','04-30','05-31','06-30','07-31','08-31','09-30','10-31','11-30','12-31')"
 				],
-				"execution_count": 38
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT * FROM odw_curated_db.mipins_hr_measures where EmployeeID = '50410538' "
-				],
-				"execution_count": 39
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -548,7 +551,7 @@
 					"    END  = 'Y'\r\n",
 					";"
 				],
-				"execution_count": 40
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -783,7 +786,7 @@
 					"FROM odw_curated_db.mipins_hr_measures\r\n",
 					"WHERE EmployeeID IN (SELECT EmployeeID FROM mipins_hr_measures_new WHERE MeasureID IS NULL) AND IsActive = 'Y';"
 				],
-				"execution_count": 41
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -839,7 +842,7 @@
 					"-- WHEN NOT MATCHED \r\n",
 					"--     THEN INSERT * ;   "
 				],
-				"execution_count": 42
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -972,7 +975,7 @@
 					"    IsActive\r\n",
 					"FROM odw_curated_db.mipins_hr_measures;"
 				],
-				"execution_count": 43
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -992,23 +995,13 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql \n",
+					"%%sql\n",
 					"\n",
-					"SELECT  \n",
+					"-- SELECT * FROM mipins_hr_measures_changed_rows\n",
 					"\n",
-					"    count(EmployeeID) as CountEmployee,\n",
-					"\n",
-					"    EmployeeID\n",
-					"\n",
-					"FROM odw_curated_db.mipins_hr_measures\n",
-					"\n",
-					"WHERE isActive = 'Y'\n",
-					"\n",
-					"group by EmployeeID\n",
-					"\n",
-					"having count(EmployeeID)>1"
+					"SELECT * from odw_standardised_db.vw_saphr"
 				],
-				"execution_count": null
+				"execution_count": 22
 			}
 		]
 	}
