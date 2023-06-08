@@ -6,10 +6,9 @@ resource "azurerm_api_connection" "zendesk_api_connection" {
   managed_api_id      = data.azurerm_managed_api.zendesk_managed_api.id
   display_name        = "pinssupport"
 
-  # parameter_values = {
-  #   "token:Subdomain" = "pinssupport"
-  #   "userName"        = "test"
-  # }
+  parameter_values = {
+    "token:Subdomain" = "pinssupport"
+  }
 
   # lifecycle {
   #   ignore_changes = [
