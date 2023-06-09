@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "264da934-35a3-4119-836f-3da918f82f25"
+				"spark.autotune.trackingId": "7fbc347e-6d83-48ed-858a-b8470eda721c"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,31 @@
 					"WHERE Org_Unit IS NOT NULL AND Org_unit <> 00000000\r\n",
 					"GROUP BY Org_unit, Organizational_Unit;"
 				],
-				"execution_count": 67
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"SELECT * FROM organisation_grouped WHERE OrganisationUnit = '60004197'"
+				],
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -142,13 +166,13 @@
 					"        AND T2.IsActive = 'Y'\r\n",
 					"\r\n",
 					"LEFT JOIN odw_harmonised_db.hr_organisation_unit_dim T7 ON T1.OrganisationUnit = T7.OrganisationUnit \r\n",
-					"        --AND T1.Description = T7.Description \r\n",
+					"        AND T1.Description = T7.Description \r\n",
 					"            AND T7.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
 					"    CASE\r\n",
 					"        WHEN T1.OrganisationUnit = T7.OrganisationUnit \r\n",
-					"            AND T1.Description = T7.Description \r\n",
+					"            --AND T1.Description = T7.Description \r\n",
 					"                AND md5(concat(IFNULL(T1.OrganisationUnit,'.'), IFNULL(T1.Description,'.'))) <> T7.RowID    -- same unit, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T7.OrganisationUnit IS NULL -- new organisational unit\r\n",
@@ -157,7 +181,32 @@
 					"    END  = 'Y' \r\n",
 					";"
 				],
-				"execution_count": 68
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"SELECT * FROM OrganisationUnit_dim_new WHERE WHERE OrganisationUnit = '60004197'\r\n",
+					""
+				],
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -234,7 +283,7 @@
 					"                                            T1.IsActive = 'Y' ;\r\n",
 					""
 				],
-				"execution_count": 69
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -279,7 +328,7 @@
 					"\r\n",
 					"ON Source.OrganisationUnitID = Target.OrganisationUnitID \r\n",
 					"AND Source.OrganisationUnit = Target.OrganisationUnit\r\n",
-					"--AND Source.Description = Target.Description\r\n",
+					"AND Source.Description = Target.Description\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -291,7 +340,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 70
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -343,7 +392,7 @@
 					"    IsActive\r\n",
 					"FROM OrganisationUnit_dim_changed_rows;"
 				],
-				"execution_count": 71
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -371,21 +420,13 @@
 					"\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.hr_organisation_unit_dim (\r\n",
-					"\r\n",
 					"    OrganisationUnitID,\r\n",
-					"\r\n",
 					"    OrganisationUnit,\r\n",
-					"\r\n",
 					"    Description,\r\n",
-					"\r\n",
 					"    SourceSystemID,\r\n",
-					"\r\n",
 					"    IngestionDate,\r\n",
-					"\r\n",
 					"    ValidTo,\r\n",
-					"\r\n",
 					"    RowID,\r\n",
-					"\r\n",
 					"    IsActive\r\n",
 					"\r\n",
 					")\r\n",
@@ -396,31 +437,22 @@
 					"SELECT\r\n",
 					"\r\n",
 					"    Row_Number() over (Order By T1.Org_Unit) AS OrganisationUnitID,\r\n",
-					"\r\n",
 					"    IFNULL(T1.Org_unit, 'No Value') as OrganisationUnit,\r\n",
-					"\r\n",
 					"    First(IFNULL(T1.Organizational_Unit, 'No Value')) AS Description,\r\n",
-					"\r\n",
 					"    First(T2.SourceSystemID) as SourceSystemID,\r\n",
-					"\r\n",
 					"    First(to_timestamp(T1.expected_from)) AS IngestionDate,\r\n",
-					"\r\n",
 					"    NULL AS ValidTo,md5(concat(IFNULL(T1.Org_unit,'.'), First(IFNULL(T1.Organizational_Unit, 'No Value')))) as RowID, -- check this\r\n",
-					"\r\n",
 					"    'Y' as IsActive\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
 					"FROM odw_standardised_db.vw_saphr_historic T1\r\n",
-					"\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\r\n",
-					"\r\n",
 					"WHERE T1.Org_Unit is not null\r\n",
-					"\r\n",
 					"GROUP BY T1.Org_unit"
 				],
-				"execution_count": 66
+				"execution_count": 15
 			}
 		]
 	}
