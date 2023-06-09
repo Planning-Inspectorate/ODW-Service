@@ -74,8 +74,9 @@ variable "firewall_allowed_ip_addresses" {
   type        = list(string)
 }
 
-variable "key_vault_private_endpoint_dns_zone_id" {
-  description = "The ID of the Private DNS Zone hosting privatelink.vaultcore.azure.net"
+variable "key_vault_name" {
+  default     = ""
+  description = "The name of the Key Vault to use for secret storage"
   type        = string
 }
 
@@ -108,6 +109,11 @@ variable "service_name" {
 variable "synapse_private_endpoint_subnet_name" {
   default     = "SynapseEndpointSubnet"
   description = "The name of the subnet into which Synapse private endpoints should be deployed"
+  type        = string
+}
+
+variable "synapse_workspace_id" {
+  description = "The ID of the Synapse Workspace"
   type        = string
 }
 

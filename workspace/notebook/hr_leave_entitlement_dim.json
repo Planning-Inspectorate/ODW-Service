@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c37239ce-de30-4bd0-a956-12b3605023b9"
+				"spark.autotune.trackingId": "bbc37eef-32ae-4343-95f6-58bb82c306be"
 			}
 		},
 		"metadata": {
@@ -96,7 +96,7 @@
 					"    ded_from,\n",
 					"    ded_to,\n",
 					"    absence_quota_type,\n",
-					"    last(expected_from) AS expected_from\n",
+					"    expected_from\n",
 					"\n",
 					"FROM odw_standardised_db.vw_leave\n",
 					"WHERE Staff_Number IS NOT NULL AND absence_quota_type IS NOT NULL;"
@@ -308,10 +308,12 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
-					""
+					"-- Insert completely new rows\r\n",
+					"WHEN NOT MATCHED \r\n",
+					"    THEN INSERT * ;"
 				],
 				"execution_count": 9
 			},
@@ -353,7 +355,7 @@
 					"\r\n",
 					"-- Insert new leaveentitlementID\r\n",
 					"\r\n",
-					"INSERT INTO odw_harmonised_db.hr_leave_entitlement_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_leave_entitlement_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY LeaveEntitlementID NULLS LAST) AS LeaveEntitlementID,\r\n",
@@ -369,7 +371,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM leaveentitlement_dim_changed_rows;\r\n",
+					"FROM odw_harmonised_db.hr_leave_entitlement_dim;\r\n",
 					""
 				],
 				"execution_count": 10
