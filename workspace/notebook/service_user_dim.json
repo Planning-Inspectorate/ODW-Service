@@ -1,0 +1,149 @@
+{
+	"name": "service_user_dim",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised/Checkmark"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "17a8e4a1-c142-4b30-9a66-2e862531736b"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Build comment_type_reference_dim table\r\n",
+					"-- Gets modified or deleted from source rows\r\n",
+					"\r\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW structure_reasoning_detail_reference_dim_new\r\n",
+					"\r\n",
+					"--     AS\r\n",
+					"\r\n",
+					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
+					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    CASE\r\n",
+					"        WHEN T1.id IS NULL\r\n",
+					"        THEN T3.ServiceDataID\r\n",
+					"        ELSE NULL\r\n",
+					"    END AS ServiceDataID, -- surrogate key\r\n",
+					"   \r\n",
+					"    T3.Salutation\r\n",
+					"\r\n",
+					"\r\n",
+					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo,\r\n",
+					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,\r\n",
+					"    'Y' as IsActive,\r\n",
+					"    CASE\r\n",
+					"        WHEN T1.id = T3.StructureReasoningDetailID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"        THEN 'Y'\r\n",
+					"        WHEN T3.StructureReasoningDetailID IS NULL\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END as NewData,\r\n",
+					"    CASE\r\n",
+					"        WHEN T1.id IS NULL\r\n",
+					"        THEN 'Y'\r\n",
+					"        ELSE 'N'\r\n",
+					"    END AS  DeletedData,\r\n",
+					"    T3.IsActive as HistoricIsActive\r\n",
+					"\r\n",
+					"FROM structure_reasoning_detail_reference_grouped T1\r\n",
+					"\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
+					"FULL JOIN odw_standerdised_db.horizon_service_user T3 ON T1.id = T3.StructureReasoningDetailID and T3.IsActive = 'Y'\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"WHERE\r\n",
+					"    (-- flags new data        \r\n",
+					"        (CASE\r\n",
+					"            WHEN T1.ID = T3.StructureReasoningDetailID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
+					"            THEN 'Y'\r\n",
+					"            WHEN T3.StructureReasoningDetailID IS NULL\r\n",
+					"            THEN 'Y'\r\n",
+					"            ELSE 'N'\r\n",
+					"        END  = 'Y' ) OR\r\n",
+					"        -- flags deleted data\r\n",
+					"        (CASE\r\n",
+					"            WHEN T1.id IS NULL\r\n",
+					"            THEN 'Y'\r\n",
+					"            ELSE 'N'\r\n",
+					"        END = 'Y' )\r\n",
+					"    )\r\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
