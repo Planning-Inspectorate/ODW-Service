@@ -1,0 +1,117 @@
+{
+	"name": "get_orchestration_entry",
+	"properties": {
+		"folder": {
+			"name": "post-deployment"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "5b2b0ea8-d6fa-4ff0-998b-b061124c65f2"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"db_name = 'odw_standardised_db'\n",
+					"table_name = 'hr_work_schedule_rule'"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"mssparkutils.notebook.run('/utils/py_get_latest_file_path')\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+				],
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import json\n",
+					"\n",
+					"path_to_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df = spark.read.option(\"multiline\",\"true\").json(path_to_file)\n",
+					"\n",
+					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"definition = next(d for d in definitions if d['Standardised_Table_Name'] == table_name)\n",
+					"definition['source_file_path'] = get_latest_file_path(definition).path\n",
+					"\n",
+					"mssparkutils.notebook.exit(definition)"
+				],
+				"execution_count": 38
+			}
+		]
+	}
+}
