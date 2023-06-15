@@ -1,0 +1,233 @@
+{
+	"name": "py_sap_hr_history_files",
+	"properties": {
+		"folder": {
+			"name": "post-deployment"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "52dfdd9d-fccc-4e52-9d62-62713fe8f0c1"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"import json\n",
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"\n",
+					"import pandas as pd\n",
+					"from pyspark.sql.types import StringType,BooleanType,DateType,TimestampType,IntegerType, FloatType, StructType\n",
+					"from delta.tables import DeltaTable\n",
+					"import re\n",
+					"from pyspark.sql.functions import col, lit\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"history_files_source_path = f\"abfss://odw-raw@{storage_account}/Fileshare/SAP_HR/HR/zSAP_HR history files/\"\n",
+					"\n",
+					"folders = mssparkutils.fs.ls(history_files_source_path)\n",
+					"folders = [f for f in folders if f.isDir]\n",
+					"\n",
+					"target_files_keys = ['absence', 'address', 'email', 'leaver', 'leave', 'pc', 'saphr', 'specialism']\n",
+					"\n",
+					"# read orchestration data\n",
+					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"# definition = next(d for d in definitions if d['Source_ID'] == source_id)\n",
+					"\n",
+					"for folder in folders:\n",
+					"    print(folder.path)\n",
+					"    files = mssparkutils.fs.ls(folder.path)\n",
+					"    files = [f for f in files if f.isFile]\n",
+					"    for file in files:\n",
+					"        for key in target_files_keys:\n",
+					"            if key in file.name.lower():\n",
+					"                print(file.name, key)\n",
+					"                definition = next((d for d in definitions if key in d['Source_Filename_Start'].lower()), None)\n",
+					"                if definition:\n",
+					"                    print(definition['Source_ID'])\n",
+					"\n",
+					"                break\n",
+					"                \n",
+					"\n",
+					"        \n",
+					"    break\n",
+					""
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def ingest(folder_path, filename, month_start, month_end):\n",
+					"    jobId = mssparkutils.env.getJobId()\n",
+					"    ### mount the data lake storage in Synapse to the Synapse File Mount API\n",
+					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"    mssparkutils.fs.mount( \n",
+					"    folder_path, \n",
+					"    \"/temp_raw\", \n",
+					"    {\"linkedService\":\"ls_storage\"} \n",
+					"    )   \n",
+					"    ### open .csv and .xlsx files using pandas\n",
+					"    if \".xlsx\" in filename.lower():\n",
+					"        df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str)\n",
+					"    elif '.csv' in filename.lower():\n",
+					"        df = pd.read_csv(f\"/synfs/{jobId}/temp_raw/{filename}\", quotechar='\"',escapechar='\\\\',encoding=\"utf8\",dtype=str)\n",
+					"    else:\n",
+					"        raise RuntimeError(f\"This file type for {filename} is unsupported\")\n",
+					"    ### drop headerless columns\n",
+					"    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]\n",
+					"    rows_raw = len(df.index)\n",
+					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"    ### convert to pandas dataframe\n",
+					"    sparkDF=spark.createDataFrame(df)\n",
+					"    ### add date columns included with every standardised table\n",
+					"    sparkDF = sparkDF.withColumn(\"ingested_datetime\",lit(datetime.now()))\n",
+					"    sparkDF = sparkDF.withColumn(\"expected_from\",lit(month_start))\n",
+					"    sparkDF = sparkDF.withColumn(\"expected_to\",lit(month_end))\n",
+					"\n",
+					"    standardised_path = defs['Standardised_Path'] + \"/\"\n",
+					"    standardised_table_loc = \"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/\" + defs['Standardised_Table_Definition']\n",
+					"    standardised_table_def_json = spark.read.text(standardised_table_loc, wholetext=True).first().value\n",
+					"                    \n",
+					"    schema = StructType.fromJson(json.loads(standardised_table_def_json))\n",
+					"    \n",
+					"\n",
+					"    return\n",
+					"\n",
+					"    ### remove characters that Delta can't allow in headers and add numbers to repeated column headers\n",
+					"    cols_orig = sparkDF.schema.names\n",
+					"    cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig]\n",
+					"    cols=[colm.rstrip('_') for colm in cols]\n",
+					"    newlist = []\n",
+					"    for i, v in enumerate(cols):\n",
+					"        totalcount = cols.count(v)\n",
+					"        count = cols[:i].count(v)\n",
+					"        newlist.append(v + str(count + 1) if totalcount > 1 else v)\n",
+					"    for colix in range(len(cols_orig)):\n",
+					"        sparkDF = sparkDF.toDF(*newlist) \n",
+					"\n",
+					"    ### mappings for Json schema definitions to Pyspark data types\n",
+					"    mapping = {\n",
+					"        'string': StringType(),\n",
+					"        'timestamp': TimestampType(),\n",
+					"        'integer': IntegerType(),\n",
+					"        'date': DateType(),\n",
+					"        'float': FloatType()\n",
+					"    }\n",
+					"\n",
+					"    ### column data type casting\n",
+					"    for field in json.loads(standardised_table_def_json)['fields']:\n",
+					"        sparkDF = sparkDF.withColumn(field['name'], col(field['name']).cast(mapping[field['type']]))\n",
+					"    colheaders = []\n",
+					"    for field in json.loads(standardised_table_def_json)['fields']:\n",
+					"        colheaders.append(field['name'])\n",
+					"    sparkDF = sparkDF.select(colheaders)\n",
+					"    sparkDF2 = spark.createDataFrame(sparkDF.rdd, schema=schema)\n",
+					"    ### writing the dataframe to the existing standardised table\n",
+					"    sparkDF2.write.format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",
+					"\n",
+					"    standardised_table_df_new = spark.read.format(\"delta\").load(standardised_container+standardised_path+standardised_table_name)\n",
+					"    rows_new = standardised_table_df.filter((standardised_table_df.expected_from == last_start_dt) &  (standardised_table_df.expected_to == next_end_dt)).count()\n",
+					"\n",
+					"    ### test correct number of rows have written\n",
+					"    if rows_raw == rows_new:\n",
+					"        mssparkutils.fs.mkdirs(source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\")\n",
+					"        mssparkutils.fs.cp(source_container_path+source_folder+date_string+\"/\"+filename,source_container_path+\"archive\"+\"/\"+source_folder+date_string+\"/\"+filename)\n",
+					"        spark.sql(f\"DELETE FROM odw_config_db.raw_to_std_outstanding_files WHERE Expected_Datetime = '{time_now}' and DefinitionID = {outstanding_source_id}\")\n",
+					"        logger.info('All rows have successfully written')\n",
+					"    ### delete transaction if incorrect number of rows has written and raise an error\n",
+					"    else:\n",
+					"        deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\n",
+					"        fullHistoryDF = deltaTable_standardised.history()\n",
+					"        fullHistoryDF.select(\"version\").first()['version']\n",
+					"        deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\n",
+					"        raise RuntimeError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\n",
+					"\n",
+					"folder_date = '2020-12'\n",
+					"month_start = datetime.strptime(folder_date, \"%Y-%m\")\n",
+					"month_end = date(month_start.year, month_start.month, calendar.monthrange(month_start.year, month_start.month)[1])\n",
+					"month_end = datetime.combine(month_end, datetime.min.time())\n",
+					"\n",
+					"ingest(folder_path, file_name, month_start, month_end)"
+				],
+				"execution_count": 56
+			}
+		]
+	}
+}
