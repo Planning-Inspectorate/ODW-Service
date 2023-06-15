@@ -1,8 +1,8 @@
 {
-	"name": "py_1_copy_source_file_for_schema_creation",
+	"name": "get_orchestration_entry",
 	"properties": {
 		"folder": {
-			"name": "1-odw-raw-to-standardised"
+			"name": "post-deployment"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "74cac7fe-c459-42b6-9217-386ebe8d6d0d"
+				"spark.autotune.trackingId": "b2375ff1-804d-401e-9a9c-d71355874e04"
 			}
 		},
 		"metadata": {
@@ -62,56 +62,27 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"tags": [
+						"parameters"
+					]
 				},
 				"source": [
-					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+					"db_name = 'odw_standardised_db'\n",
+					"table_name = 'hr_work_schedule_rule'"
 				],
-				"execution_count": 115
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"%run /utils/py_logging_decorator"
-				],
-				"execution_count": 116
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
 				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"from notebookutils import mssparkutils\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
 					"\n",
-					"import json\n",
-					"import logging\n",
-					"logger = logging.getLogger(__name__)\n",
-					"\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 117
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +98,7 @@
 					}
 				},
 				"source": [
-					"def get_latest_file_path(definition):\n",
+					"def get_latest_date_folder(definition):\n",
 					"    import calendar\n",
 					"    from datetime import datetime, timedelta, date\n",
 					"\n",
@@ -162,7 +133,7 @@
 					"            ### isolate the correct file\n",
 					"            filename = file.name\n",
 					"            if definition['Source_Filename_Start'] in filename:\n",
-					"                return file\n",
+					"                return folder_date\n",
 					""
 				],
 				"execution_count": null
@@ -181,53 +152,23 @@
 					}
 				},
 				"source": [
-					"@logging_to_appins\n",
-					"def copy_source_file_for_schema_creation(source_id): \n",
+					"import json\n",
 					"\n",
-					"    # read orchestration data\n",
-					"    path_to_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
-					"    df = spark.read.option(\"multiline\",\"true\").json(path_to_file)\n",
+					"path_to_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df = spark.read.option(\"multiline\",\"true\").json(path_to_file)\n",
 					"\n",
-					"    definitions = json.loads(df.toJSON().first())['definitions']\n",
-					"    definition = next(d for d in definitions if d['Source_ID'] == source_id)\n",
+					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"definition = next(d for d in definitions if d['Standardised_Table_Name'] == table_name)\n",
 					"\n",
-					"    source_file = get_latest_file_path(definition)\n",
-					"    target_folder = \"abfss://odw-config@\"+storage_account+\"schema_creation/\"\n",
+					"latest_folder_date = get_latest_date_folder(definition)\n",
 					"\n",
-					"    if source_file and source_file.path:\n",
-					"        mssparkutils.fs.cp(source_file.path, target_folder)"
+					"definition['ingestion_day'] = latest_folder_date.day\n",
+					"definition['ingestion_month'] = latest_folder_date.month\n",
+					"definition['ingestion_year'] = latest_folder_date.year\n",
+					"\n",
+					"mssparkutils.notebook.exit(definition)"
 				],
-				"execution_count": 119
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"tags": [
-						"parameters"
-					]
-				},
-				"source": [
-					"source_id=-1"
-				],
-				"execution_count": 120
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"copy_source_file_for_schema_creation(source_id)"
-				],
-				"execution_count": 121
+				"execution_count": null
 			}
 		]
 	}
