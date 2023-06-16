@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5b429a7a-46ac-4894-b6bb-2c82352607cb"
+				"spark.autotune.trackingId": "463337a2-70f6-48b7-b4fa-d85bacd58439"
 			}
 		},
 		"metadata": {
@@ -164,16 +164,6 @@
 					"    ### test correct number of rows have written\n",
 					"    if rows_raw == rows_new:\n",
 					"        logger.info('All rows have successfully written')\n",
-					"\n",
-					"    ### delete transaction if incorrect number of rows has written and raise an error\n",
-					"    # else:\n",
-					"    #     deltaTable_standardised = DeltaTable.forPath(spark, standardised_container+standardised_path+standardised_table_name)\n",
-					"    #     fullHistoryDF = deltaTable_standardised.history()\n",
-					"    #     fullHistoryDF.select(\"version\").first()['version']\n",
-					"    #     deltaTable_standardised.restoreToVersion(fullHistoryDF.select(\"version\").first()['version'] - 1)\n",
-					"    #     raise RuntimeError(f\"Incorrect number of rows have been written to the standardised table {standardised_table_name}, rolled back to original version\")\n",
-					"\n",
-					"\n",
 					""
 				],
 				"execution_count": 56
@@ -197,10 +187,11 @@
 					"\n",
 					"target_files_keys = ['absence', 'address', 'email', 'leaver', 'leave', 'pc', 'saphr', 'specialism']\n",
 					"# target_files_keys = ['saphr']\n",
-					"folders_to_ingest = ['2021-03', '2021-04', '2021-05']\n",
+					"# folders_to_ingest = ['2021-03', '2021-04', '2021-05']\n",
 					"\n",
-					"folders = mssparkutils.fs.ls(history_files_source_path)\n",
-					"folders = [f for f in folders if f.isDir and f.name in folders_to_ingest]\n",
+					"folders_and_files = mssparkutils.fs.ls(history_files_source_path)\n",
+					"folders = [f for f in folders_and_files if f.isDir]\n",
+					"root_saphr_files = [f for f in folders_and_files if f.isFile]\n",
 					"\n",
 					"# read orchestration data\n",
 					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
@@ -214,7 +205,7 @@
 					"    for file in files:\n",
 					"        for key in target_files_keys:\n",
 					"            if key in file.name.lower():\n",
-					"                definition = next((d for d in definitions if key in d['Source_Filename_Start'].lower()), None)\\\n",
+					"                definition = next((d for d in definitions if key in d['Source_Filename_Start'].lower()), None)\n",
 					"\n",
 					"                if definition:\n",
 					"                    expected_from = datetime.strptime(folder.name, \"%Y-%m\")\n",
@@ -225,9 +216,19 @@
 					"                    ingest(definition, folder.path, file.name, expected_from, expected_to)\n",
 					"                    break\n",
 					"                \n",
+					"for file in root_saphr_files:\n",
+					"    definition = next((d for d in definitions if d['Source_ID'] == 2), None)\n",
+					"    expected_from = datetime.strptime(file.name[6:-5], \"%Y%m%d\")\n",
+					"\n",
+					"    if definition:\n",
+					"        expected_from = date(expected_from.year, expected_from.month, calendar.monthrange(expected_from.year, expected_from.month)[1])\n",
+					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"\n",
+					"        ingest(definition, history_files_source_path, file.name, expected_from, expected_to)\n",
 					""
 				],
-				"execution_count": 59
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -243,8 +244,10 @@
 					}
 				},
 				"source": [
-					"# db_name=\"odw_standardised_db\"\n",
-					"# table_name=\"hr_saphr\"\n",
+					"\n",
+					"\n",
+					"db_name=\"odw_standardised_db\"\n",
+					"# table_name=\"hr_specialisms\"\n",
 					"# import logging\n",
 					"# logger = logging.getLogger(__name__)\n",
 					"# from pyspark.sql import SparkSession\n",
@@ -260,7 +263,7 @@
 					"# else:\n",
 					"#     logger.info(\"Table does not exist\")"
 				],
-				"execution_count": 53
+				"execution_count": 82
 			}
 		]
 	}
