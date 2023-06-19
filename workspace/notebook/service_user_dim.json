@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3369891c-e9b4-4ca4-89a0-f47862c61e27"
+				"spark.autotune.trackingId": "4c1d3856-d1a7-4eaa-9df9-c800944009f5"
 			}
 		},
 		"metadata": {
@@ -54,6 +54,63 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW zednesk_role\r\n",
+					"    AS\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    ticket_id,\r\n",
+					"    name,\r\n",
+					"    email,\r\n",
+					"    role\r\n",
+					"FROM odw_harmonised_db.zendesk_submitter \r\n",
+					"UNION\r\n",
+					"SELECT\r\n",
+					"    ticket_id,\r\n",
+					"    name,\r\n",
+					"    email,\r\n",
+					"    role\r\n",
+					"FROM odw_harmonised_db.zendesk_assignee\r\n",
+					"UNION \r\n",
+					"SELECT\r\n",
+					"    ticket_id,\r\n",
+					"    name,\r\n",
+					"    email,\r\n",
+					"    role\r\n",
+					"FROM odw_harmonised_db.zendesk_collaborator\r\n",
+					"UNION \r\n",
+					"SELECT\r\n",
+					"    ticket_id,\r\n",
+					"    name,\r\n",
+					"    email,\r\n",
+					"    role\r\n",
+					"FROM odw_harmonised_db.zendesk_requester\r\n",
+					"order by ticket_id\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
 					},
@@ -77,6 +134,7 @@
 					"        THEN T1.ServiceDataID\r\n",
 					"        ELSE NULL\r\n",
 					"    END AS ServiceDataID, -- surrogate key\r\n",
+					"    T4.ticket_id AS TicketID,\r\n",
 					"    T3.case_number as CaseReference,\r\n",
 					"    T3.salutation AS Salutation,\r\n",
 					"    T3.firstname AS FirstName,\r\n",
@@ -89,7 +147,7 @@
 					"    T3.country AS AddressCountry,\r\n",
 					"    T3.organisationname AS Organisation,\r\n",
 					"    T3.organisationtypename OrganisationType,\r\n",
-					"    -- T3.Role,\r\n",
+					"    T4.Role,\r\n",
 					"    T3.telephoneoffice AS TelephoneNumber,\r\n",
 					"    T3.telephonemobile AS OtherPhoneNumber,\r\n",
 					"    T3.fax AS FaxNumber,\r\n",
@@ -121,6 +179,7 @@
 					"FROM odw_harmonised_db.service_user_dim T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
 					"FULL JOIN odw_standardised_db.horizon_service_user T3 ON T3.case_number = T3.case_number and T1.IsActive = 'Y'\r\n",
+					"FULL JOIN zednesk_role T4 ON T3.email = T4.email \r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
@@ -141,27 +200,11 @@
 					"            ELSE 'N'\r\n",
 					"        END = 'Y' )\r\n",
 					"    )\r\n",
-					";"
-				],
-				"execution_count": 8
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
+					";\r\n",
+					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 13
 			}
 		]
 	}
