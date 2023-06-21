@@ -1,0 +1,134 @@
+{
+	"name": "py_get_month_end_range",
+	"properties": {
+		"folder": {
+			"name": "post-deployment"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "ba2a40b3-596c-4954-8923-1ae67e4f9ddb"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"import json\n",
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"\n",
+					"import pandas as pd\n",
+					"import re\n",
+					"from pyspark.sql.functions import col, lit\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"source_container_path = \"abfss://odw-raw@\"+storage_account "
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from dateutil.relativedelta import relativedelta\n",
+					"\n",
+					"def get_month_end_dates(start_date, end_date):\n",
+					"    month_end_dates = []\n",
+					"\n",
+					"    current_date = start_date.replace(day=1)  # Start with the first day of the start month\n",
+					"    while current_date <= end_date:\n",
+					"        next_month = current_date + relativedelta(months=1)\n",
+					"        month_end_date = next_month - relativedelta(days=1)\n",
+					"        month_end_dates.append(datetime.strftime(month_end_date, \"%Y-%m-%dT%H:%M:%S.%f\"))\n",
+					"        current_date = next_month\n",
+					"\n",
+					"    return month_end_dates"
+				],
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"start_date = datetime(year=2017, month=7, day=1)\n",
+					"end_date = datetime(year=2017, month=9, day=1)\n",
+					"dates = get_month_end_dates(start_date, end_date)\n",
+					"print(dates)\n",
+					"\n",
+					"# mssparkutils.notebook.exit(',,,'.join(dates))\n",
+					"\n",
+					"\n",
+					"# for date in dates:\n",
+					"#     mssparkutils.notebook.run('/1-odw-raw-to-standardised/Scheduling/outstanding_files_add_entry', arguments={\"jsonId\": monthly_target_files_keys[key],\"year\": folder_date.year,\"month\": folder_date.month,\"day\": folder_date.day})\n",
+					""
+				],
+				"execution_count": 30
+			}
+		]
+	}
+}
