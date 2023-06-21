@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "879312d7-af43-4926-93c2-1ad06d463878"
+				"spark.autotune.trackingId": "6edcd20e-2a36-4a37-8f1e-6c17620b0a2a"
 			}
 		},
 		"metadata": {
@@ -85,10 +85,9 @@
 					]
 				},
 				"source": [
-					"expected_from=''\n",
-					""
+					"expected_from=''"
 				],
-				"execution_count": 112
+				"execution_count": 204
 			},
 			{
 				"cell_type": "code",
@@ -111,7 +110,7 @@
 					"    else:\n",
 					"        spark.sql(f\"SET DATE_VAR = (SELECT MAX(expected_from) FROM {table_name})\")"
 				],
-				"execution_count": 37
+				"execution_count": 194
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +128,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_absences')"
 				],
-				"execution_count": 82
+				"execution_count": 195
 			},
 			{
 				"cell_type": "code",
@@ -167,26 +166,7 @@
 					"bank_holidays = pd.read_json(path_or_buf = 'https://www.gov.uk/bank-holidays.json')\n",
 					"bh = get_england_and_wales(bank_holidays)\n",
 					"\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\\\n",
-					"\n",
-					"absences_table = 'odw_standardised_db.hr_absences'\n",
-					"\n",
-					"# getting the closest expected_from date in the table based on the expected_from parameter\n",
-					"if expected_from != '':\n",
-					"    absences_expected_from = spark.sql(f\"SELECT expected_from FROM {absences_table} as table_alias WHERE table_alias.expected_from <= '{expected_from}' ORDER BY table_alias.expected_from DESC LIMIT 1;\")\n",
-					"else:\n",
-					"    absences_expected_from = spark.sql(f\"SELECT MAX(expected_from) FROM {absences_table}\")\n",
-					"try:\n",
-					"    absences_expected_from = absences_expected_from.first()[0]\n",
-					"except:\n",
-					"    absences_expected_from = ''\n",
-					"\n",
-					"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
-					"absences = spark.sql(f\"select * from {absences_table} where cast(expected_from as Date) = '{absences_expected_from}'\").toPandas()\n",
-					"\n",
-					"print(absences_expected_from)\n",
-					"print(len(absences))\n",
-					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"include_bank_holidays = False\n",
 					"\n",
 					"def get_absence_hrs(days, original_hrs, start, end, ws):\n",
@@ -212,13 +192,32 @@
 					"\n",
 					"    return str(sum)\n",
 					"\n",
-					"for i, row in absences.iterrows():\n",
-					"    absences.at[i, 'hrs'] = get_absence_hrs(float(row['days']), float(row['hrs']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
+					"absences_table = 'odw_standardised_db.hr_absences'\n",
 					"\n",
-					"absencesDF = spark.createDataFrame(absences)\n",
-					"absencesDF.write.format(\"delta\").mode(\"overwrite\").save(absences_table_loc)"
+					"# getting the closest expected_from date in the table based on the expected_from parameter\n",
+					"if expected_from != '':\n",
+					"    absences_expected_from = spark.sql(f\"SELECT expected_from FROM {absences_table} as table_alias WHERE table_alias.expected_from <= '{expected_from}' ORDER BY table_alias.expected_from DESC LIMIT 1;\")\n",
+					"else:\n",
+					"    absences_expected_from = spark.sql(f\"SELECT MAX(expected_from) FROM {absences_table}\")\n",
+					"try:\n",
+					"    absences_expected_from = absences_expected_from.first()[0]\n",
+					"except:\n",
+					"    absences_expected_from = ''\n",
+					"\n",
+					"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
+					"absences = spark.sql(f\"select * from {absences_table} where cast(expected_from as Date) = '{absences_expected_from}'\").toPandas()\n",
+					"\n",
+					"print(absences_expected_from)\n",
+					"print(len(absences))\n",
+					"\n",
+					"# if(len(absences) > 0):\n",
+					"#     for i, row in absences.iterrows():\n",
+					"#         absences.at[i, 'hrs'] = get_absence_hrs(float(row['days']), float(row['hrs']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
+					"\n",
+					"#     absencesDF = spark.createDataFrame(absences)\n",
+					"#     absencesDF.write.format(\"delta\").mode(\"overwrite\").save(absences_table_loc)"
 				],
-				"execution_count": 38
+				"execution_count": 206
 			},
 			{
 				"cell_type": "code",
@@ -265,7 +264,7 @@
 					"FROM odw_standardised_db.hr_absences\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 40
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +282,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_addresses')"
 				],
-				"execution_count": 41
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -339,7 +338,7 @@
 					"FROM odw_standardised_db.hr_addresses\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -357,7 +356,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_email')"
 				],
-				"execution_count": 43
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -403,7 +402,7 @@
 					"FROM odw_standardised_db.hr_email\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 44
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -421,7 +420,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_leave')"
 				],
-				"execution_count": 45
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -467,7 +466,7 @@
 					"FROM odw_standardised_db.hr_leave\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 46
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -499,7 +498,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_leavers')"
 				],
-				"execution_count": 47
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -532,7 +531,7 @@
 					"FROM odw_standardised_db.hr_leavers\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 48
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -608,7 +607,7 @@
 					"FROM odw_standardised_db.vw_leavers_temp\n",
 					"WHERE RN = 1;"
 				],
-				"execution_count": 49
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -626,7 +625,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_protected_characteristics')"
 				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -671,7 +670,7 @@
 					"FROM odw_standardised_db.hr_protected_characteristics T1\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 51
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -689,7 +688,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_saphr')"
 				],
-				"execution_count": 52
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -807,7 +806,7 @@
 					"FROM odw_standardised_db.hr_saphr\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 53
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -825,7 +824,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_specialisms')"
 				],
-				"execution_count": 54
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -870,7 +869,36 @@
 					"FROM odw_standardised_db.hr_specialisms\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 55
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_standardised_db.vw_saphr;\n",
+					"select count(*) from odw_standardised_db.vw_leave;\n",
+					"select count(*) from odw_standardised_db.vw_leavers;\n",
+					"select count(*) from odw_standardised_db.vw_absences;\n",
+					"select count(*) from odw_standardised_db.vw_addresses;\n",
+					"select count(*) from odw_standardised_db.vw_email;\n",
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
