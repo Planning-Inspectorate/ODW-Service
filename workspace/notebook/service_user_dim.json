@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "23ad578e-9416-405e-b8ce-1cf1ee54e00c"
+				"spark.autotune.trackingId": "8a893318-c3c1-41bc-9dc0-a7c8adae255d"
 			}
 		},
 		"metadata": {
@@ -106,7 +106,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +130,7 @@
 					"SELECT * FROM odw_harmonised_db.zendesk_custom_fields_id_value where value like 'APP%'\r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -145,9 +145,9 @@
 					"-- Build comment_type_reference_dim table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW service_user_dim_new\r\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW service_user_dim_new\r\n",
 					"\r\n",
-					"    AS\r\n",
+					"--     AS\r\n",
 					"\r\n",
 					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
@@ -158,7 +158,7 @@
 					"        THEN T1.ServiceDataID\r\n",
 					"        ELSE NULL\r\n",
 					"    END AS ServiceDataID, -- surrogate key\r\n",
-					"    T4.ticket_id AS TicketID,\r\n",
+					"    T1.TicketID,\r\n",
 					"    T3.case_number as CaseReference,\r\n",
 					"    T3.salutation AS Salutation,\r\n",
 					"    T3.firstname AS FirstName,\r\n",
@@ -170,7 +170,7 @@
 					"    T3.postcode AS Postcode,\r\n",
 					"    T3.country AS AddressCountry,\r\n",
 					"    T3.organisationname AS Organisation,\r\n",
-					"    T3.organisationtypename OrganisationType,\r\n",
+					"    T3.organisationtypename AS OrganisationType,\r\n",
 					"    T3.typeofinvolvement AS Role,\r\n",
 					"    T3.telephoneoffice AS TelephoneNumber,\r\n",
 					"    T3.telephonemobile AS OtherPhoneNumber,\r\n",
@@ -203,7 +203,6 @@
 					"FROM odw_harmonised_db.service_user_dim T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
 					"FULL JOIN odw_standardised_db.horizon_service_user T3 ON T3.case_number = T3.case_number and T1.IsActive = 'Y'\r\n",
-					"FULL JOIN zendesk_role T4 ON T3.email = T4.email \r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
@@ -228,7 +227,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -249,9 +248,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * from service_user_dim_new where lastName like 'Pritchard'"
+					"SELECT * from service_user_dim_new where TicketID is not null and EmailAddress is not null"
 				],
-				"execution_count": 22
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -272,9 +271,29 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT firstName from odw_standardised_db.horizon_service_user where firstName like ''"
+					"SELECT T2.ticket_id,\r\n",
+					"    T3.CaseReference,\r\n",
+					"    T3.Salutation,\r\n",
+					"    T3.FirstName,\r\n",
+					"    T3.LastName,\r\n",
+					"    T3.AddressLine1,\r\n",
+					"    T3.AddressLine2,\r\n",
+					"    T3.AddressTown,\r\n",
+					"    T3.AddressCounty,\r\n",
+					"    T3.Postcode,\r\n",
+					"    T3.AddressCountry,\r\n",
+					"    T3.Organisation,\r\n",
+					"    T3.OrganisationType,\r\n",
+					"    T3.Role,\r\n",
+					"    T3.TelephoneNumber,\r\n",
+					"    T3.OtherPhoneNumber,\r\n",
+					"    T3.FaxNumber,\r\n",
+					"    T3.EmailAddress\r\n",
+					"from service_user_dim_new T3\r\n",
+					"LEFT JOIN zendesk_role T2 ON T3.EmailAddress = T2.email \r\n",
+					"where ticket_id is not null  "
 				],
-				"execution_count": 23
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -295,9 +314,32 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT DISTINCT email FROM zednesk_role"
+					"SELECT * FROM odw_harmonised_db.casework_case_info_dim "
 				],
-				"execution_count": 24
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_harmonised_db.casework_application_sub_type_case_name_dim t1 FULL JOIN odw_harmonised_db.zendesk_custom_fields_id_value t2 ON t1.CaseName=t2.value where CaseName is not null and ticket_id is not null"
+				],
+				"execution_count": 25
 			}
 		]
 	}
