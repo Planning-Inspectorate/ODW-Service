@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5cac1af9-4eb8-4560-9065-c0b432c9ad31"
+				"spark.autotune.trackingId": "65abe6d8-d593-42a8-81b9-d2ae6f4b71ab"
 			}
 		},
 		"metadata": {
@@ -142,7 +142,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -158,7 +158,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\r\n",
@@ -171,9 +172,24 @@
 					"-- gets updated, deleted and new rows \r\n",
 					"\r\n",
 					"Select\r\n",
-					"    StructureReasoningDetailReferenceID,\r\n",
-					"    StructureReasoningDetailID,\r\n",
-					"    Value, \r\n",
+					"    ServiceDataID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FirstName,\r\n",
+					"    LastName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -186,20 +202,35 @@
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    StructureReasoningDetailReferenceID,\r\n",
-					"    StructureReasoningDetailID,\r\n",
-					"    Value,\r\n",
+					"    ServiceDataID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FirstName,\r\n",
+					"    LastName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.checkmark_service_user_dim\r\n",
-					"WHERE Value IN (SELECT Value FROM service_user_dim_new WHERE StructureReasoningDetailID IS NULL)\r\n",
+					"FROM odw_harmonised_db.service_user_dim\r\n",
+					"WHERE CaseReference IN (SELECT CaseReference FROM service_user_dim_new WHERE ServiceDataID IS NULL)\r\n",
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -215,17 +246,18 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\r\n",
 					"\r\n",
 					"-- merge into fact table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.checkmark_service_user_dim AS Target\r\n",
+					"MERGE INTO odw_harmonised_db.service_user_dim AS Target\r\n",
 					"USING service_user_dim_changed_rows AS Source\r\n",
 					"\r\n",
-					"ON Source.StructureReasoningDetailID = Target.StructureReasoningDetailID\r\n",
+					"ON Source.ServiceDataID = Target.ServiceDataID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -240,7 +272,7 @@
 					"    THEN INSERT * ;   \r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -256,27 +288,43 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\r\n",
 					"-- Insert new SXOID\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.checkmark_service_user_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.service_user_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY StructureReasoningDetailReferenceID NULLS LAST) AS StructureReasoningDetailReferenceID,\r\n",
-					"    StructureReasoningDetailID,\r\n",
-					"    Value, \r\n",
+					"    ROW_NUMBER() OVER (ORDER BY ServiceDataID NULLS LAST) AS ServiceDataID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FirstName,\r\n",
+					"    LastName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.checkmark_service_user_dim;\r\n",
+					"FROM odw_harmonised_db.service_user_dim;\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 31
 			}
 		]
 	}
