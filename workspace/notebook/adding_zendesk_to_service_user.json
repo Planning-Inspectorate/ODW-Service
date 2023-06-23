@@ -1,5 +1,5 @@
 {
-	"name": "service_user",
+	"name": "adding_zendesk_to_service_user",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/Checkmark"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f395d40d-d836-4253-8225-837e07753d15"
+				"spark.autotune.trackingId": "684f938c-7e50-4784-adf8-5c29138ac8c9"
 			}
 		},
 		"metadata": {
@@ -106,7 +106,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -137,7 +137,7 @@
 					"    FROM odw_harmonised_db.zendesk_custom_fields_id_value t1 FULL JOIN zendesk_role t2 ON t1.ticket_id = t2.ticket_id\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -157,9 +157,248 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.service_user_dim UNION SELECT * FROM zendesk"
+					"-- Build comment_type_reference_dim table\r\n",
+					"-- Gets modified or deleted from source rows\r\n",
+					"\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW service_user_dim_new\r\n",
+					"\r\n",
+					"    AS\r\n",
+					"\r\n",
+					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\r\n",
+					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    CASE\r\n",
+					"        WHEN T1.CaseReference IS NULL\r\n",
+					"        THEN T3.ServiceDataID\r\n",
+					"        ELSE NULL\r\n",
+					"    END AS ServiceDataID, -- surrogate key\r\n",
+					"    T1.TicketID,\r\n",
+					"    T1.CaseReference,\r\n",
+					"    'No Info' AS Salutation,\r\n",
+					"    T1.FullName,\r\n",
+					"    'No Info' AS AddressLine1,\r\n",
+					"    'No Info' AS AddressLine2,\r\n",
+					"    'No Info' AS AddressTown,\r\n",
+					"    'No Info'  AS AddressCounty,\r\n",
+					"    'No Info'  AS Postcode,\r\n",
+					"    'No Info'  AS AddressCountry,\r\n",
+					"    'No Info'  AS Organisation,\r\n",
+					"    'No Info'  AS OrganisationType,\r\n",
+					"    T1.Role,\r\n",
+					"    'No Info'  AS TelephoneNumber,\r\n",
+					"    'No Info'  AS OtherPhoneNumber,\r\n",
+					"    'No Info'  AS FaxNumber,\r\n",
+					"    T1.EmailAddress,\r\n",
+					"\r\n",
+					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
+					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    NULL AS ValidTo,\r\n",
+					"    md5(concat(IFNULL(T1.CaseReference,'.'), IFNULL(T1.TicketID,'.'), IFNULL(T1.FullName,'.'),IFNULL(T1.EmailAddress,'.'),T1.Role)) AS RowID,\r\n",
+					"    'Y' as IsActive,\r\n",
+					"    T1.IsActive as HistoricIsActive\r\n",
+					"\r\n",
+					"FROM zendesk T1\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Zendesk\" = T2.Description\r\n",
+					"FULL JOIN odw_harmonised_db.service_user_dim T3 ON T1.CaseReference = T3.CaseReference and T3.IsActive = 'Y'\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"WHERE\r\n",
+					"    (-- flags new data        \r\n",
+					"        (CASE\r\n",
+					"            WHEN T1.CaseReference = T3.ServiceDataID \r\n",
+					"            AND md5(concat(IFNULL(T1.CaseReference,'.'), IFNULL(T1.TicketID,'.'), IFNULL(T1.FullName,'.'),IFNULL(T1.EmailAddress,'.'),T1.Role)) <> T3.RowID\r\n",
+					"            THEN 'Y'\r\n",
+					"            WHEN T3.ServiceDataID IS NULL\r\n",
+					"            THEN 'Y'\r\n",
+					"            ELSE 'N'\r\n",
+					"        END  = 'Y' )\r\n",
+					"    )\r\n",
+					";\r\n",
+					"\r\n",
+					""
 				],
-				"execution_count": 12
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Create new and updated dataset\r\n",
+					"\r\n",
+					"CREATE OR REPLACE TEMPORARY  VIEW service_user_dim_changed_rows\r\n",
+					"\r\n",
+					"    AS\r\n",
+					"\r\n",
+					"-- gets updated, deleted and new rows \r\n",
+					"\r\n",
+					"Select\r\n",
+					"    ServiceDataID,\r\n",
+					"    TicketID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FullName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
+					"    SourceSystemID,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo,\r\n",
+					"    RowID,\r\n",
+					"    IsActive\r\n",
+					"From service_user_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+					"\r\n",
+					"    UNION ALL\r\n",
+					"\r\n",
+					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
+					"\r\n",
+					"SELECT\r\n",
+					"    ServiceDataID,\r\n",
+					"    TicketID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FullName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
+					"    SourceSystemID,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo,\r\n",
+					"    RowID,\r\n",
+					"    IsActive\r\n",
+					"FROM odw_harmonised_db.service_user_dim\r\n",
+					"WHERE CaseReference IN (SELECT CaseReference FROM service_user_dim_new WHERE ServiceDataID IS NULL)\r\n",
+					"AND IsActive = 'Y'; \r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"-- merge into fact table\r\n",
+					"\r\n",
+					"MERGE INTO odw_harmonised_db.service_user_dim AS Target\r\n",
+					"USING service_user_dim_changed_rows AS Source\r\n",
+					"\r\n",
+					"ON Source.ServiceDataID = Target.ServiceDataID\r\n",
+					"\r\n",
+					"-- For Updates existing rows\r\n",
+					"\r\n",
+					"WHEN MATCHED\r\n",
+					"    THEN \r\n",
+					"    UPDATE SET\r\n",
+					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.IsActive = 'N'\r\n",
+					"\r\n",
+					"-- Insert completely new rows\r\n",
+					"WHEN NOT MATCHED \r\n",
+					"    THEN INSERT * ;   \r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Insert new SXOID\r\n",
+					"\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.service_user_dim\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    ROW_NUMBER() OVER (ORDER BY ServiceDataID NULLS LAST) AS ServiceDataID,\r\n",
+					"    TicketID,\r\n",
+					"    CaseReference,\r\n",
+					"    Salutation,\r\n",
+					"    FullName,\r\n",
+					"    AddressLine1,\r\n",
+					"    AddressLine2,\r\n",
+					"    AddressTown,\r\n",
+					"    AddressCounty,\r\n",
+					"    Postcode,\r\n",
+					"    AddressCountry,\r\n",
+					"    Organisation,\r\n",
+					"    OrganisationType,\r\n",
+					"    Role,\r\n",
+					"    TelephoneNumber,\r\n",
+					"    OtherPhoneNumber,\r\n",
+					"    FaxNumber,\r\n",
+					"    EmailAddress,\r\n",
+					"    SourceSystemID,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo,\r\n",
+					"    RowID,\r\n",
+					"    IsActive\r\n",
+					"FROM odw_harmonised_db.service_user_dim;\r\n",
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
