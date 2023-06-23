@@ -13,11 +13,6 @@ variable "data_lake_account_name" {
   type        = string
 }
 
-variable "data_lake_account_name_failover" {
-  description = "The name of the Data Lake Storage Account used for backup and failover"
-  type        = string
-}
-
 variable "data_lake_filesystem_id" {
   description = "The ID of the Data Lake Gen2 filesystem"
   type        = string

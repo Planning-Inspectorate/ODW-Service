@@ -91,9 +91,6 @@ No requirements.
 | [azurerm_synapse_firewall_rule.allow_all_azure](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_firewall_rule) | resource |
 | [azurerm_synapse_firewall_rule.allowed_ips](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_firewall_rule) | resource |
 | [azurerm_synapse_managed_private_endpoint.data_lake](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_managed_private_endpoint) | resource |
-| [azurerm_synapse_managed_private_endpoint.data_lake_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_managed_private_endpoint) | resource |
-| [azurerm_synapse_managed_private_endpoint.synapse_mpe_kv](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_managed_private_endpoint) | resource |
-| [azurerm_synapse_managed_private_endpoint.synapse_mpe_kv_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_managed_private_endpoint) | resource |
 | [azurerm_synapse_private_link_hub.synapse_workspace](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_private_link_hub) | resource |
 | [azurerm_synapse_role_assignment.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_role_assignment) | resource |
 | [azurerm_synapse_spark_pool.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/synapse_spark_pool) | resource |
@@ -111,7 +108,6 @@ No requirements.
 | <a name="input_data_lake_account_id"></a> [data\_lake\_account\_id](#input\_data\_lake\_account\_id) | The ID of the Data Lake Storage Account | `string` | n/a | yes |
 | <a name="input_data_lake_account_id_failover"></a> [data\_lake\_account\_id\_failover](#input\_data\_lake\_account\_id\_failover) | The ID of the Data Lake Storage Account used for backup and failover | `string` | n/a | yes |
 | <a name="input_data_lake_account_name"></a> [data\_lake\_account\_name](#input\_data\_lake\_account\_name) | The name of the Data Lake Storage Account | `string` | n/a | yes |
-| <a name="input_data_lake_account_name_failover"></a> [data\_lake\_account\_name\_failover](#input\_data\_lake\_account\_name\_failover) | The name of the Data Lake Storage Account used for backup and failover | `string` | n/a | yes |
 | <a name="input_data_lake_filesystem_id"></a> [data\_lake\_filesystem\_id](#input\_data\_lake\_filesystem\_id) | The ID of the Data Lake Gen2 filesystem | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | The name of the environment in which resources will be deployed | `string` | n/a | yes |
 | <a name="input_firewall_allowed_ip_addresses"></a> [firewall\_allowed\_ip\_addresses](#input\_firewall\_allowed\_ip\_addresses) | A list of CIDR ranges to be permitted access to the data lake Storage Account | `list(string)` | `[]` | no |
