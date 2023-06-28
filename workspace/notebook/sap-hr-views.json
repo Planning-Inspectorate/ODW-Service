@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7ccca7c2-9666-4e43-b533-cdcac528b812"
+				"spark.autotune.trackingId": "87409e87-e834-4754-85fd-662c545d5daa"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 				"source": [
 					"expected_from=''"
 				],
-				"execution_count": 217
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -93,7 +93,7 @@
 					"    else:\n",
 					"        spark.sql(f\"SET DATE_VAR = (SELECT MAX(expected_from) FROM {table_name})\")"
 				],
-				"execution_count": 218
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -111,7 +111,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_absences')"
 				],
-				"execution_count": 219
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -193,6 +193,7 @@
 					"    return str(sum)\n",
 					"\n",
 					"absences_table = 'odw_standardised_db.hr_absences'\n",
+					"absences_table_loc = \"abfss://odw-standardised@\" + storage_account+'HR/hr_absences'\n",
 					"\n",
 					"# getting the closest expected_from date in the table based on the expected_from parameter\n",
 					"if expected_from != '':\n",
@@ -214,7 +215,54 @@
 					"    absencesDF = spark.createDataFrame(absences)\n",
 					"    absencesDF.write.format(\"delta\").mode(\"overwrite\").option(\"replaceWhere\", f\"cast(expected_from as Date) = '{absences_expected_from}'\").save(absences_table_loc)"
 				],
-				"execution_count": 220
+				"execution_count": 21
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Creates a view odw_standardised_db.vw_absences_temp \n",
+					"#### Creates the view with a column RN (Row Number) to be able to select non-duplicates. This is a temporary view and will be deleted after being utilised in the harmonised layer"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_standardised_db.vw_absences_temp\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT  \n",
+					"    *,\n",
+					"    ROW_NUMBER() OVER (PARTITION BY Staff_Number, Start_Date ORDER BY Staff_Number) AS RN\n",
+					"\n",
+					"FROM odw_standardised_db.hr_absences\n",
+					"WHERE expected_from = ${DATE_VAR}"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -258,10 +306,24 @@
 					"    expected_from,\r\n",
 					"    expected_to\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.hr_absences\r\n",
-					"WHERE expected_from = ${DATE_VAR}"
+					"FROM odw_standardised_db.vw_absences_temp\r\n",
+					"WHERE RN = 1;"
 				],
-				"execution_count": 221
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Creates a view odw_standardised_db.hr_addresses_temp \n",
+					"#### Creates the view with a column RN (Row Number) to be able to select non-duplicates. This is a temporary view and will be deleted after being utilised in the harmonised layer"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -279,7 +341,39 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_addresses')"
 				],
-				"execution_count": 222
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_standardised_db.hr_addresses_temp\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT  \n",
+					"    *,\n",
+					"    ROW_NUMBER() OVER (PARTITION BY Staff_Number ORDER BY Staff_Number) AS RN\n",
+					"\n",
+					"FROM odw_standardised_db.hr_addresses\n",
+					"WHERE expected_from = ${DATE_VAR}"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -332,10 +426,24 @@
 					"    expected_from,\r\n",
 					"    expected_to\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.hr_addresses\r\n",
-					"WHERE expected_from = ${DATE_VAR}"
+					"FROM odw_standardised_db.hr_addresses_temp\r\n",
+					"WHERE RN = 1;"
 				],
-				"execution_count": 223
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Creates a view odw_standardised_db.hr_email_temp \n",
+					"#### Creates the view with a column RN (Row Number) to be able to select non-duplicates. This is a temporary view and will be deleted after being utilised in the harmonised layer"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +461,39 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_email')"
 				],
-				"execution_count": 224
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_standardised_db.hr_email_temp\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT  \n",
+					"    *,\n",
+					"    ROW_NUMBER() OVER (PARTITION BY Staff_Number ORDER BY Staff_Number) AS RN\n",
+					"\n",
+					"FROM odw_standardised_db.hr_email\n",
+					"WHERE expected_from = ${DATE_VAR}"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -396,10 +536,10 @@
 					"    expected_from,\r\n",
 					"    expected_to\r\n",
 					"\r\n",
-					"FROM odw_standardised_db.hr_email\r\n",
-					"WHERE expected_from = ${DATE_VAR}"
+					"FROM odw_standardised_db.hr_email_temp\r\n",
+					"WHERE RN = 1"
 				],
-				"execution_count": 225
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -417,7 +557,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_leave')"
 				],
-				"execution_count": 226
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -463,7 +603,7 @@
 					"FROM odw_standardised_db.hr_leave\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 227
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -495,7 +635,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_leavers')"
 				],
-				"execution_count": 228
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -528,7 +668,7 @@
 					"FROM odw_standardised_db.hr_leavers\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 229
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -604,7 +744,7 @@
 					"FROM odw_standardised_db.vw_leavers_temp\n",
 					"WHERE RN = 1;"
 				],
-				"execution_count": 230
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -622,7 +762,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_protected_characteristics')"
 				],
-				"execution_count": 231
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -667,7 +807,7 @@
 					"FROM odw_standardised_db.hr_protected_characteristics T1\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 232
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -685,7 +825,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_saphr')"
 				],
-				"execution_count": 233
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -803,7 +943,7 @@
 					"FROM odw_standardised_db.hr_saphr\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 234
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -821,7 +961,7 @@
 				"source": [
 					"set_current_expected_from_var(expected_from, 'odw_standardised_db.hr_specialisms')"
 				],
-				"execution_count": 235
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -866,7 +1006,7 @@
 					"FROM odw_standardised_db.hr_specialisms\r\n",
 					"WHERE expected_from = ${DATE_VAR}"
 				],
-				"execution_count": 236
+				"execution_count": null
 			}
 		]
 	}
