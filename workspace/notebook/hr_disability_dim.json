@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bc435f53-3b92-4a43-b523-537f232d53f3"
+				"spark.autotune.trackingId": "c47b5fbb-74d5-4aa2-aaad-69a7a372cda7"
 			}
 		},
 		"metadata": {
@@ -76,12 +76,17 @@
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
-					"Select Disability_text as DisabilityCode, \r\n",
-					"        first(Disability_Code_Description) as Description\r\n",
+					"SELECT DISTINCT\r\n",
+					"        disability_text AS DisabilityCode, \r\n",
+					"        disability_code_description AS Description,\r\n",
+					"        last(expected_from) AS expected_from\r\n",
+					"\r\n",
 					"FROM odw_standardised_db.vw_protected_characteristics \r\n",
-					"GROUP BY Disability_Text"
+					"WHERE disability_text IS NOT NULL AND disability_code_description IS NOT NULL\r\n",
+					"GROUP BY disability_text, disability_code_description\r\n",
+					""
 				],
-				"execution_count": 6
+				"execution_count": 72
 			},
 			{
 				"cell_type": "markdown",
@@ -151,9 +156,10 @@
 					"                THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
 					"            END  = 'Y' )\r\n",
+					"        AND T1.DisabilityCode IS NOT NULL\r\n",
 					";"
 				],
-				"execution_count": 7
+				"execution_count": 76
 			},
 			{
 				"cell_type": "markdown",
@@ -227,7 +233,7 @@
 					"AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 78
 			},
 			{
 				"cell_type": "markdown",
@@ -277,7 +283,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -285,7 +291,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 79
 			},
 			{
 				"cell_type": "markdown",
@@ -324,10 +330,10 @@
 					"%%sql\r\n",
 					"-- Insert new DisabilityID\r\n",
 					"\r\n",
-					"INSERT INTO odw_harmonised_db.hr_disability_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_disability_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY DisabilityCode NULLS LAST) AS DisabilityID, \r\n",
+					"    ROW_NUMBER() OVER (ORDER BY DisabilityID NULLS LAST) AS DisabilityID, \r\n",
 					"    DisabilityCode,\r\n",
 					"    Description, \r\n",
 					"    SourceSystemID,\r\n",
@@ -335,10 +341,10 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM disability_dim_changed_rows;\r\n",
+					"FROM odw_harmonised_db.hr_disability_dim;\r\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 64
 			}
 		]
 	}

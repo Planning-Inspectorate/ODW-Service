@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "41595ac9-6d52-4320-85be-03a7df12067b"
+				"spark.autotune.trackingId": "c915cf99-338b-49ec-8dba-1828cb2853dd"
 			}
 		},
 		"metadata": {
@@ -78,7 +78,8 @@
 					"\r\n",
 					"SELECT  \r\n",
 					"    Cost_Ctr AS CostCenterCode,\r\n",
-					"    first(Cost_Centre) AS Description\r\n",
+					"    first(Cost_Centre) AS Description,\r\n",
+					"    last(expected_from) AS expected_from\r\n",
 					"       \r\n",
 					"FROM odw_standardised_db.vw_saphr\r\n",
 					"WHERE Cost_Ctr IS NOT NULL\r\n",
@@ -284,7 +285,7 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
@@ -329,9 +330,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new hr_costcenter_dim\r\n",
+					"-- Insert new hr_costcenter_dim id\r\n",
 					"\r\n",
-					"INSERT INTO odw_harmonised_db.hr_costcenter_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.hr_costcenter_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY CostCenterID NULLS LAST) AS CostCenterID,\r\n",
@@ -342,7 +343,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM CostCenter_Dim_changed_rows;"
+					"FROM odw_harmonised_db.hr_costcenter_dim;"
 				],
 				"execution_count": 5
 			}
