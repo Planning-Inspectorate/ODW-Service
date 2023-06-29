@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "efa0f4a4-a9f7-4829-b16d-a525ff6f960d"
+				"spark.autotune.trackingId": "e4babbff-040f-45b0-9442-e022aa0b78d0"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 				"source": [
 					"expected_from = '2023-05-31'"
 				],
-				"execution_count": 29
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -92,7 +92,7 @@
 					"    spark.sql(f\"SET EXPECTED_FROM_VAR = '{expected_from}'\")\n",
 					""
 				],
-				"execution_count": 30
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -147,31 +147,7 @@
 					"    and left(h.expected_from, 7) = left(${EXPECTED_FROM_VAR}, 7)\n",
 					"    and le.IsActive = 'Y'"
 				],
-				"execution_count": 52
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from odw_harmonised_db.hr_leave_entitlement_dim where ingestiondate= '2023-05-01' order by employeeid limit 100"
-				],
-				"execution_count": 36
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
@@ -195,7 +171,7 @@
 					"\n",
 					"select * from staff_cost order by employeeid limit 100"
 				],
-				"execution_count": 34
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -1044,156 +1020,6 @@
 					"FROM odw_curated_db.mipins_hr_measures;"
 				],
 				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW leaveentitlement_dim_non_null\n",
-					"\n",
-					"    AS\n",
-					"\n",
-					"SELECT DISTINCT\n",
-					"    Staff_Number,\n",
-					"    number,\n",
-					"    deduction,\n",
-					"    ded_from,\n",
-					"    ded_to,\n",
-					"    absence_quota_type,\n",
-					"    expected_from\n",
-					"\n",
-					"FROM odw_standardised_db.vw_leave\n",
-					"WHERE Staff_Number IS NOT NULL AND absence_quota_type IS NOT NULL;"
-				],
-				"execution_count": 43
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"-- CREATE OR REPLACE TEMPORARY VIEW leaveentitlement_dim_new\n",
-					"\n",
-					"--     AS\n",
-					"\n",
-					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\n",
-					"SELECT DISTINCT\n",
-					"    CASE\n",
-					"        WHEN T1.Staff_Number IS NULL\n",
-					"        THEN T3.LeaveEntitlementID\n",
-					"        ELSE NULL\n",
-					"    END as LeaveEntitlementID,     \n",
-					"    T1.Staff_Number AS EmployeeID, -- FK to employee_fact\n",
-					"    T1.number AS LeaveDaysPerYear,\n",
-					"    T1.deduction AS LeaveDeduction,\n",
-					"    to_timestamp(T1.ded_from) AS LeaveYearStart,\n",
-					"    to_timestamp(T1.ded_to) AS LeaveYearEnd,\n",
-					"    T1.absence_quota_type AS AbsenceQuotaType,\n",
-					"    date_add(T1.Expected_From, -1) AS ExpectedFrom,\n",
-					"    T2.SourceSystemID as SourceSystemID,\n",
-					"    to_timestamp(T1.Expected_From) AS IngestionDate,\n",
-					"    NULL AS ValidTo,\n",
-					"    md5(concat(IFNULL(T1.Staff_Number,'.'),IFNULL(T1.number,'.'),IFNULL(T1.deduction,'.'),IFNULL(cast(T1.ded_from as varchar(20)),'.'),IFNULL(T1.absence_quota_type,'.'))) as RowID,\n",
-					"    'Y' as IsActive,\n",
-					"    T3.IsActive as HistoricIsActive\n",
-					"\n",
-					"FROM leaveentitlement_dim_non_null T1\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"SAP HR\" = T2.Description AND T2.IsActive = 'Y'\n",
-					"FULL JOIN odw_harmonised_db.hr_leave_entitlement_dim T3 ON T1.Staff_Number = T3.EmployeeID AND \n",
-					"                                                        T1.absence_quota_type = T3.AbsenceQuotaType AND\n",
-					"                                                        T3.IsActive = 'Y'\n",
-					"\n",
-					"order by EmployeeID\n",
-					"-- WHERE\n",
-					"--     -- flags new data        \n",
-					"--     CASE\n",
-					"--         WHEN T1.Staff_Number = T3.EmployeeID AND T1.absence_quota_type = T3.AbsenceQuotaType\n",
-					"--             AND md5(concat(IFNULL(T1.Staff_Number,'.'),IFNULL(T1.number,'.'),IFNULL(T1.deduction,'.'),IFNULL(cast(T1.ded_from as varchar(20)),'.'),IFNULL(T1.absence_quota_type,'.'))) <> T3.RowID  -- same employee, changed data\n",
-					"--         THEN 'Y'\n",
-					"--         WHEN T3.EmployeeID  IS NULL -- new employee\n",
-					"--         THEN 'Y'\n",
-					"--         ELSE 'N'\n",
-					"--     END  = 'Y' \n",
-					"-- AND T1.Staff_Number IS NOT NULL;"
-				],
-				"execution_count": 51
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select * from leaveentitlement_dim_new order by EmployeeID limit 20"
-				],
-				"execution_count": 49
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select * from leaveentitlement_dim_non_null order by staff_number limit 20"
-				],
-				"execution_count": 50
 			}
 		]
 	}
