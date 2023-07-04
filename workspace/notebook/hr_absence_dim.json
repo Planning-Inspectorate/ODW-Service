@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b8e6b107-8612-4a71-93ee-02ef3f20ad17"
+				"spark.autotune.trackingId": "e0fea9f4-9dd1-47f3-8341-c99b21502a9b"
 			}
 		},
 		"metadata": {
@@ -63,6 +63,63 @@
 				"source": [
 					"## View absence_dim_new_non_null is created"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"db_name = 'odw_harmonised_db'\n",
+					"# table_name = 'hr_absence_dim'\n",
+					"# import logging\n",
+					"# logger = logging.getLogger(__name__)\n",
+					"# from pyspark.sql import SparkSession\n",
+					"# from notebookutils import mssparkutils\n",
+					"# spark = SparkSession.builder.getOrCreate()\n",
+					"# if spark._jsparkSession.catalog().tableExists(db_name, table_name):\n",
+					"#     table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\n",
+					"#     if len(table_details) > 1:\n",
+					"#         raise RuntimeError(\"too many locations associated with the table!\")\n",
+					"#     else:\n",
+					"#         loc = table_details['location'][0]\n",
+					"#         spark.sql(f\"DELETE FROM {db_name}.{table_name}\")\n",
+					"# else:\n",
+					"#     logger.info(\"Table does not exist\")"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_standardised_db.vw_absences where staff_number like '%500001'\n",
+					""
+				],
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -190,6 +247,8 @@
 					"                                                            T1.End_Date = T3.AbsenceEndDate AND\r\n",
 					"                                                            T1.hrs = T3.Hours AND \r\n",
 					"                                                            T3.IsActive = 'Y'\r\n",
+					"\r\n",
+					"--- WE NEED TO REVIEW THIS WHERE CLAUSE\r\n",
 					"WHERE\r\n",
 					"--         -- flags new data        \r\n",
 					"--         ( CASE\r\n",
@@ -220,7 +279,8 @@
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
 					"- View **absence_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View absence_dim_changed_rows is created"
+					"## View absence_dim_changed_rows is created\n",
+					""
 				]
 			},
 			{
@@ -287,9 +347,35 @@
 					"    T4.RowID,\r\n",
 					"    T4.IsActive\r\n",
 					"FROM odw_harmonised_db.hr_absence_dim T4\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM absence_dim_new WHERE AbsenceID IS NULL) AND IsActive = 'Y';"
+					"WHERE EmployeeID IN (SELECT EmployeeID FROM absence_dim_new WHERE AbsenceID IS NULL) AND IsActive = 'Y'\r\n",
+					""
 				],
-				"execution_count": 59
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from absence_dim_changed_rows;\n",
+					"\n",
+					"select * from absence_dim_changed_rows"
+				],
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -346,7 +432,7 @@
 					"    THEN INSERT * ;  \r\n",
 					""
 				],
-				"execution_count": 61
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -406,7 +492,7 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.hr_absence_dim;"
 				],
-				"execution_count": 62
+				"execution_count": 13
 			}
 		]
 	}
