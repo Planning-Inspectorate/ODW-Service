@@ -10,7 +10,7 @@
 					{
 						"activity": "Set HR Tables Array",
 						"dependencyConditions": [
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
@@ -165,7 +165,14 @@
 			{
 				"name": "py_get_months_array_bw_dates",
 				"type": "SynapseNotebook",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set HR Tables Array",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -185,7 +192,7 @@
 							"type": "int"
 						},
 						"start_year": {
-							"value": "2017",
+							"value": "2022",
 							"type": "int"
 						},
 						"end_month": {
@@ -199,6 +206,145 @@
 					},
 					"snapshot": true
 				}
+			},
+			{
+				"name": "Ingest Monthly Harmonised and Curated",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "py_get_months_array_bw_dates",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@split(activity('py_get_months_array_bw_dates').output.status.Output.result.exitValue, ',,,')",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "sap-hr-views",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "sap-hr-views",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"expected_from": {
+										"value": {
+											"value": "@item()",
+											"type": "Expression"
+										},
+										"type": "string"
+									}
+								},
+								"snapshot": true
+							}
+						},
+						{
+							"name": "sap_hr_master",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "sap-hr-views",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [
+								{
+									"name": "",
+									"value": ""
+								}
+							],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "sap_hr_master",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						},
+						{
+							"name": "mipins_hr_measures",
+							"type": "SynapseNotebook",
+							"dependsOn": [
+								{
+									"activity": "sap_hr_master",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "mipins_hr_measures",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"expected_from": {
+										"value": {
+											"value": "@substring(item(), 0, 10)",
+											"type": "Expression"
+										},
+										"type": "string"
+									}
+								},
+								"snapshot": true
+							}
+						},
+						{
+							"name": "employee",
+							"type": "SynapseNotebook",
+							"dependsOn": [
+								{
+									"activity": "sap_hr_master",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "employee",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
 			}
 		],
 		"variables": {
@@ -207,6 +353,9 @@
 			},
 			"hr_tables": {
 				"type": "Array"
+			},
+			"test": {
+				"type": "String"
 			}
 		},
 		"folder": {
