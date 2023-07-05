@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d780262b-83a4-4ebf-927d-7e370503c6d7"
+				"spark.autotune.trackingId": "134d9748-d156-4ebf-9d15-ec993f2ba1e1"
 			}
 		},
 		"metadata": {
@@ -117,7 +117,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build payband_dim table\r\n",
+					"-- Build payrollarea_dim table\r\n",
 					"-- Gets modified or new from source rows\r\n",
 					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW payrollarea_dim_new\r\n",
@@ -170,7 +170,7 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **payband_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"- View **payrollarea_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
 					"## View payroll_area_dim_changed_rows is created"
 				]
 			},
@@ -195,7 +195,7 @@
 					"%%sql\r\n",
 					"-- Creating new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW payrollarea_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -255,9 +255,9 @@
 					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
 					"    'Y' AS IsActive\n",
 					"\n",
-					"FROM payband_dim_new;\n",
+					"FROM payrollarea_dim_new;\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW payband_dim_changed_rows_final\n",
+					"CREATE OR REPLACE TEMPORARY VIEW payrollarea_dim_changed_rows_final\n",
 					"\n",
 					"    AS\n",
 					"\n",
@@ -271,7 +271,7 @@
 					"    T1.RowID,\n",
 					"    T1.IsActive,\n",
 					"    T2.ClosingDate\n",
-					"FROM payband_dim_changed_rows T1\n",
+					"FROM payrollarea_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
 				"execution_count": null
@@ -286,10 +286,10 @@
 					}
 				},
 				"source": [
-					"# View payband_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"# View payrollarea_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
 					"- **WHEN MATCHED** ON the Business Key (i.e. PA from SAPHR), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised.payband_dim is updated"
+					"## Table odw_harmonised.payrollarea_dim is updated"
 				]
 			},
 			{
@@ -314,7 +314,7 @@
 					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.hr_payroll_area_dim AS Target\r\n",
-					"USING payband_dim_changed_rows_final AS Source\r\n",
+					"USING payrollarea_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.PayrollAreaID = Target.PayrollAreaID\r\n",
 					"\r\n",
