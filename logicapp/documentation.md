@@ -13,7 +13,21 @@ Azure Logic Apps are being used to schedule regular extracts of data from the Ze
 
 ![Zendesk custom connector](/images/zendesk-custom.jpg "Zendesk custom connector")  
 
+Zendesk built-in connector - **[Zendesk](https://learn.microsoft.com/en-us/connectors/zendesk/)**  
 
+Creating a custom connector - **[Custom connector](https://learn.microsoft.com/en-us/connectors/custom-connectors/define-openapi-definition)**  
+
+Example of custom connector Open API definition  
+
+```yaml
+openapi: 3.0.1
+info:
+  title: Zendesk custom API
+  description: Custom API for Zendesk
+  version: "0.1"
+servers:
+- url: https://pinssupport.zendesk.com
+```
 
 
 
