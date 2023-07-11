@@ -27,7 +27,17 @@ info:
   version: "0.1"
 servers:
 - url: https://pinssupport.zendesk.com
-```
+```  
+
+## Limitations of the built-in Zendesk connector
+
+Taken from the documentation here - **[Zendesk connector limitations](https://learn.microsoft.com/en-us/connectors/zendesk/)**  
+
+>Connector returns only atomic properties of Zendesk entity (i.e. lists, records and other complex types are not supported). For instance, Ticket entity has tags property represented by array on Zendesk's side. Zendesk connector returns [List] string for such fields.
+>
+>Connector requires updated_at column to exist for any table that is used with triggers.
+>
+>Zendesk Search API has a limitation on returning 1000 results per query. This affects some connector actions, that would fail with an error ("Http request failed: the content was not a valid JSON") if target table contains 1000 records or more:
 
 
 
