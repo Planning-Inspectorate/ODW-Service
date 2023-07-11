@@ -39,5 +39,37 @@ Taken from the documentation here - **[Zendesk connector limitations](https://le
 >
 >Zendesk Search API has a limitation on returning 1000 results per query. This affects some connector actions, that would fail with an error ("Http request failed: the content was not a valid JSON") if target table contains 1000 records or more:
 
+Below is an example of the missing array values returned by the built-in connector.  
+
+```json
+{
+  "tags": [List]
+}
+```
+
+Rather than complete data, which would be more useful, like below.  
+
+```json
+{
+  "tags": [
+          "tag_value_1",
+          "tag_value_2",
+          "tag_value_3"
+          ]
+}
+```
+
+**Solution = Custom Connector**  
+
+## Process to build a custom connector
+
+Step 1: Create a new custom connector resource in the subscription.  
+
+Step 2: Define the custom connector.
+
+There are two main methods to define a custom connector to be used by Logic Apps (and Power Automate).  
+
+1. Import Postman Collection
+2. Import Open API definition file
 
 
