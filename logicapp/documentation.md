@@ -1,4 +1,20 @@
-# PINS Azure Logic App process  
+# PINS Azure Logic App process 
+
+## Table of contents
+
+[Purpose](#purpose)  
+[Options](#options)  
+[Limitations of the built-in Zendesk connector](#limitations-of-the-built-in-zendesk-connector)  
+[Process to build a costom connector](#process-to-build-a-custom-connector)  
+  - [Import Postman Collection](#import-postman-collection)  
+  - [Import Open API definition file](#import-open-api-definition-file)    
+  - [Defining the trigger for Logic App workflow](#defining-the-trigger-for-logic-app-workflow)  
+  - [Send data to ServiceBus topic](#send-data-to-servicebus-topic)  
+
+[Architecture diagram](#architecture-diagram)  
+[Terraform](#terraform)  
+[Change Process](#change-process)  
+[Improvements](#improvements)
 
 ## Purpose
 
@@ -60,6 +76,10 @@ Rather than complete data, which would be more useful, like below.
 ```
 
 **Solution = Custom Connector**  
+
+## Architecture diagram  
+
+![Zendesk Logic App architecture](/logicapp/logic_app_architecture_for_zendesk.png "Zendesk Logic App architecture")
 
 ## Process to build a custom connector
 
@@ -188,3 +208,205 @@ Logic App workflows require a trigger to determine what event causes the workflo
           x-ms-visibility: none
 ```
 
+The trigger can then be used in the Logic App workflows as shown below. The api call will be sent to the base url/resource/query, i.e. **pinssupport.zendesk.com/api/v2/search.json?query=type:ticket created_at>1hour order_by:created_at sort:desc**. This gets the tickets created in the last hour and can be scheduled to run on a specified interval.  
+
+![Zendesk workflow](/images/zendesk-created-workflow.png "Zendesk workflow")  
+
+### Send data to ServiceBus topic
+
+As the image above shows, once the data is received from the Zendesk API it is sent as a message to a Service Bus topic to be consumed by further processes, e.g. Synapse Analytics. The message is sent with some dynamically generated guids, the message body and a label to denote if it's a "created" ticket or "updated" ticket. More information on Service Bus can be found here - [Service Bus](https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-messaging-overview)  
+
+## Terraform
+
+As per best practice we make use of Infrastructure as Code and use Terraform to achieve this. This allows all infrastructure to be re-created easily should we need to and makes changes easier and safe. Terraform files for Logic Apps are located in the Github repo here...
+
+/infrastructure/modules/logic-app
+
+This document will not be a Terraform tutorial but simply point to where to look for how the Logic Apps are configured.  
+
+**api-connections.tf**  
+
+This file creates the Service Bus and Zendesk custom API connections. The custom connection is defined as below and takes the API credentials from KeyVault.   
+(Apologies, the formatting of .tf code snippets in markdown files doesn't seem to be working.)  
+
+```terraform
+resource "azurerm_resource_group_template_deployment" "zendesk_custom_api_template" {
+  count = var.logic_app_enabled ? 1 : 0
+
+  name                = "zendesk-custom-api"
+  resource_group_name = var.resource_group_name
+  deployment_mode     = "Incremental"
+  parameters_content = jsonencode({
+    "connections" = {
+      value = "zendesk-custom-api"
+    }
+    "customApiId" = {
+      value = azapi_resource.zendesk_custom_api[count.index].id
+    }
+    "username" = {
+      value = data.azurerm_key_vault_secret.zendesk_username.value
+    }
+    "password" = {
+      value = data.azurerm_key_vault_secret.zendesk_password.value
+    }
+  })
+
+  template_content = file("${path.module}/zendesk-template.json")
+  ```
+
+**zendesk-template.json**
+
+*not sure where this file comes in - Alex, can you add comemnts here?*  
+
+**api-custom-connector.tf** 
+ 
+This provides the link to the definition of the connector, which is in zendesk-swagger.json, referenced below.  
+
+```terraform
+resource "azapi_resource" "zendesk_custom_api" {
+  count = var.logic_app_enabled ? 1 : 0
+
+  type      = "Microsoft.Web/customApis@2016-06-01"
+  name      = "zendesk-custom-api"
+  location  = var.location
+  parent_id = var.resource_group_id
+  tags      = local.tags
+
+  body = jsonencode(
+    {
+      "properties" : {
+        "connectionParameters" : {
+          "username" : {
+            "type" : "securestring",
+          },
+          "password" : {
+            "type" : "securestring",
+          }
+        },
+        "backendService" : {
+          "serviceUrl" : "https://pinssupport.zendesk.com",
+        },
+        "capabilities" : [],
+        "description" : "Custom API for Zendesk",
+        "displayName" : "zensdesk-custom-api",
+        "iconUri" : "https://content.powerapps.com/resource/makerx/static/media/default-connection-icon.00d06b6e.svg",
+        "swagger" : jsondecode(file("${path.module}/zendesk-swagger.json")),
+        "apiType" : "Rest",
+      }
+  })
+}
+```
+
+**zendesk-swagger.json**
+
+This is the API definition file. The Open API definition was written in yaml as mentioned above in this documentation but json is also supported and to make this work on Azure it requires the file to be in json format. The contents are the same, just the file format has been changed.  
+
+```json
+ {
+  "swagger": "2.0",
+  "info": {
+    "title": "Zendesk custom API",
+    "description": "Custom API for Zendesk",
+    "version": "0.1"
+  },
+  "host": "pinssupport.zendesk.com",
+  "basePath": "/",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [],
+  "produces": [],
+  "paths": {
+    "/api/v2/tickets/{ticket_id}/related": {
+      "get": {
+        "summary": "Get related tickets",
+        "description": "Call to get related tickets",
+        "operationId": "GetRelatedTickets",
+        "produces": [
+          "application/json; charset=utf-8"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ticket_id",
+            "description": "The ticket id if you want a specific ticket",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Auto generated using Swagger Inspector",
+            "schema": {
+              "type": "string"
+            }
+          }
+        },
+        "schemes": [
+          "https"
+        ]
+      }
+    }
+```
+
+The Logic App workflows are defined in the below files.  
+
+**zendesk-created-workflow.tf**
+
+```terraform
+resource "azurerm_logic_app_trigger_custom" "zendesk_created_trigger" {
+  count = var.logic_app_enabled ? 1 : 0
+
+  logic_app_id = azurerm_logic_app_workflow.zendesk_created[count.index].id
+  name         = "Triggers_when_a_new_ticket_is_Created"
+
+  body = jsonencode({
+    "evaluatedRecurrence" : {
+      "frequency" : "Hour",
+      "interval" : 1
+    },
+    "inputs" : {
+      "host" : {
+        "connection" : {
+          "name" : "@parameters('$connections')['zendesk-custom-api']['connectionId']"
+        }
+      },
+      "method" : "get",
+      "path" : "/api/v2/search.json",
+      "queries" : {
+        "query" : "?query=type:ticket created_at>1hour order_by:created_at sort:desc"
+      }
+    },
+    "recurrence" : {
+      "frequency" : "Hour",
+      "interval" : 1
+    },
+    "type" : "ApiConnection"
+  })
+}
+```
+
+**zendesk-updated-workflow.tf**
+
+Identical to the created workflow but the query is looked for updated_at instead.
+
+```terraform
+      "queries" : {
+              "query" : "?query=type:ticket updated_at>1hour order_by:created_at sort:desc"
+            }
+```
+
+## Change process
+
+The files above can be amended if needed through standard GitOps processes, i.e. 
+1. create branch
+2. make changes
+3. check in branch
+4. create PR
+5. PR is reviewed
+6. merged to main branch 
+7. Azure DevOps pipeline runs to perform a ```terraform apply``` to apply changes in Azure.
+
+## Improvements
+
+*Add improvements here*
