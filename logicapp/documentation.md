@@ -227,7 +227,6 @@ This document will not be a Terraform tutorial but simply point to where to look
 **api-connections.tf**  
 
 This file creates the Service Bus and Zendesk custom API connections. The custom connection is defined as below and takes the API credentials from KeyVault.   
-(Apologies, the formatting of .tf code snippets in markdown files doesn't seem to be working.)  
 
 ```terraform
 resource "azurerm_resource_group_template_deployment" "zendesk_custom_api_template" {
