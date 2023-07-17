@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "472d6319-30c2-4d83-bf31-5b4fbd15807b"
+				"spark.autotune.trackingId": "e289eedb-396e-43a1-bbe5-aa002dd8e68d"
 			}
 		},
 		"metadata": {
@@ -153,10 +153,14 @@
 					"spark = SparkSession.builder.getOrCreate() \r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"shows = spark.read.json(\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)\r\n",
+					"shows_new = spark.read.json(\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/ServiceBus/**/*.json\",multiLine=True)\r\n",
+					"\r\n",
 					"# Create mega table\r\n",
 					"shows = shows.withColumn('IngestionDate', F.current_timestamp())\r\n",
-					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_system_extract;\")\r\n",
-					"shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_system_extract\")"
+					"shows_new = shows.withColumn('IngestionDate', F.current_timestamp())\r\n",
+					"combined_df = shows.union(shows_new)\r\n",
+					"combined_df.sql(f\"drop table if exists odw_standardised_db.zendesk_system_extract;\")\r\n",
+					"combined_df.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_system_extract\")"
 				],
 				"execution_count": 5
 			},
