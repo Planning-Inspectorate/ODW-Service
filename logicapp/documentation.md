@@ -25,9 +25,9 @@ Azure Logic Apps are being used to schedule regular extracts of data from the Ze
 1. Built-in Zendesk connector - out of the box ith Logic Apps
 2. Custom connector - build a custom connector ourselves
 
-![Zendesk built-in connector](/images/zendesk-built-in.jpg "Zendesk built-in connector")  
+![Zendesk built-in connector](../images/zendesk-built-in.jpg "Zendesk built-in connector")  
 
-![Zendesk custom connector](/images/zendesk-custom.jpg "Zendesk custom connector")  
+![Zendesk custom connector](../images/zendesk-custom.jpg "Zendesk custom connector")  
 
 Zendesk built-in connector - [Zendesk](https://learn.microsoft.com/en-us/connectors/zendesk/)  
 
@@ -79,7 +79,7 @@ Rather than complete data, which would be more useful, like below.
 
 ## Architecture diagram  
 
-![Zendesk Logic App architecture](/logicapp/logic_app_architecture_for_zendesk.png "Zendesk Logic App architecture")
+![Zendesk Logic App architecture](../logicapp/logic_app_architecture_for_zendesk.png "Zendesk Logic App architecture")
 
 ## Process to build a custom connector
 
@@ -94,7 +94,7 @@ There are two main methods to define a custom connector to be used by Logic Apps
 
 In the Azure portal, after clicking on the newly created Logic APp custom connector resource, you can click on edit and see this screen below.  
 
-![Edit custom connector](/images/edit-custom-connector.png "Edit custom connector")  
+![Edit custom connector](../images/edit-custom-connector.png "Edit custom connector")  
 
 ### Import Postman Collection
 
@@ -163,11 +163,11 @@ paths:
 
 In order to create this file I used Swagger Inspect which is a tool that allows you to create http requests and view the results. The requests you make can then be added to a collection and grouped together and then used to create an Open API definition. This is a quick way to get a sample file structure in place which you cna add to at a later date.  
 
-![Swagger Inspector](/images/swagger-inspector.png "Swagger Inspector")  
+![Swagger Inspector](../images/swagger-inspector.png "Swagger Inspector")  
 
 The API can then be viewed in Swaggerhub as below.  
 
-![Swaggerhub](/images/swaggerhub.png "Swaggerhub")  
+![Swaggerhub](../images/swaggerhub.png "Swaggerhub")  
 
 Once confortable with what's required the file can then be edited directly in VS Code or elsewhere and version controlled.  
 
@@ -210,7 +210,7 @@ Logic App workflows require a trigger to determine what event causes the workflo
 
 The trigger can then be used in the Logic App workflows as shown below. The api call will be sent to the base url/resource/query, i.e. **pinssupport.zendesk.com/api/v2/search.json?query=type:ticket created_at>1hour order_by:created_at sort:desc**. This gets the tickets created in the last hour and can be scheduled to run on a specified interval.  
 
-![Zendesk workflow](/images/zendesk-created-workflow.png "Zendesk workflow")  
+![Zendesk workflow](../images/zendesk-created-workflow.png "Zendesk workflow")  
 
 ### Send data to ServiceBus topic
 
