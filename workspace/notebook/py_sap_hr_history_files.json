@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5f95927a-2828-4ee6-b2af-a77ece027b6a"
+				"spark.autotune.trackingId": "2a0b8c26-0429-4c54-9071-1b8a2e9aee33"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"config_container = \"abfss://odw-config@\" + storage_account\n",
 					"standardised_container = \"abfss://odw-standardised@\" + storage_account"
 				],
-				"execution_count": 1
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -87,7 +87,28 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 2
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"specific_folder=''"
+				],
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -117,23 +138,25 @@
 					"folders_and_files = mssparkutils.fs.ls(history_files_source_path)\n",
 					"root_saphr_files = [f for f in folders_and_files if f.isFile]\n",
 					"\n",
-					"for file in root_saphr_files:\n",
-					"    definition = next((d for d in definitions if d['Source_ID'] == 2), None)\n",
-					"    expected_from = datetime.strptime(file.name[6:-5], \"%Y%m%d\")\n",
+					"if specific_folder == '':\n",
+					"    for file in root_saphr_files:\n",
+					"        definition = next((d for d in definitions if d['Source_ID'] == 2), None)\n",
+					"        expected_from = datetime.strptime(file.name[6:-5], \"%Y%m%d\")\n",
 					"\n",
-					"    if definition:\n",
-					"        expected_from = date(expected_from.year, expected_from.month, calendar.monthrange(expected_from.year, expected_from.month)[1]) + timedelta(days=1)\n",
-					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
-					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
-					"        ingest_adhoc(storage_account, definition, history_files_source_path, file.name, expected_from, expected_to)\n",
+					"        if definition:\n",
+					"            expected_from = date(expected_from.year, expected_from.month, calendar.monthrange(expected_from.year, expected_from.month)[1]) + timedelta(days=1)\n",
+					"            expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"            expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"            ingest_adhoc(storage_account, definition, history_files_source_path, file.name, expected_from, expected_to)\n",
 					"\n",
 					"\n",
 					"folders = [f for f in folders_and_files if f.isDir]\n",
-					"\n",
 					"new_folders_and_files = mssparkutils.fs.ls(new_files_source_path)\n",
 					"new_folders = [f for f in new_folders_and_files if f.isDir]\n",
-					"\n",
 					"folders = folders + new_folders\n",
+					"\n",
+					"if specific_folder != '':\n",
+					"    folders = [f for f in folders if f.name == specific_folder]\n",
 					"\n",
 					"for folder in folders:\n",
 					"    files = mssparkutils.fs.ls(folder.path)\n",
@@ -149,9 +172,13 @@
 					"                    expected_from = datetime.combine(expected_from, datetime.min.time())\n",
 					"                    expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
 					"                    ingest_adhoc(storage_account, definition, folder.path, file.name, expected_from, expected_to)\n",
-					"                    break"
+					"                    break\n",
+					"\n",
+					"\n",
+					"if specific_folder != '':\n",
+					"    mssparkutils.notebook.exit('')"
 				],
-				"execution_count": 4
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +196,7 @@
 				"source": [
 					"# execute main source system fact"
 				],
-				"execution_count": 22
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +214,7 @@
 				"source": [
 					"%run /2-odw-standardised-to-harmonised/py_odw_harmonised_table_creation {\"specific_table\": \"main_sourcesystem_fact\"}"
 				],
-				"execution_count": 23
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -206,7 +233,7 @@
 				"source": [
 					"%run /odw-harmonised/main_sourcesystem_fact"
 				],
-				"execution_count": 24
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +251,7 @@
 				"source": [
 					"#pension rates"
 				],
-				"execution_count": 25
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -242,7 +269,7 @@
 				"source": [
 					"%run /1-odw-raw-to-standardised/Scheduling/outstanding_files_add_entry {\"jsonId\": 81,\"year\": 2023,\"month\": 3,\"day\": 22}"
 				],
-				"execution_count": 26
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -260,7 +287,7 @@
 				"source": [
 					"%run /1-odw-raw-to-standardised/Scheduling/py_1_initial_run_raw_to_standardised_scheduling {\"source_id\": 81}"
 				],
-				"execution_count": 27
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -278,7 +305,7 @@
 				"source": [
 					"# work schedule rules"
 				],
-				"execution_count": 28
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -296,7 +323,7 @@
 				"source": [
 					"%run /1-odw-raw-to-standardised/Scheduling/outstanding_files_add_entry {\"jsonId\": 83,\"year\": 2023,\"month\": 4,\"day\": 1}"
 				],
-				"execution_count": 29
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -314,7 +341,7 @@
 				"source": [
 					"%run /1-odw-raw-to-standardised/Scheduling/py_1_initial_run_raw_to_standardised_scheduling {\"source_id\": 83}"
 				],
-				"execution_count": 30
+				"execution_count": null
 			}
 		]
 	}
