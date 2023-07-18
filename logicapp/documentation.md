@@ -255,7 +255,7 @@ resource "azurerm_resource_group_template_deployment" "zendesk_custom_api_templa
 
 **zendesk-template.json**
 
-*not sure where this file comes in - Alex, can you add comemnts here?*  
+This is the ARM template (Azure Resource Manager) that api-connections.tf uses to create the custom connector  
 
 **api-custom-connector.tf** 
  
