@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0deffe8b-ff13-439b-b796-60353235c4e8"
+				"spark.autotune.trackingId": "894175d0-88c4-4ebc-9a19-33af5436bb73"
 			}
 		},
 		"metadata": {
@@ -168,7 +168,48 @@
 				"source": [
 					"created_df_results=created_df[\"results\"]"
 				],
-				"execution_count": 19
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"created_df.select(F.explode(\"results\")).show()"
+				],
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"created_df = created_df.withColumn(\"results\", F.expr(\"to_json(str_to_map(array_join(results, ',')))\"))\r\n",
+					"json_schema = spark.read.json(created_df.rdd.map(lambda row: row.array_col)).schema\r\n",
+					"created_df = created_df.withColumn(\"results\", F.from_json(\"results\", json_schema))\r\n",
+					"created_df = created_df.select(\"*\", \"results.*\").drop(\"results\")\r\n",
+					"\r\n",
+					"df.show()"
+				],
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -185,9 +226,9 @@
 				},
 				"source": [
 					"# add ingested date to df \r\n",
-					"created_df = created_df.withColumn('IngestionDate', F.current_timestamp())"
+					"created_df_results = created_df_results.withColumn('IngestionDate', F.current_timestamp())"
 				],
-				"execution_count": 7
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
