@@ -1,57 +1,81 @@
 {
-	"name": "pln_hr_ingestion_harmonised_and_measures",
+	"name": "pln_daily_run_high_court",
 	"properties": {
 		"activities": [
 			{
-				"name": "Ingest 2017-18",
+				"name": "Ingest Harmonised",
 				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Ingest Standardised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "high_court_dim",
+						"type": "NotebookReference"
+					},
+					"snapshot": true
+				}
+			},
+			{
+				"name": "Ingest Curated",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Ingest Harmonised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "mipins_high_court",
+						"type": "NotebookReference"
+					},
+					"snapshot": true
+				}
+			},
+			{
+				"name": "0_Raw_High_Court_Data_Copy",
+				"type": "ExecutePipeline",
 				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
 				"userProperties": [],
 				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_harmonised_and_hr_measures_monthly",
-						"type": "NotebookReference"
+					"pipeline": {
+						"referenceName": "0_Raw_High_Court_Data_Copy",
+						"type": "PipelineReference"
 					},
-					"parameters": {
-						"start_month": {
-							"value": "8",
-							"type": "int"
-						},
-						"start_year": {
-							"value": "2017",
-							"type": "int"
-						},
-						"end_month": {
-							"value": "12",
-							"type": "int"
-						},
-						"end_year": {
-							"value": "2018",
-							"type": "int"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
+					"waitOnCompletion": true
 				}
 			},
 			{
-				"name": "Ingest 2022-23",
+				"name": "Add Outstanding Entry",
+				"description": "Adds Entry in odw_config_db.raw_to_std_outstanding_files table",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Ingest 2021",
+						"activity": "0_Raw_High_Court_Data_Copy",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -67,24 +91,45 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_harmonised_and_hr_measures_monthly",
+						"referenceName": "outstanding_files_add_entry",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"start_month": {
-							"value": "1",
+						"jsonId": {
+							"value": "94",
 							"type": "int"
 						},
-						"start_year": {
-							"value": "2022",
+						"year": {
+							"value": {
+								"value": "@formatDateTime(utcnow(), 'yyyy')",
+								"type": "Expression"
+							},
 							"type": "int"
 						},
-						"end_month": {
-							"value": "06",
+						"month": {
+							"value": {
+								"value": "@formatDateTime(utcnow(), 'MM')",
+								"type": "Expression"
+							},
 							"type": "int"
 						},
-						"end_year": {
-							"value": "2023",
+						"day": {
+							"value": {
+								"value": "@formatDateTime(utcnow(), 'dd')",
+								"type": "Expression"
+							},
+							"type": "int"
+						},
+						"hour": {
+							"value": "0",
+							"type": "int"
+						},
+						"minute": {
+							"value": "0",
+							"type": "int"
+						},
+						"second": {
+							"value": "0",
 							"type": "int"
 						}
 					},
@@ -98,11 +143,12 @@
 				}
 			},
 			{
-				"name": "Ingest 2021",
+				"name": "Ingest Standardised",
+				"description": "Creates standardised table and ingests data",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Ingest 2019-20",
+						"activity": "Add Outstanding Entry",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -118,75 +164,12 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_harmonised_and_hr_measures_monthly",
+						"referenceName": "py_1_initial_run_raw_to_standardised_scheduling",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"start_month": {
-							"value": "1",
-							"type": "int"
-						},
-						"start_year": {
-							"value": "2021",
-							"type": "int"
-						},
-						"end_month": {
-							"value": "12",
-							"type": "int"
-						},
-						"end_year": {
-							"value": "2021",
-							"type": "int"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest 2019-20",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest 2017-18",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_harmonised_and_hr_measures_monthly",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"start_month": {
-							"value": "1",
-							"type": "int"
-						},
-						"start_year": {
-							"value": "2019",
-							"type": "int"
-						},
-						"end_month": {
-							"value": "12",
-							"type": "int"
-						},
-						"end_year": {
-							"value": "2020",
+						"source_id": {
+							"value": "94",
 							"type": "int"
 						}
 					},
@@ -201,7 +184,7 @@
 			}
 		],
 		"folder": {
-			"name": "hr-cube/utils"
+			"name": "high-court"
 		},
 		"annotations": []
 	}
