@@ -15,8 +15,7 @@ Further Microsoft documentation can be found here - [Copy and transform data fro
 
 #### 1. Create linked service to source data  
 
-![Linked Service](../images/linkedService.png "Linked Service")   
-![test](../../images/linkedService.png)
+![](../../images/linkedService.png)   
 
 Zendesk linked service json example  
 
@@ -50,23 +49,23 @@ Zendesk linked service json example
 
 #### 2. Add copy data task to pipeline and provide a name and description in the General tab.    
 
-![Copy data task](../images/copy_data_task.png)
+![Copy data task](../../images/copy_data_task.png)
 
 #### 3. Create source dataset based on linked service, specifying relative url and parameters. If the dataset already exists then just select from the dropdown, otherwise select "new" and create one in the next screen.  
 
-![Copy Data Task](../images/source_dataset.png)  
+![Copy Data Task](../../images/source_dataset.png)  
 
 Create new dataset and select "REST". Then give it a name and select a linked service to use in the next page - the linked service created in step 1.  
 
-![Create new dataset](../images/create_new_dataset.png)
+![Create new dataset](../../images/create_new_dataset.png)
 
 #### 4. Configure source dataset by adding relative url.  
 
-![Create source dataset](../images/relative_url.png)  
+![Create source dataset](../../images/relative_url.png)  
 
 #### 5. Define pagination rules for API call. This depends on the API definition of whichever API you're calling so you need to refer to their specific documentation or view the results of an API call to see what is needed here. The example below is for Zendesk.  
 
-![Pagination](../images/pagination.png)  
+![Pagination](../../images/pagination.png)  
 
 ```json
  "next_page": "https://pinssupport.zendesk.com/api/v2/tickets.json?page=2",
@@ -77,15 +76,15 @@ As you can see there is a next_page key in the results of the call so if this ha
 
 #### 6. Configure Sink dataset (create new if need be).  
 
-![Configure sink dataset](../images/sink_dataset.png)  
+![Configure sink dataset](../../images/sink_dataset.png)  
 
 As in step 3 for the source dataset, if one exists then select it from the dropdown, otherwise create a new one in the same way as previously. In this case we're selecting Azure Data Lake Storage Gen2.  
 
-![Data Lake Storage Gen2](../images/datalake_storage_gen2.png)  
+![Data Lake Storage Gen2](../../images/datalake_storage_gen2.png)  
 
 Then select the file format as below.  
 
-![json file format](../images/json_file_format.png)  
+![json file format](../../images/json_file_format.png)  
 
 In the sink tab, specify the file pattern - for json files either "array of objects" or "set of objects".  
 
