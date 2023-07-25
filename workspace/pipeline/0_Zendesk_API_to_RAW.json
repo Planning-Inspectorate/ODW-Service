@@ -4,8 +4,8 @@
 		"description": "Pipeline to get Zendesk data from the API into the RAW layer.",
 		"activities": [
 			{
-				"name": "Zendesk created - API to RAW",
-				"description": "Calls Zendesk API for newly created tickets and sends to RAW layer.",
+				"name": "Zendesk created 24 hours",
+				"description": "Calls Zendesk API for newly created tickets in the last 24 hours and sends to RAW layer.",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -41,20 +41,20 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "zendesk_api_created",
+						"referenceName": "zendesk_api_created_24hours",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "zendesk_api_created_response",
+						"referenceName": "zendesk_api_created_response_24hours",
 						"type": "DatasetReference"
 					}
 				]
 			},
 			{
-				"name": "Zendesk updated - API to RAW",
-				"description": "Calls Zendesk API for newly updated tickets and sends to RAW layer.",
+				"name": "Zendesk updated 24 hours",
+				"description": "Calls Zendesk API for newly updated tickets in the last 24 hours and sends to RAW layer.",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -73,7 +73,7 @@
 						"requestMethod": "GET",
 						"paginationRules": {
 							"AbsoluteUrl": "$.next_page",
-							"EndCondition:$.next_page": "Exist"
+							"EndCondition:$.next_page": "Empty"
 						}
 					},
 					"sink": {
@@ -90,16 +90,100 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "zendesk_api_updated",
+						"referenceName": "zendesk_api_updated_24hours",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "zendesk_api_updated_response",
+						"referenceName": "zendesk_api_updated_response_24hours",
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "Logging Failed Activities_created",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Zendesk created 24 hours",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_fail_activity_logging",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"output": {
+							"value": {
+								"value": "@activity('Zendesk created 24 hours').output.message",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Logging Failed Activities_updated",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Zendesk updated 24 hours",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_fail_activity_logging",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"output": {
+							"value": {
+								"value": "@activity('Zendesk updated 24 hours').output.message",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
 			}
 		],
 		"folder": {
