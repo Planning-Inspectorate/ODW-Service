@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cdef9b5e-99f6-44a9-8c56-478fd8ebfc26"
+				"spark.autotune.trackingId": "aeda17a3-8992-48e8-985d-1acfddf6088f"
 			}
 		},
 		"metadata": {
@@ -44,13 +44,35 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 8,
-				"memory": 56,
+				"cores": 4,
+				"memory": 28,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pandas as pd\n",
+					"from datetime import datetime\n",
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"spark = SparkSession.builder.getOrCreate()"
+				],
+				"execution_count": null
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -87,12 +109,6 @@
 					}
 				},
 				"source": [
-					"import pandas as pd\n",
-					"from datetime import datetime\n",
-					"from pyspark.sql import SparkSession\n",
-					"from notebookutils import mssparkutils\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"\n",
 					"expected_from = datetime(year, month, 1).strftime('%Y-%m-%d')\n",
 					"report_month_end_date = (pd.to_datetime(expected_from) -  pd.to_timedelta(1, unit='d')).strftime(\"%Y-%m-%d\")\n",
 					"\n",
@@ -109,7 +125,10 @@
 					"df = spark.sql(\"select count(*) as count from odw_standardised_db.hr_leave where expected_from ='\"+expected_from+\"'\");\n",
 					"leave_count = df.first().asDict()['count']\n",
 					"\n",
-					"if leave_count == 0 or absences_count == 0:\n",
+					"df = spark.sql(\"select count(*) as count from odw_standardised_db.hr_saphr where expected_from ='\"+expected_from+\"'\");\n",
+					"saphr_count = df.first().asDict()['count']\n",
+					"\n",
+					"if saphr_count == 0 or leave_count == 0 or absences_count == 0:\n",
 					"    print(\"Data doesn't exist in standardised tables for \" + expected_from)\n",
 					"    mssparkutils.notebook.exit(False)\n",
 					"\n",
