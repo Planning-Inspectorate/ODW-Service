@@ -15,7 +15,8 @@ Further Microsoft documentation can be found here - [Copy and transform data fro
 
 #### 1. Create linked service to source data  
 
-![Linked Service](../images/linkedService.png)  
+![Linked Service](../images/linkedService.png "Linked Service")   
+![test](../../images/linkedService.png)
 
 Zendesk linked service json example  
 
