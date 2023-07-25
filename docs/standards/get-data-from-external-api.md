@@ -3,7 +3,7 @@
 Further Microsoft documentation can be found here - [Copy and transform data from and to a REST endpoint by using Azure Data Factory](https://learn.microsoft.com/en-us/azure/data-factory/connector-rest?tabs=data-factory)  
 
 | Steps         |Link                                               |  
-| ------------|-------------------------------------|  
+| :------------|:-------------------------------------|  
 | Step 1        | [Create linked service to source data](#1-create-linked-service-to-source-data)                                       |  
 | Step 2        | [Add copy data task to pipeline and provide a name and description in the General tab](#2-add-copy-data-task-to-pipeline-and-provide-a-name-and-description-in-the-general-tab)                                                       |  
 | Step 3        |[Create source dataset based on linked service](#3-create-source-dataset-based-on-linked-service-specifying-relative-url-and-parameters-if-the-dataset-already-exists-then-just-select-from-the-dropdown-otherwise-select-new-and-create-one-in-the-next-screen)                                                         |  
@@ -15,7 +15,7 @@ Further Microsoft documentation can be found here - [Copy and transform data fro
 
 #### 1. Create linked service to source data  
 
-![](/ODW-Service/images/linkedService.png)  
+![Linked Service](../images/linkedService.png)  
 
 Zendesk linked service json example  
 
@@ -49,23 +49,23 @@ Zendesk linked service json example
 
 #### 2. Add copy data task to pipeline and provide a name and description in the General tab.    
 
-![](/ODW-Service/images/copy_data_task.png)
+![Copy data task](../images/copy_data_task.png)
 
 #### 3. Create source dataset based on linked service, specifying relative url and parameters. If the dataset already exists then just select from the dropdown, otherwise select "new" and create one in the next screen.  
 
-![](/ODW-Service/images/source_dataset.png)  
+![Copy Data Task](../images/source_dataset.png)  
 
 Create new dataset and select "REST". Then give it a name and select a linked service to use in the next page - the linked service created in step 1.  
 
-![](/ODW-Service/images/create_new_dataset.png)
+![Create new dataset](../images/create_new_dataset.png)
 
 #### 4. Configure source dataset by adding relative url.  
 
-![](/ODW-Service/images/relative_url.png)  
+![Create source dataset](../images/relative_url.png)  
 
 #### 5. Define pagination rules for API call. This depends on the API definition of whichever API you're calling so you need to refer to their specific documentation or view the results of an API call to see what is needed here. The example below is for Zendesk.  
 
-![](/ODW-Service/images/pagination.png)  
+![Pagination](../images/pagination.png)  
 
 ```json
  "next_page": "https://pinssupport.zendesk.com/api/v2/tickets.json?page=2",
@@ -76,15 +76,15 @@ As you can see there is a next_page key in the results of the call so if this ha
 
 #### 6. Configure Sink dataset (create new if need be).  
 
-![](/ODW-Service/images/sink_dataset.png)  
+![Configure sink dataset](../images/sink_dataset.png)  
 
 As in step 3 for the source dataset, if one exists then select it from the dropdown, otherwise create a new one in the same way as previously. In this case we're selecting Azure Data Lake Storage Gen2.  
 
-![](/ODW-Service/images/datalake_storage_gen2.png)  
+![Data Lake Storage Gen2](../images/datalake_storage_gen2.png)  
 
 Then select the file format as below.  
 
-![](/ODW-Service/images/json_file_format.png)  
+![json file format](../images/json_file_format.png)  
 
 In the sink tab, specify the file pattern - for json files either "array of objects" or "set of objects".  
 
