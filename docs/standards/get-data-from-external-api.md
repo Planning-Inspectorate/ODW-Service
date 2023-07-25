@@ -90,4 +90,6 @@ In the sink tab, specify the file pattern - for json files either "array of obje
 
 The other tabs, "mapping", "settings" and "user properties" can be used if need be, depending on use case. Refer to Microsoft documentation for details on those.   
 
-#### 7. Finally, in the pipeline, add a logging notebook for when the copy data task fails, as shown below. The logging notebook is "py_fail_activity_logging". 
+#### 7. Finally, in the pipeline, add a logging notebook for when the copy data task fails, as shown below. The logging notebook is "py_fail_activity_logging".   
+
+![](../../images/logging_notebook.png)
