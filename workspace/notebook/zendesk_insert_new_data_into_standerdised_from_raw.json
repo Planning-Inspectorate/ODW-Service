@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6ad49d9e-4dfc-4dbc-9774-8a2838d5b553"
+				"spark.autotune.trackingId": "b2003ad5-3cd4-4902-a730-1d54d4898aef"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"spark = SparkSession.builder.getOrCreate()\r\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -109,7 +109,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 15
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -132,7 +132,7 @@
 					"todaysdate = today.strftime(\"%Y%m%d\")\r\n",
 					"print(todaysdate)"
 				],
-				"execution_count": 16
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -165,12 +165,13 @@
 					"        pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"        # print(pddf.dtypes)\r\n",
 					"        df = spark.createDataFrame(pddf)\r\n",
+					"        df = df.withColumn('IngestionDate', F.current_timestamp())\r\n",
 					"        # Insert created data into the table\r\n",
 					"        return df\r\n",
 					"        \r\n",
 					"created_tickets()"
 				],
-				"execution_count": 17
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -191,7 +192,7 @@
 					"# created_tickets().write.insertInto(table_name, overwrite=False)\r\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -211,7 +212,7 @@
 					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_new_tickets;\")\r\n",
 					"created_tickets().write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_new_tickets\")"
 				],
-				"execution_count": 19
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -229,7 +230,7 @@
 				"source": [
 					"created_tickets().createOrReplaceTempView(\"zendesk_new_tickets\")"
 				],
-				"execution_count": 21
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -242,14 +243,44 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"microsoft": {
+						"language": "sparksql"
 					}
 				},
 				"source": [
-					"%sql\r\n",
-					"INSERT INTO odw_standardised_db.zendesk_system_extract\r\n",
-					"SELECT * from zendesk_new_tickets"
+					"%%sql\r\n",
+					"MERGE INTO odw_standardised_db.zendesk_system_extract\r\n",
+					"SELECT * from zendesk_new_tickets;"
 				],
-				"execution_count": 23
+				"execution_count": 43
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"MERGE INTO odw_standardised_db.zendesk_system_extract AS Target\r\n",
+					"USING odw_standardised_db.zendesk_new_tickets\tAS Source\r\n",
+					"ON Source.id = Target.id\r\n",
+					"    \r\n",
+					"    -- For Inserts\r\n",
+					"WHEN NOT MATCHED THEN INSERT * ;"
+				],
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -270,9 +301,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT COUNT(brand_id) from odw_standardised_db.zendesk_system_extract GROUP by brand_id"
+					"SELECT * from odw_standardised_db.zendesk_new_tickets "
 				],
-				"execution_count": 20
+				"execution_count": 46
 			}
 		]
 	}
