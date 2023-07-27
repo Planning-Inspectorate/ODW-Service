@@ -1,80 +1,27 @@
 name: Deployment
-on:
-  push:
-    branches:
-      - dev
-      - test
-      - prod
-jobs:
-  trigger_pipelines:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        branch:
-          - dev
-          - test
-          - prod
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Trigger Platform Integrate for ${{ matrix.branch }}
-      uses: appleboy/trigger-terraform-action@v1
-      with:
-        path: terraform-ci.yaml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.branch == 'dev'
-        params: |
-          {
-            "environment": "Dev"
-          }
-        if: matrix.branch == 'test'
-        params: |
-          {
-            "environment": "Test"
-          }
-        if: matrix.branch == 'prod'
-        params: |
-          {
-            "environment": "Prod"
-          }
-    - name: Trigger Platform Deploy for ${{ matrix.branch }}
-      uses: appleboy/trigger-terraform-action@v1
-      with:
-        path: terraform-cd.yaml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.branch == 'dev'
-        params: |
-          {
-            "environment": "Dev"
-          }
-        if: matrix.branch == 'test'
-        params: |
-          {
-            "environment": "Test"
-          }
-        if: matrix.branch == 'prod'
-        params: |
-          {
-            "environment": "Prod"
-          }
-    - name: Trigger Synapse Release for ${{ matrix.branch }}
-      if: matrix.branch != 'dev'
-      uses: appleboy/trigger-terraform-action@v1
-      with:
-        path: synapse-release.yaml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        if: matrix.branch == 'dev'
-        params: |
-          {
-            "environment": "Dev"
-          }
-        if: matrix.branch == 'test'
-        params: |
-          {
-            "environment": "Test"
-          }
-        if: matrix.branch == 'prod'
-        params: |
-          {
-            "environment": "Prod"
-          }
+trigger:
+  branches:
+    include:
+    - 'dev'
+    # - 'test'
+    # - 'prod'
+
+pool:
+  vmImage: ubuntu-22.04
+
+variables:
+  BRANCH_NAME: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+
+stages:
+  - stage: Trigger Platform Integrate 
+    jobs:
+    - job: Trigger Platform Integrate 
+      steps:
+      - template: terraform-ci.yaml
+        parameters:
+          environment: $(BRANCH_NAME)
+    - job: Trigger Platform Deploy 
+      steps:
+      - template: terraform-cd.yaml
+        parameters:
+          environment: $(BRANCH_NAME)
