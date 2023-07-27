@@ -146,7 +146,10 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "client_secret",
-					"value": "@activity('get-ims-secret').output.value"
+					"value": {
+						"value": "@activity('get-ims-secret').output.value",
+						"type": "Expression"
+					}
 				}
 			},
 			{
@@ -242,7 +245,10 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "client_id",
-					"value": "@activity('get-ims-client-id').output.value"
+					"value": {
+						"value": "@activity('get-ims-client-id').output.value",
+						"type": "Expression"
+					}
 				}
 			},
 			{
@@ -263,7 +269,10 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "username",
-					"value": "@activity('get-ims-username').output.value"
+					"value": {
+						"value": "@activity('get-ims-username').output.value",
+						"type": "Expression"
+					}
 				}
 			},
 			{
@@ -284,11 +293,14 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "password",
-					"value": "@activity('get-ims-password').output.value"
+					"value": {
+						"value": "@activity('get-ims-password').output.value",
+						"type": "Expression"
+					}
 				}
 			},
 			{
-				"name": "ims-get-access-token",
+				"name": "get-ims-access-token",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
@@ -336,9 +348,56 @@
 						"Accept": "application/vnd.api+json"
 					},
 					"body": {
-						"value": "@concat(\n'''grant_type''',':','''password''',',',\n'''client_id''',':', string(variables('client_id')),',',\n'''client_secret''',':', string(variables('client_secret')),',',\n'''username''',':', string(variables('username')),',',\n'''password''',':', string(variables('password'))\n)",
+						"value": "{\n    \"grant_type\": \"password\",\n    \"client_id\": \"@{variables('client_id')}\",\n    \"client_secret\": \"@{variables('client_secret')}\",\n    \"username\": \"@{variables('username')}\",\n    \"password\": \"@{variables('password')}\"\n}",
 						"type": "Expression"
 					}
+				}
+			},
+			{
+				"name": "set-ims-access-token",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "get-ims-access-token",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ims-access-token",
+					"value": {
+						"value": "@activity('get-ims-access-token').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "set-ims-access-token",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"enableStaging": false
 				}
 			}
 		],
@@ -353,6 +412,9 @@
 				"type": "String"
 			},
 			"password": {
+				"type": "String"
+			},
+			"ims-access-token": {
 				"type": "String"
 			}
 		},
