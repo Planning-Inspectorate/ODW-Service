@@ -1,11 +1,18 @@
 {
-	"name": "pln_hr_measures",
+	"name": "pln_hr_measures_schedule",
 	"properties": {
 		"activities": [
 			{
-				"name": "Look_For_New_Data",
+				"name": "Lookup New Data In Standardised",
 				"type": "SynapseNotebook",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "py_hr_monthly_raw_to_std",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -21,11 +28,17 @@
 					},
 					"parameters": {
 						"month": {
-							"value": "4",
+							"value": {
+								"value": "@formatDateTime(utcnow(), 'MM')",
+								"type": "Expression"
+							},
 							"type": "int"
 						},
 						"year": {
-							"value": "2023",
+							"value": {
+								"value": "@formatDateTime(utcnow(), 'yyyy')",
+								"type": "Expression"
+							},
 							"type": "int"
 						}
 					},
@@ -39,11 +52,11 @@
 				}
 			},
 			{
-				"name": "If New_Data_Exists",
+				"name": "If New Data Exists",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
-						"activity": "Look_For_New_Data",
+						"activity": "Lookup New Data In Standardised",
 						"dependencyConditions": [
 							"Completed"
 						]
@@ -52,7 +65,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@activity('Look_For_New_Data').output.status.Output.result.exitValue",
+						"value": "@activity('Lookup New Data In Standardised').output.status.Output.result.exitValue",
 						"type": "Expression"
 					},
 					"ifFalseActivities": [
@@ -85,29 +98,9 @@
 					],
 					"ifTrueActivities": [
 						{
-							"name": "Execute pln_sap_hr_views_and_master",
-							"type": "ExecutePipeline",
+							"name": "py_harmonised_and_hr_measures_monthly",
+							"type": "SynapseNotebook",
 							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_sap_hr_views_and_master",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true
-							}
-						},
-						{
-							"name": "Ingest_Into_HR_Measures",
-							"type": "SynapseNotebook",
-							"dependsOn": [
-								{
-									"activity": "Execute pln_sap_hr_views_and_master",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -118,59 +111,38 @@
 							"userProperties": [],
 							"typeProperties": {
 								"notebook": {
-									"referenceName": "mipins_hr_measures",
+									"referenceName": "py_harmonised_and_hr_measures_monthly",
 									"type": "NotebookReference"
 								},
-								"snapshot": true,
-								"conf": {
-									"spark.dynamicAllocation.enabled": null,
-									"spark.dynamicAllocation.minExecutors": null,
-									"spark.dynamicAllocation.maxExecutors": null
-								},
-								"numExecutors": null
-							}
-						},
-						{
-							"name": "Ingest_Into_HR_Measures Failed",
-							"description": "Ingest_Into_HR_Measures Failed",
-							"type": "Fail",
-							"dependsOn": [
-								{
-									"activity": "Ingest_Into_HR_Measures",
-									"dependencyConditions": [
-										"Failed"
-									]
-								}
-							],
-							"userProperties": [],
-							"typeProperties": {
-								"message": "Ingest_Into_HR_Measures Failed",
-								"errorCode": "Ingest_Into_HR_Measures Failed"
-							}
-						},
-						{
-							"name": "Ingest_Into_HR_Measures Failure Logs",
-							"type": "SynapseNotebook",
-							"dependsOn": [
-								{
-									"activity": "Ingest_Into_HR_Measures Failed",
-									"dependencyConditions": [
-										"Completed"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"notebook": {
-									"referenceName": "py_fail_activity_logging",
-									"type": "NotebookReference"
+								"parameters": {
+									"start_month": {
+										"value": {
+											"value": "@formatDateTime(utcnow(), 'MM')",
+											"type": "Expression"
+										},
+										"type": "int"
+									},
+									"end_month": {
+										"value": {
+											"value": "@formatDateTime(utcnow(), 'MM')",
+											"type": "Expression"
+										},
+										"type": "int"
+									},
+									"start_year": {
+										"value": {
+											"value": "@formatDateTime(utcnow(), 'yyyy')",
+											"type": "Expression"
+										},
+										"type": "int"
+									},
+									"end_year": {
+										"value": {
+											"value": "@formatDateTime(utcnow(), 'yyyy')",
+											"type": "Expression"
+										},
+										"type": "int"
+									}
 								},
 								"snapshot": true,
 								"conf": {
@@ -183,10 +155,45 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "py_hr_monthly_raw_to_std",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_hr_monthly_raw_to_std",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"specific_folder": {
+							"value": {
+								"value": "@concat(formatDateTime(utcnow(), 'yyyy'), '-', formatDateTime(utcnow(), 'MM'))",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
 			}
 		],
 		"folder": {
-			"name": "mipins-hr-cube/hr-measures"
+			"name": "hr-cube/utils"
 		},
 		"annotations": []
 	}
