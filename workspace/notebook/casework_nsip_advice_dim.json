@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bd3a309e-acbd-41c5-8995-388610edf1d0"
+				"spark.autotune.trackingId": "e7bfb897-1fb3-423d-a6e3-bc1f70d7cb74"
 			}
 		},
 		"metadata": {
@@ -436,6 +436,55 @@
 				"execution_count": 4
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM casework_nsip_advice_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_nsip_advice_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    CommonLandID,\n",
+					"    AppealRefNumber,\n",
+					"    NameOfCommonOrVillageGreen,\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM casework_nsip_advice_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -473,7 +522,7 @@
 					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.casework_nsip_advice_dim AS Target\r\n",
-					"USING casework_nsip_advice_dim_changed_rows AS Source\r\n",
+					"USING casework_nsip_advice_dim_changed_rows_final AS Source\r\n",
 					"ON Source.NSIPAdviceID = Target.NSIPAdviceID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
@@ -481,12 +530,31 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"        \r\n",
+					"\r\n",
 					"-- Insert completely new rows\r\n",
+					"\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ; "
+					"    THEN INSERT (\r\n",
+					"        CommonLandID,\r\n",
+					"        AppealRefNumber,\r\n",
+					"        NameOfCommonOrVillageGreen,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)\r\n",
+					"    VALUES (\r\n",
+					"        Source.CommonLandID,\r\n",
+					"        Source.AppealRefNumber,\r\n",
+					"        Source.NameOfCommonOrVillageGreen,\r\n",
+					"        Source.SourceSystemID,\r\n",
+					"        Source.IngestionDate,\r\n",
+					"        Source.ValidTo,\r\n",
+					"        Source.RowID,\r\n",
+					"        Source.IsActive)\r\n",
+					"     ;   "
 				],
 				"execution_count": 5
 			},
