@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "76e5ebc2-c7b9-48bd-a010-ad44e2f60c45"
+				"spark.autotune.trackingId": "270cc054-e4a0-4c35-af71-0fd466307aab"
 			}
 		},
 		"metadata": {
@@ -150,6 +150,10 @@
 				"source": [
 					"# from pyspark.sql.types import StructType, StructField, StringType\r\n",
 					"# schema = StructType([StructField(\"foo\", StringType(), True)])\r\n",
+					"from pyspark.sql.functions import lit\r\n",
+					"from pyspark.sql.functions import row_number\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.window import Window\r\n",
 					"def created_tickets():\r\n",
 					"    \r\n",
 					"\r\n",
@@ -165,7 +169,12 @@
 					"        pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"        print(pddf.dtypes)\r\n",
 					"        df = spark.createDataFrame(pddf)\r\n",
-					"        df = df.withColumn('IngestionDate', F.current_timestamp())\r\n",
+					"\r\n",
+					"        \r\n",
+					"\r\n",
+					"        partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"        df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"\r\n",
 					"        # Insert created data into the table\r\n",
 					"        return df\r\n",
 					"        \r\n",
@@ -299,7 +308,12 @@
 					"    updated_at,\r\n",
 					"    url,\r\n",
 					"    via,\r\n",
-					"    IngestionDate) \r\n",
+					"    SourceSystemID,\r\n",
+					"    IngestionDate,\r\n",
+					"    ValidTo,\r\n",
+					"    IsActive,\r\n",
+					"    RowID\r\n",
+					"    ) \r\n",
 					"   \r\n",
 					"    VALUES (\r\n",
 					"        IFNULL(Source.allow_attachments, \"NO INFO\"),\r\n",
@@ -344,7 +358,11 @@
 					"        IFNULL(Source.updated_at, \"NO INFO\"),\r\n",
 					"        IFNULL(Source.url, \"NO INFO\"),\r\n",
 					"        IFNULL(Source.via, \"NO INFO\"),\r\n",
-					"        IFNULL(Source.IngestionDate, \"NO INFO\")\r\n",
+					"        IFNULL(Source.SourceSystemID,\"NO INFO\"),\r\n",
+					"        IFNULL(Source.IngestionDate,\"NO INFO\"),\r\n",
+					"        IFNULL(Source.ValidTo,\"NO INFO\"),\r\n",
+					"        IFNULL(Source.IsActive,\"NO INFO\"),\r\n",
+					"        IFNULL(Source.RowID, \"NO INFO\"),\r\n",
 					"    )"
 				],
 				"execution_count": 8
