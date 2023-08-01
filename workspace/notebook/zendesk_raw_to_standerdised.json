@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7cfe6056-55c3-44f1-bc1d-c6401b0e194c"
+				"spark.autotune.trackingId": "a4e9539f-da97-4854-a7da-f702dbf4ca81"
 			}
 		},
 		"metadata": {
@@ -81,7 +81,7 @@
 					"spark = SparkSession.builder.getOrCreate()\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -108,7 +108,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +129,7 @@
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"shows = spark.read.json(\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/Export/output_*.json\",multiLine=True)"
 				],
-				"execution_count": 4
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -146,15 +146,19 @@
 				},
 				"source": [
 					"from pyspark.sql.functions import lit\r\n",
+					"from pyspark.sql.functions import row_number\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.window import Window\r\n",
+					"partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
 					"# add ingested date to df\r\n",
 					"pandasDF = shows.toPandas()\r\n",
 					"pandasDF = pandasDF.applymap(str)\r\n",
 					"sparkDF=spark.createDataFrame(pandasDF) \r\n",
-					"sparkDF = sparkDF.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID,', lit(\"Y\"))\r\n",
+					"sparkDF = sparkDF.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
 					"sparkDF.show(10)\r\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -174,7 +178,7 @@
 					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_system_extract;\")\r\n",
 					"sparkDF.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_system_extract\")"
 				],
-				"execution_count": 29
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -195,9 +199,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT COUNT(brand_id) from odw_standardised_db.zendesk_system_extract GROUP by brand_id"
+					"SELECT * from odw_standardised_db.zendesk_system_extract limit 10"
 				],
-				"execution_count": 31
+				"execution_count": 16
 			}
 		]
 	}
