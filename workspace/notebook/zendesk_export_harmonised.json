@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9c2e71df-2492-484a-ac0a-90f3bc604df1"
+				"spark.autotune.trackingId": "a2792aa8-64fa-438b-a645-a2eeb00a1788"
 			}
 		},
 		"metadata": {
@@ -68,7 +68,7 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 16
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 17
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 18
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -171,7 +171,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 19
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -252,32 +252,25 @@
 					"            CommentsListOfDict = zendesk_dict['comments']\r\n",
 					"            for CommentsDict in CommentsListOfDict:\r\n",
 					"                #adding the file id to the dictionary before converting into df and then table\r\n",
-					"                CommentsDict['ticket_id']=item['id']\r\n",
-					"                FlatCommentsDict= dict( flattenDict(CommentsDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
+					"                CommentsDict['ticket_id']=zendesk_dict['id']\r\n",
 					"                #go through all attachments within the comments column \r\n",
-					"\r\n",
+					"                for attachments in CommentsDict['attachments']:\r\n",
+					"                    #add the comments id and file id so we can late join the tables on them\r\n",
+					"                    attachments['ticket_id']=zendesk_dict['id']\r\n",
+					"                    attachments['comment_id']=CommentsDict['id']\r\n",
+					"                    FlatCommentsDictAttachmentsList.append(attachments)\r\n",
+					"        #delete the attachment column because we already stored it in a list which will be made in a table \r\n",
+					"        del CommentsDict['attachments']\r\n",
+					"        #flatten the comments column so we can make a table out of it \r\n",
+					"        FlatCommentsDictList.append(CommentsDict)\r\n",
+					"    #create a dataframe out of all comments of a file to put them in a table \r\n",
+					"    dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
+					"    #create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
+					"    dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
 					"\r\n",
 					"comments_and_attachments()"
 				],
-				"execution_count": 20
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')"
-				],
-				"execution_count": 21
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -425,7 +418,7 @@
 					"    # sparkDF1.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_comments_attachments\")      \r\n",
 					"comments_and_attachments()"
 				],
-				"execution_count": 25
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
