@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "05e9f497-f97b-4a31-a436-bee1da5e04d0"
+				"spark.autotune.trackingId": "99e09a5c-832b-49a5-88f4-660f55701d3f"
 			}
 		},
 		"metadata": {
@@ -68,7 +68,7 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 1
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 2
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"    visit(d, results, _FLAG_FIRST)\r\n",
 					"    return results"
 				],
-				"execution_count": 3
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -171,7 +171,7 @@
 					"{\"linkedService\":\"ls_storage\"} \r\n",
 					")   "
 				],
-				"execution_count": 4
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -224,17 +224,6 @@
 						}
 					],
 					"ms_comment_ranges": {
-						"45a7f6d4-05e7-4918-a6d5-0820c6fb600b": {
-							"text": "        if i == 21802:\n            i=i+1",
-							"start": {
-								"line": 8,
-								"column": 1
-							},
-							"end": {
-								"line": 9,
-								"column": 18
-							}
-						},
 						"c95e30e1-6b8f-4606-9cee-e5ccbc004783": {
 							"text": "def read_zendesk():",
 							"start": {
@@ -256,16 +245,13 @@
 					"@logging_to_appins\r\n",
 					"def read_zendesk():\r\n",
 					"    for i in range(2918):\r\n",
-					"        if i == 21802:\r\n",
-					"            i=i+1\r\n",
-					"        else:\r\n",
-					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
-					"                zendesk_dict = json.load(big_json)\r\n",
-					"                list_with_all_zendesk_dict.append(zendesk_dict)\r\n",
+					"        with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
+					"            zendesk_dict = json.load(big_json)\r\n",
+					"            list_with_all_zendesk_dict.append(zendesk_dict)\r\n",
 					"    return list_with_all_zendesk_dict\r\n",
 					"zendesk_dict = read_zendesk()"
 				],
-				"execution_count": 5
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +269,7 @@
 				"source": [
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')"
 				],
-				"execution_count": 6
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -359,14 +345,14 @@
 					],
 					"ms_comment_ranges": {
 						"3bdf619d-6e98-4047-8495-94d579792d6b": {
-							"text": "tick",
+							"text": "le i",
 							"start": {
-								"line": 17,
-								"column": 31
+								"line": 10,
+								"column": 27
 							},
 							"end": {
-								"line": 17,
-								"column": 35
+								"line": 10,
+								"column": 31
 							}
 						},
 						"437e3dbd-79c9-4db6-bfb3-2bce1e8ea056": {
@@ -381,14 +367,14 @@
 							}
 						},
 						"99e88483-8d34-41b4-882e-7e79a22f8872": {
-							"text": "sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")",
+							"text": "spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments;\")",
 							"start": {
-								"line": 36,
-								"column": 5
+								"line": 29,
+								"column": 7
 							},
 							"end": {
-								"line": 36,
-								"column": 82
+								"line": 29,
+								"column": 77
 							}
 						}
 					}
@@ -400,45 +386,38 @@
 					"    FlatCommentsDictList=[]\r\n",
 					"    #create empty list to store the value of the attachments array within the commments column\r\n",
 					"    FlatCommentsDictAttachmentsList=[]\r\n",
-					"    for i in range(2918):\r\n",
-					"        # print(i)\r\n",
-					"        if i == 2802:\r\n",
-					"            i=i+1\r\n",
-					"        else:\r\n",
-					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
-					"                zendesk_dict = json.load(big_json)\r\n",
-					"            CommentsListOfDict = zendesk_dict['comments']\r\n",
-					"            for CommentsDict in CommentsListOfDict:\r\n",
-					"                #adding the file id to the dictionary before converting into df and then table\r\n",
-					"                CommentsDict['ticket_id']=zendesk_dict['id']\r\n",
-					"                FlatCommentsDict = dict( flattenDict(CommentsDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
-					"                #go through all attachments within the comments column \r\n",
-					"                for attachments in CommentsDict['attachments']:\r\n",
+					"    for item in zendesk_dict:\r\n",
+					"        CommentsListOfDict = item['comments']\r\n",
+					"        for CommentsDict in CommentsListOfDict:\r\n",
+					"            #adding the file id to the dictionary before converting into df and then table\r\n",
+					"            CommentsDict['ticket_id']=item['id']\r\n",
+					"            FlatCommentsDict = dict( flattenDict(CommentsDict, join=lambda a,b:a+'_'+b, lift=lambda x:x) )\r\n",
+					"            #go through all attachments within the comments column \r\n",
+					"            for attachments in CommentsDict['attachments']:\r\n",
 					"                    #add the comments id and file id so we can late join the tables on them\r\n",
-					"                    attachments['ticket_id']=zendesk_dict['id']\r\n",
+					"                    attachments['ticket_id']=item['id']\r\n",
 					"                    attachments['comment_id']=CommentsDict['id']\r\n",
 					"                    FlatCommentsDictAttachmentsList.append(attachments)\r\n",
-					"                #delete the attachment column because we already stored it in a list which will be made in a table \r\n",
-					"                del FlatCommentsDict['attachments']\r\n",
-					"                #flatten the comments column so we can make a table out of it \r\n",
-					"                FlatCommentsDictList.append(FlatCommentsDict)\r\n",
+					"        #delete the attachment column because we already stored it in a list which will be made in a table \r\n",
+					"        del FlatCommentsDict['attachments']\r\n",
+					"        #flatten the comments column so we can make a table out of it \r\n",
+					"        FlatCommentsDictList.append(FlatCommentsDict)\r\n",
 					"    #create a dataframe out of all comments of a file to put them in a table \r\n",
 					"    dfFlatCommentsDictList =pd.DataFrame(FlatCommentsDictList)\r\n",
 					"    #create a dataframe out of all commects_attachmenst of a file to create and store them in a table \r\n",
 					"    dfFlatCommentsDictAttachmentsList = pd.DataFrame(FlatCommentsDictAttachmentsList)\r\n",
-					"    dfFlatCommentsDictList.via_source_to_email_ccs = dfFlatCommentsDictList.via_source_to_email_ccs.astype(str)\r\n",
-					"    sFlatCommentsDictList = spark.createDataFrame(dfFlatCommentsDictList)\r\n",
-					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments;\")\r\n",
-					"    sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")\r\n",
-					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments_attachments;\")\r\n",
-					"    sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
-					"    sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
-					"    sparkDF1.printSchema\r\n",
-					"    sparkDF1.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_comments_attachments\")      \r\n",
-					"comments_and_attachments()\r\n",
-					""
+					"    # dfFlatCommentsDictList.via_source_to_email_ccs = dfFlatCommentsDictList.via_source_to_email_ccs.astype(str)\r\n",
+					"    # sFlatCommentsDictList = spark.createDataFrame(dfFlatCommentsDictList)\r\n",
+					"    # spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments;\")\r\n",
+					"    # sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")\r\n",
+					"    # spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments_attachments;\")\r\n",
+					"    # sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
+					"    # sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
+					"    # sparkDF1.printSchema\r\n",
+					"    # sparkDF1.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_comments_attachments\")      \r\n",
+					"comments_and_attachments()"
 				],
-				"execution_count": 8
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
