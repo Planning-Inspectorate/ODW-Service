@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ad6bd640-92b4-424a-b56b-53614e341cc8"
+				"spark.autotune.trackingId": "f71e251b-b8de-4cc6-b2e1-8808032d9c00"
 			}
 		},
 		"metadata": {
@@ -44,8 +44,8 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 8,
-				"memory": 56,
+				"cores": 4,
+				"memory": 28,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
@@ -65,9 +65,13 @@
 					"import json\r\n",
 					"import pyspark.sql.functions as F \r\n",
 					"import pandas as pd\r\n",
-					"from pyspark.sql.types import *"
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql.functions import lit\r\n",
+					"from pyspark.sql.functions import row_number\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.window import Window"
 				],
-				"execution_count": 7
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +89,7 @@
 				"source": [
 					"%run /utils/py_logging_decorator"
 				],
-				"execution_count": 8
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -152,57 +156,6 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"ms_comments": [
-						{
-							"threadId": "c95e30e1-6b8f-4606-9cee-e5ccbc004783",
-							"text": "add logging to all of the functions",
-							"status": "resolved",
-							"user": {
-								"name": "Pakwashee, Abdullah",
-								"idType": "aad"
-							},
-							"createdDateUTC": 1685110443510,
-							"modifiedDateUTC": 1685450500081,
-							"replies": []
-						},
-						{
-							"threadId": "45a7f6d4-05e7-4918-a6d5-0820c6fb600b",
-							"text": "figure out why this one is breaking",
-							"status": "active",
-							"user": {
-								"name": "Pakwashee, Abdullah",
-								"idType": "aad"
-							},
-							"createdDateUTC": 1685110370334,
-							"modifiedDateUTC": 1685110370334,
-							"replies": []
-						},
-						{
-							"threadId": "f0a638a9-885a-4769-bb2b-b06f4fc38d58",
-							"text": "allow exceptions to occur - if we do keep this except, add detail to error that is raised",
-							"status": "resolved",
-							"user": {
-								"name": "Pakwashee, Abdullah",
-								"idType": "aad"
-							},
-							"createdDateUTC": 1685110416607,
-							"modifiedDateUTC": 1685450008801,
-							"replies": []
-						}
-					],
-					"ms_comment_ranges": {
-						"c95e30e1-6b8f-4606-9cee-e5ccbc004783": {
-							"text": "def read_zendesk(schema_dict):",
-							"start": {
-								"line": 6,
-								"column": 1
-							},
-							"end": {
-								"line": 6,
-								"column": 31
-							}
-						}
 					}
 				},
 				"source": [
@@ -212,13 +165,14 @@
 					"list_with_all_zendesk_dict = []\r\n",
 					"@logging_to_appins\r\n",
 					"def read_zendesk(schema_dict):\r\n",
-					"    with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
-					"        zendesk_dict = json.load(big_json)\r\n",
-					"        ist_with_all_zendesk_dict.append(zendesk_dict)\r\n",
+					"    for i in range(2918):\r\n",
+					"            with open(f\"/synfs/{jobId}/zendesk_items/output_{i}.json\", \"r\",encoding='utf-8') as big_json:\r\n",
+					"                zendesk_dict = json.load(big_json)\r\n",
+					"                list_with_all_zendesk_dict.append(zendesk_dict)\r\n",
 					"    return list_with_all_zendesk_dict\r\n",
 					"zendesk_dict = read_zendesk(schema_dict)"
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -314,17 +268,6 @@
 								"line": 2,
 								"column": 32
 							}
-						},
-						"99e88483-8d34-41b4-882e-7e79a22f8872": {
-							"text": "col(\"thumbnails\").cast(ArrayType(StringType(),True)))\n    # sparkDF1.printSc",
-							"start": {
-								"line": 32,
-								"column": 153
-							},
-							"end": {
-								"line": 33,
-								"column": 23
-							}
 						}
 					}
 				},
@@ -359,14 +302,15 @@
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments;\")\r\n",
 					"    sFlatCommentsDictList.write.saveAsTable(\"odw_harmonised_db.zendesk_comments\")\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_comments_attachments;\")\r\n",
-					"    sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)   \r\n",
-					"    # sparkDF1= sparkDF.withColumn(\"width\",F.col(\"width\").cast(\"string\")).withColumn(\"height\",F.col(\"height\").cast(\"string\")).withColumn(\"thumbnails\",F.col(\"thumbnails\").cast(ArrayType(StringType(),True)))\r\n",
-					"    # sparkDF1.printSchema\r\n",
+					"    sparkDF=spark.createDataFrame(dfFlatCommentsDictAttachmentsList)\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"    sparkDF = sparkDF.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"\r\n",
 					"    sparkDF.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_comments_attachments\")      \r\n",
 					"comments_and_attachments()\r\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -436,12 +380,14 @@
 					"    dfassigneelist = dfassigneelist.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"\r\n",
 					"    sassigneelist = spark.createDataFrame(dfassigneelist)\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('ticket_id')\r\n",
+					"    sassigneelist = sassigneelist.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_assignee;\")\r\n",
 					"    sassigneelist.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_assignee\")\r\n",
 					"\r\n",
 					"assignee_table(list_with_all_zendesk_dict)"
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -484,12 +430,15 @@
 					"    dfsubmitterlist = dfsubmitterlist.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"\r\n",
 					"    ssubmitterlist = spark.createDataFrame(dfsubmitterlist)\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"    ssubmitterlist = ssubmitterlist.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_submitter;\")\r\n",
 					"    ssubmitterlist.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_submitter\")\r\n",
 					"\r\n",
 					"submitter_table(list_with_all_zendesk_dict)"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -532,6 +481,8 @@
 					"    dfrequesterlist = dfrequesterlist.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"\r\n",
 					"    srequesterlist = spark.createDataFrame(dfrequesterlist)\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"    srequesterlist = srequesterlist.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_requester;\")\r\n",
 					"    srequesterlist.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_requester\")\r\n",
 					"\r\n",
@@ -581,6 +532,9 @@
 					"    dfcollaboratorlist = dfcollaboratorlist.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"\r\n",
 					"    scollaboratorlist = spark.createDataFrame(dfcollaboratorlist)\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"    scollaboratorlist = scollaboratorlist.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"   \r\n",
 					"    spark.sql(f\"drop table if exists odw_harmonised_db.zendesk_collaborator;\")\r\n",
 					"    scollaboratorlist.write.format('delta').saveAsTable(\"odw_harmonised_db.zendesk_collaborator\")\r\n",
 					"\r\n",
@@ -663,7 +617,7 @@
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_custom_fields_id_value;\")\r\n",
 					"# spark.sql(f\"drop table if exists odw_standardised_db.zendesk_shows;\")"
 				],
-				"execution_count": 15
+				"execution_count": null
 			}
 		]
 	}
