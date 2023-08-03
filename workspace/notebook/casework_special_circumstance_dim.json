@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1a5daa49-f9b5-4fce-b483-02c10189985f"
+				"spark.autotune.trackingId": "bbbad70e-59f4-4195-b945-f37b2eb276d8"
 			}
 		},
 		"metadata": {
@@ -117,7 +117,7 @@
 					"FULL JOIN odw_harmonised_db.casework_special_circumstance_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
-					"    CASE\r\n",
+					"    (CASE\r\n",
 					"        WHEN T1.appealrefnumber = T3.AppealRefNumber AND \r\n",
 					"            md5(\r\n",
 					"                concat(\r\n",
@@ -130,7 +130,9 @@
 					"        WHEN T3.AppealRefNumber IS NULL -- new record\r\n",
 					"        THEN 'Y'\r\n",
 					"    ELSE 'N'\r\n",
-					"    END  = 'Y'\r\n",
+					"    END  = 'Y')\r\n",
+					"    AND T1.appealrefnumber IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_special_circumstance)\r\n",
 					";\r\n",
 					""
 				],
@@ -314,7 +316,7 @@
 					"    SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
 					"    LastModified,\r\n",
-					"    specialcircumstance,\r\n",
+					"    SpecialCircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -330,7 +332,7 @@
 					"    SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
 					"    LastModified,\r\n",
-					"    specialcircumstance,\r\n",
+					"    SpecialCircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",
@@ -341,6 +343,56 @@
 					"WHERE AppealRefNumber IN (SELECT AppealRefNumber FROM casework_special_circumstance_dim_new WHERE SpecialCircumstanceID IS NULL) AND IsActive = 'Y'; "
 				],
 				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM casework_special_circumstance_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_special_circumstance_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    SpecialCircumstanceID,\n",
+					"    AppealRefNumber,\n",
+					"    LastModified,\n",
+					"    SpecialCircumstance,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM casework_special_circumstance_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -380,7 +432,7 @@
 					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.casework_special_circumstance_dim AS Target\r\n",
-					"USING casework_special_circumstance_dim_changed_rows AS Source\r\n",
+					"USING casework_special_circumstance_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.SpecialCircumstanceID = Target.SpecialCircumstanceID\r\n",
 					"\r\n",
@@ -389,12 +441,35 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"        \r\n",
+					"\r\n",
 					"-- Insert completely new rows\r\n",
+					"\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ; \r\n",
+					"    THEN INSERT (\r\n",
+					"        SpecialCircumstanceID,\r\n",
+					"        AppealRefNumber,\r\n",
+					"        LastModified,\r\n",
+					"        SpecialCircumstance,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive\r\n",
+					"    )\r\n",
+					"    VALUES (\r\n",
+					"        Source.SpecialCircumstanceID,\r\n",
+					"        Source.AppealRefNumber,\r\n",
+					"        Source.LastModified,\r\n",
+					"        Source.SpecialCircumstance,\r\n",
+					"        Source.SourceSystemID,\r\n",
+					"        Source.IngestionDate,\r\n",
+					"        Source.ValidTo,\r\n",
+					"        Source.RowID,\r\n",
+					"        Source.IsActive\r\n",
+					"    )\r\n",
+					";   \r\n",
 					""
 				],
 				"execution_count": 6
@@ -442,7 +517,7 @@
 					"    ROW_NUMBER() OVER (ORDER BY SpecialCircumstanceID NULLS LAST) AS SpecialCircumstanceID,\r\n",
 					"    AppealRefNumber,\r\n",
 					"    LastModified,\r\n",
-					"    specialcircumstance,\r\n",
+					"    SpecialCircumstance,\r\n",
 					"    SourceSystemID,\r\n",
 					"    IngestionDate,\r\n",
 					"    ValidTo,\r\n",

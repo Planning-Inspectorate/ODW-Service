@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "947c594f-ca56-4f6d-afe8-deb5ccb07aad"
+				"spark.autotune.trackingId": "fcb404f8-20b9-4320-ac16-6e6d58467662"
 			}
 		},
 		"metadata": {
@@ -135,7 +135,7 @@
 					"FULL JOIN odw_harmonised_db.casework_specialism_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
-					"    CASE\r\n",
+					"    (CASE\r\n",
 					"        WHEN T1.appealrefnumber = T3.AppealRefNumber AND \r\n",
 					"            md5(\r\n",
 					"                concat(\r\n",
@@ -148,7 +148,9 @@
 					"        WHEN T3.AppealRefNumber IS NULL -- new PositionCode\r\n",
 					"        THEN 'Y'\r\n",
 					"    ELSE 'N'\r\n",
-					"    END  = 'Y'\r\n",
+					"    END  = 'Y')\r\n",
+					"    AND T1.appealrefnumber IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_specialism)\r\n",
 					";\r\n",
 					""
 				],
@@ -361,6 +363,56 @@
 				"execution_count": 5
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM casework_specialism_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_specialism_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    SpecialismID,\n",
+					"    AppealRefNumber,\n",
+					"    LastModified,\n",
+					"    Specialism,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM casework_specialism_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -398,7 +450,7 @@
 					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.casework_specialism_dim AS Target\r\n",
-					"USING casework_specialism_dim_changed_rows AS Source\r\n",
+					"USING casework_specialism_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.SpecialismID = Target.SpecialismID\r\n",
 					"\r\n",
@@ -407,12 +459,35 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"        \r\n",
+					"\r\n",
 					"-- Insert completely new rows\r\n",
+					"\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ; \r\n",
+					"    THEN INSERT (\r\n",
+					"        SpecialismID,\r\n",
+					"        AppealRefNumber,\r\n",
+					"        LastModified,\r\n",
+					"        Specialism,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive\r\n",
+					"    )\r\n",
+					"    VALUES (\r\n",
+					"        Source.SpecialismID,\r\n",
+					"        Source.AppealRefNumber,\r\n",
+					"        Source.LastModified,\r\n",
+					"        Source.Specialism,\r\n",
+					"        Source.SourceSystemID,\r\n",
+					"        Source.IngestionDate,\r\n",
+					"        Source.ValidTo,\r\n",
+					"        Source.RowID,\r\n",
+					"        Source.IsActive\r\n",
+					"    )\r\n",
+					";   \r\n",
 					""
 				],
 				"execution_count": 6

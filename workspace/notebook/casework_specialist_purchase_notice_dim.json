@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "762a550f-f5f6-4ea7-afb5-0b0be5142b96"
+				"spark.autotune.trackingId": "d49fabfc-8d3a-4893-8e2a-8bb9db26bbcd"
 			}
 		},
 		"metadata": {
@@ -130,7 +130,6 @@
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.casework_specialist_purchase_notice_dim T3 ON T1.appealrefnumber = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
 					"                WHEN T1.appealrefnumber = T3.AppealRefNumber AND\r\n",
@@ -160,7 +159,9 @@
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END = 'Y' )\r\n",
-					"    );"
+					"    AND T1.appealrefnumber IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_specialist_purchase_notice)\r\n",
+					";"
 				],
 				"execution_count": 1
 			},
@@ -385,6 +386,63 @@
 				"execution_count": 4
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM casework_specialist_purchase_notice_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_specialist_purchase_notice_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    SpecialistPurchaseNoticeID,\n",
+					"    AppealRefNumber,\n",
+					"    TypeOfNotice,\n",
+					"    NoticeReceivedFromLPA,\n",
+					"    DateOfPurchaseNotice,\n",
+					"    DateOfResponseNotice,\n",
+					"    ExpiryDate,\n",
+					"    ProposalLetterSent,\n",
+					"    InquiryHearingRequested,\n",
+					"    FileToInspector,\n",
+					"    FileReturned,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM casework_specialist_purchase_notice_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -422,7 +480,7 @@
 					"-- merge into dim table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.casework_specialist_purchase_notice_dim AS Target\r\n",
-					"USING casework_specialist_purchase_notice_dim_changed_rows AS Source\r\n",
+					"USING casework_specialist_purchase_notice_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.SpecialistPurchaseNoticeID = Target.SpecialistPurchaseNoticeID\r\n",
 					"\r\n",
@@ -431,13 +489,49 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
-					"        \r\n",
+					"\r\n",
 					"-- Insert completely new rows\r\n",
+					"\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ; \r\n",
-					""
+					"    THEN INSERT (\r\n",
+					"        SpecialistPurchaseNoticeID,\r\n",
+					"        AppealRefNumber,\r\n",
+					"        TypeOfNotice,\r\n",
+					"        NoticeReceivedFromLPA,\r\n",
+					"        DateOfPurchaseNotice,\r\n",
+					"        DateOfResponseNotice,\r\n",
+					"        ExpiryDate,\r\n",
+					"        ProposalLetterSent,\r\n",
+					"        InquiryHearingRequested,\r\n",
+					"        FileToInspector,\r\n",
+					"        FileReturned,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive\r\n",
+					"    )\r\n",
+					"    VALUES (\r\n",
+					"        Source.SpecialistPurchaseNoticeID,\r\n",
+					"        Source.AppealRefNumber,\r\n",
+					"        Source.TypeOfNotice,\r\n",
+					"        Source.NoticeReceivedFromLPA,\r\n",
+					"        Source.DateOfPurchaseNotice,\r\n",
+					"        Source.DateOfResponseNotice,\r\n",
+					"        Source.ExpiryDate,\r\n",
+					"        Source.ProposalLetterSent,\r\n",
+					"        Source.InquiryHearingRequested,\r\n",
+					"        Source.FileToInspector,\r\n",
+					"        Source.FileReturned,\r\n",
+					"        Source.SourceSystemID,\r\n",
+					"        Source.IngestionDate,\r\n",
+					"        Source.ValidTo,\r\n",
+					"        Source.RowID,\r\n",
+					"        Source.IsActive\r\n",
+					"    )\r\n",
+					";"
 				],
 				"execution_count": 5
 			},
