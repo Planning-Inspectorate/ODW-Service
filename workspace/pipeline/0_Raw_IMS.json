@@ -277,7 +277,7 @@
 				}
 			},
 			{
-				"name": "Get Data",
+				"name": "Get Meta Data",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
@@ -317,6 +317,94 @@
 			},
 			{
 				"name": "save-to-storage",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Get Meta Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@concat('https://', pipeline().parameters.storage_account, '.blob.core.windows.net/odw-raw/IMS/API-Data/metadata/', pipeline().parameters.source, '.json')\n\n",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "PUT",
+					"headers": {
+						"x-ms-blob-type": "BlockBlob",
+						"x-ms-version": "2023-01-03"
+					},
+					"body": {
+						"value": "@activity('Get Meta Data').output",
+						"type": "Expression"
+					},
+					"linkedServices": [
+						{
+							"referenceName": "ls_storage",
+							"type": "LinkedServiceReference"
+						}
+					],
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://storage.azure.com"
+					}
+				}
+			},
+			{
+				"name": "Get Data",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "set-ims-access-token",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@concat('https://pinsims.crmplace.com/Api/V8/module/', pipeline().parameters.source)",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"method": "GET",
+					"headers": {
+						"Accept": "application/vnd.api+json",
+						"Content-Type": "application/vnd.api+json",
+						"Authorization": {
+							"value": "@concat('Bearer ', variables('ims-access-token'))",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "save-to-storage_copy",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
