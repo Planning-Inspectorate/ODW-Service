@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "dfb8267d-2c68-4bea-bc52-15b881adf5d2"
+				"spark.autotune.trackingId": "64f71746-897f-4fe1-b8bd-2244a36bd8c4"
 			}
 		},
 		"metadata": {
@@ -108,7 +108,7 @@
 				"source": [
 					"date_folder='2023-08-08'"
 				],
-				"execution_count": 9
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -124,29 +124,48 @@
 					}
 				},
 				"source": [
-					"horizon_source_path = f\"{raw_container}Horizon/{date_folder}\"\n",
-					"casework_source_path = f\"{raw_container}Fileshare/SAP_HR/Casework/{date_folder}\"\n",
+					"if date_folder == '':\n",
+					"    date_folder = datetime.now().date()\n",
+					"else:\n",
+					"    date_folder = datetime.strptime(date_folder, \"%Y-%m-%d\")\n",
+					"\n",
+					"date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
 					"\n",
 					"# read orchestration data\n",
 					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
 					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
-					"target_folders = ['Horizon', 'Casework']\n",
-					"definitions = [d for d in definitions if d['Standardised_Path'] in target_folders]\n",
-					"\n",
-					"    # casework_files = mssparkutils.fs.ls(casework_source_path)\n",
-					"try:\n",
-					"    horizon_files = mssparkutils.fs.ls(horizon_source_path)\n",
-					"    for f in horizon_files:\n",
-					"        print(f.name)\n",
-					"        definition = next((d for d in definitions if d['Source_Filename_Format'] == f.name), None)\n",
-					"        # expected_from = datetime.strptime(file.name[6:-5], \"%Y%m%d\")\n",
+					"# try:\n",
+					"#     horizon_source_path = f\"{raw_container}Horizon/{date_folder_str}\"\n",
+					"#     horizon_files = mssparkutils.fs.ls(horizon_source_path)\n",
+					"#     for file in horizon_files:\n",
+					"#         definition = next((d for d in definitions if d['Source_Filename_Format'] == file.name), None)\n",
 					"        \n",
-					"        if definition:\n",
-					"            print(definition['SourceID'])\n",
-					"except (e):\n",
-					"    print('Raw data not present for', date_folder)\n",
+					"#         if definition:\n",
+					"#             expected_from = date_folder - timedelta(days=1)\n",
+					"#             expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"#             expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"#             ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
+					"# except:\n",
+					"#     print('Raw data not present for', date_folder)\n",
+					"\n",
+					"\n",
+					"# try:\n",
+					"casework_source_path = f\"{raw_container}Fileshare/SAP_HR/Casework/\"\n",
+					"casework_folders = mssparkutils.fs.ls(casework_source_path)\n",
+					"for folder in casework_folders:\n",
+					"    print(folder)\n",
+					"    # for file in horizon_files:\n",
+					"    #     definition = next((d for d in definitions if d['Source_Filename_Format'] == file.name), None)\n",
+					"        \n",
+					"    #     if definition:\n",
+					"    #         expected_from = date_folder - timedelta(days=1)\n",
+					"    #         expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"    #         expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"    #         ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
+					"# except:\n",
+					"#     print('Raw data not present for', date_folder)\n",
 					"\n",
 					"# for d in definitions:\n",
 					"\n",
@@ -159,7 +178,7 @@
 					"#         expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
 					"#         ingest_adhoc(storage_account, definition, history_files_source_path, file.name, expected_from, expected_to)"
 				],
-				"execution_count": 15
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
