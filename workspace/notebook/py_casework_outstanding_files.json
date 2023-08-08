@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "97587e66-a9b0-43fa-9b66-310cdeec9186"
+				"spark.autotune.trackingId": "0dc2afbb-d5f5-48aa-96b9-d85b78e071a8"
 			}
 		},
 		"metadata": {
@@ -108,7 +108,7 @@
 				"source": [
 					"date_folder='2023-08-08'"
 				],
-				"execution_count": 46
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -136,22 +136,25 @@
 					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
-					"# try:\n",
-					"#     horizon_source_path = f\"{raw_container}Horizon/{date_folder_str}\"\n",
-					"#     horizon_files = mssparkutils.fs.ls(horizon_source_path)\n",
-					"#     for file in horizon_files:\n",
-					"#         definition = next((d for d in definitions if d['Source_Filename_Format'] == file.name), None)\n",
+					"# INGESTING DATA IN Horizon/\n",
+					"\n",
+					"try:\n",
+					"    horizon_source_path = f\"{raw_container}Horizon/{date_folder_str}\"\n",
+					"    horizon_files = mssparkutils.fs.ls(horizon_source_path)\n",
+					"    for file in horizon_files:\n",
+					"        definition = next((d for d in definitions if d['Source_Filename_Format'] == file.name), None)\n",
 					"        \n",
-					"#         if definition:\n",
-					"#             expected_from = date_folder - timedelta(days=1)\n",
-					"#             expected_from = datetime.combine(expected_from, datetime.min.time())\n",
-					"#             expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
-					"#             ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
-					"# except:\n",
-					"#     print('Raw data not present for', date_folder)\n",
+					"        if definition:\n",
+					"            expected_from = date_folder - timedelta(days=1)\n",
+					"            expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"            expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"            ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
+					"except:\n",
+					"    print('Raw data not present for', date_folder)\n",
 					"\n",
 					"\n",
-					"# try:\n",
+					"# INGESTING DATA IN Fileshare/SAP_HR/Casework/\n",
+					"\n",
 					"casework_source_path = f\"{raw_container}Fileshare/SAP_HR/Casework/\"\n",
 					"casework_folders = mssparkutils.fs.ls(casework_source_path)\n",
 					"casework_files = []\n",
@@ -159,17 +162,17 @@
 					"    try:\n",
 					"        files = mssparkutils.fs.ls(f\"{casework_source_path}{folder.name}/{date_folder_str}\")\n",
 					"        casework_files += files\n",
-					"    # for file in horizon_files:\n",
-					"    #     definition = next((d for d in definitions if d['Source_Filename_Format'] == file.name), None)\n",
-					"        \n",
-					"    #     if definition:\n",
-					"    #         expected_from = date_folder - timedelta(days=1)\n",
-					"    #         expected_from = datetime.combine(expected_from, datetime.min.time())\n",
-					"    #         expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
-					"    #         ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
 					"    except:\n",
 					"        print('Raw data not present for', date_folder)\n",
-					"print(casework_files)\n",
+					"\n",
+					"for file in casework_files:\n",
+					"    definition = next((d for d in definitions if file.name.replace(date_folder_str.replace('-', '') + '.xlsx', '') in d['Source_Filename_Format']), None)\n",
+					"    if definition:\n",
+					"        expected_from = date_folder - timedelta(days=1)\n",
+					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"        ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
+					"    \n",
 					"# for d in definitions:\n",
 					"\n",
 					"#     definition = next((d for d in definitions if d['Source_ID'] == 2), None)\n",
@@ -181,7 +184,7 @@
 					"#         expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
 					"#         ingest_adhoc(storage_account, definition, history_files_source_path, file.name, expected_from, expected_to)"
 				],
-				"execution_count": 47
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
