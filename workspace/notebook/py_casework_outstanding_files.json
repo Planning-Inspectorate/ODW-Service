@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fcbfd1f4-11ab-43c7-8627-cc8bef3bc003"
+				"spark.autotune.trackingId": "b95804c8-913b-44eb-b520-4904246b4835"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"config_container = \"abfss://odw-config@\" + storage_account\n",
 					"standardised_container = \"abfss://odw-standardised@\" + storage_account"
 				],
-				"execution_count": 81
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -87,7 +87,7 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 82
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -106,9 +106,9 @@
 					]
 				},
 				"source": [
-					"date_folder='2023-08-09'"
+					"date_folder=''"
 				],
-				"execution_count": 83
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -136,7 +136,7 @@
 					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
-					"# INGESTING DATA IN Horizon/\n",
+					"# INGESTING DATA IN /Horizon/\n",
 					"\n",
 					"try:\n",
 					"    horizon_source_path = f\"{raw_container}Horizon/{date_folder_str}\"\n",
@@ -152,11 +152,12 @@
 					"            print(f\"Ingesting {file.name}\")\n",
 					"            ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)\n",
 					"\n",
-					"except:\n",
+					"except Exception as e:\n",
+					"    print(\"An error occurred:\", e)\n",
 					"    print('Raw data not present for', date_folder)\n",
 					"\n",
 					"\n",
-					"# INGESTING DATA IN Fileshare/SAP_HR/Casework/\n",
+					"# INGESTING DATA IN /Fileshare/SAP_HR/Casework/\n",
 					"\n",
 					"casework_source_path = f\"{raw_container}Fileshare/SAP_HR/Casework/\"\n",
 					"casework_folders = mssparkutils.fs.ls(casework_source_path)\n",
@@ -166,7 +167,7 @@
 					"        files = mssparkutils.fs.ls(f\"{casework_source_path}{folder.name}/{date_folder_str}\")\n",
 					"        casework_files += files\n",
 					"    except:\n",
-					"        print('Raw data not present for', date_folder)\n",
+					"        print(f\"Raw data not present for {folder.name} for {date_folder}\")\n",
 					"\n",
 					"for file in casework_files:\n",
 					"    definition = next((d for d in definitions if file.name.replace(date_folder_str.replace('-', '') + '.xlsx', '') in d['Source_Filename_Format']), None)\n",
@@ -176,9 +177,9 @@
 					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
 					"\n",
 					"        print(f\"Ingesting {file.name}\")\n",
-					"        ingest_adhoc(storage_account, definition, horizon_source_path, file.name, expected_from, expected_to)"
+					"        ingest_adhoc(storage_account, definition, file.path.replace(file.name, ''), file.name, expected_from, expected_to)"
 				],
-				"execution_count": 84
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -222,7 +223,7 @@
 					"#     print(f\"Ingesting all tables for Standardised_Path: {f}\")\n",
 					"#     mssparkutils.notebook.run('/1-odw-raw-to-standardised/Scheduling/py_1_raw_to_standardised_scheduling', timeout_in_seconds, {'table_grouping': f })"
 				],
-				"execution_count": null
+				"execution_count": 67
 			}
 		]
 	}
