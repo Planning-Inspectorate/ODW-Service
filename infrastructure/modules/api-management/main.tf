@@ -20,13 +20,16 @@ resource "azurerm_api_management" "api_management" {
 }
 
 resource "azurerm_api_management_api" "api_management" {
-  name                = "api_management_demo_api"
-  resource_group_name = var.resource_group_name
-  api_management_name = azurerm_api_management.api_management.name
-  revision            = "1"
-  display_name        = "Demo Conference API"
-  path                = "api_management"
-  protocols           = ["https"]
+  name                  = "api_management_demo_api"
+  resource_group_name   = var.resource_group_name
+  api_management_name   = azurerm_api_management.api_management.name
+  revision              = "1"
+  display_name          = "Demo Conference API"
+  path                  = "api_management"
+  protocols             = ["https"]
+  service_url           = "https://conferenceapi.azurewebsites.net/"
+  subscription_required = false
+
 
   import {
     content_format = "openapi+json"
