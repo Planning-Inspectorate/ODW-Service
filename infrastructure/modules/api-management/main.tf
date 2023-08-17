@@ -19,6 +19,23 @@ resource "azurerm_api_management" "api_management" {
   tags = local.tags
 }
 
+resource "azurerm_api_management_api" "api_management" {
+  name                = "api_management_demo_api"
+  resource_group_name = azurerm_resource_group.api_management.name
+  api_management_name = azurerm_api_management.api_management.name
+  revision            = "1"
+  display_name        = "Demo Conference API"
+  path                = "api_management"
+  protocols           = ["https"]
+
+  import {
+    content_format = "openapi+json"
+    content_value  = file("${path.module}/Demo_Conference_API.openapi+json.json")
+  }
+}
+
+
+
 # Create Application Insights
 # resource "azurerm_application_insights" "ai" {
 #   name                = local.appInsightsName
