@@ -19,6 +19,17 @@ resource "azurerm_api_management" "api_management" {
   tags = local.tags
 }
 
+resource "azurerm_api_management_product" "api_management" {
+  product_id            = "demo-product"
+  api_management_name   = azurerm_api_management.api_management.name
+  resource_group_name   = var.resource_group_name
+  display_name          = "Demo Product"
+  description           = "Demo Product part of POC"
+  subscription_required = false
+  approval_required     = false
+  published             = false
+}
+
 resource "azurerm_api_management_api" "api_management" {
   name                  = "api_management_demo_api"
   resource_group_name   = var.resource_group_name
@@ -37,7 +48,12 @@ resource "azurerm_api_management_api" "api_management" {
   }
 }
 
-
+resource "azurerm_api_management_product_api" "api_management" {
+  api_name            = azurerm_api_management_api.api_management.name
+  product_id          = azurerm_api_management_product.api_management.product_id
+  api_management_name = azurerm_api_management.api_management.name
+  resource_group_name = var.resource_group_name
+}
 
 # Create Application Insights
 # resource "azurerm_application_insights" "ai" {
