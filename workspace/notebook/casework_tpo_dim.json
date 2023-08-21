@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2f11a199-0c7e-4bf5-a2c1-a19726aef06a"
+				"spark.autotune.trackingId": "67b59f32-c3d0-403e-97c1-62a54ebf2ec8"
 			}
 		},
 		"metadata": {
@@ -101,7 +101,7 @@
 					"    T1.type                                                                                 AS Type,\r\n",
 					"    T1.procedure                                                                            AS Procedure,\r\n",
 					"    T10.LPAID                                                                               AS LPAID,\r\n",
-					"    T1.appeal_reference_number                                                              AS AppealRefNumber,\r\n",
+					"    T1.appeal_reference_number                                                              AS AppealReferenceNumber,\r\n",
 					"    concat('APP/',T1.type,'/',T1.lpa_code,'/',T1.procedure,'/',T1.appeal_reference_number)  AS CaseReference,\r\n",
 					"    T1.rejected_or_withdrawn                                                                AS RejectedOrWithdrawn,\r\n",
 					"    T1.appeal_withdrawn_date                                                                AS AppealWithdrawnDate,\r\n",
@@ -152,12 +152,12 @@
 					"FROM odw_standardised_db.casework_specialist_tpo T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\r\n",
 					"LEFT JOIN odw_harmonised_db.casework_local_planning_authority_fact T10 ON T1.lpa_code = T10.LPACode AND T10.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.casework_tpo_dim T3 ON T1.appeal_reference_number = T3.AppealRefNumber AND T3.IsActive = 'Y'\r\n",
+					"FULL JOIN odw_harmonised_db.casework_tpo_dim T3 ON T1.appeal_reference_number = T3.AppealReferenceNumber AND T3.IsActive = 'Y'\r\n",
 					"\r\n",
 					"WHERE\r\n",
 					"        -- flags new data        \r\n",
 					"    (   CASE\r\n",
-					"            WHEN T1.appeal_reference_number = T3.AppealRefNumber AND \r\n",
+					"            WHEN T1.appeal_reference_number = T3.AppealReferenceNumber AND \r\n",
 					"                md5(\r\n",
 					"                    concat(\r\n",
 					"                    IFNULL(T1.appeal_reference_number,'.'),\r\n",
@@ -184,149 +184,19 @@
 					"                    )\r\n",
 					"                ) <> T3.RowID  -- same employee, changed data\r\n",
 					"                THEN 'Y'\r\n",
-					"                WHEN T3.AppealRefNumber IS NULL -- new PositionCode\r\n",
+					"                WHEN T3.AppealReferenceNumber IS NULL -- new PositionCode\r\n",
 					"                THEN 'Y'\r\n",
 					"                ELSE 'N'\r\n",
 					"            END  = 'Y')\r\n",
+					"    AND T1.appeal_reference_number IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.casework_specialist_tpo)\r\n",
 					";\r\n",
 					"\r\n",
 					"SELECT COUNT(*) FROM odw_standardised_db.casework_specialist_tpo;\r\n",
 					"SELECT COUNT(*) FROM casework_tpo_dim_new;\r\n",
 					"SELECT * FROM casework_tpo_dim_new;"
 				],
-				"execution_count": 13
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Run tests to check integrity of data by numbers\r\n",
-					"- This script checks for the total number of current codes in the harmonised table, and compare against the numbers for new data to be added and data to be set as inactive.\r\n",
-					"- **Changes tracking:** where it checks the data against active records in harmonised and compares with records to add and records to be set as inactive.\r\n",
-					"- **Changes tolerance levels:** if the total amount to be added and deleted surpasses the tolerance limit, it will interrupt the process of loading the data"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# from pyspark.sql import SparkSession\r\n",
-					"# spark = SparkSession.builder.getOrCreate()\r\n",
-					"\r\n",
-					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM pins_casework_all_appeals_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.casework_tpo_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM casework_tpo_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM casework_tpo_dim WHERE DeletedData = 'Y'\")\r\n",
-					"\r\n",
-					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
-					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
-					"# New_Data_Number_Pandas = New_Data_Number.toPandas()\r\n",
-					"# Deleted_Data_Number_Pandas = Deleted_Data_Number.toPandas()\r\n",
-					"\r\n",
-					"# # checking if new total number of registers matches the previously loaded, plus New ones, minus Deleted ones\r\n",
-					"# print(\"SET 1:\")\r\n",
-					"# Total_Number = Source_Number_Pandas['Source_Number'].tolist() \r\n",
-					"# Current_Loaded_Number = Current_Number_Pandas['Current_Number'].tolist() \r\n",
-					"# New_Data_Number = New_Data_Number_Pandas['New_Data_Number'].tolist() \r\n",
-					"# Deleted_Data_Number = Deleted_Data_Number_Pandas['Deleted_Data_Number'].tolist() \r\n",
-					"\r\n",
-					"# if Total_Number[0] != (Current_Loaded_Number[0] + New_Data_Number[0] - Deleted_Data_Number[0]):\r\n",
-					"#     raise RuntimeError(\"Loading Number do not match\")\r\n",
-					"# else:\r\n",
-					"#     print(\"Loading number matches with existing codes plus new, minus deleted!\")\r\n",
-					"\r\n",
-					"# if New_Data_Number[0] > 1000:\r\n",
-					"#     raise RuntimeError(\"ALERT: Too many new codes\")\r\n",
-					"# else:\r\n",
-					"#     print(\"New data under tolerance levels\")\r\n",
-					"\r\n",
-					"# if Deleted_Data_Number[0] > 500:\r\n",
-					"#     raise RuntimeError(\"ALERT: Too many deleted codes\")\r\n",
-					"# else:\r\n",
-					"#     print(\"Unused codes under tolerance levels\")"
-				],
-				"execution_count": 14
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Run tests to check integrity of data by comparison of codes\r\n",
-					"- This script checks for the total list of current codes in the harmonised table, and compare against the list for new data to be added and data to be set as inactive.\r\n",
-					"- **Changes tracking:** where it checks the data against active records in harmonised and compares with records to add and records to be set as inactive."
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# from pyspark.sql import SparkSession\r\n",
-					"# spark = SparkSession.builder.getOrCreate()\r\n",
-					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.casework_tpo_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM casework_tpo_dim WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM casework_tpo_dim WHERE DeletedData = 'Y'\")\r\n",
-					"\r\n",
-					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
-					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
-					"# Deleted_Data_Records_Pandas = Deleted_Data_Records.toPandas()\r\n",
-					"\r\n",
-					"# # checking if a deleted records are correcly flagged, not existing in the new data, but existing inpreviously loaded\r\n",
-					"# print(\"TEST 2:\")\r\n",
-					"\r\n",
-					"# Current_Records = Current_Records_Pandas['Current_Records'].tolist() \r\n",
-					"# Deleted_Records = Deleted_Data_Records_Pandas['Deleted_Data_Records'].tolist()\r\n",
-					"# New_Records = New_Data_Records_Pandas['New_Data_Records'].tolist()\r\n",
-					"\r\n",
-					"# print(Current_Records)\r\n",
-					"# print(Deleted_Records)\r\n",
-					"# print(New_Records)\r\n",
-					"\r\n",
-					"# for i in Deleted_Records:\r\n",
-					"#     if i in Current_Records: \r\n",
-					"#         print(i + \" to be deleted is in the current records\")\r\n",
-					"#     else:\r\n",
-					"#         raise RuntimeError(\"Records to Delete do not match\")\r\n",
-					"\r\n",
-					"# for j in New_Records:\r\n",
-					"#     if j not in Current_Records: \r\n",
-					"#         print(j + \" to be added is not in the current records\")\r\n",
-					"#     else:\r\n",
-					"#         raise RuntimeError(\"Records to Add do not match\")"
-				],
-				"execution_count": 15
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -376,7 +246,7 @@
 					"    Type,\r\n",
 					"    Procedure,\r\n",
 					"    LPAID,\r\n",
-					"    AppealRefNumber,\r\n",
+					"    AppealReferenceNumber,\r\n",
 					"    CaseReference,\r\n",
 					"    RejectedOrWithdrawn,\r\n",
 					"    AppealWithdrawnDate,\r\n",
@@ -411,7 +281,7 @@
 					"    Type,\r\n",
 					"    Procedure,\r\n",
 					"    LPAID,\r\n",
-					"    AppealRefNumber,\r\n",
+					"    AppealReferenceNumber,\r\n",
 					"    CaseReference,\r\n",
 					"    RejectedOrWithdrawn,\r\n",
 					"    AppealWithdrawnDate,\r\n",
@@ -436,9 +306,9 @@
 					"    IsActive\r\n",
 					"    \r\n",
 					"FROM odw_harmonised_db.casework_tpo_dim\r\n",
-					"WHERE AppealRefNumber IN (SELECT AppealRefNumber FROM casework_tpo_dim_new WHERE TPOID IS NULL) AND IsActive = 'Y'; "
+					"WHERE AppealReferenceNumber IN (SELECT AppealReferenceNumber FROM casework_tpo_dim_new WHERE TPOID IS NULL) AND IsActive = 'Y'; "
 				],
-				"execution_count": 16
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -454,7 +324,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -480,7 +351,7 @@
 					"    Type,\n",
 					"    Procedure,\n",
 					"    LPAID,\n",
-					"    AppealRefNumber,\n",
+					"    AppealReferenceNumber,\n",
 					"    CaseReference,\n",
 					"    RejectedOrWithdrawn,\n",
 					"    AppealWithdrawnDate,\n",
@@ -507,7 +378,7 @@
 					"FROM casework_tpo_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -568,7 +439,7 @@
 					"        Type,\r\n",
 					"        Procedure,\r\n",
 					"        LPAID,\r\n",
-					"        AppealRefNumber,\r\n",
+					"        AppealReferenceNumber,\r\n",
 					"        CaseReference,\r\n",
 					"        RejectedOrWithdrawn,\r\n",
 					"        AppealWithdrawnDate,\r\n",
@@ -598,7 +469,7 @@
 					"        Source.Type,\r\n",
 					"        Source.Procedure,\r\n",
 					"        Source.LPAID,\r\n",
-					"        Source.AppealRefNumber,\r\n",
+					"        Source.AppealReferenceNumber,\r\n",
 					"        Source.CaseReference,\r\n",
 					"        Source.RejectedOrWithdrawn,\r\n",
 					"        Source.AppealWithdrawnDate,\r\n",
@@ -625,7 +496,7 @@
 					";   \r\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -672,7 +543,7 @@
 					"    Type,\r\n",
 					"    Procedure,\r\n",
 					"    LPAID,\r\n",
-					"    AppealRefNumber,\r\n",
+					"    AppealReferenceNumber,\r\n",
 					"    CaseReference,\r\n",
 					"    RejectedOrWithdrawn,\r\n",
 					"    AppealWithdrawnDate,\r\n",
@@ -698,7 +569,7 @@
 					"FROM odw_harmonised_db.casework_tpo_dim;\r\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 15
 			}
 		]
 	}
