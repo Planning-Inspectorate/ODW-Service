@@ -55,6 +55,14 @@ resource "azurerm_api_management_product_api" "api_management" {
   resource_group_name = var.resource_group_name
 }
 
+resource "azurerm_api_management_api_policy" "api_management" {
+  api_name            = azurerm_api_management_api.api_management.name
+  api_management_name = azurerm_api_management.api_management.name
+  resource_group_name = var.resource_group_name
+
+  xml_content = file("${path.module}/demo-api-policy.xml")
+}
+
 # Create Application Insights
 # resource "azurerm_application_insights" "ai" {
 #   name                = local.appInsightsName
