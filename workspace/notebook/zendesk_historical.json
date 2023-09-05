@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0af7ed46-ce9d-4eb0-a202-3277c7b4e639"
+				"spark.autotune.trackingId": "0c3f5490-7168-44d0-b56e-6b70b9802d91"
 			}
 		},
 		"metadata": {
@@ -65,12 +65,23 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql import SparkSession \r\n",
-					"spark = SparkSession.builder.getOrCreate() \r\n",
-					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"shows = spark.read.json(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ZenDesk/historical/historical_2023-09-04.json\")"
+					"from collections.abc import Mapping\r\n",
+					"from itertools import chain\r\n",
+					"from operator import add\r\n",
+					"#ignore FutureWarning messages \r\n",
+					"import warnings\r\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"from pprint import pprint as pp\r\n",
+					"import json\r\n",
+					"import pyspark.sql.functions as F \r\n",
+					"import pandas as pd\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					""
 				],
-				"execution_count": 1
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -86,11 +97,38 @@
 					}
 				},
 				"source": [
-					"#delete and create table \r\n",
-					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_historical;\")\r\n",
-					"shows.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_historical\")"
+					"from notebookutils import mssparkutils\r\n",
+					"### mount the data lake storage in Synapse to the Synapse File Mount API\r\n",
+					"jobId = mssparkutils.env.getJobId()\r\n",
+					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
+					"mssparkutils.fs.unmount(\"/zendesk_items\") \r\n",
+					"mssparkutils.fs.mount( \r\n",
+					"\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/historical/\",\r\n",
+					"\"/zendesk_items\", \r\n",
+					"{\"linkedService\":\"ls_storage\"} \r\n",
+					")   "
 				],
-				"execution_count": 4
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					" with open(f\"/synfs/{jobId}/zendesk_items/historical_2023-09-04.json\", 'r',encoding=\"utf-8-sig\") as json_file:\r\n",
+					"        zendesk_list = json.load(json_file)\r\n",
+					"        print(zendesk_list)"
+				],
+				"execution_count": null
 			}
 		]
 	}
