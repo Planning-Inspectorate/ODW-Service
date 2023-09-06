@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "370613d0-612a-466a-b6d9-082492c4bf2a"
+				"spark.autotune.trackingId": "8233af1c-27c3-4000-b28f-b521d6b9656a"
 			}
 		},
 		"metadata": {
@@ -79,6 +79,10 @@
 					"from pyspark.sql.types import *\r\n",
 					"from pyspark.sql import SparkSession\r\n",
 					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"from pyspark.sql.functions import lit\r\n",
+					"from pyspark.sql.functions import row_number\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.window import Window\r\n",
 					""
 				],
 				"execution_count": 2
@@ -138,6 +142,9 @@
 					"       pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
 					"       # print(pddf.dtypes)\r\n",
 					"       df = spark.createDataFrame(pddf)\r\n",
+					"       partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"       df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"\r\n",
 					"       spark.sql(f\"drop table if exists odw_standardised_db.zendesk_legacy;\")\r\n",
 					"       df.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_legacy\")\r\n",
 					"                     \r\n",
