@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "dadb0451-4e1e-4e01-a532-952ccdc78ccc"
+				"spark.autotune.trackingId": "07fd5e26-122f-4796-a67d-86ea460c1722"
 			}
 		},
 		"metadata": {
@@ -58,9 +58,10 @@
 					"import pprint\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
-					"# %pip install -U pandas"
+					"%pip install -U pandas\r\n",
+					"import pandas as pd"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -79,9 +80,9 @@
 					]
 				},
 				"source": [
-					"source_dbtable = \"\""
+					"source_dbtable = \"load.SAP_HR_Leavers\""
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +103,7 @@
 					"kv_linked_service = 'ls_kv'\r\n",
 					"password = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +127,7 @@
 					"source_password = password\r\n",
 					"print(source_url)"
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -146,50 +147,10 @@
 				},
 				"source": [
 					"%%pyspark\r\n",
-					"targetdf = spark.sql(\"SELECT * FROM `odw_curated_db`.`vw_mipins_hr_employee_leavers`\")"
-				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"sourceData = spark.read \\\r\n",
-					"        .format(\"com.microsoft.sqlserver.jdbc.spark\") \\\r\n",
-					"        .option(\"url\", source_url) \\\r\n",
-					"        .option(\"dbtable\", source_dbtable) \\\r\n",
-					"        .option(\"user\", source_user) \\\r\n",
-					"        .option(\"password\", source_password).load()\r\n",
-					"\r\n",
-					"sourcedf = sourceData.toPandas()"
-				],
-				"execution_count": 16
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"targetdf = targetdf.toPandas()"
+					"query = f\"SELECT * FROM `odw_curated_db`.`{target_dbtable}`\"\r\n",
+					"# target_df = spark.sql(\"SELECT * FROM `odw_curated_db`.`vw_mipins_fact_absence_all`\")\r\n",
+					"target_df = spark.sql(query)\r\n",
+					"target_df = target_df.toPandas()"
 				],
 				"execution_count": null
 			},
@@ -207,7 +168,35 @@
 					}
 				},
 				"source": [
-					"if sourcedf.shape == targetdf.shape:\r\n",
+					"def sourcedata(source_dbtable):\r\n",
+					"        sourceData = spark.read \\\r\n",
+					"                .format(\"com.microsoft.sqlserver.jdbc.spark\") \\\r\n",
+					"                .option(\"url\", source_url) \\\r\n",
+					"                .option(\"dbtable\", source_dbtable) \\\r\n",
+					"                .option(\"user\", source_user) \\\r\n",
+					"                .option(\"password\", source_password).load()\r\n",
+					"\r\n",
+					"        source_df = sourceData.toPandas()\r\n",
+					"\r\n",
+					"        return source_df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if source_df.shape == target_df.shape:\r\n",
 					"    shape_match = True\r\n",
 					"else:\r\n",
 					"    shape_match = False\r\n",
@@ -252,6 +241,332 @@
 				},
 				"source": [
 					"mssparkutils.notebook.exit(vardict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"tablemapping = {\r\n",
+					"    \"sap_hr.vw_fact_absence_all\": \"vw_mipins_fact_absence_all\",\r\n",
+					"    \"load.High_Court_Appeals\": \"vw_mipins_high_court\",\r\n",
+					"    \"live.dim_HR_work_contract\": \"vw_mipins_hr_contract\",\r\n",
+					"    \"live.dim_HR_cost_centre\": \"vw_mipins_hr_cost_centre\",\r\n",
+					"    \"load.SAP_HR_Leavers\": \"vw_mipins_hr_employee_leavers\",\r\n",
+					"    \"sap_hr.vw_fact_sickness\": \"vw_mipins_hr_fact_sickness\",\r\n",
+					"    \"Live.dim_HR_Gender\": \"vw_mipins_hr_gender\",\r\n",
+					"    \"Live.dim_HR_Organisation_Unit\": \"vw_mipins_hr_organisational_unit\",\r\n",
+					"    \"Live.dim_HR_personnel_area\": \"vw_mipins_hr_personnel_area\",\r\n",
+					"    \"Live.dim_HR_Personnel_SubArea\": \"vw_mipins_hr_personnel_sub_area\"\r\n",
+					"}\r\n",
+					"\r\n",
+					"print(\"Mapping created\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Test 1 - rows in source but not in target"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def rows_in_source_not_in_target(source_df, target_df):\r\n",
+					"    result_df = source_df[~source_df.index.isin(target_df.index)]\r\n",
+					"    if len(result_df) > 0:\r\n",
+					"        result = True\r\n",
+					"    else:\r\n",
+					"        result = False\r\n",
+					"    return result"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Test 2 - rows in target but not in source"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def rows_in_target_not_in_source(source_df, target_df):\r\n",
+					"    result_df = target_df[~target_df.index.isin(source_df.index)]\r\n",
+					"    if len(result_df) > 0:\r\n",
+					"        result = True\r\n",
+					"    else:\r\n",
+					"        result = False\r\n",
+					"    return result"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"rows_in_source_not_in_target(source_df, target_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"rows_in_target_not_in_source(source_df, target_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_result_dict = {\r\n",
+					"    \"sap_hr.vw_fact_absence_all\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"load.High_Court_Appeals\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"live.dim_HR_work_contract\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"live.dim_HR_cost_centre\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"load.SAP_HR_Leavers\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"sap_hr.vw_fact_sickness\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"Live.dim_HR_Gender\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"Live.dim_HR_Organisation_Unit\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"Live.dim_HR_personnel_area\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    },\r\n",
+					"    \"Live.dim_HR_Personnel_SubArea\": {\r\n",
+					"                                    \"target_table\": \"\",\r\n",
+					"                                    \"test 1\": \"\",\r\n",
+					"                                    \"test 2\": \"\"\r\n",
+					"    }\r\n",
+					"}\r\n",
+					"\r\n",
+					"pprint.pprint(next(iter(test_result_dict.items())))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"source_dbtable = next(iter(tablemapping))\r\n",
+					"target_dbtable = list(next(iter(tablemapping.items())))[1]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Run test 1\r\n",
+					"# Define the source and target dataframes first\r\n",
+					"test_source_df = sourcedata(source_dbtable)\r\n",
+					"test_target_df = target_df\r\n",
+					"result = rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
+					"\r\n",
+					"test_result_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
+					"test_result_dict[source_dbtable]['test 1'] = result\r\n",
+					"\r\n",
+					"pprint.pprint(test_result_dict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"result_df = pd.DataFrame.from_dict(test_result_dict, orient=\"index\")\r\n",
+					"result_df.index.name = \"Source Table\"\r\n",
+					"result_df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Run test 2\r\n",
+					"# Define the source and target dataframes first\r\n",
+					"test_source_df = sourcedata(source_dbtable)\r\n",
+					"test_target_df = target_df\r\n",
+					"result = rows_in_target_not_in_source(test_source_df, test_target_df)\r\n",
+					"\r\n",
+					"test_result_dict['test 2']['source_table'] = source_dbtable\r\n",
+					"test_result_dict['test 2']['target_table'] = target_dbtable\r\n",
+					"test_result_dict['test 2']['test_result'] = result\r\n",
+					"\r\n",
+					"pprint.pprint(test_result_dict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"new_dict = {key: \"\" for key in tablemapping.keys()}\r\n",
+					"dict_values = {\"test 1\", \"test 2\"}\r\n",
+					"pprint.pprint(new_dict)"
 				],
 				"execution_count": null
 			}
