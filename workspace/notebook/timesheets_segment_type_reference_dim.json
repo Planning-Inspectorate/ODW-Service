@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d8f325ea-6e54-420a-ac11-35cee615a498"
+				"spark.autotune.trackingId": "437b1552-6f84-4760-9b20-0cc94e18daa4"
 			}
 		},
 		"metadata": {
@@ -131,30 +131,8 @@
 				"execution_count": 29
 			},
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": 31
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
 					"nteract": {
 						"transient": {
 							"deleting": false
@@ -166,8 +144,7 @@
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
 					"- View **table_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
 					"## View table_dim_changed_rows is created"
-				],
-				"execution_count": null
+				]
 			},
 			{
 				"cell_type": "code",
@@ -265,7 +242,36 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					""
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM timesheets_minutes_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW timesheets_minutes_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    TimesheetsMinutesID,\n",
+					"    StaffNumber,\n",
+					"    EmployeeID,\n",
+					"    BusinessArea,\n",
+					"    CoreMinutes,\n",
+					"    BalanceMinutes,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM timesheets_minutes_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive;"
 				],
 				"execution_count": null
 			},
@@ -322,7 +328,29 @@
 					"        \r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ; \r\n",
+					"    THEN INSERT (TimesheetsMinutesID,\r\n",
+					"        StaffNumber,\r\n",
+					"        EmployeeID,\r\n",
+					"        BusinessArea,\r\n",
+					"        CoreMinutes,\r\n",
+					"        BalanceMinutes,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.TimesheetsMinutesID,\r\n",
+					"        Source.StaffNumber,\r\n",
+					"        Source.EmployeeID,\r\n",
+					"        Source.BusinessArea,\r\n",
+					"        Source.CoreMinutes,\r\n",
+					"        Source.BalanceMinutes,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					";  \r\n",
 					""
 				],
 				"execution_count": 33
