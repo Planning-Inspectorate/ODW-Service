@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "26f0c2b5-25bb-4427-b777-f38935e5ed55"
+				"spark.autotune.trackingId": "f578b7b3-5eb7-4da1-a5a9-af02b686f73e"
 			}
 		},
 		"metadata": {
@@ -64,9 +64,9 @@
 				"source": [
 					"# Check for new, updated or deleted data\n",
 					"- This script checks for new, updated or deleted data by checking the source data (timesheets) against the target (odw_harmonised_db.timesheets_segment_type_reference)\n",
-					"- **New Data:** where a Religion in the source does not exist as an ReligionCode in the target. NewData flag is set to 'Y'\n",
-					"- **Updated data:** Comparison occurs on Religion in source and ReligionCode in targReligionet where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
-					"- **Deleted data:** where an ReligionCode in the target exists but the same Disability_Text doesn't exist in the source. DeletedData flag is set to 'Y'\n",
+					"- **New Data:** where a table in the source does not exist as an tableCode in the target. NewData flag is set to 'Y'\n",
+					"- **Updated data:** Comparison occurs on table in source and tableCode in targtableet where the row hash is different i.e. there is a change in one of the columns. NewData flag is set to 'Y'\n",
+					"- **Deleted data:** where an tableCode in the target exists but the same Disability_Text doesn't exist in the source. DeletedData flag is set to 'Y'\n",
 					"\n",
 					"## View timesheets_segment_type_reference_new is created"
 				]
@@ -81,7 +81,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build religion_dim table\r\n",
+					"-- Build table_dim table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW timesheets_segment_type_reference_new\r\n",
@@ -160,10 +160,10 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM religion_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.religion_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM religion_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM religion_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM table_grouped\")\r\n",
+					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.table_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM table_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM table_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
 					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
@@ -231,9 +231,9 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.religion_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM religion_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM religion_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.table_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM table_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM table_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
 					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
@@ -280,7 +280,7 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **religion_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"- View **table_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
 					"## View table_dim_changed_rows is created"
 				],
 				"execution_count": null
@@ -359,10 +359,46 @@
 					}
 				},
 				"source": [
-					"# View religion_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
-					"- **WHEN MATCHED** ON the Business Key (i.e. Religion from Personal Characteristics), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+					"## Cell to calculate ValidTo date for changed registers"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# View table_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"- **WHEN MATCHED** ON the Business Key (i.e. table from Personal Characteristics), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised.religion_dim is updated"
+					"## Table odw_harmonised.table_dim is updated"
 				]
 			},
 			{
@@ -420,7 +456,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised.religion_dim is updated"
+					"## Table odw_harmonised.table_dim is updated"
 				]
 			},
 			{
