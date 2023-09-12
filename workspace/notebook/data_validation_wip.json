@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "af252829-1113-47f5-a12a-72641891e100"
+				"spark.autotune.trackingId": "55f28f33-e864-473e-ab9f-30804b186465"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,19 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Imports etc"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from notebookutils import mssparkutils\r\n",
@@ -64,25 +77,17 @@
 				"execution_count": null
 			},
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
 					"nteract": {
 						"transient": {
 							"deleting": false
 						}
-					},
-					"tags": [
-						"parameters"
-					]
+					}
 				},
 				"source": [
-					"source_dbtable = \"load.SAP_HR_Leavers\""
-				],
-				"execution_count": null
+					"#### Get MiPINS password from KeyVault"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -101,9 +106,23 @@
 					"akv_name = 'pinskvsynwodwdevuks'\r\n",
 					"secret_name = 'sql-mipins-password'\r\n",
 					"kv_linked_service = 'ls_kv'\r\n",
-					"password = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)"
+					"password = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
+					"print(\"Password retrieved\")"
 				],
-				"execution_count": null
+				"execution_count": 40
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Define MiPINS SQL connection"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -119,118 +138,14 @@
 					}
 				},
 				"source": [
-					"# The servername is in the format \"jdbc:sqlserver://<AzureSQLServerName>.database.windows.net:1433\"\r\n",
 					"source_servername = \"jdbc:sqlserver://pins-prod-pdac-sql.database.windows.net:1433\"\r\n",
 					"source_dbname = \"MiPINS-PRD-ISS\"\r\n",
 					"source_url = source_servername + \";\" + \"databaseName=\" + source_dbname + \";\"\r\n",
 					"source_user = \"kincarta\" \r\n",
 					"source_password = password\r\n",
-					"print(source_url)"
+					"print(\"Connection created\")"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "python"
-					}
-				},
-				"source": [
-					"%%pyspark\r\n",
-					"SCHEMA = \"miPINS\"\r\n",
-					"query = f\"SELECT * FROM `odw_curated_db`.`{SCHEMA}`.`{target_dbtable}`\"\r\n",
-					"# target_df = spark.sql(\"SELECT * FROM `odw_curated_db`.`vw_mipins_fact_absence_all`\")\r\n",
-					"target_df = spark.sql(query)\r\n",
-					"target_df = target_df.toPandas()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "python"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%pyspark\r\n",
-					"# df = spark.sql(\"select * from `odw_curated_db`.`vw_mipins_employee_summary`\")\r\n",
-					"df = spark.sql(\"select * FROM `odw_curated_db.miPINS`.`vw_mipins_IMS_MasterDataMap`\")\r\n",
-					"df = df.toPandas()\r\n",
-					"df.head(5)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def sourcedata(source_dbtable):\r\n",
-					"        sourceData = spark.read \\\r\n",
-					"                .format(\"com.microsoft.sqlserver.jdbc.spark\") \\\r\n",
-					"                .option(\"url\", source_url) \\\r\n",
-					"                .option(\"dbtable\", source_dbtable) \\\r\n",
-					"                .option(\"user\", source_user) \\\r\n",
-					"                .option(\"password\", source_password).load()\r\n",
-					"\r\n",
-					"        source_df = sourceData.toPandas()\r\n",
-					"\r\n",
-					"        return source_df"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"if source_df.shape == target_df.shape:\r\n",
-					"    shape_match = True\r\n",
-					"else:\r\n",
-					"    shape_match = False\r\n",
-					"\r\n",
-					"shape_match"
-				],
-				"execution_count": null
+				"execution_count": 41
 			},
 			{
 				"cell_type": "markdown",
@@ -289,6 +204,195 @@
 					}
 				},
 				"source": [
+					"#### Initial manually created dictionary of the source tables and test names  \r\n",
+					"\r\n",
+					"This can be added to using the functions below"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_results_dict = {\r\n",
+					"'Live.dim_HR_Gender': {'target_table': '',\r\n",
+					"                        'test 1': '',\r\n",
+					"                        'test 2': '',\r\n",
+					"                        'test 3': '',\r\n",
+					"                        'test 4': '',\r\n",
+					"                        'test 5': '',\r\n",
+					"                        'test 6': ''},\r\n",
+					" 'Live.dim_HR_Organisation_Unit': {'target_table': '',\r\n",
+					"                                   'test 1': '',\r\n",
+					"                                   'test 2': '',\r\n",
+					"                                   'test 3': '',\r\n",
+					"                                   'test 4': '',\r\n",
+					"                                   'test 5': '',\r\n",
+					"                                   'test 6': ''},\r\n",
+					" 'Live.dim_HR_Personnel_SubArea': {'target_table': '',\r\n",
+					"                                   'test 1': '',\r\n",
+					"                                   'test 2': '',\r\n",
+					"                                   'test 3': '',\r\n",
+					"                                   'test 4': '',\r\n",
+					"                                   'test 5': '',\r\n",
+					"                                   'test 6': ''},\r\n",
+					" 'Live.dim_HR_personnel_area': {'target_table': '',\r\n",
+					"                                'test 1': '',\r\n",
+					"                                'test 2': '',\r\n",
+					"                                'test 3': '',\r\n",
+					"                                'test 4': '',\r\n",
+					"                                'test 5': '',\r\n",
+					"                                'test 6': ''},\r\n",
+					" 'ims.v_master_data_map': {'target_table': '',\r\n",
+					"                           'test 1': '',\r\n",
+					"                           'test 2': '',\r\n",
+					"                           'test 3': '',\r\n",
+					"                           'test 4': '',\r\n",
+					"                           'test 5': '',\r\n",
+					"                           'test 6': ''},\r\n",
+					" 'live.dim_HR_cost_centre': {'target_table': '',\r\n",
+					"                             'test 1': '',\r\n",
+					"                             'test 2': '',\r\n",
+					"                             'test 3': '',\r\n",
+					"                             'test 4': '',\r\n",
+					"                             'test 5': '',\r\n",
+					"                             'test 6': ''},\r\n",
+					" 'live.dim_HR_work_contract': {'target_table': '',\r\n",
+					"                               'test 1': '',\r\n",
+					"                               'test 2': '',\r\n",
+					"                               'test 3': '',\r\n",
+					"                               'test 4': '',\r\n",
+					"                               'test 5': '',\r\n",
+					"                               'test 6': ''},\r\n",
+					" 'load.High_Court_Appeals': {'target_table': '',\r\n",
+					"                             'test 1': '',\r\n",
+					"                             'test 2': '',\r\n",
+					"                             'test 3': '',\r\n",
+					"                             'test 4': '',\r\n",
+					"                             'test 5': '',\r\n",
+					"                             'test 6': ''},\r\n",
+					" 'load.SAP_HR_Leavers': {'target_table': '',\r\n",
+					"                         'test 1': '',\r\n",
+					"                         'test 2': '',\r\n",
+					"                         'test 3': '',\r\n",
+					"                         'test 4': '',\r\n",
+					"                         'test 5': '',\r\n",
+					"                         'test 6': ''},\r\n",
+					" 'sap_hr.vw_fact_absence_all': {'target_table': '',\r\n",
+					"                                'test 1': '',\r\n",
+					"                                'test 2': '',\r\n",
+					"                                'test 3': '',\r\n",
+					"                                'test 4': '',\r\n",
+					"                                'test 5': '',\r\n",
+					"                                'test 6': ''},\r\n",
+					" 'sap_hr.vw_fact_sickness': {'target_table': '',\r\n",
+					"                             'test 1': '',\r\n",
+					"                             'test 2': '',\r\n",
+					"                             'test 3': '',\r\n",
+					"                             'test 4': '',\r\n",
+					"                             'test 5': '',\r\n",
+					"                             'test 6': ''}}\r\n",
+					"\r\n",
+					"print(\"test_results_dict created\")"
+				],
+				"execution_count": 63
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Define target dataset"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def targetdataset(target_dbtable: str):\r\n",
+					"    query = f\"SELECT * FROM `odw_curated_db`.`{target_dbtable}`\"\r\n",
+					"    target_df = spark.sql(query)\r\n",
+					"    target_df = target_df.toPandas()\r\n",
+					"\r\n",
+					"    return target_df"
+				],
+				"execution_count": 53
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Define source dataset"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def sourcedataset(source_dbtable: str):\r\n",
+					"        sourceData = spark.read \\\r\n",
+					"                .format(\"com.microsoft.sqlserver.jdbc.spark\") \\\r\n",
+					"                .option(\"url\", source_url) \\\r\n",
+					"                .option(\"dbtable\", source_dbtable) \\\r\n",
+					"                .option(\"user\", source_user) \\\r\n",
+					"                .option(\"password\", source_password).load()\r\n",
+					"\r\n",
+					"        source_df = sourceData.toPandas()\r\n",
+					"\r\n",
+					"        return source_df"
+				],
+				"execution_count": 54
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"#### Test 1 - rows in source but not in target"
 				]
 			},
@@ -306,7 +410,7 @@
 					}
 				},
 				"source": [
-					"def rows_in_source_not_in_target(source_df, target_df):\r\n",
+					"def test1_rows_in_source_not_in_target(source_df, target_df):\r\n",
 					"    result_df = source_df[~source_df.index.isin(target_df.index)]\r\n",
 					"    if len(result_df) > 0:\r\n",
 					"        result = True\r\n",
@@ -343,7 +447,7 @@
 					}
 				},
 				"source": [
-					"def rows_in_target_not_in_source(source_df, target_df):\r\n",
+					"def test2_rows_in_target_not_in_source(source_df, target_df):\r\n",
 					"    result_df = target_df[~target_df.index.isin(source_df.index)]\r\n",
 					"    if len(result_df) > 0:\r\n",
 					"        result = True\r\n",
@@ -380,27 +484,8 @@
 					}
 				},
 				"source": [
-					"def count_source_table_rows(source_df):\r\n",
+					"def test3_count_source_table_rows(source_df):\r\n",
 					"    return f'{len(source_df):,}'"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"source_df = sourcedata(source_dbtable)\r\n",
-					"count_source_table_rows(source_df)"
 				],
 				"execution_count": null
 			},
@@ -431,8 +516,201 @@
 					}
 				},
 				"source": [
-					"def count_target_table_rows(target_df):\r\n",
+					"def test4_count_target_table_rows(target_df):\r\n",
 					"    return f'{len(target_df):,}'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Test 5 - source table column count"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test5_count_source_table_columns(source_df):\r\n",
+					"    return f'{len(source_df.columns):,}'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Test 6 - target table column count"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test6_count_target_table_columns(source_df):\r\n",
+					"    return f'{len(source_df.columns):,}'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to add a new test to the test results dictionary\r\n",
+					"\r\n",
+					"Pass a test name into the function and it sets the test result initially to \"\" (empty string)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def add_new_test_to_results_dict(test_name: str) -> None:\r\n",
+					"    for k, v in test_results_dict.items():\r\n",
+					"        value_dict = v\r\n",
+					"        value_dict[test_name] = \"\""
+				],
+				"execution_count": 56
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# add a new test\r\n",
+					"add_new_test_to_results_dict(\"test 6\")"
+				],
+				"execution_count": 61
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to add a new source table to the test results dictionary\r\n",
+					"\r\n",
+					"Pass the name of the new source table into the function and it will get added to the test results dictionary with the same values as the other source tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def add_new_source_table_to_test_results_dict(new_source_table: str) -> None:\r\n",
+					"    for k, v in test_results_dict.copy().items():\r\n",
+					"        if new_source_table not in test_results_dict.keys():\r\n",
+					"            test_results_dict[new_source_table] = v"
+				],
+				"execution_count": 64
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# add a new source table\r\n",
+					"add_new_source_table_to_test_result_dict(\"{table name}\")\r\n",
+					"pprint.pprint(test_result_dict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"pprint.pprint(test_results_dict)"
 				],
 				"execution_count": null
 			},
@@ -487,92 +765,6 @@
 				},
 				"source": [
 					"rows_in_target_not_in_source(source_df, target_df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Initial manually created dictionary of the source tables and test names  \r\n",
-					"\r\n",
-					"This can be added to using the functions below"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"test_result_dict = {\r\n",
-					"    \"sap_hr.vw_fact_absence_all\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"load.High_Court_Appeals\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"live.dim_HR_work_contract\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"live.dim_HR_cost_centre\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"load.SAP_HR_Leavers\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"sap_hr.vw_fact_sickness\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"Live.dim_HR_Gender\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"Live.dim_HR_Organisation_Unit\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"Live.dim_HR_personnel_area\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    },\r\n",
-					"    \"Live.dim_HR_Personnel_SubArea\": {\r\n",
-					"                                    \"target_table\": \"\",\r\n",
-					"                                    \"test 1\": \"\",\r\n",
-					"                                    \"test 2\": \"\"\r\n",
-					"    }\r\n",
-					"}\r\n",
-					"\r\n",
-					"pprint.pprint(next(iter(test_result_dict.items())))"
 				],
 				"execution_count": null
 			},
@@ -724,118 +916,6 @@
 					"new_dict2 = next(iter(new_dict.values()))\r\n",
 					"new_dict2['test 3'] = \"\"\r\n",
 					"new_dict2"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Function to add a new test to the test results dictionary\r\n",
-					"\r\n",
-					"Pass a test name into the function and it sets the test result initially to \"\" (empty string)"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def add_new_test_to_result_dict(test_name: str) -> None:\r\n",
-					"    for k, v in test_result_dict.items():\r\n",
-					"        value_dict = v\r\n",
-					"        value_dict[test_name] = \"\""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Function to add a new source table to the test results dictionary\r\n",
-					"\r\n",
-					"Pass the name of the new source table into the function and it will get added to the test results dictionary with the same values as the other source tables"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def add_new_source_table_to_test_result_dict(new_source_table: str) -> None:\r\n",
-					"    for k, v in test_result_dict.copy().items():\r\n",
-					"        if new_source_table not in test_result_dict.keys():\r\n",
-					"            test_result_dict[new_source_table] = v"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# add a new test\r\n",
-					"add_new_test_to_result_dict(\"test 3\")\r\n",
-					"pprint.pprint(test_result_dict)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# add a new source table\r\n",
-					"add_new_source_table_to_test_result_dict(\"my_new_table_2\")\r\n",
-					"pprint.pprint(test_result_dict)"
 				],
 				"execution_count": null
 			},
