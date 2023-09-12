@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d4b5fc94-a4fb-4840-9398-94dea77f75ae"
+				"spark.autotune.trackingId": "781a2a91-e744-492d-a467-49000713cba5"
 			}
 		},
 		"metadata": {
@@ -111,7 +111,7 @@
 					"    T1.CaseReference        AS CaseReference,\r\n",
 					"    T2.SourceSystemID       AS SourceSystemID,\r\n",
 					"    CURRENT_TIMESTAMP       AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
+					"    NULL                    AS ValidTo,\r\n",
 					"    md5(\r\n",
 					"        concat(\r\n",
 					"            IFNULL(T1.CaseReference,'.'),\r\n",
@@ -140,9 +140,9 @@
 					"            AND md5(\r\n",
 					"                concat(\r\n",
 					"                    IFNULL(T1.CaseReference,'.'),\r\n",
-					"                    IFNULL(T1.CasemarkingFactID,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+					"                    IFNULL(T1.CasemarkingFactID,'.'))) <> T5.RowID    -- same data, changed characteristics\r\n",
 					"        THEN 'Y'\r\n",
-					"        WHEN T5.CaseReference IS NULL -- new employee\r\n",
+					"        WHEN T5.CaseReference IS NULL -- new data\r\n",
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END  = 'Y' )\r\n",
@@ -213,7 +213,7 @@
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\r\n",
 					"\r\n",
 					"SELECT\r\n",
-					"    CasemarkingBridgeID, -- surrogate \r\n",
+					"    CasemarkingBridgeID,\r\n",
 					"    CasemarkingID,\r\n",
 					"    CaseFactID,\r\n",
 					"    CaseReference,\r\n",
@@ -227,6 +227,57 @@
 					""
 				],
 				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM checkmark_case_casemarking_bridge_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW checkmark_case_casemarking_bridge_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    CasemarkingBridgeID,\n",
+					"    CasemarkingID,\n",
+					"    CaseFactID,\n",
+					"    CaseReference,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM checkmark_case_casemarking_bridge_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -266,7 +317,7 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_case_casemarking_bridge AS Target\r\n",
-					"USING checkmark_case_casemarking_bridge_changed_rows AS Source\r\n",
+					"USING checkmark_case_casemarking_bridge_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.CaseReference = Target.CaseReference\r\n",
 					"\r\n",
@@ -275,13 +326,30 @@
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (CasemarkingBridgeID,\r\n",
+					"        CasemarkingID,\r\n",
+					"        CaseFactID,\r\n",
+					"        CaseReference,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.CasemarkingBridgeID,\r\n",
+					"        Source.CasemarkingID,\r\n",
+					"        Source.CaseFactID,\r\n",
+					"        Source.CaseReference,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					";  "
 				],
 				"execution_count": 23
 			},
