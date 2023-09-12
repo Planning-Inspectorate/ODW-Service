@@ -1,0 +1,130 @@
+{
+	"name": "Notebook 2",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "068b46ed-d9a0-4fca-bbf1-48a7e2095c61"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"%pip install paramiko pymysql sshtunnel"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import paramiko\n",
+					"import pymysql\n",
+					"from sshtunnel import SSHTunnelForwarder\n",
+					"\n",
+					"# SSH server details\n",
+					"ssh_host = '10.224.161.53'\n",
+					"ssh_port = 22\n",
+					"ssh_user = 'pinsadmin'\n",
+					"ssh_password = ''\n",
+					"\n",
+					"# MySQL server details\n",
+					"mysql_host = '127.0.0.1'\n",
+					"mysql_port = 3306\n",
+					"mysql_user = 'odw_ro'\n",
+					"mysql_password = ''\n",
+					"\n",
+					"english_db_name = 'ipclive'\n",
+					"welsh_db_name = 'ipccy'\n",
+					"\n",
+					"tables = ['NSIPSubscription', 'NSIPProjectUpdate']\n",
+					"\n",
+					"with SSHTunnelForwarder(\n",
+					"        (ssh_host, ssh_port),\n",
+					"        ssh_username=ssh_user,\n",
+					"        ssh_password=ssh_password,\n",
+					"        remote_bind_address=(mysql_host, mysql_port)) as tunnel:\n",
+					"    # The SSH tunnel is active here\n",
+					"    # Now you can connect to MySQL using pymysql\n",
+					"\n",
+					"    # Connect to MySQL via the SSH tunnel\n",
+					"    connection = pymysql.connect(\n",
+					"        host='127.0.0.1',  # Tunnel's local address\n",
+					"        port=tunnel.local_bind_port,\n",
+					"        user=mysql_user,\n",
+					"        password=mysql_password,\n",
+					"        db=english_db_name\n",
+					"    )\n",
+					"\n",
+					"    # Create a cursor for executing SQL queries\n",
+					"    cursor = connection.cursor()\n",
+					"\n",
+					"    # Execute SQL queries here\n",
+					"    cursor.execute(\"SELECT * FROM NSIPSubscription\")\n",
+					"\n",
+					"    # Fetch data\n",
+					"    data = cursor.fetchall()\n",
+					"\n",
+					"    print('data', data)\n",
+					"\n",
+					"    # Close the cursor and connection when done\n",
+					"    cursor.close()\n",
+					"    connection.close()\n",
+					""
+				],
+				"execution_count": 7
+			}
+		]
+	}
+}
