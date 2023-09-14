@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "42599620-fa3f-455b-905d-0805e1cc1b20"
+				"spark.autotune.trackingId": "34cdb700-1f15-4421-a12f-7e0e72bc0eb7"
 			}
 		},
 		"metadata": {
@@ -942,6 +942,39 @@
 					}
 				},
 				"source": [
+					"#### Function to create adls path"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def adls_path(account_name: str, container_name: str, relative_path: str):\r\n",
+					"    file_path = f'abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}'\r\n",
+					"    return file_path"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"#### Connect to storage account"
 				]
 			},
@@ -959,16 +992,15 @@
 					}
 				},
 				"source": [
-					"def write_to_storage(account_name: str, container_name: str, relative_path: str, data):\r\n",
+					"def write_to_storage(account_name: str, container_name: str, relative_path: str, data) -> None:\r\n",
 					"    account_name = account_name\r\n",
 					"    container_name = container_name\r\n",
 					"    relative_path = relative_path\r\n",
-					"    adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \r\n",
+					"    path = adls_path(account_name, container_name, relative_path)\r\n",
 					"\r\n",
 					"    # Write spark dataframe as a csv file \r\n",
-					"    csv_path = f'{adls_path}' \r\n",
-					"    print(csv_path)\r\n",
-					"    data.write.csv(csv_path, mode = 'overwrite', header = 'true', sep = \",\", nu) \r\n",
+					"    print(\"adls path is \" + path)\r\n",
+					"    data.write.csv(path, mode = 'overwrite', header = 'true', sep = \",\")\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
@@ -993,7 +1025,7 @@
 					}
 				},
 				"source": [
-					"#### Write file to storage account"
+					"#### Write test results file to storage account"
 				]
 			},
 			{
@@ -1010,11 +1042,18 @@
 					}
 				},
 				"source": [
-					"account_name = 'pinsstodwdevuks9h80mb' # fill in your primary account name \r\n",
-					"container_name = 'odw-config' # fill in your container name \r\n",
-					"relative_path = 'data_validation/outputs/test_results' # fill in your relative folder path\r\n",
+					"# define account and path variables\r\n",
+					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
+					"container_name = 'odw-config'\r\n",
+					"relative_path = 'data_validation/outputs/test_results'\r\n",
+					"\r\n",
+					"# convert result_df to spark DataFrame\r\n",
 					"data = spark.createDataFrame(result_df)\r\n",
+					"\r\n",
+					"# use repartition and set to 1 so all data is written to 1 file\r\n",
 					"data = data.repartition(1)\r\n",
+					"\r\n",
+					"# call the write_to_storage function, passing in the variables above\r\n",
 					"write_to_storage(account_name, container_name, relative_path, data)\r\n",
 					"print(\"File written to storage\")"
 				],
@@ -1047,24 +1086,83 @@
 					}
 				},
 				"source": [
+					"# define account variables\r\n",
 					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
 					"container_name = 'odw-config' \r\n",
 					"\r\n",
+					"# loop through test results and set the source and target DataFrames\r\n",
 					"for source, target in test_results_dict.items():\r\n",
 					"    source_dbtable = source\r\n",
 					"    target_dbtable = target['target_table']\r\n",
 					"    test_source_df = sourcedataset(source_dbtable)\r\n",
 					"    test_target_df = targetdataset(target_dbtable)\r\n",
 					"\r\n",
+					"    # if certain tests are True then the records need exporting to csv and saved in storage\r\n",
 					"    if target['test1_rows_in_source_not_in_target'] == True:\r\n",
+					"\r\n",
+					"        # create a DataFrame of the mismatched records\r\n",
 					"        values_df = test1_export_values(test_source_df, test_target_df)\r\n",
+					"\r\n",
+					"        # pass in the source table name to the file path so the records for each source table are saved in their own folder\r\n",
 					"        relative_path = f'data_validation/outputs/test_results_records/test1_rows_in_source_not_in_target/{source}'\r\n",
 					"        data = spark.createDataFrame(values_df)\r\n",
+					"\r\n",
+					"        # cast null columns to string to avoid errors\r\n",
 					"        data = data.select([f.lit(None).cast('string').alias(i.name) if isinstance(i.dataType, NullType) else i.name for i in data.schema])\r\n",
+					"\r\n",
+					"        # repartition so all data is written to a single file\r\n",
 					"        data = data.repartition(1)\r\n",
+					"\r\n",
+					"        # call the write_to_storage function, passing in the account, path and data variables\r\n",
+					"        path = adls_path(account_name, container_name, relative_path)\r\n",
 					"        write_to_storage(account_name, container_name, relative_path, data)\r\n",
 					"\r\n",
+					"        print(f'File {source} written to storage')\r\n",
+					"        print(\"Renaming file...\")\r\n",
+					"\r\n",
+					"        # rename the file to a sensible name using the mssparkutils mv function\r\n",
+					"        relative_path_new = f'data_validation/outputs/test_results_records/test1_rows_in_source_not_in_target/{source}.csv'\r\n",
+					"        adls_path_new = adls_path(account_name, container_name, relative_path_new)\r\n",
+					"        files = list(mssparkutils.fs.ls(path))\r\n",
+					"        csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
+					"        mssparkutils.fs.mv(path, adls_path_new)\r\n",
+					"\r\n",
+					"        print(f'File renamed - new file path: {adls_path_new}')\r\n",
+					"\r\n",
 					"print(\"All file written to storage\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# account_name = 'pinsstodwdevuks9h80mb' # fill in your primary account name \r\n",
+					"# container_name = 'odw-config' # fill in your container name \r\n",
+					"# relative_path = 'data_validation/outputs/test_results' # fill in your relative folder path\r\n",
+					"# relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
+					"# adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \r\n",
+					"# adls_path_new = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path_new) \r\n",
+					"# print(adls_path)\r\n",
+					"# print(adls_path_new)\r\n",
+					"# files = list(mssparkutils.fs.ls(adls_path))\r\n",
+					"# pprint.pprint(files)\r\n",
+					"# print(\"*******************************\")\r\n",
+					"# csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
+					"# output_path = (csv_files[0].path)\r\n",
+					"# new_output_path = adls_path_new\r\n",
+					"# mssparkutils.fs.mv(output_path, new_output_path)\r\n",
+					"# print(\"File moved\")"
 				],
 				"execution_count": null
 			}
