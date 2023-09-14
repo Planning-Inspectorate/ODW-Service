@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3f3c0438-079b-4415-b1b3-c0cc55368502"
+				"spark.autotune.trackingId": "7d4afab1-9572-453d-afe0-32583a9e067a"
 			}
 		},
 		"metadata": {
@@ -139,43 +139,9 @@
 					"        THEN 'Y'\r\n",
 					"        ELSE 'N'\r\n",
 					"    END  = 'Y')\r\n",
-					"    AND T1.Pers_No = '00500483' \r\n",
-					"    -- AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.vw_leavers);\r\n",
 					";"
 				],
 				"execution_count": 13
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT * \n",
-					"FROM odw_harmonised_db.hr_employee_leavers_dim \n",
-					"WHERE EmployeeID = '00500483' \n",
-					";\n",
-					"\n",
-					"SELECT * \n",
-					"FROM hr_employee_leavers_dim_new \n",
-					"-- WHERE EmployeeID = '00500483' \n",
-					""
-				],
-				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -254,41 +220,10 @@
 					"    T1.RowID,\r\n",
 					"    T1.IsActive\r\n",
 					"FROM odw_harmonised_db.hr_employee_leavers_dim T1\r\n",
-					"-- INNER JOIN hr_employee_leavers_dim_new T2 ON T1.EmployeeID = T2.EmployeeID AND \r\n",
-					"--                                             T1.EmploymentStartDate = T2.EmploymentStartDate AND\r\n",
-					"--                                             T1.EmploymentEndDate = T2.EmploymentEndDate AND \r\n",
-					"--                                             T2.EmployeeLeaversID IS NULL AND \r\n",
-					"--                                             T1.IsActive = 'Y'\r\n",
-					"\r\n",
-					"\r\n",
 					"WHERE EmployeeID IN (SELECT EmployeeID FROM hr_employee_leavers_dim_new WHERE EmployeeLeaversID IS NULL) AND IsActive = 'Y';\r\n",
 					";"
 				],
 				"execution_count": 19
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT * FROM hr_employee_leavers_dim_changed_rows;"
-				],
-				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -346,30 +281,6 @@
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
 				"execution_count": 17
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT * FROM hr_employee_leavers_dim_changed_rows_final;"
-				],
-				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -556,15 +467,16 @@
 					"\n",
 					"AS\n",
 					"\n",
-					"SELECT  \n",
+					"SELECT  DISTINCT\n",
 					"\n",
 					"    *\n",
 					"\n",
-					"FROM hr_employee_leavers_dim_new\n",
+					"FROM hr_employee_leavers_dim_changed_rows_final\n",
 					"\n",
-					"WHERE SUBSTRING(EmploymentENDDate, 0, 7) = (SELECT SUBSTRING(MAX(EXPECTED_FROM), 0, 7) FROM odw_standardised_db.vw_leavers)"
+					"WHERE SUBSTRING(EmploymentENDDate, 0, 7) = (SELECT SUBSTRING(MAX(EXPECTED_FROM), 0, 7) FROM odw_standardised_db.vw_leavers)\n",
+					"AND EmployeeLeaversID IS NULL"
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -598,7 +510,7 @@
 					"WHEN MATCHED\n",
 					"    THEN \n",
 					"    UPDATE SET\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
 				"execution_count": null
@@ -635,7 +547,7 @@
 					"WHEN MATCHED\n",
 					"    THEN \n",
 					"    UPDATE SET\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
 				"execution_count": null
@@ -672,7 +584,7 @@
 					"WHEN MATCHED\n",
 					"    THEN \n",
 					"    UPDATE SET\n",
-					"    Target.ValidTo = to_timestamp(date_sub(Source.IngestionDate,1)),\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
 				"execution_count": null
