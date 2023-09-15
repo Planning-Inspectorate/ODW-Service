@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "34cdb700-1f15-4421-a12f-7e0e72bc0eb7"
+				"spark.autotune.trackingId": "19f76cff-5034-4df5-9edd-e46f91f5c84a"
 			}
 		},
 		"metadata": {
@@ -93,7 +93,7 @@
 					"# %pip install -U pandas\r\n",
 					"import pandas as pd"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -335,6 +335,38 @@
 					"                             'test7_duplicates_in_odw': ''}}\r\n",
 					"\r\n",
 					"print(\"test_results_dict created\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Set storage account global variables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
+					"container_name = 'odw-config'"
 				],
 				"execution_count": null
 			},
@@ -959,7 +991,7 @@
 					}
 				},
 				"source": [
-					"def adls_path(account_name: str, container_name: str, relative_path: str):\r\n",
+					"def create_adls_path(account_name: str, container_name: str, relative_path: str):\r\n",
 					"    file_path = f'abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}'\r\n",
 					"    return file_path"
 				],
@@ -975,7 +1007,7 @@
 					}
 				},
 				"source": [
-					"#### Connect to storage account"
+					"#### Write to storage account"
 				]
 			},
 			{
@@ -996,7 +1028,7 @@
 					"    account_name = account_name\r\n",
 					"    container_name = container_name\r\n",
 					"    relative_path = relative_path\r\n",
-					"    path = adls_path(account_name, container_name, relative_path)\r\n",
+					"    path = create_adls_path(account_name, container_name, relative_path)\r\n",
 					"\r\n",
 					"    # Write spark dataframe as a csv file \r\n",
 					"    print(\"adls path is \" + path)\r\n",
@@ -1012,6 +1044,41 @@
 					"# # Write spark dataframe as a json file \r\n",
 					"# json_path = adls_path + 'Your file name ' \r\n",
 					"# data.write.json(json_path, mode = 'overwrite')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to rename csv files"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def rename_csv_files(old_path, new_path) -> None:\r\n",
+					"    # rename the file to a sensible name using the mssparkutils mv function\r\n",
+					"    files = list(mssparkutils.fs.ls(old_path))\r\n",
+					"    csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
+					"    mssparkutils.fs.mv(old_path, new_path)"
 				],
 				"execution_count": null
 			},
@@ -1042,10 +1109,11 @@
 					}
 				},
 				"source": [
-					"# define account and path variables\r\n",
-					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
-					"container_name = 'odw-config'\r\n",
+					"# define relative path\r\n",
 					"relative_path = 'data_validation/outputs/test_results'\r\n",
+					"\r\n",
+					"# Get full path\r\n",
+					"path = create_adls_path(account_name, container_name, relative_path)\r\n",
 					"\r\n",
 					"# convert result_df to spark DataFrame\r\n",
 					"data = spark.createDataFrame(result_df)\r\n",
@@ -1055,7 +1123,14 @@
 					"\r\n",
 					"# call the write_to_storage function, passing in the variables above\r\n",
 					"write_to_storage(account_name, container_name, relative_path, data)\r\n",
-					"print(\"File written to storage\")"
+					"print(\"File written to storage\")\r\n",
+					"\r\n",
+					"# Rename the file\r\n",
+					"print(\"Renaming file...\")\r\n",
+					"relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
+					"new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
+					"rename_csv_files(old_path=path, new_path=new_path)\r\n",
+					"print(\"File renamed\")"
 				],
 				"execution_count": null
 			},
@@ -1086,10 +1161,6 @@
 					}
 				},
 				"source": [
-					"# define account variables\r\n",
-					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
-					"container_name = 'odw-config' \r\n",
-					"\r\n",
 					"# loop through test results and set the source and target DataFrames\r\n",
 					"for source, target in test_results_dict.items():\r\n",
 					"    source_dbtable = source\r\n",
@@ -1114,22 +1185,21 @@
 					"        data = data.repartition(1)\r\n",
 					"\r\n",
 					"        # call the write_to_storage function, passing in the account, path and data variables\r\n",
-					"        path = adls_path(account_name, container_name, relative_path)\r\n",
+					"        path = create_adls_path(account_name, container_name, relative_path)\r\n",
 					"        write_to_storage(account_name, container_name, relative_path, data)\r\n",
 					"\r\n",
 					"        print(f'File {source} written to storage')\r\n",
 					"        print(\"Renaming file...\")\r\n",
 					"\r\n",
 					"        # rename the file to a sensible name using the mssparkutils mv function\r\n",
+					"        old_path = path\r\n",
 					"        relative_path_new = f'data_validation/outputs/test_results_records/test1_rows_in_source_not_in_target/{source}.csv'\r\n",
-					"        adls_path_new = adls_path(account_name, container_name, relative_path_new)\r\n",
-					"        files = list(mssparkutils.fs.ls(path))\r\n",
-					"        csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
-					"        mssparkutils.fs.mv(path, adls_path_new)\r\n",
+					"        new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
+					"        rename_csv_files(old_path=old_path, new_path=new_path)\r\n",
 					"\r\n",
 					"        print(f'File renamed - new file path: {adls_path_new}')\r\n",
 					"\r\n",
-					"print(\"All file written to storage\")"
+					"print(\"All files written to storage\")"
 				],
 				"execution_count": null
 			},
