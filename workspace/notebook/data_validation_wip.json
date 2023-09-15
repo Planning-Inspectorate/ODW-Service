@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "285dd749-9b43-4e18-8b57-672cc0786a1a"
+				"spark.autotune.trackingId": "baec3987-77e5-4142-a07b-da54cfe3fd6c"
 			}
 		},
 		"metadata": {
@@ -87,6 +87,7 @@
 					"from pyspark.sql.types import * \r\n",
 					"import pyspark.sql.functions as f\r\n",
 					"import pprint\r\n",
+					"import json\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
 					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
@@ -1336,7 +1337,9 @@
 					}
 				},
 				"source": [
-					"#### Test reading a json config file"
+					"#### Test reading a json config file  \r\n",
+					"\r\n",
+					"It seems best to mount the storage account and then use json.load to read the file to a dictionary variable to work with normally in python. The other option is load to a spark dataframe, convert to pandas dataframe and then work with that."
 				]
 			},
 			{
@@ -1353,20 +1356,27 @@
 					}
 				},
 				"source": [
-					"relative_path = ''\r\n",
+					"relative_path = 'data_validation'\r\n",
 					"path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"print(path)\r\n",
 					"files = mssparkutils.fs.ls(path)\r\n",
 					"json_files = [f for f in files if f.name.endswith('.json')]\r\n",
 					"for file in json_files:\r\n",
 					"    print(file.name)\r\n",
 					"\r\n",
-					"file = json_files[1].path\r\n",
+					"file = json_files[0].path\r\n",
 					"print(file)\r\n",
+					"with open(file, \"r\", encoding=\"utf-8\") as data:\r\n",
+					"    table_mapping = json.load(data)\r\n",
 					"\r\n",
-					"df = spark.read.json(file)\r\n",
+					"for source, target in table_mapping:\r\n",
+					"    print(source, \"->\", target)\r\n",
+					"# df = pd.read_json(file)\r\n",
+					"# df = spark.read.json(file, multiLine=True)\r\n",
 					"\r\n",
-					"df = df.toPandas()\r\n",
-					"df.head(10)"
+					"# df.printSchema()\r\n",
+					"# df = df.toPandas()\r\n",
+					"# df.head(3)"
 				],
 				"execution_count": null
 			}
