@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "19f76cff-5034-4df5-9edd-e46f91f5c84a"
+				"spark.autotune.trackingId": "285dd749-9b43-4e18-8b57-672cc0786a1a"
 			}
 		},
 		"metadata": {
@@ -93,7 +93,7 @@
 					"# %pip install -U pandas\r\n",
 					"import pandas as pd"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -554,6 +554,42 @@
 					"    else:\r\n",
 					"        result = False\r\n",
 					"    return result"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### test2_export_values"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test2_export_values(test_source_df, test_target_df):\r\n",
+					"    result_df = test_target_df[~test_target_df.index.isin(test_source_df.index)]\r\n",
+					"    if len(result_df) > 0:\r\n",
+					"        return result_df\r\n",
+					"    else:\r\n",
+					"        pass"
 				],
 				"execution_count": null
 			},
@@ -1074,11 +1110,48 @@
 					}
 				},
 				"source": [
-					"def rename_csv_files(old_path, new_path) -> None:\r\n",
+					"def rename_csv_files(old_path: str, new_path: str) -> None:\r\n",
 					"    # rename the file to a sensible name using the mssparkutils mv function\r\n",
 					"    files = list(mssparkutils.fs.ls(old_path))\r\n",
 					"    csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
-					"    mssparkutils.fs.mv(old_path, new_path)"
+					"    file_path = csv_files[0].path\r\n",
+					"    mssparkutils.fs.mv(file_path, new_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to remove _SUCCESS files"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def remove_success_files(old_path: str, new_path: str) -> None:\r\n",
+					"    # delete the _SUCCESS file as it's not needed\r\n",
+					"    files = list(mssparkutils.fs.ls(old_path))\r\n",
+					"    success_files = [f for f in files if f.name.endswith('_SUCCESS')]\r\n",
+					"    success_file_path = success_files[0].path\r\n",
+					"    mssparkutils.fs.rm(success_file_path)"
 				],
 				"execution_count": null
 			},
@@ -1130,7 +1203,74 @@
 					"relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
 					"new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
 					"rename_csv_files(old_path=path, new_path=new_path)\r\n",
-					"print(\"File renamed\")"
+					"print(\"File renamed: \" + new_path)\r\n",
+					"\r\n",
+					"# Delete _SUCCESS file\r\n",
+					"print(\"Deleting _SUCCESS file...\")\r\n",
+					"remove_success_files(old_path=path, new_path=new_path)\r\n",
+					"print(\"_SUCCESS file deleted\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to write records to csv"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def write_records_to_csv(export_values_test, folder: str):\r\n",
+					"    # create a DataFrame of the mismatched records\r\n",
+					"    export_values_test = export_values_test\r\n",
+					"    values_df = export_values_test(test_source_df, test_target_df)\r\n",
+					"\r\n",
+					"    # pass in the source table name to the file path so the records for each source table are saved in their own folder\r\n",
+					"    relative_path = f'data_validation/outputs/test_results_records/{folder}/{source}'\r\n",
+					"    data = spark.createDataFrame(values_df)\r\n",
+					"\r\n",
+					"    # cast null columns to string to avoid errors\r\n",
+					"    data = data.select([f.lit(None).cast('string').alias(i.name) if isinstance(i.dataType, NullType) else i.name for i in data.schema])\r\n",
+					"\r\n",
+					"    # repartition so all data is written to a single file\r\n",
+					"    data = data.repartition(1)\r\n",
+					"\r\n",
+					"    # call the write_to_storage function, passing in the account, path and data variables\r\n",
+					"    path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"    write_to_storage(account_name, container_name, relative_path, data)\r\n",
+					"\r\n",
+					"    print(f'File {source} written to storage')\r\n",
+					"    print(\"Renaming file...\")\r\n",
+					"\r\n",
+					"    # rename the file to a sensible name using the mssparkutils mv function\r\n",
+					"    relative_path_new = f'data_validation/outputs/test_results_records/{folder}/{source}/{source}.csv'\r\n",
+					"    new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
+					"    rename_csv_files(old_path=path, new_path=new_path)\r\n",
+					"\r\n",
+					"    print(f'File renamed - new file path: {new_path}')\r\n",
+					"\r\n",
+					"    print(\"Deleting _SUCCESS file\")\r\n",
+					"\r\n",
+					"    remove_success_files(old_path=path, new_path=new_path)"
 				],
 				"execution_count": null
 			},
@@ -1170,38 +1310,34 @@
 					"\r\n",
 					"    # if certain tests are True then the records need exporting to csv and saved in storage\r\n",
 					"    if target['test1_rows_in_source_not_in_target'] == True:\r\n",
-					"\r\n",
-					"        # create a DataFrame of the mismatched records\r\n",
-					"        values_df = test1_export_values(test_source_df, test_target_df)\r\n",
-					"\r\n",
-					"        # pass in the source table name to the file path so the records for each source table are saved in their own folder\r\n",
-					"        relative_path = f'data_validation/outputs/test_results_records/test1_rows_in_source_not_in_target/{source}'\r\n",
-					"        data = spark.createDataFrame(values_df)\r\n",
-					"\r\n",
-					"        # cast null columns to string to avoid errors\r\n",
-					"        data = data.select([f.lit(None).cast('string').alias(i.name) if isinstance(i.dataType, NullType) else i.name for i in data.schema])\r\n",
-					"\r\n",
-					"        # repartition so all data is written to a single file\r\n",
-					"        data = data.repartition(1)\r\n",
-					"\r\n",
-					"        # call the write_to_storage function, passing in the account, path and data variables\r\n",
-					"        path = create_adls_path(account_name, container_name, relative_path)\r\n",
-					"        write_to_storage(account_name, container_name, relative_path, data)\r\n",
-					"\r\n",
-					"        print(f'File {source} written to storage')\r\n",
-					"        print(\"Renaming file...\")\r\n",
-					"\r\n",
-					"        # rename the file to a sensible name using the mssparkutils mv function\r\n",
-					"        old_path = path\r\n",
-					"        relative_path_new = f'data_validation/outputs/test_results_records/test1_rows_in_source_not_in_target/{source}.csv'\r\n",
-					"        new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
-					"        rename_csv_files(old_path=old_path, new_path=new_path)\r\n",
-					"\r\n",
-					"        print(f'File renamed - new file path: {adls_path_new}')\r\n",
+					"        test = test1_export_values\r\n",
+					"        folder = 'test1_rows_in_source_not_in_target'\r\n",
+					"        write_records_to_csv(test, folder)\r\n",
+					"        print(\"test1 records saved to storage\")\r\n",
+					"    elif target['test2_rows_in_target_not_in_source'] == True:\r\n",
+					"        test = test2_export_values\r\n",
+					"        folder = 'test2_rows_in_target_not_in_source'\r\n",
+					"        write_records_to_csv(test, folder)\r\n",
+					"        print(\"test2 records saved to storage\")\r\n",
+					"    else:\r\n",
+					"        print(f'Table {source}: No records saved to storage')\r\n",
 					"\r\n",
 					"print(\"All files written to storage\")"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Test reading a json config file"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -1217,22 +1353,20 @@
 					}
 				},
 				"source": [
-					"# account_name = 'pinsstodwdevuks9h80mb' # fill in your primary account name \r\n",
-					"# container_name = 'odw-config' # fill in your container name \r\n",
-					"# relative_path = 'data_validation/outputs/test_results' # fill in your relative folder path\r\n",
-					"# relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
-					"# adls_path = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path) \r\n",
-					"# adls_path_new = 'abfss://%s@%s.dfs.core.windows.net/%s' % (container_name, account_name, relative_path_new) \r\n",
-					"# print(adls_path)\r\n",
-					"# print(adls_path_new)\r\n",
-					"# files = list(mssparkutils.fs.ls(adls_path))\r\n",
-					"# pprint.pprint(files)\r\n",
-					"# print(\"*******************************\")\r\n",
-					"# csv_files = [f for f in files if f.name.endswith('.csv')]\r\n",
-					"# output_path = (csv_files[0].path)\r\n",
-					"# new_output_path = adls_path_new\r\n",
-					"# mssparkutils.fs.mv(output_path, new_output_path)\r\n",
-					"# print(\"File moved\")"
+					"relative_path = ''\r\n",
+					"path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"files = mssparkutils.fs.ls(path)\r\n",
+					"json_files = [f for f in files if f.name.endswith('.json')]\r\n",
+					"for file in json_files:\r\n",
+					"    print(file.name)\r\n",
+					"\r\n",
+					"file = json_files[1].path\r\n",
+					"print(file)\r\n",
+					"\r\n",
+					"df = spark.read.json(file)\r\n",
+					"\r\n",
+					"df = df.toPandas()\r\n",
+					"df.head(10)"
 				],
 				"execution_count": null
 			}
