@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8256f913-d44c-4493-ba82-4434da5b9a95"
+				"spark.autotune.trackingId": "2f76d010-5fe0-47b8-8970-eb3953ce8d31"
 			}
 		},
 		"metadata": {
@@ -148,7 +148,37 @@
 					"    END  = 'Y')\r\n",
 					";"
 				],
-				"execution_count": 44
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT * FROM odw_harmonised_db.hr_employee_leavers_dim WHERE EmployeeID LIKE '%500483' ORDER BY IngestionDate;\n",
+					"\n",
+					"SELECT * FROM odw_standardised_db.vw_leavers WHERE Pers_No LIKE '%500483' ORDER BY expected_from, Leaving;\n",
+					"\n",
+					"SELECT * FROM hr_employee_leavers_dim_new WHERE EmployeeID LIKE '%500483' ;\n",
+					"\n",
+					"-- SELECT * FROM odw_standardised_db.hr_leavers WHERE Pers_No LIKE '%500483' ORDER BY expected_from, Leaving;"
+				],
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -229,9 +259,37 @@
 					"    T1.RowID,\r\n",
 					"    T1.IsActive\r\n",
 					"FROM odw_harmonised_db.hr_employee_leavers_dim T1\r\n",
-					"WHERE EmployeeID IN (SELECT EmployeeID FROM hr_employee_leavers_dim_new WHERE EmployeeLeaversID IS NULL) AND IsActive = 'Y';"
+					"WHERE EmployeeID IN (SELECT EmployeeID FROM hr_employee_leavers_dim_new WHERE EmployeeLeaversID IS NULL) AND\r\n",
+					"    EmploymentEndDate IN (SELECT EmploymentEndDate FROM hr_employee_leavers_dim_new WHERE EmployeeLeaversID IS NULL) AND\r\n",
+					"    IsActive = 'Y';"
 				],
-				"execution_count": 46
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT * FROM hr_employee_leavers_dim_changed_rows WHERE EmployeeID LIKE '%500483' \n",
+					"\n",
+					""
+				],
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -289,7 +347,32 @@
 					"FROM hr_employee_leavers_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": 47
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT * FROM hr_employee_leavers_dim_changed_rows_final WHERE EmployeeID LIKE '%500483' \n",
+					""
+				],
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -332,7 +415,7 @@
 					"MERGE INTO odw_harmonised_db.hr_employee_leavers_dim AS Target\r\n",
 					"USING hr_employee_leavers_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
-					"ON Source.EmployeeLeaversID = Target.EmployeeLeaversID AND Target.IsActive = 'Y'\r\n",
+					"ON Source.EmployeeLeaversID = Target.EmployeeLeaversID AND Source.EmploymentEndDate = Target.EmploymentEndDate AND Target.IsActive = 'Y'\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -378,7 +461,7 @@
 					"        Source.IsActive) ;  \r\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -441,7 +524,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 49
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -489,7 +572,7 @@
 					"WHERE SUBSTRING(EmploymentENDDate, 0, 7) = (SELECT SUBSTRING(MAX(EXPECTED_FROM), 0, 7) FROM odw_standardised_db.vw_leavers)\n",
 					"AND EmployeeLeaversID IS NULL"
 				],
-				"execution_count": 50
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -526,7 +609,7 @@
 					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
-				"execution_count": 51
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -563,7 +646,7 @@
 					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
-				"execution_count": 52
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -600,7 +683,7 @@
 					"    Target.ValidTo = to_timestamp(ClosingDate),\n",
 					"    Target.IsActive = 'N'"
 				],
-				"execution_count": 53
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -616,13 +699,14 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.hr_employee_leavers_dim WHERE EmployeeID LIKE '%500483' ORDER BY IngestionDate;"
 				],
-				"execution_count": null
+				"execution_count": 20
 			}
 		]
 	}
