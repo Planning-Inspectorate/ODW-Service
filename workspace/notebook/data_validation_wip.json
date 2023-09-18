@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "baec3987-77e5-4142-a07b-da54cfe3fd6c"
+				"spark.autotune.trackingId": "d486a735-e05f-4dd3-af63-dbc949ccd970"
 			}
 		},
 		"metadata": {
@@ -88,6 +88,7 @@
 					"import pyspark.sql.functions as f\r\n",
 					"import pprint\r\n",
 					"import json\r\n",
+					"from tqdm import tqdm\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
 					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
@@ -177,178 +178,6 @@
 					}
 				},
 				"source": [
-					"#### Dictionary of the mapping between source tables in MiPINS (left) and target tables in ODW (right)  \r\n",
-					"\r\n",
-					"This can be added to manually and we can maybe keep a copy of this in storage to update independently of the notebook (future enhancement)"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"tablemapping = {\r\n",
-					"    \"sap_hr.vw_fact_absence_all\": \"vw_mipins_fact_absence_all\",\r\n",
-					"    \"load.High_Court_Appeals\": \"vw_mipins_high_court\",\r\n",
-					"    \"live.dim_HR_work_contract\": \"vw_mipins_hr_contract\",\r\n",
-					"    \"live.dim_HR_cost_centre\": \"vw_mipins_hr_cost_centre\",\r\n",
-					"    \"load.SAP_HR_Leavers\": \"vw_mipins_hr_employee_leavers\",\r\n",
-					"    \"sap_hr.vw_fact_sickness\": \"vw_mipins_hr_fact_sickness\",\r\n",
-					"    \"Live.dim_HR_Gender\": \"vw_mipins_hr_gender\",\r\n",
-					"    \"Live.dim_HR_Organisation_Unit\": \"vw_mipins_hr_organisational_unit\",\r\n",
-					"    \"Live.dim_HR_personnel_area\": \"vw_mipins_hr_personnel_area\",\r\n",
-					"    \"Live.dim_HR_Personnel_SubArea\": \"vw_mipins_hr_personnel_sub_area\",\r\n",
-					"    \"ims.v_master_data_map\": \"vw_mipins_IMS_MasterDataMap\"\r\n",
-					"}\r\n",
-					"\r\n",
-					"print(\"Mapping created\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Initial manually created dictionary of the source tables and test names  \r\n",
-					"\r\n",
-					"This can be added to using the functions below  \r\n",
-					"\r\n",
-					"NB: save this as a reference in the storage account"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"test_results_dict = {\r\n",
-					" 'Live.dim_HR_Gender': {'target_table': '',\r\n",
-					"                        'test1_rows_in_source_not_in_target': '',\r\n",
-					"                        'test2_rows_in_target_not_in_source': '',\r\n",
-					"                        'test3_count_source_table_rows': '',\r\n",
-					"                        'test4_count_target_table_rows': '',\r\n",
-					"                        'test5_count_source_table_columns': '',\r\n",
-					"                        'test6_count_target_table_columns': '',\r\n",
-					"                        'test7_duplicates_in_odw': ''},\r\n",
-					" 'Live.dim_HR_Organisation_Unit': {'target_table': '',\r\n",
-					"                                   'test1_rows_in_source_not_in_target': '',\r\n",
-					"                                   'test2_rows_in_target_not_in_source': '',\r\n",
-					"                                   'test3_count_source_table_rows': '',\r\n",
-					"                                   'test4_count_target_table_rows': '',\r\n",
-					"                                   'test5_count_source_table_columns': '',\r\n",
-					"                                   'test6_count_target_table_columns': '',\r\n",
-					"                                   'test7_duplicates_in_odw': ''},\r\n",
-					" 'Live.dim_HR_Personnel_SubArea': {'target_table': '',\r\n",
-					"                                   'test1_rows_in_source_not_in_target': '',\r\n",
-					"                                   'test2_rows_in_target_not_in_source': '',\r\n",
-					"                                   'test3_count_source_table_rows': '',\r\n",
-					"                                   'test4_count_target_table_rows': '',\r\n",
-					"                                   'test5_count_source_table_columns': '',\r\n",
-					"                                   'test6_count_target_table_columns': '',\r\n",
-					"                                   'test7_duplicates_in_odw': ''},\r\n",
-					" 'Live.dim_HR_personnel_area': {'target_table': '',\r\n",
-					"                                'test1_rows_in_source_not_in_target': '',\r\n",
-					"                                'test2_rows_in_target_not_in_source': '',\r\n",
-					"                                'test3_count_source_table_rows': '',\r\n",
-					"                                'test4_count_target_table_rows': '',\r\n",
-					"                                'test5_count_source_table_columns': '',\r\n",
-					"                                'test6_count_target_table_columns': '',\r\n",
-					"                                'test7_duplicates_in_odw': ''},\r\n",
-					" 'ims.v_master_data_map': {'target_table': '',\r\n",
-					"                           'test1_rows_in_source_not_in_target': '',\r\n",
-					"                           'test2_rows_in_target_not_in_source': '',\r\n",
-					"                           'test3_count_source_table_rows': '',\r\n",
-					"                           'test4_count_target_table_rows': '',\r\n",
-					"                           'test5_count_source_table_columns': '',\r\n",
-					"                           'test6_count_target_table_columns': '',\r\n",
-					"                           'test7_duplicates_in_odw': ''},\r\n",
-					" 'live.dim_HR_cost_centre': {'target_table': '',\r\n",
-					"                             'test1_rows_in_source_not_in_target': '',\r\n",
-					"                             'test2_rows_in_target_not_in_source': '',\r\n",
-					"                             'test3_count_source_table_rows': '',\r\n",
-					"                             'test4_count_target_table_rows': '',\r\n",
-					"                             'test5_count_source_table_columns': '',\r\n",
-					"                             'test6_count_target_table_columns': '',\r\n",
-					"                             'test7_duplicates_in_odw': ''},\r\n",
-					" 'live.dim_HR_work_contract': {'target_table': '',\r\n",
-					"                               'test1_rows_in_source_not_in_target': '',\r\n",
-					"                               'test2_rows_in_target_not_in_source': '',\r\n",
-					"                               'test3_count_source_table_rows': '',\r\n",
-					"                               'test4_count_target_table_rows': '',\r\n",
-					"                               'test5_count_source_table_columns': '',\r\n",
-					"                               'test6_count_target_table_columns': '',\r\n",
-					"                               'test7_duplicates_in_odw': ''},\r\n",
-					" 'load.High_Court_Appeals': {'target_table': '',\r\n",
-					"                             'test1_rows_in_source_not_in_target': '',\r\n",
-					"                             'test2_rows_in_target_not_in_source': '',\r\n",
-					"                             'test3_count_source_table_rows': '',\r\n",
-					"                             'test4_count_target_table_rows': '',\r\n",
-					"                             'test5_count_source_table_columns': '',\r\n",
-					"                             'test6_count_target_table_columns': '',\r\n",
-					"                             'test7_duplicates_in_odw': ''},\r\n",
-					" 'load.SAP_HR_Leavers': {'target_table': '',\r\n",
-					"                         'test1_rows_in_source_not_in_target': '',\r\n",
-					"                         'test2_rows_in_target_not_in_source': '',\r\n",
-					"                         'test3_count_source_table_rows': '',\r\n",
-					"                         'test4_count_target_table_rows': '',\r\n",
-					"                         'test5_count_source_table_columns': '',\r\n",
-					"                         'test6_count_target_table_columns': '',\r\n",
-					"                         'test7_duplicates_in_odw': ''},\r\n",
-					" 'sap_hr.vw_fact_absence_all': {'target_table': '',\r\n",
-					"                                'test1_rows_in_source_not_in_target': '',\r\n",
-					"                                'test2_rows_in_target_not_in_source': '',\r\n",
-					"                                'test3_count_source_table_rows': '',\r\n",
-					"                                'test4_count_target_table_rows': '',\r\n",
-					"                                'test5_count_source_table_columns': '',\r\n",
-					"                                'test6_count_target_table_columns': '',\r\n",
-					"                                'test7_duplicates_in_odw': ''},\r\n",
-					" 'sap_hr.vw_fact_sickness': {'target_table': '',\r\n",
-					"                             'test1_rows_in_source_not_in_target': '',\r\n",
-					"                             'test2_rows_in_target_not_in_source': '',\r\n",
-					"                             'test3_count_source_table_rows': '',\r\n",
-					"                             'test4_count_target_table_rows': '',\r\n",
-					"                             'test5_count_source_table_columns': '',\r\n",
-					"                             'test6_count_target_table_columns': '',\r\n",
-					"                             'test7_duplicates_in_odw': ''}}\r\n",
-					"\r\n",
-					"print(\"test_results_dict created\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"#### Set storage account global variables"
 				]
 			},
@@ -367,7 +196,8 @@
 				},
 				"source": [
 					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
-					"container_name = 'odw-config'"
+					"container_name = 'odw-config'\r\n",
+					"jobId = mssparkutils.env.getJobId()"
 				],
 				"execution_count": null
 			},
@@ -1071,9 +901,6 @@
 					"    print(\"adls path is \" + path)\r\n",
 					"    data.write.csv(path, mode = 'overwrite', header = 'true', sep = \",\")\r\n",
 					"\r\n",
-					"\r\n",
-					"\r\n",
-					"\r\n",
 					"# # Write spark dataframe as a parquet file \r\n",
 					"# parquet_path = adls_path + ' Your file name ' \r\n",
 					"# data.write.parquet(parquet_path, mode = 'overwrite') \r\n",
@@ -1343,6 +1170,19 @@
 				]
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Mount storage to work with json files as python dictionaries rather than use spark or pandas DataFrames"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -1356,27 +1196,133 @@
 					}
 				},
 				"source": [
-					"relative_path = 'data_validation'\r\n",
-					"path = create_adls_path(account_name, container_name, relative_path)\r\n",
-					"print(path)\r\n",
-					"files = mssparkutils.fs.ls(path)\r\n",
-					"json_files = [f for f in files if f.name.endswith('.json')]\r\n",
-					"for file in json_files:\r\n",
-					"    print(file.name)\r\n",
+					"def mount_storage(relative_path: str, jobId):\r\n",
+					"    path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"    print(f\"adls path: {path}\")\r\n",
 					"\r\n",
-					"file = json_files[0].path\r\n",
-					"print(file)\r\n",
-					"with open(file, \"r\", encoding=\"utf-8\") as data:\r\n",
-					"    table_mapping = json.load(data)\r\n",
+					"    # unmount path first\r\n",
+					"    mssparkutils.fs.unmount(f\"/{relative_path}\")\r\n",
 					"\r\n",
-					"for source, target in table_mapping:\r\n",
-					"    print(source, \"->\", target)\r\n",
-					"# df = pd.read_json(file)\r\n",
-					"# df = spark.read.json(file, multiLine=True)\r\n",
+					"    # mount file path\r\n",
+					"    mssparkutils.fs.mount( \r\n",
+					"        f\"abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}\",\r\n",
+					"        f\"/{relative_path}\", \r\n",
+					"        {\"linkedService\":\"ls_storage\"} \r\n",
+					"    )\r\n",
+					"    print(\"Path mounted\")\r\n",
 					"\r\n",
-					"# df.printSchema()\r\n",
-					"# df = df.toPandas()\r\n",
-					"# df.head(3)"
+					"    spark_fs_path = f\"synfs:/{jobId}/{relative_path}\"\r\n",
+					"    print(f\"File path (mssparkutils fs API): {spark_fs_path}\")\r\n",
+					"    local_fs_path = f\"/synfs/{jobId}/{relative_path}\"\r\n",
+					"    print(f\"File path (local file system path): {local_fs_path}\")\r\n",
+					"    print(\"Listing files in path - size = 0 means it's a folder\")\r\n",
+					"    \r\n",
+					"    return mssparkutils.fs.ls(file_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Load json files to python dictionaries to work with"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def load_json_file_to_dict(json_file: str, jobId):\r\n",
+					"    json_path = f\"/synfs/{jobId}/{relative_path}/{json_file}\"\r\n",
+					"    print(f\"json path: {json_path}\")\r\n",
+					"    with open(f'/{json_path}', \"r\", encoding=\"utf-8\") as data:\r\n",
+					"        table_mapping = json.load(data)\r\n",
+					"\r\n",
+					"    return table_mapping"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Define variables for mounting storage and reading json files to dictionaries"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"relative_path = \"data_validation\"\r\n",
+					"json_file = \"test_results_dict.json\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"mount_storage(relative_path, jobId)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"load_json_file_to_dict(json_file, jobId)"
 				],
 				"execution_count": null
 			}
