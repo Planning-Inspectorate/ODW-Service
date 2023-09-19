@@ -1,9 +1,9 @@
 {
-	"name": "pln_post_deployment",
+	"name": "pln_post_deployment_copy1",
 	"properties": {
 		"activities": [
 			{
-				"name": "Clear Leavers",
+				"name": "Delete Leavers",
 				"type": "SynapseNotebook",
 				"dependsOn": [],
 				"policy": {
@@ -16,7 +16,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_delete_table_contents",
+						"referenceName": "py_delete_table",
 						"type": "NotebookReference"
 					},
 					"parameters": {
@@ -39,11 +39,50 @@
 				}
 			},
 			{
-				"name": "Ingest",
+				"name": "Create Leavers Harmonised",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Delete Leavers",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_odw_harmonised_table_creation",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"specific_table": {
+							"value": "hr_employee_leavers_dim",
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "ingest",
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Clear Leavers",
+						"activity": "Create Leavers Harmonised",
 						"dependencyConditions": [
 							"Succeeded"
 						]
