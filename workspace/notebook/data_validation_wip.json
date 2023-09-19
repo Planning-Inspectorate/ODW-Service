@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1a36cfee-c7b4-4de3-b0f8-2e211704bb77"
+				"spark.autotune.trackingId": "8a680c3a-0f0a-4b29-95e9-67c298b34b3f"
 			}
 		},
 		"metadata": {
@@ -92,7 +92,7 @@
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
 					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
-					"# %pip install -U pandas\r\n",
+					"%pip install -U pandas\r\n",
 					"import pandas as pd"
 				],
 				"execution_count": null
@@ -142,7 +142,7 @@
 				"source": [
 					"#### Print lists of all callables and / or functions available in the current context.  \r\n",
 					"\r\n",
-					"This might be useful to see in once place here rather than switching between notebooks looking for the function names etc"
+					"This might be useful to see in one place here rather than switching between notebooks looking for the function names etc"
 				]
 			},
 			{
@@ -192,8 +192,8 @@
 					}
 				},
 				"source": [
-					"# # add a new test\r\n",
-					"# add_new_test_to_results_dict(\"test8_values_in_source_not_in_target\")"
+					"# add a new test\r\n",
+					"# add_new_test_to_results_dict(\"test8_source_target_shape_match\")"
 				],
 				"execution_count": null
 			},
@@ -244,7 +244,7 @@
 					}
 				},
 				"source": [
-					"for source, target in table_mapping.items():\r\n",
+					"for source, target in tqdm(table_mapping.items()):\r\n",
 					"    source_dbtable = source\r\n",
 					"    target_dbtable = target\r\n",
 					"    test_source_df = sourcedataset(source_dbtable)\r\n",
@@ -278,6 +278,10 @@
 					"    # run test7_duplicates_in_odw\r\n",
 					"    result = test7_duplicates_in_odw(test_target_df)\r\n",
 					"    test_results_dict[source_dbtable]['test7_duplicates_in_odw'] = result\r\n",
+					"\r\n",
+					"    # run test8_source_target_shape_match\r\n",
+					"    result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
 					"\r\n",
 					"print(\"All tests complete!\")"
 				],
@@ -343,11 +347,8 @@
 					}
 				},
 				"source": [
-					"# define relative path\r\n",
-					"relative_path = 'data_validation/outputs/test_results'\r\n",
-					"\r\n",
 					"# Get full path\r\n",
-					"path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"test_results_path = create_adls_path(account_name, container_name, test_results_relative_path)\r\n",
 					"\r\n",
 					"# convert result_df to spark DataFrame\r\n",
 					"data = spark.createDataFrame(result_df)\r\n",
@@ -356,19 +357,19 @@
 					"data = data.repartition(1)\r\n",
 					"\r\n",
 					"# call the write_to_storage function, passing in the variables above\r\n",
-					"write_to_storage(account_name, container_name, relative_path, data)\r\n",
+					"write_to_storage(account_name, container_name, test_results_relative_path, data)\r\n",
 					"print(\"File written to storage\")\r\n",
 					"\r\n",
 					"# Rename the file\r\n",
 					"print(\"Renaming file...\")\r\n",
-					"relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
-					"new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
-					"rename_csv_files(old_path=path, new_path=new_path)\r\n",
-					"print(\"File renamed: \" + new_path)\r\n",
+					"test_results_relative_path_new = 'data_validation/outputs/test_results/test_results.csv'\r\n",
+					"test_results_new_path = create_adls_path(account_name, container_name, test_results_relative_path_new)\r\n",
+					"rename_csv_files(old_path=test_results_path, new_path=test_results_new_path)\r\n",
+					"print(\"File renamed: \" + test_results_new_path)\r\n",
 					"\r\n",
-					"# Delete _SUCCESS file\r\n",
+					"# Remove _SUCCESS file\r\n",
 					"print(\"Deleting _SUCCESS file...\")\r\n",
-					"remove_success_files(old_path=path, new_path=new_path)\r\n",
+					"remove_success_files(old_path=test_results_path, new_path=test_results_new_path)\r\n",
 					"print(\"_SUCCESS file deleted\")"
 				],
 				"execution_count": null
@@ -401,7 +402,7 @@
 				},
 				"source": [
 					"# loop through test results and set the source and target DataFrames\r\n",
-					"for source, target in test_results_dict.items():\r\n",
+					"for source, target in tqdm(test_results_dict.items()):\r\n",
 					"    source_dbtable = source\r\n",
 					"    target_dbtable = target['target_table']\r\n",
 					"    test_source_df = sourcedataset(source_dbtable)\r\n",
@@ -422,6 +423,101 @@
 					"        print(f'Table {source}: No records saved to storage')\r\n",
 					"\r\n",
 					"print(\"All files written to storage\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Set flag for pandas.compare ability (DataFrames must be same shape)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def pandas_compare_flag(row):\r\n",
+					"    if row['test8_source_target_shape_match'] == True:\r\n",
+					"        return True\r\n",
+					"    else:\r\n",
+					"        return False\r\n",
+					"\r\n",
+					"result_df['pandas_compare_flag'] = result_df.apply(pandas_compare_flag, axis = 1)\r\n",
+					"result_df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Run pandas compare against DataFrams with the same shape"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"for source, target in tqdm(test_results_dict.items()):\r\n",
+					"    if target['test8_source_target_shape_match'] == True:\r\n",
+					"        source_dbtable = source\r\n",
+					"        target_dbtable = target['target_table']\r\n",
+					"        test_source_df = sourcedataset(source_dbtable)\r\n",
+					"        test_target_df = targetdataset(target_dbtable)\r\n",
+					"        pandas_compare_dataframes(test_source_df, test_target_df)\r\n",
+					"        \r\n",
+					"print(\"Finished comparisons\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"pprint.pprint(test_results_dict)"
 				],
 				"execution_count": null
 			},
