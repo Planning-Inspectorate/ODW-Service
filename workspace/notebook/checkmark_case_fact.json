@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ce9653fc-6f20-4804-85e5-8602f8e7b92d"
+				"spark.autotune.trackingId": "be24c91d-1ccd-4962-984e-0f889bdf8ede"
 			}
 		},
 		"metadata": {
@@ -102,18 +102,22 @@
 					"\r\n",
 					"SELECT\r\n",
 					"    CASE\r\n",
-					"        WHEN T1.CaseID IS NULL\r\n",
-					"        THEN T5.CaseReference\r\n",
+					"        WHEN T5.CaseReference IS NULL\r\n",
+					"        THEN T1.CaseID\r\n",
 					"        ELSE NULL\r\n",
-					"    END as CaseID, -- surrogate \r\n",
-					"    T5.DocumentsReferenceID AS DocumentsID,\r\n",
-					"    T5.CaseReference, -- source system id\r\n",
-					"    T2.SourceSystemID AS SourceSystemID,\r\n",
-					"    to_timestamp(T1.expected_from)          AS IngestionDate,\r\n",
-					"    NULL AS ValidTo,\r\n",
-					"    md5(concat(IFNULL(T5.CaseReference,'.'), IFNULL(T5.DocumentsReferenceID,'.'))) as RowID,\r\n",
-					"    'Y' as IsActive,\r\n",
-					"    T5.IsActive as HistoricIsActive\r\n",
+					"    END                             AS CaseID, -- surrogate \r\n",
+					"    T5.DocumentsReferenceID         AS DocumentsID,\r\n",
+					"    T5.CaseReference                AS CaseReference, -- source system id\r\n",
+					"    T2.SourceSystemID               AS SourceSystemID,\r\n",
+					"    to_timestamp(T1.IngestionDate)  AS IngestionDate,\r\n",
+					"    NULL                            AS ValidTo,\r\n",
+					"    md5(\r\n",
+					"        concat(\r\n",
+					"            IFNULL(T5.CaseReference,'.'), \r\n",
+					"            IFNULL(T5.DocumentsReferenceID,'.')\r\n",
+					"        ))                          AS RowID,\r\n",
+					"    'Y'                             AS IsActive,\r\n",
+					"    T5.IsActive                     AS HistoricIsActive\r\n",
 					"\r\n",
 					"FROM odw_harmonised_db.checkmark_case_fact T1\r\n",
 					"FULL JOIN odw_harmonised_db.checkmark_documents_dim T5 ON T1.CaseReference = T5.CaseReference AND T5.IsActive = 'Y'\r\n",
@@ -130,10 +134,10 @@
 					"        ELSE 'N'\r\n",
 					"    END  = 'Y' )\r\n",
 					"    AND T1.CaseReference IS NOT NULL\r\n",
-					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_harmonised_db.checkmark_case_fact)\r\n",
+					"    AND T1.IngestionDate = (SELECT MAX(IngestionDate) FROM odw_harmonised_db.checkmark_documents_dim)\r\n",
 					";"
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -207,7 +211,7 @@
 					"WHERE CaseReference IN (SELECT CaseReference FROM checkmark_case_fact_new WHERE CaseID IS NULL) AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -328,7 +332,7 @@
 					"        Source.IsActive) \r\n",
 					";  "
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -380,7 +384,7 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_case_fact;"
 				],
-				"execution_count": 8
+				"execution_count": null
 			}
 		]
 	}
