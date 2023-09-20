@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "873e135f-925d-4d67-a0b7-d793a7f144e8"
+				"spark.autotune.trackingId": "23777edf-ea60-416f-a031-c084432cd62d"
 			}
 		},
 		"metadata": {
@@ -210,7 +210,7 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY  VIEW coverage_reference_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW coverage_reference_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -246,6 +246,56 @@
 					""
 				],
 				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate                               AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1))     AS ClosingDate,\n",
+					"    'Y'                                         AS IsActive\n",
+					"\n",
+					"FROM conditions_reference_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW conditions_reference_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    ConditionsReferenceID,\n",
+					"    ConditionsMarkID,\n",
+					"    Value,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM conditions_reference_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -291,17 +341,31 @@
 					"ON Source.CoverageMarkID = Target.CoverageMarkID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (ConditionsReferenceID,\r\n",
+					"        ConditionsMarkID,\r\n",
+					"        Value,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.ConditionsReferenceID,\r\n",
+					"        Source.ConditionsMarkID,\r\n",
+					"        Source.Value,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					"; "
 				],
 				"execution_count": 6
 			},
