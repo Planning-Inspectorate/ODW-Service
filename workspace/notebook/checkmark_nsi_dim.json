@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "81851522-a944-451f-948f-ef5167679bd3"
+				"spark.autotune.trackingId": "22c4f2e1-735e-42f9-bd61-33debd9a84e3"
 			}
 		},
 		"metadata": {
@@ -250,7 +250,7 @@
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -266,7 +266,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -280,27 +281,28 @@
 					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
 					"    'Y' AS IsActive\n",
 					"\n",
-					"FROM manager_type_reference_dim_new;\n",
+					"FROM nsi_dim_new;\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW manager_type_reference_dim_changed_rows_final\n",
+					"CREATE OR REPLACE TEMPORARY VIEW nsi_changed_rows_final\n",
 					"\n",
 					"    AS\n",
 					"\n",
 					"SELECT \n",
-					"    ManagerTypeReferenceID,\n",
-					"    InspectorManagerTypeID,\n",
-					"    Value, \n",
+					"    NSIID,\n",
+					"    NSINameID,\n",
+					"    Name,\n",
+					"    Email,\n",
 					"    T1.SourceSystemID,\n",
 					"    T1.IngestionDate,\n",
 					"    T1.ValidTo,\n",
 					"    T1.RowID,\n",
 					"    T1.IsActive,\n",
 					"    T2.ClosingDate\n",
-					"FROM manager_type_reference_dim_changed_rows T1\n",
+					"FROM nsi_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
 					";"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -341,24 +343,40 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_nsi_dim AS Target\r\n",
-					"USING nsi_changed_rows AS Source\r\n",
+					"USING nsi_changed_rows_final AS Source\r\n",
 					"\r\n",
-					"ON Source.NSINameID = Target.NSINameID\r\n",
+					"ON Source.NSIID = Target.NSIID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (NSIID,\r\n",
+					"        NSINameID,\r\n",
+					"        Name,\r\n",
+					"        Email,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.NSIID,\r\n",
+					"        Source.NSINameID,\r\n",
+					"        Source.Name,\r\n",
+					"        Source.Email,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					";  "
 				],
-				"execution_count": 6
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -412,7 +430,7 @@
 					"FROM odw_harmonised_db.checkmark_nsi_dim;\r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 6
 			}
 		]
 	}
