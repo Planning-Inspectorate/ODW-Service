@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "50c28202-7f6e-4b57-a32a-1fffe4119437"
+				"spark.autotune.trackingId": "dea26baa-a9bb-47b6-8c32-85ebc103701a"
 			}
 		},
 		"metadata": {
@@ -130,7 +130,13 @@
 					"WHERE\r\n",
 					"     -- flags new data        \r\n",
 					"    (CASE\r\n",
-					"        WHEN T1.InspectorManagerDimID = T5.InspectorManagerDimID AND md5(concat(IFNULL(T1.InspectorManagerDimID,'.'),IFNULL(T7.EmployeeID,'.'),IFNULL(T1.InspectorManagerDimID,'.'),IFNULL(T6.ManagerTypeReferenceID,'.'))) <> T5.RowID    -- same employee, changed data\r\n",
+					"        WHEN T1.InspectorManagerDimID = T5.InspectorManagerDimID \r\n",
+					"            AND md5(\r\n",
+					"                concat(\r\n",
+					"                IFNULL(T7.EmployeeID,'.'),\r\n",
+					"                IFNULL(T1.InspectorManagerDimID,'.'),\r\n",
+					"                IFNULL(T6.ManagerTypeReferenceID,'.')\r\n",
+					"            )) <> T5.RowID    -- same employee, changed data\r\n",
 					"        THEN 'Y'\r\n",
 					"        WHEN T5.InspectorManagerDimID IS NULL -- new employee\r\n",
 					"        THEN 'Y'\r\n",
@@ -246,9 +252,9 @@
 					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
 					"    'Y' AS IsActive\n",
 					"\n",
-					"FROM inspector_manager_dim_new;\n",
+					"FROM checkmark_inspector_manager_fact_new;\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW inspector_manager_dim_changed_rows_final\n",
+					"CREATE OR REPLACE TEMPORARY VIEW checkmark_inspector_manager_fact_changed_rows_final\n",
 					"\n",
 					"    AS\n",
 					"\n",
@@ -263,7 +269,7 @@
 					"    T1.RowID,\n",
 					"    T1.IsActive,\n",
 					"    T2.ClosingDate\n",
-					"FROM inspector_manager_dim_changed_rows T1\n",
+					"FROM checkmark_inspector_manager_fact_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
 				"execution_count": null
@@ -306,9 +312,9 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_inspector_manager_fact AS Target\r\n",
-					"USING checkmark_inspector_manager_fact_changed_rows AS Source\r\n",
+					"USING checkmark_inspector_manager_fact_changed_rows_final AS Source\r\n",
 					"\r\n",
-					"ON Source.InspectorManagerDimID = Target.InspectorManagerDimID\r\n",
+					"ON Source.InspectorManagerFactID = Target.InspectorManagerFactID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"WHEN MATCHED\r\n",
