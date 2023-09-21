@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fb9791b0-1e3e-4a74-a668-5bd71409589c"
+				"spark.autotune.trackingId": "893dc152-8ce3-4a0c-b4fc-f07eba024ef7"
 			}
 		},
 		"metadata": {
@@ -106,7 +106,7 @@
 					"        THEN T5.InspectorManagerReadingCaseID\r\n",
 					"        ELSE NULL\r\n",
 					"    END                         AS InspectorManagerReadingCaseID, -- surrogate \r\n",
-					"    T1.InspectorManagerFactID   AS InpectorManagerID,\r\n",
+					"    T1.InspectorManagerFactID   AS InspectorManagerID,\r\n",
 					"    T6.ReadingCaseID            AS ReadingCaseID,\r\n",
 					"    T1.InspectorManagerDimID    AS InspectorManagerDimID,\r\n",
 					"    T1.ManagerTypeReferenceID   AS ManagerTypeReferenceID,\r\n",
@@ -148,7 +148,7 @@
 					"    AND T1.IngestionDate = (SELECT MAX(IngestionDate) FROM odw_harmonised_db.checkmark_inspector_manager_fact)\r\n",
 					";"
 				],
-				"execution_count": 1
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -196,7 +196,7 @@
 					"\r\n",
 					"Select \r\n",
 					"    InspectorManagerReadingCaseID, -- surrogate \r\n",
-					"    InpectorManagerID,\r\n",
+					"    InspectorManagerID,\r\n",
 					"    ReadingCaseID,\r\n",
 					"    InspectorManagerDimID,\r\n",
 					"    ManagerTypeReferenceID,\r\n",
@@ -213,7 +213,7 @@
 					"\r\n",
 					"SELECT\r\n",
 					"    InspectorManagerReadingCaseID, -- surrogate \r\n",
-					"    InpectorManagerID,\r\n",
+					"    InspectorManagerID,\r\n",
 					"    ReadingCaseID,\r\n",
 					"    InspectorManagerDimID,\r\n",
 					"    ManagerTypeReferenceID,\r\n",
@@ -226,7 +226,7 @@
 					"WHERE InspectorManagerDimID IN (SELECT InspectorManagerDimID FROM checkmark_inspector_manager_reading_case_bridge_new WHERE InspectorManagerReadingCaseID IS NULL) AND IsActive = 'Y';\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -242,7 +242,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -264,7 +265,7 @@
 					"\n",
 					"SELECT \n",
 					"    InspectorManagerReadingCaseID,\n",
-					"    InpectorManagerID,\n",
+					"    InspectorManagerID,\n",
 					"    ReadingCaseID,\n",
 					"    InspectorManagerDimID,\n",
 					"    ManagerTypeReferenceID,\n",
@@ -277,7 +278,7 @@
 					"FROM checkmark_inspector_manager_reading_case_bridge_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -317,7 +318,7 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_inspector_manager_reading_case_bridge AS Target\r\n",
-					"USING checkmark_inspector_manager_reading_case_bridge_changed_rows AS Source\r\n",
+					"USING checkmark_inspector_manager_reading_case_bridge_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.InspectorManagerReadingCaseID = Target.InspectorManagerReadingCaseID\r\n",
 					"\r\n",
@@ -331,7 +332,7 @@
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT (InspectorManagerReadingCaseID,\r\n",
-					"        InpectorManagerID,\r\n",
+					"        InspectorManagerID,\r\n",
 					"        ReadingCaseID,\r\n",
 					"        InspectorManagerDimID,\r\n",
 					"        ManagerTypeReferenceID,\r\n",
@@ -341,10 +342,10 @@
 					"        RowID,\r\n",
 					"        IsActive)  \r\n",
 					"        VALUES (Source.InspectorManagerReadingCaseID,\r\n",
-					"        SourceInpectorManagerID,\r\n",
-					"        SourceReadingCaseID,\r\n",
-					"        SourceInspectorManagerDimID,\r\n",
-					"        SourceManagerTypeReferenceID,\r\n",
+					"        Source.InspectorManagerID,\r\n",
+					"        Source.ReadingCaseID,\r\n",
+					"        Source.InspectorManagerDimID,\r\n",
+					"        Source.ManagerTypeReferenceID,\r\n",
 					"        Source.SourceSystemID, \r\n",
 					"        Source.IngestionDate, \r\n",
 					"        Source.ValidTo, \r\n",
@@ -353,7 +354,7 @@
 					"; \r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -395,8 +396,9 @@
 					"INSERT OVERWRITE odw_harmonised_db.checkmark_inspector_manager_reading_case_bridge\r\n",
 					"\r\n",
 					"SELECT \r\n",
-					"    ROW_NUMBER() OVER (ORDER BY InspectorManagerReadingCaseID NULLS LAST) AS InspectorManagerReadingCaseID, -- surrogate key\r\n",
-					"    EmployeeID,\r\n",
+					"    ROW_NUMBER() OVER (ORDER BY InspectorManagerReadingCaseID NULLS LAST) AS InspectorManagerReadingCaseID,\r\n",
+					"    InspectorManagerID,\r\n",
+					"    ReadingCaseID,\r\n",
 					"    InspectorManagerDimID,\r\n",
 					"    ManagerTypeReferenceID,\r\n",
 					"    SourceSystemID,\r\n",
@@ -406,7 +408,7 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.checkmark_inspector_manager_reading_case_bridge;"
 				],
-				"execution_count": null
+				"execution_count": 14
 			}
 		]
 	}
