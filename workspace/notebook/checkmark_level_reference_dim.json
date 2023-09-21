@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9cfab45d-c40a-432e-a7a3-a3c490cf47c3"
+				"spark.autotune.trackingId": "45b5d80c-2a64-4fd5-8aea-bbade777c858"
 			}
 		},
 		"metadata": {
@@ -242,7 +242,7 @@
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -258,7 +258,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -272,31 +273,27 @@
 					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
 					"    'Y' AS IsActive\n",
 					"\n",
-					"FROM comments_dim_new;\n",
+					"FROM level_reference_dim_new;\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW comments_dim_changed_rows_final\n",
+					"CREATE OR REPLACE TEMPORARY VIEW level_reference_changed_rows_final\n",
 					"\n",
 					"    AS\n",
 					"\n",
 					"SELECT \n",
-					"    CommentsDimID,\n",
-					"    CaseReference,\n",
-					"    Type,\n",
-					"    State,\n",
-					"    Author,\n",
-					"    Comment,\n",
-					"    Timestamp,\n",
+					"    LevelReferenceID,\n",
+					"    CaseLevelID,\n",
+					"    Value,\n",
 					"    T1.SourceSystemID,\n",
 					"    T1.IngestionDate,\n",
 					"    T1.ValidTo,\n",
 					"    T1.RowID,\n",
 					"    T1.IsActive,\n",
 					"    T2.ClosingDate\n",
-					"FROM comments_dim_changed_rows T1\n",
+					"FROM level_reference_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
 					";"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -337,7 +334,7 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_level_reference_dim AS Target\r\n",
-					"USING level_reference_changed_rows AS Source\r\n",
+					"USING level_reference_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.CaseLevelID = Target.CaseLevelID\r\n",
 					"\r\n",
@@ -350,25 +347,17 @@
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT (CommentsDimID,\r\n",
-					"        CaseReference,\r\n",
-					"        Type,\r\n",
-					"        State,\r\n",
-					"        Author,\r\n",
-					"        Comment,\r\n",
-					"        Timestamp,\r\n",
+					"    THEN INSERT (LevelReferenceID,\r\n",
+					"        CaseLevelID,\r\n",
+					"        Value,\r\n",
 					"        SourceSystemID,\r\n",
 					"        IngestionDate,\r\n",
 					"        ValidTo,\r\n",
 					"        RowID,\r\n",
 					"        IsActive)  \r\n",
-					"        VALUES (Source.CommentsDimID,\r\n",
-					"        Source.CaseReference,\r\n",
-					"        Source.Type,\r\n",
-					"        Source.State,\r\n",
-					"        Source.Author,\r\n",
-					"        Source.Comment,\r\n",
-					"        Source.Timestamp,\r\n",
+					"        VALUES (Source.LevelReferenceID,\r\n",
+					"        Source.CaseLevelID,\r\n",
+					"        Source.Value,\r\n",
 					"        Source.SourceSystemID, \r\n",
 					"        Source.IngestionDate, \r\n",
 					"        Source.ValidTo, \r\n",
@@ -376,7 +365,7 @@
 					"        Source.IsActive) \r\n",
 					";  "
 				],
-				"execution_count": 6
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -429,7 +418,7 @@
 					"FROM odw_harmonised_db.checkmark_level_reference_dim;\r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 6
 			}
 		]
 	}
