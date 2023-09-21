@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5fe1370b-68b3-428b-ac12-fa409691db47"
+				"spark.autotune.trackingId": "7130e531-f764-4b29-8cae-ba16776a1171"
 			}
 		},
 		"metadata": {
@@ -169,21 +169,16 @@
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
 					"FULL JOIN odw_harmonised_db.checkmark_inspector_manager_dim T3 ON T1.id = T3.InspectorManagerID and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (-- flags new data        \r\n",
+					"    -- flags new data        \r\n",
 					"        (CASE\r\n",
 					"            WHEN T1.ID = T3.InspectorManagerID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.email,'.'),IFNULL(T1.name,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
 					"            WHEN T3.InspectorManagerID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
-					"        END  = 'Y' ) OR\r\n",
-					"        -- flags deleted data\r\n",
-					"        (CASE\r\n",
-					"            WHEN T1.id IS NULL\r\n",
-					"            THEN 'Y'\r\n",
-					"            ELSE 'N'\r\n",
-					"        END = 'Y' )\r\n",
-					"    )\r\n",
+					"        END  = 'Y' )\r\n",
+					"    AND T1.id IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM comment_type_reference_grouped)\r\n",
 					";"
 				],
 				"execution_count": 18
@@ -409,6 +404,56 @@
 				"execution_count": 21
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM comment_type_reference_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW comment_type_reference_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    CommentTypeReferenceID,\n",
+					"    TypeID,\n",
+					"    Value,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM comment_type_reference_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -452,16 +497,31 @@
 					"ON Source.InspectorManagerID = Target.InspectorManagerID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
+					"    THEN INSERT (CommentTypeReferenceID,\r\n",
+					"        TypeID,\r\n",
+					"        Value,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.CommentTypeReferenceID,\r\n",
+					"        Source.TypeID,\r\n",
+					"        Source.Value,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					"; \r\n",
 					""
 				],
 				"execution_count": 22
