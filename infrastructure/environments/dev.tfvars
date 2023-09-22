@@ -25,7 +25,7 @@ apim_api_policies = [
   }
 ]
 
-apim_api_products = [
+apim_products = [
   {
     api_name              = "api_management_demo_api"
     name                  = "api_management_demo_product"
