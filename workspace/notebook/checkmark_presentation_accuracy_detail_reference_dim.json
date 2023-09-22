@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d4a8f561-c9fa-41c5-98fe-eb98a1f38101"
+				"spark.autotune.trackingId": "faa9f688-29c4-490c-b7aa-06446d2a52a5"
 			}
 		},
 		"metadata": {
@@ -149,8 +149,11 @@
 					"    T3.IsActive                     AS HistoricIsActive\r\n",
 					"\r\n",
 					"FROM presentation_accuracy_detail_reference_grouped T1\r\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
-					"FULL JOIN odw_harmonised_db.checkmark_presentation_accuracy_detail_reference_dim T3 ON T1.id = T3.PresentationAccuracyDetailID and T3.IsActive = 'Y'\r\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 \r\n",
+					"    ON \"Checkmark\" = T2.Description\r\n",
+					"FULL JOIN odw_harmonised_db.checkmark_presentation_accuracy_detail_reference_dim T3 \r\n",
+					"    ON T1.id = T3.PresentationAccuracyDetailID \r\n",
+					"        AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
 					"        (CASE\r\n",
@@ -161,7 +164,7 @@
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' )\r\n",
 					"    AND T1.id IS NOT NULL\r\n",
-					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM outcome_reference_grouped)\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM presentation_accuracy_detail_reference_grouped)\r\n",
 					";"
 				],
 				"execution_count": 2
@@ -241,6 +244,56 @@
 				"execution_count": 5
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM presentation_accuracy_detail_reference_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW presentation_accuracy_detail_reference_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    PresentationAccuracyDetailReferenceID,\n",
+					"    PresentationAccuracyDetailID,\n",
+					"    Value,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM presentation_accuracy_detail_reference_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -284,17 +337,31 @@
 					"ON Source.PresentationAccuracyDetailID = Target.PresentationAccuracyDetailID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (PresentationAccuracyDetailReferenceID,\r\n",
+					"        PresentationAccuracyDetailID,\r\n",
+					"        Value,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.PresentationAccuracyDetailReferenceID,\r\n",
+					"        Source.PresentationAccuracyDetailID,\r\n",
+					"        Source.Value,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					";  "
 				],
 				"execution_count": 6
 			},
