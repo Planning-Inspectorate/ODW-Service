@@ -20,9 +20,12 @@ module "api_management" {
 
   source = "./modules/api-management"
 
+  apim_apis           = var.apim_apis
+  apim_api_policies   = var.apim_api_policies
+  apim_products       = var.apim_products
   environment         = var.environment
   resource_group_name = azurerm_resource_group.api_management[0].name
-  #key_vault_id             = module.synapse_data_lake.key_vault_id
+  #key_vault_id               = module.synapse_data_lake.key_vault_id
   location                 = module.azure_region.location_cli
   publisher_name           = var.apim_publisher_name
   publisher_email          = var.apim_publisher_email
@@ -41,9 +44,12 @@ module "api_management_failover" {
 
   source = "./modules/api-management"
 
+  apim_apis           = var.apim_apis
+  apim_api_policies   = var.apim_api_policies
+  apim_products       = var.apim_products
   environment         = var.environment
   resource_group_name = azurerm_resource_group.api_management_failover[0].name
-  #key_vault_id             = module.synapse_data_lake_failover.key_vault_id
+  #key_vault_id               = module.synapse_data_lake_failover.key_vault_id
   location                 = module.azure_region.paired_location.location_cli
   publisher_name           = var.apim_publisher_name
   publisher_email          = var.apim_publisher_email

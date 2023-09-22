@@ -5,6 +5,37 @@ alert_group_synapse_recipients           = ["chris.topping@planninginspectorate.
 alert_scope_service_health               = "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
+
+apim_apis = [
+  {
+    name                  = "api_management_demo_api"
+    path                  = "api_management"
+    display_name          = "Demo Conference API"
+    service_url           = "https://conferenceapi.azurewebsites.net/"
+    subscription_required = false
+    content_format        = "openapi+json"
+    content_value         = "Demo_Conference_API.json"
+  },
+]
+
+apim_api_policies = [
+  {
+    api_name    = "api_management_demo_api"
+    xml_content = "demo-api-policy.xml"
+  }
+]
+
+apim_api_products = [
+  {
+    api_name              = "api_management_demo_api"
+    name                  = "api_management_demo_product"
+    display_name          = "Demo Product"
+    description           = "Demo Product"
+    published             = false
+    subscription_required = false
+  }
+]
+
 apim_enabled         = true
 apim_publisher_email = "alex.delany@planninginspectorate.gov.uk"
 apim_publisher_name  = "Alex Delany"
