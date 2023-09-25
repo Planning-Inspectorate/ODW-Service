@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "763f2dc7-a936-41da-ac18-a65ceb989c45"
+				"spark.autotune.trackingId": "46fa810a-388c-4052-ac82-5967c533e5a3"
 			}
 		},
 		"metadata": {
@@ -108,6 +108,37 @@
 					}
 				},
 				"source": [
+					"#### Set the ODW database being used to compare against"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"target_database = 'odw_curated_db'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"#### Run data_validation_utils notebook to reference all functions and variables from there  \r\n",
 					"\r\n",
 					"This keeps this notebook a lot smaller and tidier and just contains the bare minimum code"
@@ -127,25 +158,7 @@
 					}
 				},
 				"source": [
-					"%run utils/py_data_validation_utils"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"mssparkutils.notebook.run(\"utils/py_data_validation_utils\")"
+					"%run utils/data-validation/py_utils_data_validation"
 				],
 				"execution_count": null
 			},
@@ -267,7 +280,7 @@
 					"    source_dbtable = source\r\n",
 					"    target_dbtable = target\r\n",
 					"    test_source_df = sourcedataset(source_dbtable)\r\n",
-					"    test_target_df = targetdataset(target_dbtable)\r\n",
+					"    test_target_df = targetdataset(target_database, target_dbtable)\r\n",
 					"    \r\n",
 					"    # run test1_rows_in_source_not_in_target\r\n",
 					"    result = test1_rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
@@ -511,15 +524,17 @@
 				},
 				"source": [
 					"for source, target in tqdm(test_results_dict.items()):\r\n",
-					"    if source == 'live.dim_HR_work_contract':\r\n",
+					"    if source == 'load.SAP_HR_Leavers':\r\n",
+					"        source_dbtable = source\r\n",
+					"        target_dbtable = target['target_table']\r\n",
+					"        test_source_df = sourcedataset(source_dbtable)\r\n",
+					"        test_target_df = targetdataset(target_database, target_dbtable)\r\n",
+					"        print(f\"{source_dbtable} -> {target_dbtable}\")\r\n",
 					"        if target['test8_source_target_shape_match'] == True:\r\n",
-					"            source_dbtable = source\r\n",
-					"            target_dbtable = target['target_table']\r\n",
-					"            test_source_df = sourcedataset(source_dbtable)\r\n",
-					"            test_target_df = targetdataset(target_dbtable)\r\n",
-					"            print(f\"{source_dbtable} -> {target_dbtable}\")\r\n",
 					"            compare_df = pandas_compare_dataframes(test_source_df, test_target_df)\r\n",
 					"            print(compare_df)\r\n",
+					"        else:\r\n",
+					"            print(f\"Source and target shapes don't match for {source_dbtable}\")\r\n",
 					"        \r\n",
 					"print(\"Finished comparisons\")"
 				],
@@ -575,8 +590,11 @@
 					}
 				},
 				"source": [
-					"test_source_df = test_source_df.applymap(str)\r\n",
-					"test_target_df = test_target_df.applymap(str)"
+					"# test_source_df = test_source_df.applymap(str)\r\n",
+					"test_source_df = test_source_df.astype('string')\r\n",
+					"# test_target_df = test_target_df.applymap(str)\r\n",
+					"test_target_df = test_target_df.astype('string')\r\n",
+					"print(f'Source DataFrame and target DataFrame data types set to string to enable comparison')"
 				],
 				"execution_count": null
 			},
@@ -594,8 +612,62 @@
 					}
 				},
 				"source": [
-					"merge_df = test_source_df.merge(test_target_df, how='left', on='dim_work_contract_key', suffixes=('_MiPINS', '_ODW'))\r\n",
+					"test_source_df = test_source_df.rename(columns = {'Pers#No#':'PersNo'})"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_source_df.info()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"merge_df = test_source_df.merge(test_target_df, how='left', on='PersNo', suffixes=('_MiPINS', '_ODW'))\r\n",
 					"merge_df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"merge_df = merge_df.fillna('UNKNOWN')"
 				],
 				"execution_count": null
 			},
@@ -678,7 +750,8 @@
 					}
 				},
 				"source": [
-					"merge_df_mipins.compare(merge_df_odw, result_names=('MiPINS', 'ODW'))"
+					"merge_df_mipins.compare(merge_df_odw, result_names=('MiPINS', 'ODW'))\r\n",
+					"# keep_shape=True, keep_equal=True)"
 				],
 				"execution_count": null
 			},
@@ -714,7 +787,7 @@
 					}
 				},
 				"source": [
-					"test_source_df.dtypes"
+					"test_target_df.dtypes"
 				],
 				"execution_count": null
 			},
