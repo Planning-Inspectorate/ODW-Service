@@ -35,7 +35,7 @@ variable "alert_threshold_data_lake_capacity_bytes" {
 
 variable "apim_apis" {
   description = "A map of API names to API Management API objects"
-  type        = map(string)
+  type        = list(map(string))
 }
 
 variable "apim_api_policies" {
