@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "46fa810a-388c-4052-ac82-5967c533e5a3"
+				"spark.autotune.trackingId": "156a0278-dacc-4dc4-ac09-f17db296e341"
 			}
 		},
 		"metadata": {
@@ -590,6 +590,43 @@
 					}
 				},
 				"source": [
+					"# rename ODW columns (just in DataFrame) with the MiPINS column names so they can be compared\r\n",
+					"test_target_df.columns = [col for col in test_source_df.columns]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_target_df.info()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"# test_source_df = test_source_df.applymap(str)\r\n",
 					"test_source_df = test_source_df.astype('string')\r\n",
 					"# test_target_df = test_target_df.applymap(str)\r\n",
@@ -612,7 +649,7 @@
 					}
 				},
 				"source": [
-					"test_source_df = test_source_df.rename(columns = {'Pers#No#':'PersNo'})"
+					"test_target_df.info()"
 				],
 				"execution_count": null
 			},
@@ -630,25 +667,8 @@
 					}
 				},
 				"source": [
-					"test_source_df.info()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"merge_df = test_source_df.merge(test_target_df, how='left', on='PersNo', suffixes=('_MiPINS', '_ODW'))\r\n",
+					"table_key = ['Pers#No#', 'Leaving']\r\n",
+					"merge_df = test_source_df.merge(test_target_df, how='left', on=table_key, suffixes=('_MiPINS', '_ODW'))\r\n",
 					"merge_df"
 				],
 				"execution_count": null
@@ -685,14 +705,14 @@
 					}
 				},
 				"source": [
-					"def match_flag(row):\r\n",
-					"    if row['WorkContractCode_MiPINS'] == row['WorkContractCode_ODW']:\r\n",
-					"        return True\r\n",
-					"    else:\r\n",
-					"        return False\r\n",
+					"# def match_flag(row):\r\n",
+					"#     if row['WorkContractCode_MiPINS'] == row['WorkContractCode_ODW']:\r\n",
+					"#         return True\r\n",
+					"#     else:\r\n",
+					"#         return False\r\n",
 					"\r\n",
-					"merge_df['match'] = merge_df.apply(match_flag, axis = 1)\r\n",
-					"merge_df"
+					"# merge_df['match'] = merge_df.apply(match_flag, axis = 1)\r\n",
+					"# merge_df"
 				],
 				"execution_count": null
 			},
@@ -710,8 +730,46 @@
 					}
 				},
 				"source": [
-					"merge_df_mipins = pd.DataFrame(merge_df, columns = ['dim_work_contract_key', 'WorkContractCode_MiPINS', 'WorkContractDesc_MiPINS'])\r\n",
-					"merge_df_mipins = merge_df_mipins.rename(columns={'WorkContractCode_MiPINS': 'WorkContractCode', 'WorkContractDesc_MiPINS': 'WorkContractDesc'})\r\n",
+					"merge_df.info()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"MiPINS_cols = [col for col in merge_df.columns if (col[-7:]=='_MiPINS')]\r\n",
+					"MiPINS_renamed = [col.replace('_MiPINS', '') for col in MiPINS_cols]\r\n",
+					"odw_cols = [col for col in merge_df.columns if (col[-4:]=='_ODW')]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"merge_df_mipins = pd.DataFrame(merge_df, columns = MiPINS_renamed)\r\n",
+					"# merge_df_mipins = merge_df_mipins.rename(columns={'WorkContractCode_MiPINS': 'WorkContractCode', 'WorkContractDesc_MiPINS': 'WorkContractDesc'})\r\n",
 					"merge_df_mipins"
 				],
 				"execution_count": null
