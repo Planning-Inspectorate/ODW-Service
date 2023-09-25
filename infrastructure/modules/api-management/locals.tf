@@ -16,13 +16,13 @@ locals {
     published             = true
   }
 
-  apim_products = { for v in var.apim_products : v.name => merge(local.apim_products_defaults, v) }
+  apim_products = { for v in var.apim_products : v.product_id => merge(local.apim_products_defaults, v) }
 
   apim_api_policies_defaults = {
     content_format = "rawxml-link"
   }
 
-  apim_api_policies = { for v in var.apim_api_policies : v.name => merge(local.apim_api_policies_defaults, v) }
+  apim_api_policies = { for v in var.apim_api_policies : v.api_name => merge(local.apim_api_policies_defaults, v) }
 
   tags = merge(
     var.tags,
