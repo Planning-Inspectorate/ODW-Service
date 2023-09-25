@@ -35,16 +35,7 @@ variable "alert_threshold_data_lake_capacity_bytes" {
 
 variable "apim_apis" {
   description = "A map of API names to API Management API objects"
-  type = map(object({
-    content_format        = string
-    content_value         = string
-    revision              = number
-    display_name          = string
-    path                  = string
-    protocols             = list(string)
-    service_url           = string
-    subscription_required = bool
-  }))
+  type        = map(string)
 }
 
 variable "apim_api_policies" {
@@ -54,13 +45,7 @@ variable "apim_api_policies" {
 
 variable "apim_products" {
   description = "A map of product IDs to API Management product objects"
-  type = map(object({
-    display_name          = string
-    description           = string
-    subscription_required = bool
-    approval_required     = bool
-    published             = bool
-  }))
+  type        = map(string)
 }
 variable "bastion_host_enabled" {
   default     = false
