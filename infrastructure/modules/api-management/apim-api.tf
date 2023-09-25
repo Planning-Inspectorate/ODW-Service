@@ -12,7 +12,7 @@ resource "azurerm_api_management_api" "api" {
   subscription_required = each.value.subscription_required
 
   import {
-    content_format = each.value
+    content_format = each.value.content_format
     content_value  = file("${path.module}/api/${each.value.content_value}")
   }
 }

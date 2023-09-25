@@ -5,12 +5,12 @@ variable "apim_apis" {
 
 variable "apim_api_policies" {
   description = "A map of API names to API Management API policy XML files"
-  type        = map(string)
+  type        = list(map(string))
 }
 
 variable "apim_products" {
   description = "A map of product IDs to API Management product objects"
-  type        = map(string)
+  type        = list(map(string))
 }
 
 variable "environment" {
