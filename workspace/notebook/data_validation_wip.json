@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "156a0278-dacc-4dc4-ac09-f17db296e341"
+				"spark.autotune.trackingId": "95937bf4-4481-4e91-916e-4c92df6ff681"
 			}
 		},
 		"metadata": {
@@ -438,7 +438,7 @@
 					"    source_dbtable = source\r\n",
 					"    target_dbtable = target['target_table']\r\n",
 					"    test_source_df = sourcedataset(source_dbtable)\r\n",
-					"    test_target_df = targetdataset(target_dbtable)\r\n",
+					"    test_target_df = targetdataset(target_database, target_dbtable)\r\n",
 					"\r\n",
 					"    # if certain tests are True then the records need exporting to csv and saved in storage\r\n",
 					"    if target['test1_rows_in_source_not_in_target'] == True:\r\n",
@@ -468,7 +468,9 @@
 					}
 				},
 				"source": [
-					"#### Set flag for pandas.compare ability (DataFrames must be same shape)"
+					"#### Set flag for pandas.compare ability (DataFrames must be same shape) \r\n",
+					"\r\n",
+					"Not needed really, just a test I wrote, might be useful at some point."
 				]
 			},
 			{
@@ -485,14 +487,14 @@
 					}
 				},
 				"source": [
-					"def pandas_compare_flag(row):\r\n",
-					"    if row['test8_source_target_shape_match'] == True:\r\n",
-					"        return True\r\n",
-					"    else:\r\n",
-					"        return False\r\n",
+					"# def pandas_compare_flag(row):\r\n",
+					"#     if row['test8_source_target_shape_match'] == True:\r\n",
+					"#         return True\r\n",
+					"#     else:\r\n",
+					"#         return False\r\n",
 					"\r\n",
-					"result_df['pandas_compare_flag'] = result_df.apply(pandas_compare_flag, axis = 1)\r\n",
-					"result_df"
+					"# result_df['pandas_compare_flag'] = result_df.apply(pandas_compare_flag, axis = 1)\r\n",
+					"# result_df"
 				],
 				"execution_count": null
 			},
@@ -649,7 +651,9 @@
 					}
 				},
 				"source": [
-					"test_target_df.info()"
+					"table_key = ['Pers#No#', 'Leaving']\r\n",
+					"merge_df = test_source_df.merge(test_target_df, how='outer', on=table_key, suffixes=('_MiPINS', '_ODW'), indicator='Table?')\r\n",
+					"merge_df"
 				],
 				"execution_count": null
 			},
@@ -667,9 +671,27 @@
 					}
 				},
 				"source": [
-					"table_key = ['Pers#No#', 'Leaving']\r\n",
-					"merge_df = test_source_df.merge(test_target_df, how='left', on=table_key, suffixes=('_MiPINS', '_ODW'))\r\n",
-					"merge_df"
+					"# Set merge_df columns to string to enable comparison\r\n",
+					"merge_df = merge_df.astype('string')\r\n",
+					"print(f'Merged DataFrame data types set to string to enable comparison')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"merge_df.info()"
 				],
 				"execution_count": null
 			},
@@ -730,7 +752,14 @@
 					}
 				},
 				"source": [
-					"merge_df.info()"
+					"MiPINS_cols = table_key + ['Table?'] + [col for col in merge_df.columns if (col[-7:]=='_MiPINS')]\r\n",
+					"print(MiPINS_cols)\r\n",
+					"MiPINS_renamed = list([col.replace('_MiPINS', '') for col in MiPINS_cols])\r\n",
+					"print(MiPINS_renamed)\r\n",
+					"odw_cols = table_key + ['Table?'] + [col for col in merge_df.columns if (col[-4:]=='_ODW')]\r\n",
+					"print(odw_cols)\r\n",
+					"odw_renamed = list([col.replace('_ODW', '') for col in odw_cols])\r\n",
+					"print(odw_renamed)"
 				],
 				"execution_count": null
 			},
@@ -748,29 +777,28 @@
 					}
 				},
 				"source": [
-					"MiPINS_cols = [col for col in merge_df.columns if (col[-7:]=='_MiPINS')]\r\n",
-					"MiPINS_renamed = [col.replace('_MiPINS', '') for col in MiPINS_cols]\r\n",
-					"odw_cols = [col for col in merge_df.columns if (col[-4:]=='_ODW')]"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"merge_df_mipins = pd.DataFrame(merge_df, columns = MiPINS_renamed)\r\n",
+					"merge_df_mipins = merge_df[MiPINS_cols]\r\n",
 					"# merge_df_mipins = merge_df_mipins.rename(columns={'WorkContractCode_MiPINS': 'WorkContractCode', 'WorkContractDesc_MiPINS': 'WorkContractDesc'})\r\n",
+					"merge_df_mipins.columns = [col for col in MiPINS_renamed]\r\n",
 					"merge_df_mipins"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"merge_df_mipins.info()"
 				],
 				"execution_count": null
 			},
