@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "94a2fbe6-1378-406d-9c37-c89052106d41"
+				"spark.autotune.trackingId": "96872eca-6a84-48b7-83e3-935d753fce10"
 			}
 		},
 		"metadata": {
@@ -112,6 +112,9 @@
 				},
 				"source": [
 					"def create_adls_path(account_name: str, container_name: str, relative_path: str):\r\n",
+					"    '''\r\n",
+					"    Function to create the path to Azure Data Lake Storage\r\n",
+					"    '''\r\n",
 					"    file_path = f'abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}'\r\n",
 					"    return file_path"
 				],
@@ -958,11 +961,92 @@
 				},
 				"source": [
 					"def pandas_compare_dataframes(test_source_df, test_target_df):\r\n",
-					"    comparison_df = test_source_df.compare(test_target_df, result_names = ('source', 'target'))\r\n",
+					"    comparison_df = test_source_df.compare(test_target_df, result_names=('MiPINS', 'ODW'), keep_shape=False, keep_equal=False)\r\n",
 					"    if len(comparison_df) > 0:\r\n",
 					"        return comparison_df\r\n",
 					"    else:\r\n",
 					"        return print(\"No differences\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### create_dataframes_to_compare"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_dataframes_to_compare(test_source_df, test_target_df, table_key: list):\r\n",
+					"    # rename ODW columns (just in DataFrame) with the MiPINS column names so they can be compared\r\n",
+					"    test_target_df.columns = [col for col in test_source_df.columns]\r\n",
+					"    \r\n",
+					"    # cast all columns to string for ease of comparison\r\n",
+					"    test_source_df = test_source_df.astype('string')\r\n",
+					"    test_target_df = test_target_df.astype('string')\r\n",
+					"    print(f'Source DataFrame and target DataFrame data types set to string to enable comparison')\r\n",
+					"\r\n",
+					"    # set the key for the table to be used for joining purposes and as the DataFrame index\r\n",
+					"    table_key = table_key\r\n",
+					"    print(\"Table key set\")\r\n",
+					"\r\n",
+					"    # merge the 2 DataFrames using an outer join on the table key passed to the function, setting suffixes and an indicator column\r\n",
+					"    merge_df = test_source_df.merge(test_target_df, how='outer', on=table_key, suffixes=('_MiPINS', '_ODW'), indicator='Table?')\r\n",
+					"    print(\"DataFrames merged successfully\")\r\n",
+					"\r\n",
+					"    # Set the index of the merged DataFrame to the table key passed to the function, keeping the columns in the DataFrame as well as the index\r\n",
+					"    merge_df.set_index(table_key, inplace=True, drop=False)\r\n",
+					"    print(\"Index set on merged DataFrame\")\r\n",
+					"\r\n",
+					"    # Set merge_df columns to string to enable comparison\r\n",
+					"    merge_df = merge_df.astype('string')\r\n",
+					"    print(\"Merged DataFrame data types set to string to enable comparison\")\r\n",
+					"\r\n",
+					"    # Replace N/A values with 'UNKNOWN'\r\n",
+					"    merge_df = merge_df.fillna('UNKNOWN')\r\n",
+					"    print(\"N/A values replaced with 'UNKNOWN'\")\r\n",
+					"\r\n",
+					"    # Create a list of MiPINS and ODW columns from the merged DataFrame and rename them, removing the suffix\r\n",
+					"    MiPINS_cols = table_key + ['Table?'] + [col for col in merge_df.columns if (col[-7:]=='_MiPINS')]\r\n",
+					"    MiPINS_renamed = list([col.replace('_MiPINS', '') for col in MiPINS_cols])\r\n",
+					"    odw_cols = table_key + ['Table?'] + [col for col in merge_df.columns if (col[-4:]=='_ODW')]\r\n",
+					"    odw_renamed = list([col.replace('_ODW', '') for col in odw_cols])\r\n",
+					"    print(\"MiPINS and ODW columns defined and renamed\")\r\n",
+					"\r\n",
+					"    # Assign column names to each DataFrame so they match exactly for comparison purposes\r\n",
+					"    merge_df_mipins = merge_df[MiPINS_cols]\r\n",
+					"    merge_df_mipins.columns = [col for col in MiPINS_renamed]\r\n",
+					"    merge_df_odw = merge_df[odw_cols]\r\n",
+					"    merge_df_odw.columns = [col for col in odw_renamed]\r\n",
+					"    print(\"Column names assigned for each DataFrame\")\r\n",
+					"\r\n",
+					"    # Check the new DataFrames have a matching shape\r\n",
+					"    shape_match = test8_source_target_shape_match(merge_df_mipins, merge_df_odw)\r\n",
+					"    print(f'Shape match: {shape_match}')\r\n",
+					"\r\n",
+					"    # Create resulting comparison DataFrame\r\n",
+					"    df_compare = pandas_compare_dataframes(merge_df_mipins, merge_df_odw) \r\n",
+					"    \r\n",
+					"    return df_compare"
 				],
 				"execution_count": null
 			}
