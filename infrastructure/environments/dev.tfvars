@@ -27,8 +27,8 @@ apim_api_policies = [
 
 apim_products = [
   {
+    product_id            = "api_management_demo_product"
     api_name              = "api_management_demo_api"
-    name                  = "api_management_demo_product"
     display_name          = "Demo Product"
     description           = "Demo Product"
     published             = false
