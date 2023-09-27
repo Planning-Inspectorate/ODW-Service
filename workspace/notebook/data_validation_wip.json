@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f9bb3340-c78b-4dc0-b1b6-54de248d2042"
+				"spark.autotune.trackingId": "7cec825d-7e30-4ee8-a4e4-134153543e63"
 			}
 		},
 		"metadata": {
@@ -89,6 +89,8 @@
 					"import pprint\r\n",
 					"import json\r\n",
 					"from tqdm import tqdm\r\n",
+					"from azure.storage.blob import BlobServiceClient\r\n",
+					"import requests as r\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
 					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
@@ -315,6 +317,10 @@
 					"    result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
 					"    test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
 					"\r\n",
+					"    # run test9_values_mismatch\r\n",
+					"    # result = test9_values_mismatch(df_compare)\r\n",
+					"    # test_results_dict[source_dbtable]['test9_values_mismatch'] = result\r\n",
+					"\r\n",
 					"print(\"All tests complete!\")"
 				],
 				"execution_count": null
@@ -526,7 +532,7 @@
 				},
 				"source": [
 					"for source, target in tqdm(test_results_dict.items()):\r\n",
-					"    if source == 'Live.dim_HR_Personnel_SubArea':\r\n",
+					"    if source == 'load.SAP_HR_Leavers':\r\n",
 					"        source_dbtable = source\r\n",
 					"        target_dbtable = target['target_table']\r\n",
 					"        test_source_df = sourcedataset(source_dbtable)\r\n",
@@ -865,6 +871,19 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Call create_dataframes_to_compare function"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -879,8 +898,9 @@
 				},
 				"source": [
 					"# print(source_dbtable)\r\n",
-					"table_key = ['dim_personnel_subarea_key']\r\n",
-					"create_dataframes_to_compare(test_source_df, test_target_df, table_key)"
+					"table_key = ['Pers#No#', 'Leaving']\r\n",
+					"df_compare = create_dataframes_to_compare(test_source_df, test_target_df, table_key)\r\n",
+					"df_compare.head(5)"
 				],
 				"execution_count": null
 			},
@@ -898,7 +918,7 @@
 					}
 				},
 				"source": [
-					"pandas_compare_dataframes"
+					"df_compare.info()"
 				],
 				"execution_count": null
 			},
@@ -929,7 +949,54 @@
 					}
 				},
 				"source": [
-					"write_records_to_csv"
+					"    source = 'load.SAP_HR_Leavers'\r\n",
+					"    folder = source\r\n",
+					"\r\n",
+					"    # pass in the source table name to the file path so the records for each source table are saved in their own folder\r\n",
+					"    relative_path = f'data_validation/outputs/test_results_records/{folder}/{source}'\r\n",
+					"    data = spark.createDataFrame(df_compare)\r\n",
+					"\r\n",
+					"    # cast null columns to string to avoid errors\r\n",
+					"    data = data.select([f.lit(None).cast('string').alias(i.name) if isinstance(i.dataType, NullType) else i.name for i in data.schema])\r\n",
+					"\r\n",
+					"    # repartition so all data is written to a single file\r\n",
+					"    data = data.repartition(1)\r\n",
+					"\r\n",
+					"    # call the write_to_storage function, passing in the account, path and data variables\r\n",
+					"    path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"    write_to_storage(account_name, container_name, relative_path, data)\r\n",
+					"\r\n",
+					"    print(f'File {source} written to storage')\r\n",
+					"    print(\"Renaming file...\")\r\n",
+					"\r\n",
+					"    # rename the file to a sensible name using the mssparkutils mv function\r\n",
+					"    relative_path_new = f'data_validation/outputs/test_results_records/{folder}/{source}/{source}.csv'\r\n",
+					"    new_path = create_adls_path(account_name, container_name, relative_path_new)\r\n",
+					"    rename_csv_files(old_path=path, new_path=new_path)\r\n",
+					"\r\n",
+					"    print(f'File renamed - new file path: {new_path}')\r\n",
+					"\r\n",
+					"    print(\"Deleting _SUCCESS file\")\r\n",
+					"\r\n",
+					"    remove_success_files(old_path=path, new_path=new_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"local_fs_path"
 				],
 				"execution_count": null
 			},
