@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "464b8b03-2288-4fea-a9ad-3e3015fd9543"
+				"spark.autotune.trackingId": "6692a805-471d-45a2-a8ce-50f4116c7356"
 			}
 		},
 		"metadata": {
@@ -91,6 +91,7 @@
 					"from tqdm import tqdm\r\n",
 					"from azure.storage.blob import BlobServiceClient\r\n",
 					"import requests as r\r\n",
+					"import inspect\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
 					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
@@ -128,6 +129,50 @@
 				},
 				"source": [
 					"target_database = 'odw_curated_db'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_function_list = [\r\n",
+					"    test1_rows_in_source_not_in_target\r\n",
+					"    # test2_rows_in_target_not_in_source,\r\n",
+					"    # test3_count_source_table_rows,\r\n",
+					"    # test4_count_target_table_rows,\r\n",
+					"    # test5_count_source_table_columns,\r\n",
+					"    # test6_count_target_table_columns,\r\n",
+					"    # test7_duplicates_in_odw,\r\n",
+					"    # test8_source_target_shape_match,\r\n",
+					"    # test9_values_mismatch\r\n",
+					"    # test10_count_values_mismatch,\r\n",
+					"    # test11_values_match_percentage\r\n",
+					"]\r\n",
+					"\r\n",
+					"test_list = [\r\n",
+					"    \"test1_rows_in_source_not_in_target\"\r\n",
+					"    # \"test2_rows_in_target_not_in_source\",\r\n",
+					"    # \"test3_count_source_table_rows\",\r\n",
+					"    # \"test4_count_target_table_rows\",\r\n",
+					"    # \"test5_count_source_table_columns\",\r\n",
+					"    # \"test6_count_target_table_columns\",\r\n",
+					"    # \"test7_duplicates_in_odw\",\r\n",
+					"    # \"test8_source_target_shape_match\",\r\n",
+					"    # \"test9_values_mismatch\"\r\n",
+					"    # \"test10_count_values_mismatch\",\r\n",
+					"    # \"test11_values_match_percentage\"\r\n",
+					"]"
 				],
 				"execution_count": null
 			},
@@ -252,6 +297,89 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"for test in test_function_list:\r\n",
+					"    func_args = inspect.getfullargspec(test).args\r\n",
+					"    print(f'{test} -> {func_args}')\r\n",
+					"    print(type(func_args))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"for source, target in table_mapping.items():\r\n",
+					"    if source == 'live.dim_HR_cost_centre':\r\n",
+					"        source_dbtable = source\r\n",
+					"        target_dbtable = target\r\n",
+					"        test_source_df = sourcedataset(source_dbtable)\r\n",
+					"        test_target_df = targetdataset(target_database, target_dbtable)\r\n",
+					"        test_results_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
+					"        \r\n",
+					"        # run tests\r\n",
+					"        test_vars = []\r\n",
+					"\r\n",
+					"        for test_func in test_function_list:\r\n",
+					"            func_args = inspect.getfullargspec(test_func).args\r\n",
+					"            for arg in func_args:\r\n",
+					"                exec(f'{arg}')\r\n",
+					"                # print(arg)\r\n",
+					"                test_vars.append(arg)\r\n",
+					"                # myvars = vars()\r\n",
+					"                # myvars[arg]\r\n",
+					"            result = test_func()\r\n",
+					"            print(result)\r\n",
+					"\r\n",
+					"print(\"All tests complete!\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"print(test_vars)\r\n",
+					"print(type(test_vars[0]))\r\n",
+					"for k, v in myvars.items():\r\n",
+					"    if k == 'test_source_df':\r\n",
+					"        print(k)"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -279,47 +407,48 @@
 				},
 				"source": [
 					"for source, target in tqdm(table_mapping.items()):\r\n",
-					"    source_dbtable = source\r\n",
-					"    target_dbtable = target\r\n",
-					"    test_source_df = sourcedataset(source_dbtable)\r\n",
-					"    test_target_df = targetdataset(target_database, target_dbtable)\r\n",
-					"    \r\n",
-					"    # run test1_rows_in_source_not_in_target\r\n",
-					"    result = test1_rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
-					"    test_results_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
-					"    test_results_dict[source_dbtable]['test1_rows_in_source_not_in_target'] = result\r\n",
+					"    if source == 'live.dim_HR_cost_centre':\r\n",
+					"        source_dbtable = source\r\n",
+					"        target_dbtable = target\r\n",
+					"        test_source_df = sourcedataset(source_dbtable)\r\n",
+					"        test_target_df = targetdataset(target_database, target_dbtable)\r\n",
+					"        \r\n",
+					"        # run test1_rows_in_source_not_in_target\r\n",
+					"        result = test1_rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
+					"        test_results_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
+					"        test_results_dict[source_dbtable]['test1_rows_in_source_not_in_target'] = result\r\n",
 					"\r\n",
-					"    # run test2_rows_in_target_not_in_source\r\n",
-					"    result = test2_rows_in_target_not_in_source(test_source_df, test_target_df)\r\n",
-					"    test_results_dict[source_dbtable]['test2_rows_in_target_not_in_source'] = result\r\n",
+					"        # run test2_rows_in_target_not_in_source\r\n",
+					"        result = test2_rows_in_target_not_in_source(test_source_df, test_target_df)\r\n",
+					"        test_results_dict[source_dbtable]['test2_rows_in_target_not_in_source'] = result\r\n",
 					"\r\n",
-					"    # run test3_count_source_table_rows\r\n",
-					"    result = test3_count_source_table_rows(test_source_df)\r\n",
-					"    test_results_dict[source_dbtable]['test3_count_source_table_rows'] = result\r\n",
+					"        # run test3_count_source_table_rows\r\n",
+					"        result = test3_count_source_table_rows(test_source_df)\r\n",
+					"        test_results_dict[source_dbtable]['test3_count_source_table_rows'] = result\r\n",
 					"\r\n",
-					"    # run test4_count_target_table_rows\r\n",
-					"    result = test4_count_target_table_rows(test_target_df)\r\n",
-					"    test_results_dict[source_dbtable]['test4_count_target_table_rows'] = result\r\n",
+					"        # run test4_count_target_table_rows\r\n",
+					"        result = test4_count_target_table_rows(test_target_df)\r\n",
+					"        test_results_dict[source_dbtable]['test4_count_target_table_rows'] = result\r\n",
 					"\r\n",
-					"    # run test5_count_source_table_columns\r\n",
-					"    result = test5_count_source_table_columns(test_source_df)\r\n",
-					"    test_results_dict[source_dbtable]['test5_count_source_table_columns'] = result\r\n",
+					"        # run test5_count_source_table_columns\r\n",
+					"        result = test5_count_source_table_columns(test_source_df)\r\n",
+					"        test_results_dict[source_dbtable]['test5_count_source_table_columns'] = result\r\n",
 					"\r\n",
-					"    # run test6_count_target_table_columns\r\n",
-					"    result = test6_count_target_table_columns(test_source_df)\r\n",
-					"    test_results_dict[source_dbtable]['test6_count_target_table_columns'] = result\r\n",
+					"        # run test6_count_target_table_columns\r\n",
+					"        result = test6_count_target_table_columns(test_source_df)\r\n",
+					"        test_results_dict[source_dbtable]['test6_count_target_table_columns'] = result\r\n",
 					"\r\n",
-					"    # run test7_duplicates_in_odw\r\n",
-					"    result = test7_duplicates_in_odw(test_target_df)\r\n",
-					"    test_results_dict[source_dbtable]['test7_duplicates_in_odw'] = result\r\n",
+					"        # run test7_duplicates_in_odw\r\n",
+					"        result = test7_duplicates_in_odw(test_target_df)\r\n",
+					"        test_results_dict[source_dbtable]['test7_duplicates_in_odw'] = result\r\n",
 					"\r\n",
-					"    # run test8_source_target_shape_match\r\n",
-					"    result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
-					"    test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
+					"        # run test8_source_target_shape_match\r\n",
+					"        result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
+					"        test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
 					"\r\n",
-					"    # run test9_values_mismatch\r\n",
-					"    # result = test9_values_mismatch(df_compare)\r\n",
-					"    # test_results_dict[source_dbtable]['test9_values_mismatch'] = result\r\n",
+					"        # run test9_values_mismatch\r\n",
+					"        # result = test9_values_mismatch(df_compare)\r\n",
+					"        # test_results_dict[source_dbtable]['test9_values_mismatch'] = result\r\n",
 					"\r\n",
 					"print(\"All tests complete!\")"
 				],
