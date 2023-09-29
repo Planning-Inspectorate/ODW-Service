@@ -1,8 +1,8 @@
 {
-	"name": "py_harmonised_and_hr_measures_monthly",
+	"name": "leave",
 	"properties": {
 		"folder": {
-			"name": "post-deployment"
+			"name": "odw-curated"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bf9e7fd6-9d4f-4ef6-a731-189bf17672a0"
+				"spark.autotune.trackingId": "6133464d-2bd0-4363-a229-c6b214081712"
 			}
 		},
 		"metadata": {
@@ -63,18 +63,40 @@
 							"deleting": false
 						}
 					},
-					"tags": [
-						"parameters"
-					]
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
 				},
 				"source": [
-					"start_month=7\n",
-					"start_year=2023\n",
-					"end_month=7\n",
-					"end_year=2023\n",
-					"process_hr_measures=False"
+					"%%sql\r\n",
+					"\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW leave_dim\r\n",
+					"\r\n",
+					"    AS\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    CASE AbsenceStartDate <= AbsenceEndDate Then dateadd(day, 1, AbsenceStartDate)\r\n",
+					"    ELSE 'start date > end date'\r\n",
+					"    END AS abs_date,\r\n",
+					"    EmployeeID AS StaffNumber,\r\n",
+					"    AbsenceType,\r\n",
+					"    SicknessGroup,\r\n",
+					"    AbsenceStartDate,\r\n",
+					"    AbsenceEndDate,\r\n",
+					"    Days,\r\n",
+					"    Hours,\r\n",
+					"    CalendarDays,\r\n",
+					"    WorkScheduleID,\r\n",
+					"    AnnualLeaveStart,\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"FROM odw_harmonised_db.hr_absence_dim \r\n",
+					"LEFT JOIN calendar_dim_plus ON AbsenceStartDate = \r\n",
+					"WHERE Staff_Number IS NOT NULL AND Attendance_or_Absence_Type IS NOT NULL;"
 				],
-				"execution_count": 3
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -87,33 +109,30 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
 				},
 				"source": [
-					"from pyspark.sql import SparkSession\n",
-					"from notebookutils import mssparkutils\n",
-					"from datetime import datetime, date\n",
-					"import pandas as pd\n",
-					"\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"start_date = datetime(year=start_year, month=start_month, day=1)\n",
-					"end_date = datetime(year=end_year, month=end_month, day=1)\n",
-					"\n",
-					"dates = pd.date_range(start_date, end_date, freq='MS').strftime(\"%Y-%m-%d\").tolist()\n",
-					"\n",
-					"timeout_in_seconds = 60 * 60\n",
-					"\n",
-					"for date in dates:\n",
-					"    print(f\"Processing: {date}\")\n",
-					"    mssparkutils.notebook.run('/odw-harmonised/SAP-HR/sap-hr-views', timeout_in_seconds, arguments={\"expected_from\": date})\n",
-					"    mssparkutils.notebook.run('/odw-harmonised/SAP-HR/sap-hr-master', timeout_in_seconds)\n",
-					"\n",
-					"    # subtract 1 day from the date to get the report_month_end_date \n",
-					"    if process_hr_measures:\n",
-					"        report_month_end_date = (pd.to_datetime(date) -  pd.to_timedelta(1, unit='d')).strftime(\"%Y-%m-%d\")\n",
-					"        mssparkutils.notebook.run('/odw-curated/mipins_hr_measures', timeout_in_seconds, arguments={\"expected_from\": report_month_end_date})"
+					"%%sql\r\n",
+					"-- CREATE OR REPLACE TEMPORARY VIEW all_dates_table_absence\r\n",
+					"\r\n",
+					"--     AS\r\n",
+					"\r\n",
+					"SELECT DISTINCT T2.CalendarDate,\r\n",
+					"    T1.EmployeeID,\r\n",
+					"    T1.AbsenceStartDate,\r\n",
+					"    T1.AbsenceEndDate\r\n",
+					"\r\n",
+					"FROM default.calendar_dim_plus T2\r\n",
+					"FULL OUTER JOIN odw_harmonised_db.hr_absence_dim T1 ON T2.CalendarDate >= T1.AbsenceStartDate AND T2.CalendarDate <= T1.AbsenceEndDate\r\n",
+					"Where EmployeeID = 00500167\r\n",
+					"order by CalendarDate\r\n",
+					""
 				],
-				"execution_count": 5
+				"execution_count": 33
 			}
 		]
 	}
