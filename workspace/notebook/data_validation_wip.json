@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ee5c4f7c-042c-4f55-a770-65f50d1ca894"
+				"spark.autotune.trackingId": "4ba4ea83-a684-4726-814f-b8d18afe0860"
 			}
 		},
 		"metadata": {
@@ -94,41 +94,14 @@
 					"import inspect\r\n",
 					"\r\n",
 					"# update pandas to make use of pandas.compare \"result_names\" parameter\r\n",
-					"# however, %pip magic command is disabled when running a notebook from a pipeline so this needs sorting first\r\n",
+					"# NB: %pip magic command is disabled when running a notebook from a pipeline\r\n",
 					"%pip install -U pandas\r\n",
 					"import pandas as pd\r\n",
+					"\r\n",
+					"# NB: DataFrame.iteritems is deprecated from 1.5 upwards. Use .items instead. \r\n",
+					"# spark.createDataFrame uses iteritems which won't work so temporarily hardcoding this switch to get around this.\r\n",
+					"# Better package management is needed longer term\r\n",
 					"pd.DataFrame.iteritems = pd.DataFrame.items"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Set the ODW database being used to compare against"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"target_database = 'odw_curated_db'"
 				],
 				"execution_count": null
 			},
@@ -179,48 +152,32 @@
 					}
 				},
 				"source": [
-					"mount_path = f'synfs:/{jobId}/data_validation'"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"test_function_list = [\r\n",
-					"    test1_rows_in_source_not_in_target\r\n",
-					"    # test2_rows_in_target_not_in_source,\r\n",
-					"    # test3_count_source_table_rows,\r\n",
-					"    # test4_count_target_table_rows,\r\n",
-					"    # test5_count_source_table_columns,\r\n",
-					"    # test6_count_target_table_columns,\r\n",
-					"    # test7_duplicates_in_odw,\r\n",
-					"    # test8_source_target_shape_match,\r\n",
-					"    # test9_values_mismatch\r\n",
+					"    test1_rows_in_source_not_in_target,\r\n",
+					"    test1_export_values,\r\n",
+					"    test2_rows_in_target_not_in_source,\r\n",
+					"    test2_export_values,\r\n",
+					"    test3_count_source_table_rows,\r\n",
+					"    test4_count_target_table_rows,\r\n",
+					"    test5_count_source_table_columns,\r\n",
+					"    test6_count_target_table_columns,\r\n",
+					"    test7_duplicates_in_odw,\r\n",
+					"    test8_source_target_shape_match,\r\n",
+					"    test9_values_mismatch\r\n",
 					"    # test10_count_values_mismatch,\r\n",
 					"    # test11_values_match_percentage\r\n",
 					"]\r\n",
 					"\r\n",
 					"test_list = [\r\n",
-					"    \"test1_rows_in_source_not_in_target\"\r\n",
-					"    # \"test2_rows_in_target_not_in_source\",\r\n",
-					"    # \"test3_count_source_table_rows\",\r\n",
-					"    # \"test4_count_target_table_rows\",\r\n",
-					"    # \"test5_count_source_table_columns\",\r\n",
-					"    # \"test6_count_target_table_columns\",\r\n",
-					"    # \"test7_duplicates_in_odw\",\r\n",
-					"    # \"test8_source_target_shape_match\",\r\n",
-					"    # \"test9_values_mismatch\"\r\n",
+					"    \"test1_rows_in_source_not_in_target\",\r\n",
+					"    \"test2_rows_in_target_not_in_source\",\r\n",
+					"    \"test3_count_source_table_rows\",\r\n",
+					"    \"test4_count_target_table_rows\",\r\n",
+					"    \"test5_count_source_table_columns\",\r\n",
+					"    \"test6_count_target_table_columns\",\r\n",
+					"    \"test7_duplicates_in_odw\",\r\n",
+					"    \"test8_source_target_shape_match\",\r\n",
+					"    \"test9_values_mismatch\"\r\n",
 					"    # \"test10_count_values_mismatch\",\r\n",
 					"    # \"test11_values_match_percentage\"\r\n",
 					"]"
@@ -257,12 +214,12 @@
 				},
 				"source": [
 					"# print a list of everything that is callable within the current context (variables, functions, imports etc)\r\n",
-					"print(\"List of callables...\")\r\n",
-					"callables = [f for f in dir() if f[0] != '_']\r\n",
-					"callables.sort()\r\n",
-					"pprint.pprint(callables)\r\n",
-					"print(\"*********************************\")\r\n",
-					"print(\"*********************************\")\r\n",
+					"# print(\"List of callables...\")\r\n",
+					"# callables = [f for f in dir() if f[0] != '_']\r\n",
+					"# callables.sort()\r\n",
+					"# pprint.pprint(callables)\r\n",
+					"# print(\"*********************************\")\r\n",
+					"# print(\"*********************************\")\r\n",
 					"# print a list of functions available in the current context\r\n",
 					"function_list = ([f.__name__ for f in globals().values() if type(f) == type(lambda *args: None)])\r\n",
 					"# list of functions that I'm not interested in (maybe built-in notebook functions?)\r\n",
@@ -270,8 +227,42 @@
 					"for i in unwanted:\r\n",
 					"    function_list.remove(i)\r\n",
 					"function_list.sort()\r\n",
-					"print(\"List of functions...\")\r\n",
-					"pprint.pprint(function_list)"
+					"# print(\"List of functions...\")\r\n",
+					"# pprint.pprint(function_list)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Print the test functions and their required arguments"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"for test in test_function_list:\r\n",
+					"    func_args = inspect.getfullargspec(test).args\r\n",
+					"    print(f'{test.__name__} -> {func_args}')\r\n",
+					"    # print(type(func_args))"
 				],
 				"execution_count": null
 			},
@@ -311,27 +302,6 @@
 					"# # add a new source table\r\n",
 					"# add_new_source_table_to_test_result_dict(\"{table name}\")\r\n",
 					"# pprint.pprint(test_result_dict)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"for test in test_function_list:\r\n",
-					"    func_args = inspect.getfullargspec(test).args\r\n",
-					"    print(f'{test} -> {func_args}')\r\n",
-					"    print(type(func_args))"
 				],
 				"execution_count": null
 			},
@@ -392,6 +362,19 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Print the table mappings"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -406,6 +389,37 @@
 				},
 				"source": [
 					"pprint.pprint(table_mapping)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Print the table keys"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"pprint.pprint(table_keys)"
 				],
 				"execution_count": null
 			},
@@ -437,48 +451,47 @@
 				},
 				"source": [
 					"for source, target in tqdm(table_mapping.items()):\r\n",
-					"    if source == 'load.SAP_HR_Leavers':\r\n",
-					"        source_dbtable = source\r\n",
-					"        target_dbtable = target\r\n",
-					"        test_source_df = sourcedataset(source_dbtable)\r\n",
-					"        test_target_df = targetdataset(target_database, target_dbtable)\r\n",
-					"        \r\n",
-					"        # run test1_rows_in_source_not_in_target\r\n",
-					"        result = test1_rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
-					"        test_results_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
-					"        test_results_dict[source_dbtable]['test1_rows_in_source_not_in_target'] = result\r\n",
+					"    source_dbtable = source\r\n",
+					"    target_dbtable = target\r\n",
+					"    test_source_df = sourcedataset(source_dbtable)\r\n",
+					"    test_target_df = targetdataset(target_database, target_dbtable)\r\n",
+					"    \r\n",
+					"    # run test1_rows_in_source_not_in_target\r\n",
+					"    result = test1_rows_in_source_not_in_target(test_source_df, test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['target_table'] = target_dbtable\r\n",
+					"    test_results_dict[source_dbtable]['test1_rows_in_source_not_in_target'] = result\r\n",
 					"\r\n",
-					"        # run test2_rows_in_target_not_in_source\r\n",
-					"        result = test2_rows_in_target_not_in_source(test_source_df, test_target_df)\r\n",
-					"        test_results_dict[source_dbtable]['test2_rows_in_target_not_in_source'] = result\r\n",
+					"    # run test2_rows_in_target_not_in_source\r\n",
+					"    result = test2_rows_in_target_not_in_source(test_source_df, test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['test2_rows_in_target_not_in_source'] = result\r\n",
 					"\r\n",
-					"        # run test3_count_source_table_rows\r\n",
-					"        result = test3_count_source_table_rows(test_source_df)\r\n",
-					"        test_results_dict[source_dbtable]['test3_count_source_table_rows'] = result\r\n",
+					"    # run test3_count_source_table_rows\r\n",
+					"    result = test3_count_source_table_rows(test_source_df)\r\n",
+					"    test_results_dict[source_dbtable]['test3_count_source_table_rows'] = result\r\n",
 					"\r\n",
-					"        # run test4_count_target_table_rows\r\n",
-					"        result = test4_count_target_table_rows(test_target_df)\r\n",
-					"        test_results_dict[source_dbtable]['test4_count_target_table_rows'] = result\r\n",
+					"    # run test4_count_target_table_rows\r\n",
+					"    result = test4_count_target_table_rows(test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['test4_count_target_table_rows'] = result\r\n",
 					"\r\n",
-					"        # run test5_count_source_table_columns\r\n",
-					"        result = test5_count_source_table_columns(test_source_df)\r\n",
-					"        test_results_dict[source_dbtable]['test5_count_source_table_columns'] = result\r\n",
+					"    # run test5_count_source_table_columns\r\n",
+					"    result = test5_count_source_table_columns(test_source_df)\r\n",
+					"    test_results_dict[source_dbtable]['test5_count_source_table_columns'] = result\r\n",
 					"\r\n",
-					"        # run test6_count_target_table_columns\r\n",
-					"        result = test6_count_target_table_columns(test_source_df)\r\n",
-					"        test_results_dict[source_dbtable]['test6_count_target_table_columns'] = result\r\n",
+					"    # run test6_count_target_table_columns\r\n",
+					"    result = test6_count_target_table_columns(test_source_df)\r\n",
+					"    test_results_dict[source_dbtable]['test6_count_target_table_columns'] = result\r\n",
 					"\r\n",
-					"        # run test7_duplicates_in_odw\r\n",
-					"        result = test7_duplicates_in_odw(test_target_df)\r\n",
-					"        test_results_dict[source_dbtable]['test7_duplicates_in_odw'] = result\r\n",
+					"    # run test7_duplicates_in_odw\r\n",
+					"    result = test7_duplicates_in_odw(test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['test7_duplicates_in_odw'] = result\r\n",
 					"\r\n",
-					"        # run test8_source_target_shape_match\r\n",
-					"        result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
-					"        test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
+					"    # run test8_source_target_shape_match\r\n",
+					"    result = test8_source_target_shape_match(test_source_df, test_target_df)\r\n",
+					"    test_results_dict[source_dbtable]['test8_source_target_shape_match'] = result\r\n",
 					"\r\n",
-					"        # run test9_values_mismatch\r\n",
-					"        # result = test9_values_mismatch(df_compare)\r\n",
-					"        # test_results_dict[source_dbtable]['test9_values_mismatch'] = result\r\n",
+					"    # run test9_values_mismatch\r\n",
+					"    # result = test9_values_mismatch(df_compare)\r\n",
+					"    # test_results_dict[source_dbtable]['test9_values_mismatch'] = result\r\n",
 					"\r\n",
 					"print(\"All tests complete!\")"
 				],
@@ -544,10 +557,33 @@
 					}
 				},
 				"source": [
-					"test_results_path = create_adls_path(account_name, container_name, test_results_relative_path)\r\n",
+					"def write_file_to_storage(path: str, filename: str, data):\r\n",
+					"    mssparkutils.fs.put(f'{path}/{filename}', data, overwrite=True)\r\n",
+					"    return print(f'File - {filename} - written to storage - path - {path}')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"test_results_csv = result_df.to_csv(header=True, index=True)\r\n",
-					"mssparkutils.fs.put(f'{test_results_path}/{test_results_file_name}', test_results_csv, overwrite=True)\r\n",
-					"print(\"Test results file written to storage\")"
+					"\r\n",
+					"write_file_to_storage(\r\n",
+					"    path = f'{mount_path}{test_results_relative_path}',\r\n",
+					"    filename = test_results_file_name,\r\n",
+					"    data = test_results_csv\r\n",
+					")"
 				],
 				"execution_count": null
 			},
@@ -621,67 +657,26 @@
 				"source": [
 					"# loop through test results and set the source and target DataFrames\r\n",
 					"for source, target in tqdm(test_results_dict.items()):\r\n",
-					"    if source == 'load.SAP_HR_Leavers':\r\n",
-					"        source_dbtable = source\r\n",
-					"        target_dbtable = target['target_table']\r\n",
-					"        test_source_df = sourcedataset(source_dbtable)\r\n",
-					"        test_target_df = targetdataset(target_database, target_dbtable)\r\n",
+					"    source_dbtable = source\r\n",
+					"    target_dbtable = target['target_table']\r\n",
+					"    test_source_df = sourcedataset(source_dbtable)\r\n",
+					"    test_target_df = targetdataset(target_database, target_dbtable)\r\n",
 					"\r\n",
-					"        # if certain tests are True then the records need exporting to csv and saved in storage\r\n",
-					"        if target['test1_rows_in_source_not_in_target'] == True:\r\n",
-					"            test = test1_export_values\r\n",
-					"            folder = 'test1_rows_in_source_not_in_target'\r\n",
-					"            write_records_to_csv(test, folder)\r\n",
-					"            print(\"test1 records saved to storage\")\r\n",
-					"        elif target['test2_rows_in_target_not_in_source'] == True:\r\n",
-					"            test = test2_export_values\r\n",
-					"            folder = 'test2_rows_in_target_not_in_source'\r\n",
-					"            write_records_to_csv(test, folder)\r\n",
-					"            print(\"test2 records saved to storage\")\r\n",
-					"        else:\r\n",
-					"            print(f'Table {source}: No records saved to storage')\r\n",
+					"    # if certain tests are True then the records need exporting to csv and saved in storage\r\n",
+					"    if target['test1_rows_in_source_not_in_target'] == True:\r\n",
+					"        test = test1_export_values\r\n",
+					"        folder = 'test1_rows_in_source_not_in_target'\r\n",
+					"        write_records_to_csv(test, folder)\r\n",
+					"        print(\"test1 records saved to storage\")\r\n",
+					"    elif target['test2_rows_in_target_not_in_source'] == True:\r\n",
+					"        test = test2_export_values\r\n",
+					"        folder = 'test2_rows_in_target_not_in_source'\r\n",
+					"        write_records_to_csv(test, folder)\r\n",
+					"        print(\"test2 records saved to storage\")\r\n",
+					"    else:\r\n",
+					"        print(f'Table {source}: No records saved to storage')\r\n",
 					"\r\n",
-					"print(\"All files written to storage\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Set flag for pandas.compare ability (DataFrames must be same shape) \r\n",
-					"\r\n",
-					"Not needed really, just a test I wrote, might be useful at some point."
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def pandas_compare_flag(row):\r\n",
-					"#     if row['test8_source_target_shape_match'] == True:\r\n",
-					"#         return True\r\n",
-					"#     else:\r\n",
-					"#         return False\r\n",
-					"\r\n",
-					"# result_df['pandas_compare_flag'] = result_df.apply(pandas_compare_flag, axis = 1)\r\n",
-					"# result_df"
+					"print(\"Test 1 and test 2 output files written to storage\")"
 				],
 				"execution_count": null
 			},
