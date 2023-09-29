@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "28364809-8dc2-4548-b706-de4eefecdeea"
+				"spark.autotune.trackingId": "1713f84f-d683-43a0-a76f-3dac1573a779"
 			}
 		},
 		"metadata": {
@@ -138,43 +138,26 @@
 					"    T1.id AS SourceID,\r\n",
 					"    T1.value AS Value,\r\n",
 					"    T2.SourceSystemID as SourceSystemID, -- NOT CORRECT\r\n",
-					"    CURRENT_TIMESTAMP AS IngestionDate,\r\n",
+					"    to_timestamp(T1.expected_from)  AS IngestionDate,\r\n",
 					"    NULL AS ValidTo,\r\n",
 					"    md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) AS RowID,\r\n",
 					"    'Y' as IsActive,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.id = T3.SourceID AND md5(concat(IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
-					"        THEN 'Y'\r\n",
-					"        WHEN T3.SourceID IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END as NewData,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.id IS NULL\r\n",
-					"        THEN 'Y'\r\n",
-					"        ELSE 'N'\r\n",
-					"    END AS  DeletedData,\r\n",
 					"    T3.IsActive as HistoricIsActive\r\n",
 					"\r\n",
 					"FROM source_reference_grouped T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Checkmark\" = T2.Description\r\n",
 					"FULL JOIN odw_harmonised_db.checkmark_source_reference_dim T3 ON T1.id = T3.SourceID and T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
-					"    (-- flags new data        \r\n",
+					"    -- flags new data        \r\n",
 					"        (CASE\r\n",
 					"            WHEN T1.ID = T3.SourceID AND md5(concat( IFNULL(T1.id,'.'), IFNULL(T1.value,'.'))) <> T3.RowID\r\n",
 					"            THEN 'Y'\r\n",
 					"            WHEN T3.SourceID IS NULL\r\n",
 					"            THEN 'Y'\r\n",
 					"            ELSE 'N'\r\n",
-					"        END  = 'Y' ) OR\r\n",
-					"        -- flags deleted data\r\n",
-					"        (CASE\r\n",
-					"            WHEN T1.id IS NULL\r\n",
-					"            THEN 'Y'\r\n",
-					"            ELSE 'N'\r\n",
-					"        END = 'Y' )\r\n",
-					"    )\r\n",
+					"        END  = 'Y' ) \r\n",
+					"    AND T1.id IS NOT NULL\r\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM source_reference_grouped)\r\n",
 					";"
 				],
 				"execution_count": 2
@@ -212,10 +195,10 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM sxo_grouped\")\r\n",
-					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.sxo_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM sxo_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM sxo_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Source_Number = spark.sql(\"SELECT COUNT(*) AS Source_Number FROM table_grouped\")\r\n",
+					"# Current_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Current_Number FROM odw_harmonised_db.table_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS New_Data_Number FROM table_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Number = spark.sql(\"SELECT COUNT (DISTINCT RowID) AS Deleted_Data_Number FROM table_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Source_Number_Pandas = Source_Number.toPandas()\r\n",
 					"# Current_Number_Pandas =  Current_Number.toPandas()\r\n",
@@ -283,9 +266,9 @@
 					"# from pyspark.sql import SparkSession\r\n",
 					"# spark = SparkSession.builder.getOrCreate()\r\n",
 					"\r\n",
-					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.sxo_dim where IsActive = 'Y' \")\r\n",
-					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM sxo_dim_new WHERE NewData = 'Y'\")\r\n",
-					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM sxo_dim_new WHERE DeletedData = 'Y'\")\r\n",
+					"# Current_Records = spark.sql(\"SELECT DISTINCT RowID AS Current_Records FROM odw_harmonised_db.table_dim where IsActive = 'Y' \")\r\n",
+					"# New_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS New_Data_Records FROM table_dim_new WHERE NewData = 'Y'\")\r\n",
+					"# Deleted_Data_Records = spark.sql(\"SELECT DISTINCT RowID AS Deleted_Data_Records FROM table_dim_new WHERE DeletedData = 'Y'\")\r\n",
 					"\r\n",
 					"# Current_Records_Pandas =  Current_Records.toPandas()\r\n",
 					"# New_Data_Records_Pandas = New_Data_Records.toPandas()\r\n",
@@ -329,8 +312,8 @@
 				"source": [
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
-					"- View **SXO_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View SXO_dim_changed_rows is created"
+					"- View **table_dim_new** is unioned to the target data filter to only those rows where changes have been detected\n",
+					"## View table_dim_changed_rows is created"
 				]
 			},
 			{
@@ -392,6 +375,56 @@
 				"execution_count": 5
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM reading_type_reference_dim_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW reading_type_reference_dim_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    ReadingTypeReferenceID,\n",
+					"    ReadingTypeID,\n",
+					"    Value,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM reading_type_reference_dim_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -401,10 +434,10 @@
 					}
 				},
 				"source": [
-					"# View SXO_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
-					"- **WHEN MATCHED** ON the Business Key (i.e. SxO from Personal Characteristics), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
+					"# View table_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"- **WHEN MATCHED** ON the Business Key (i.e. table from Personal Characteristics), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the business key, insert rows\n",
-					"## Table odw_harmonised.SXO_dim is updated"
+					"## Table odw_harmonised.table_dim is updated"
 				]
 			},
 			{
@@ -462,7 +495,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised.SXO_dim is updated"
+					"## Table odw_harmonised.table_dim is updated"
 				]
 			},
 			{
@@ -484,7 +517,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new SXOID\r\n",
+					"-- Insert new tableID\r\n",
 					"\r\n",
 					"INSERT OVERWRITE odw_harmonised_db.checkmark_source_reference_dim\r\n",
 					"\r\n",
