@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f3b1f446-232f-4266-8d51-49b08ae76164"
+				"spark.autotune.trackingId": "42aaed97-fc3a-4ea5-ab43-e31553ab6c01"
 			}
 		},
 		"metadata": {
@@ -216,6 +216,58 @@
 				"execution_count": 18
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM checkmark_case_reading_case_bridge_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW checkmark_case_reading_case_bridge_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    CommentsCaseID,\n",
+					"    CommentsDimID,\n",
+					"    CaseReference, \n",
+					"    StateReferenceID,\n",
+					"    TypeReferenceID,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM checkmark_case_reading_case_bridge_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -253,22 +305,40 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_case_reading_case_bridge AS Target\r\n",
-					"USING checkmark_case_reading_case_bridge_changed_rows AS Source\r\n",
+					"USING checkmark_case_reading_case_bridge_changed_rows_final AS Source\r\n",
 					"\r\n",
-					"ON Source.CaseReference = Target.CaseReference\r\n",
+					"ON Source.CommentsCaseID = Target.CommentsCaseID\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (CommentsCaseID,\r\n",
+					"        CommentsDimID,\r\n",
+					"        CaseReference, \r\n",
+					"        StateReferenceID,\r\n",
+					"        TypeReferenceID,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.CommentsCaseID,\r\n",
+					"        Source.CommentsDimID,\r\n",
+					"        Source.CaseReference, \r\n",
+					"        Source.StateReferenceID,\r\n",
+					"        Source.TypeReferenceID,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					"; "
 				],
 				"execution_count": 19
 			},
