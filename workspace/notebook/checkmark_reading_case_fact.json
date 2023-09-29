@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0fc4baad-010c-4a67-aad7-5eb2caa15e4a"
+				"spark.autotune.trackingId": "aaddf346-28a7-4028-bcdc-d373fecc6218"
 			}
 		},
 		"metadata": {
@@ -217,7 +217,6 @@
 					"%%sql\r\n",
 					"\r\n",
 					"-- Create new and updated dataset\r\n",
-					"\r\n",
 					"CREATE OR REPLACE TEMPORARY VIEW checkmark_reading_case_fact_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
@@ -267,6 +266,62 @@
 				"execution_count": 10
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW Loading_month\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    IngestionDate AS IngestionDate,\n",
+					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
+					"    'Y' AS IsActive\n",
+					"\n",
+					"FROM checkmark_reading_case_fact_new;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW checkmark_reading_case_fact_changed_rows_final\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT \n",
+					"    ReadingCaseFactID,\n",
+					"    ReadingCaseID, \n",
+					"    LevelReferenceID,\n",
+					"    NSIID,\n",
+					"    SourceReferenceID,\n",
+					"    ReadingTypeReferenceID,\n",
+					"    ReadingStatusReferenceID,\n",
+					"    ProcedureReferenceID,\n",
+					"    CaseReference,\n",
+					"    T1.SourceSystemID,\n",
+					"    T1.IngestionDate,\n",
+					"    T1.ValidTo,\n",
+					"    T1.RowID,\n",
+					"    T1.IsActive,\n",
+					"    T2.ClosingDate\n",
+					"FROM checkmark_reading_case_fact_changed_rows T1\n",
+					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
+					";"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -304,22 +359,48 @@
 					"-- merge into fact table\r\n",
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.checkmark_reading_case_fact AS Target\r\n",
-					"USING checkmark_reading_case_fact_changed_rows AS Source\r\n",
+					"USING checkmark_reading_case_fact_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.CaseReference = Target.CaseReference\r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
-					"\r\n",
 					"WHEN MATCHED\r\n",
 					"    THEN \r\n",
 					"    UPDATE SET\r\n",
-					"    Target.ValidTo = date_sub(current_timestamp,1),\r\n",
+					"    Target.ValidTo = to_timestamp(ClosingDate),\r\n",
 					"    Target.IsActive = 'N'\r\n",
 					"\r\n",
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
-					"    THEN INSERT * ;   \r\n",
-					""
+					"    THEN INSERT (ReadingCaseFactID,\r\n",
+					"        ReadingCaseID, \r\n",
+					"        LevelReferenceID,\r\n",
+					"        NSIID,\r\n",
+					"        SourceReferenceID,\r\n",
+					"        ReadingTypeReferenceID,\r\n",
+					"        ReadingStatusReferenceID,\r\n",
+					"        ProcedureReferenceID,\r\n",
+					"        CaseReference,\r\n",
+					"        SourceSystemID,\r\n",
+					"        IngestionDate,\r\n",
+					"        ValidTo,\r\n",
+					"        RowID,\r\n",
+					"        IsActive)  \r\n",
+					"        VALUES (Source.ReadingCaseFactID,\r\n",
+					"    ReadingCaseID, \r\n",
+					"        Source.LevelReferenceID,\r\n",
+					"        Source.NSIID,\r\n",
+					"        Source.SourceReferenceID,\r\n",
+					"        Source.ReadingTypeReferenceID,\r\n",
+					"        Source.ReadingStatusReferenceID,\r\n",
+					"        Source.ProcedureReferenceID,\r\n",
+					"        Source.CaseReference,\r\n",
+					"        Source.SourceSystemID, \r\n",
+					"        Source.IngestionDate, \r\n",
+					"        Source.ValidTo, \r\n",
+					"        Source.RowID, \r\n",
+					"        Source.IsActive) \r\n",
+					"; "
 				],
 				"execution_count": 11
 			},
