@@ -1,9 +1,9 @@
 {
-	"name": "pln_service_user_main",
+	"name": "pln_service_user_clean_slate",
 	"properties": {
 		"activities": [
 			{
-				"name": "Ingest Standardised",
+				"name": "Delete Harmonised Table",
 				"type": "SynapseNotebook",
 				"dependsOn": [],
 				"policy": {
@@ -16,120 +16,15 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_raw_to_std",
+						"referenceName": "py_delete_table",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"date_folder": {
-							"value": "2023-05-19",
+						"db_name": {
+							"value": "odw_harmonised_db",
 							"type": "string"
 						},
-						"source_folder": {
-							"value": "Horizon",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Harmonised",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Create Harmonised Table",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "service_user_dim",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Curated",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Harmonised",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "service_user",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Create Harmonised Table",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Standardised",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_odw_harmonised_table_creation",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"specific_table": {
+						"table_name": {
 							"value": "service_user_dim",
 							"type": "string"
 						}
@@ -142,10 +37,114 @@
 					},
 					"numExecutors": null
 				}
+			},
+			{
+				"name": "Delete Standardised Table",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_delete_table",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"db_name": {
+							"value": "odw_standardised_db",
+							"type": "string"
+						},
+						"table_name": {
+							"value": "horizon_service_user",
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Delete Curated Table",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_delete_table",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"db_name": {
+							"value": "odw_curated_db",
+							"type": "string"
+						},
+						"table_name": {
+							"value": "service_user",
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "pln_service_user_main",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Delete Standardised Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Delete Harmonised Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Delete Curated Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_service_user_main",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
 			}
 		],
 		"folder": {
-			"name": "service user"
+			"name": "service user/utils"
 		},
 		"annotations": []
 	}
