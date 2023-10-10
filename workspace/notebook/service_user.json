@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b7053301-ca29-4013-87ba-3250460ddb18"
+				"spark.autotune.trackingId": "deafea6c-d8fb-47da-ab14-80e819afb3b6"
 			}
 		},
 		"metadata": {
@@ -70,10 +70,11 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"\n",
 					"is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
-					"spark.sql(f\"SET IS_DEV_OR_TEST = '{is_dev_or_test_env}'\")\n",
-					"spark.sql(f\"SET MAX_LIMIT = 100000000\")"
+					"max_limit = 20 if is_dev_or_test_env else 100000000\n",
+					"\n",
+					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 29
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -112,56 +113,11 @@
 					"    \r\n",
 					"FROM odw_harmonised_db.service_user_dim                        AS SU\r\n",
 					"WHERE SU.IsActive = 'Y'\r\n",
-					"\r\n",
-					"LIMIT   CASE\r\n",
-					"            WHEN ${IS_DEV_OR_TEST} = True\r\n",
-					"            THEN 20 -- only need limited data for dev/test environment\r\n",
-					"            ELSE ${MAX_LIMIT}\r\n",
-					"        END;\r\n",
+					"    \r\n",
+					"LIMIT ${MAX_LIMIT}\r\n",
 					""
 				],
-				"execution_count": 30
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select count(*) from odw_curated_db.vw_service_user  "
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark.sql(f\"drop table if exists odw_curated_db.service_user;\")"
-				],
-				"execution_count": null
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +143,7 @@
 					"as\r\n",
 					"SELECT * FROM odw_curated_db.vw_service_user"
 				],
-				"execution_count": null
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -209,7 +165,7 @@
 					"%%pyspark\n",
 					"pip install Faker"
 				],
-				"execution_count": null
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -225,13 +181,14 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_curated_db.service_user"
+					"select * from odw_curated_db.service_user limit 100"
 				],
-				"execution_count": null
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -269,7 +226,7 @@
 					"        table_loc = \"abfss://odw-curated@\"+storage_account+'service_user'\n",
 					"        df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
 				],
-				"execution_count": null
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -285,11 +242,12 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_curated_db.service_user"
+					"select * from odw_curated_db.service_user limit 100"
 				],
 				"execution_count": null
 			}
