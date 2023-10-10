@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c2e6b1cd-31ab-4c68-86d7-e884090f9423"
+				"spark.autotune.trackingId": "b7053301-ca29-4013-87ba-3250460ddb18"
 			}
 		},
 		"metadata": {
@@ -70,9 +70,10 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"\n",
 					"is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
-					"spark.sql(f\"SET IS_DEV_OR_TEST = '{is_dev_or_test_env}'\")"
+					"spark.sql(f\"SET IS_DEV_OR_TEST = '{is_dev_or_test_env}'\")\n",
+					"spark.sql(f\"SET MAX_LIMIT = 100000000\")"
 				],
-				"execution_count": null
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -91,44 +92,14 @@
 					"\r\n",
 					"SELECT DISTINCT\r\n",
 					"\r\n",
+					"    0                                                           AS ID,\r\n",
 					"    SU.Salutation                                               AS salutation,\r\n",
-					"    \r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.FirstName \r\n",
-					"    END                                                         AS firstName,\r\n",
-					"\r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.LastName \r\n",
-					"    END                                                         AS lastName,\r\n",
-					"\r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.EmailAddress \r\n",
-					"    END                                                         AS emailAddress,\r\n",
-					"\r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.TelephoneNumber \r\n",
-					"    END                                                         AS telephoneNumber,\r\n",
-					"\r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.OtherPhoneNumber \r\n",
-					"    END                                                         AS otherPhoneNumber,\r\n",
-					"\r\n",
-					"    CASE ${IS_DEV_OR_TEST}\r\n",
-					"        WHEN TRUE\r\n",
-					"        THEN '[Anonymized]'     \r\n",
-					"        ELSE SU.FaxNumber \r\n",
-					"    END                                                         AS faxNumber,\r\n",
-					"\r\n",
+					"    SU.FirstName                                                AS firstName,\r\n",
+					"    SU.LastName                                                 AS lastName,\r\n",
+					"    SU.EmailAddress                                             AS emailAddress,\r\n",
+					"    SU.TelephoneNumber                                          AS telephoneNumber,\r\n",
+					"    SU.OtherPhoneNumber                                         AS otherPhoneNumber,\r\n",
+					"    SU.FaxNumber                                                AS faxNumber,\r\n",
 					"    SU.AddressLine1                                             AS addressLine1,\r\n",
 					"    SU.AddressLine2                                             AS addressLine2,\r\n",
 					"    SU.AddressTown                                              AS addressTown,\r\n",
@@ -142,8 +113,35 @@
 					"FROM odw_harmonised_db.service_user_dim                        AS SU\r\n",
 					"WHERE SU.IsActive = 'Y'\r\n",
 					"\r\n",
-					"LIMIT 1\r\n",
+					"LIMIT   CASE\r\n",
+					"            WHEN ${IS_DEV_OR_TEST} = True\r\n",
+					"            THEN 20 -- only need limited data for dev/test environment\r\n",
+					"            ELSE ${MAX_LIMIT}\r\n",
+					"        END;\r\n",
 					""
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_curated_db.vw_service_user  "
 				],
 				"execution_count": null
 			},
@@ -163,7 +161,7 @@
 				"source": [
 					"spark.sql(f\"drop table if exists odw_curated_db.service_user;\")"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -189,7 +187,51 @@
 					"as\r\n",
 					"SELECT * FROM odw_curated_db.vw_service_user"
 				],
-				"execution_count": 11
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "python"
+					}
+				},
+				"source": [
+					"%%pyspark\n",
+					"pip install Faker"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_curated_db.service_user"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -205,29 +247,49 @@
 					}
 				},
 				"source": [
+					"if is_dev_or_test_env:\n",
 					"\n",
-					"absences_table = 'odw_standardised_db.hr_absences'\n",
-					"absences_table_loc = \"abfss://odw-standardised@\" + storage_account+'HR/hr_absences'\n",
+					"    import pandas as pd\n",
+					"    from faker import Faker\n",
+					"    \n",
+					"    df = spark.sql(\"select * from odw_curated_db.service_user\").toPandas()\n",
 					"\n",
-					"# getting the closest expected_from date in the table based on the expected_from parameter\n",
-					"if expected_from != '':\n",
-					"    absences_expected_from = spark.sql(f\"SELECT expected_from FROM {absences_table} as table_alias WHERE table_alias.expected_from <= '{expected_from}' ORDER BY table_alias.expected_from DESC LIMIT 1;\")\n",
-					"else:\n",
-					"    absences_expected_from = spark.sql(f\"SELECT MAX(expected_from) FROM {absences_table}\")\n",
-					"try:\n",
-					"    absences_expected_from = absences_expected_from.first()[0]\n",
-					"except:\n",
-					"    absences_expected_from = ''\n",
+					"    if(len(df) > 0):\n",
+					"        fake = Faker()\n",
+					"        \n",
+					"        df['firstName'] = [fake.first_name() for _ in range(len(df))]\n",
+					"        df['lastName'] = [fake.last_name() for _ in range(len(df))]\n",
+					"        df['emailAddress'] = [fake.email() for _ in range(len(df))]\n",
+					"        df['telephoneNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        df['otherPhoneNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        df['faxNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        \n",
+					"        df = spark.createDataFrame(df)\n",
 					"\n",
-					"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
-					"absences = spark.sql(f\"select * from {absences_table} where cast(expected_from as Date) = '{absences_expected_from}'\").toPandas()\n",
-					"\n",
-					"if(len(absences) > 0):\n",
-					"    for i, row in absences.iterrows():\n",
-					"        absences.at[i, 'hrs'] = get_absence_hrs(float(row['days']), float(row['hrs']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
-					"\n",
-					"    absencesDF = spark.createDataFrame(absences)\n",
-					"    absencesDF.write.format(\"delta\").mode(\"overwrite\").option(\"replaceWhere\", f\"cast(expected_from as Date) = '{absences_expected_from}'\").save(absences_table_loc)"
+					"        table_loc = \"abfss://odw-curated@\"+storage_account+'service_user'\n",
+					"        df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_curated_db.service_user"
 				],
 				"execution_count": null
 			}
