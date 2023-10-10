@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "44bcbf6a-86e8-4253-95f7-d79dba2a7eb7"
+				"spark.autotune.trackingId": "c2e6b1cd-31ab-4c68-86d7-e884090f9423"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
 					"spark.sql(f\"SET IS_DEV_OR_TEST = '{is_dev_or_test_env}'\")"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -141,9 +141,11 @@
 					"    \r\n",
 					"FROM odw_harmonised_db.service_user_dim                        AS SU\r\n",
 					"WHERE SU.IsActive = 'Y'\r\n",
+					"\r\n",
+					"LIMIT 1\r\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -188,6 +190,46 @@
 					"SELECT * FROM odw_curated_db.vw_service_user"
 				],
 				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"absences_table = 'odw_standardised_db.hr_absences'\n",
+					"absences_table_loc = \"abfss://odw-standardised@\" + storage_account+'HR/hr_absences'\n",
+					"\n",
+					"# getting the closest expected_from date in the table based on the expected_from parameter\n",
+					"if expected_from != '':\n",
+					"    absences_expected_from = spark.sql(f\"SELECT expected_from FROM {absences_table} as table_alias WHERE table_alias.expected_from <= '{expected_from}' ORDER BY table_alias.expected_from DESC LIMIT 1;\")\n",
+					"else:\n",
+					"    absences_expected_from = spark.sql(f\"SELECT MAX(expected_from) FROM {absences_table}\")\n",
+					"try:\n",
+					"    absences_expected_from = absences_expected_from.first()[0]\n",
+					"except:\n",
+					"    absences_expected_from = ''\n",
+					"\n",
+					"work_schedule = spark.read.format('delta').load(\"abfss://odw-standardised@\" + storage_account+'HR/hr_work_schedule_rule').toPandas()\n",
+					"absences = spark.sql(f\"select * from {absences_table} where cast(expected_from as Date) = '{absences_expected_from}'\").toPandas()\n",
+					"\n",
+					"if(len(absences) > 0):\n",
+					"    for i, row in absences.iterrows():\n",
+					"        absences.at[i, 'hrs'] = get_absence_hrs(float(row['days']), float(row['hrs']), row['start_date'], row['end_date'], row['work_schedule_rule'])\n",
+					"\n",
+					"    absencesDF = spark.createDataFrame(absences)\n",
+					"    absencesDF.write.format(\"delta\").mode(\"overwrite\").option(\"replaceWhere\", f\"cast(expected_from as Date) = '{absences_expected_from}'\").save(absences_table_loc)"
+				],
+				"execution_count": null
 			}
 		]
 	}
