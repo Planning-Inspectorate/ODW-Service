@@ -6,6 +6,7 @@ locals {
     revision              = "1"
     protocols             = ["https"]
     subscription_required = true
+    product_id            = ""
   }
 
   apim_apis = { for v in var.apim_apis : v.name => merge(local.apim_apis_defaults, v) }

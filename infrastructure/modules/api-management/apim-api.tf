@@ -17,9 +17,13 @@ resource "azurerm_api_management_api" "api" {
   }
 }
 
-# resource "azurerm_api_management_product_api" "api_management_product_api" {
-#   api_name            = azurerm_api_management_api.api.name
-#   product_id          = azurerm_api_management_product.api_management.product_id
-#   api_management_name = azurerm_api_management.api_management.name
-#   resource_group_name = var.resource_group_name
-# }
+resource "azurerm_api_management_product_api" "api_management_product_api" {
+  for_each = {
+    for product_id in local.apim_products : product_id.name => product_id
+  }
+
+  product_id          = each.value.product_id
+  api_name            = azurerm_api_management_api.api[each.key].name
+  api_management_name = azurerm_api_management.api_management.name
+  resource_group_name = var.resource_group_name
+}
