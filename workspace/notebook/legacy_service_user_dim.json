@@ -1,5 +1,5 @@
 {
-	"name": "service_user_dim",
+	"name": "legacy_service_user_dim",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/Appeals"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fc893929-ef06-4c71-b834-6817efd45de0"
+				"spark.autotune.trackingId": "8745187e-c4e9-4d2d-bfc4-edd149bd79fa"
 			}
 		},
 		"metadata": {
@@ -73,42 +73,42 @@
 					"\r\n",
 					"SELECT DISTINCT\r\n",
 					"    CASE\r\n",
-					"        WHEN T3.casereference IS NULL\r\n",
+					"        WHEN T3.case_number IS NULL\r\n",
 					"        THEN T1.ServiceDataID\r\n",
 					"        ELSE NULL\r\n",
 					"    END                             AS ServiceDataID, -- surrogate key\r\n",
-					"    T3.id                           AS TicketID,\r\n",
-					"    T3.casereference                AS CaseReference,\r\n",
-					"    T3.sourcesuid                   AS SUAreaID,\r\n",
-					"    T3.salutation                   AS Salutation,\r\n",
+					"    T1.TicketID                     AS TicketID,\r\n",
+					"    T3.case_number                  AS CaseReference,\r\n",
+					"    'Legacy User'                   AS SUAreaID,\r\n",
+					"    T3.title                        AS Salutation,\r\n",
 					"    T3.firstname                    AS FirstName, \r\n",
 					"    T3.lastname                     AS LastName,\r\n",
-					"    T3.addressline1                 AS AddressLine1,\r\n",
-					"    T3.addressline2                 AS AddressLine2,\r\n",
-					"    T3.addresstown                  AS AddressTown,\r\n",
-					"    T3.addresscounty                AS AddressCounty,\r\n",
+					"    T3.address1                     AS AddressLine1,\r\n",
+					"    T3.address2                     AS AddressLine2,\r\n",
+					"    T3.city                         AS AddressTown,\r\n",
+					"    T3.county                       AS AddressCounty,\r\n",
 					"    T3.postcode                     AS Postcode,\r\n",
-					"    'United Kingdom'                AS AddressCountry,\r\n",
-					"    T3.organisation                 AS Organisation,\r\n",
-					"    T3.organisationtype             AS OrganisationType,\r\n",
-					"    T3.serviceusertype              AS ServiceUserType,\r\n",
-					"    T3.role                         AS Role,\r\n",
-					"    T3.telephonenumber              AS TelephoneNumber,\r\n",
-					"    T3.otherphonenumber             AS OtherPhoneNumber,\r\n",
-					"    T3.faxnumber                    AS FaxNumber,\r\n",
-					"    T3.emailaddress                 AS EmailAddress,\r\n",
+					"    T3.country                      AS AddressCountry,\r\n",
+					"    T3.organisationname             AS Organisation,\r\n",
+					"    T3.organisationtypename         AS OrganisationType,\r\n",
+					"    T3.typeofinvolvement            AS ServiceUserType,\r\n",
+					"    'No Info'                       AS Role,\r\n",
+					"    T3.telephoneoffice              AS TelephoneNumber,\r\n",
+					"    T3.telephonemobile              AS OtherPhoneNumber,\r\n",
+					"    T3.fax                          AS FaxNumber,\r\n",
+					"    T3.email                        AS EmailAddress,\r\n",
 					"    T2.SourceSystemID               AS SourceSystemID, -- NOT CORRECT\r\n",
 					"    to_timestamp(T3.expected_from)  AS IngestionDate,\r\n",
 					"    NULL                            AS ValidTo,\r\n",
 					"    md5(\r\n",
 					"        concat(\r\n",
-					"            IFNULL(T3.casereference,'.'), \r\n",
+					"            IFNULL(T3.case_number,'.'), \r\n",
 					"            IFNULL(T3.firstname,'.'), \r\n",
 					"            IFNULL(T3.lastname,'.'), \r\n",
-					"            IFNULL(T3.emailaddress,'.'), \r\n",
+					"            IFNULL(T3.email,'.'), \r\n",
 					"            IFNULL(T3.postcode,'.'),\r\n",
-					"            IFNULL(T3.organisation,'.'),\r\n",
-					"            IFNULL(T3.serviceusertype,'.')\r\n",
+					"            IFNULL(T3.organisationname,'.'),\r\n",
+					"            IFNULL(T3.typeofinvolvement,'.')\r\n",
 					"        ))                          AS RowID,\r\n",
 					"    'Y'                             AS IsActive,\r\n",
 					"    T1.IsActive                     AS HistoricIsActive\r\n",
@@ -116,23 +116,23 @@
 					"FROM odw_harmonised_db.service_user_dim T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 \r\n",
 					"    ON \"Appeals\" = T2.Description\r\n",
-					"FULL JOIN odw_standardised_db.horizon_service_user_new T3 \r\n",
-					"    ON T1.CaseReference = T3.casereference\r\n",
+					"FULL JOIN odw_standardised_db.horizon_service_user T3 \r\n",
+					"    ON T1.CaseReference = T3.case_number \r\n",
 					"        AND T1.IsActive = 'Y'\r\n",
 					"\r\n",
 					"WHERE\r\n",
 					"    (-- flags new data        \r\n",
 					"        (CASE\r\n",
-					"            WHEN T3.casereference = T1.CaseReference \r\n",
+					"            WHEN T3.case_number = T1.CaseReference \r\n",
 					"            AND md5(\r\n",
 					"                concat(\r\n",
-					"                    IFNULL(T3.casereference,'.'), \r\n",
+					"                    IFNULL(T3.case_number,'.'), \r\n",
 					"                    IFNULL(T3.firstname,'.'), \r\n",
 					"                    IFNULL(T3.lastname,'.'), \r\n",
-					"                    IFNULL(T3.emailaddress,'.'), \r\n",
+					"                    IFNULL(T3.email,'.'), \r\n",
 					"                    IFNULL(T3.postcode,'.'),\r\n",
-					"                    IFNULL(T3.organisation,'.'),\r\n",
-					"                    IFNULL(T3.serviceusertype,'.')\r\n",
+					"                    IFNULL(T3.organisationname,'.'),\r\n",
+					"                    IFNULL(T3.typeofinvolvement,'.')\r\n",
 					"                )) <> T1.RowID\r\n",
 					"            THEN 'Y'\r\n",
 					"            WHEN T1.ServiceDataID IS NULL\r\n",
@@ -140,12 +140,11 @@
 					"            ELSE 'N'\r\n",
 					"        END  = 'Y' )\r\n",
 					"    )\r\n",
-					"    AND T3.casereference IS NOT NULL\r\n",
-					"    AND T3.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_service_user_new)\r\n",
-					";\r\n",
-					""
+					"    AND T3.case_number IS NOT NULL\r\n",
+					"    AND T3.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_service_user);\r\n",
+					";"
 				],
-				"execution_count": 6
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -239,7 +238,7 @@
 					"AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -308,7 +307,7 @@
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
 					";"
 				],
-				"execution_count": 10
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -400,7 +399,7 @@
 					"        Source.IsActive)\r\n",
 					";  "
 				],
-				"execution_count": 11
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -455,7 +454,7 @@
 					"FROM odw_harmonised_db.service_user_dim;\r\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 6
 			}
 		]
 	}
