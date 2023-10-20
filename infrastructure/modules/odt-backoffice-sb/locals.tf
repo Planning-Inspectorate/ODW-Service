@@ -59,6 +59,7 @@ locals {
     flatten([
       for v in local.odt_backoffice_sb_topic_subscriptions_roles : [
         for user_principal_name in v.user_principal_names : {
+          subscription_name    = v.subscription_name
           role_definition_name = v.role_definition_name
           principal_id         = local.user_principal_ids[user_principal_name]
         }
@@ -67,6 +68,7 @@ locals {
     flatten([
       for v in local.odt_backoffice_sb_topic_subscriptions_roles : [
         for group_name in v.group_names : {
+          subscription_name    = v.subscription_name
           role_definition_name = v.role_definition_name
           principal_id         = local.group_ids[group_name]
         }
@@ -75,6 +77,7 @@ locals {
     flatten([
       for v in local.odt_backoffice_sb_topic_subscriptions_roles : [
         for service_principal_name in v.service_principal_names : {
+          subscription_name    = v.subscription_name
           role_definition_name = v.role_definition_name
           principal_id         = local.service_principal_ids[service_principal_name]
         }
