@@ -1,5 +1,5 @@
 resource "azurerm_servicebus_subscription" "odt_backoffice_subscriptions" {
-  for_each = toset(local.odt_backoffice_sb_subscriptions)
+  for_each = local.odt_backoffice_sb_subscriptions
 
   name                                      = each.key
   topic_id                                  = local.odt_backoffice_sb_topic_ids[lower(each.value.topic_name)]
