@@ -25,7 +25,7 @@ locals {
   odt_backoffice_sb_subscriptions = { for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name => merge(local.odt_backoffice_sb_topic_subscriptions_defaults, v) }
 
   odt_backoffice_sb_topic_names = distinct(flatten([for v in var.odt_backoffice_sb_topic_subscriptions : v.topic_name]))
-  odt_backoffice_sb_topic_ids   = { for t in data.azurerm_servicebus_topic.topic_id : t.topic_name => t.topic_id }
+  odt_backoffice_sb_topic_ids   = { for t in data.azurerm_servicebus_topic.topic_id : t.name => t.topic_id }
 
   service_bus_null_principals = {
     users              = []
