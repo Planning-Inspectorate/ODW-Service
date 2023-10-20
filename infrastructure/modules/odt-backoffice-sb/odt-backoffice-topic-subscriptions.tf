@@ -22,5 +22,5 @@ resource "azurerm_role_assignment" "odt_backoffice_sb_subscription_role_assignme
 
   scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.value.subscription_name].id
   role_definition_name = each.value.role_definition_name
-  principal_id         = local.odt_backoffice_sb_roles[each.key].principal_id
+  principal_id         = each.value.principal_id
 }
