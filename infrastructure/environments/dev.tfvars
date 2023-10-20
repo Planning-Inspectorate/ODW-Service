@@ -112,8 +112,8 @@ odt_backoffice_sb_topic_subscriptions = [
     }
   },
   {
-    subscription_name = "s52-advice"
-    topic_name        = "s52-advice"
+    subscription_name = "nsip-s51-advice"
+    topic_name        = "nsip-s51-advice"
     role_assignments = {
       "Azure Service Bus Data Receiver" = {
         service_principals = ["pins-synw-odw-dev-uks"]
@@ -193,9 +193,9 @@ service_bus_topics_and_subscriptions = [
     }
   },
   {
-    name = "s52-advice"
+    name = "nsip-s51-advice"
     subscriptions = {
-      "s52-advice" = {},
+      "nsip-s51-advice" = {},
     }
   }
 ]
