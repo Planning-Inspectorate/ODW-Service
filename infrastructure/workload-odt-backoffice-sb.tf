@@ -26,7 +26,7 @@ resource "azurerm_resource_group" "odt_backoffice_sb_global" {
 }
 
 resource "azurerm_private_dns_zone" "back_office_private_dns_zone" {
-  count = var.odt_back_office_service_bus_enabled ? 1 : 0 && var.environment != "dev" ? 1 : 0
+  count = var.odt_back_office_service_bus_enabled && var.environment != "dev" ? 1 : 0
 
   name                = "privatelink.servicebus.windows.net"
   resource_group_name = azurerm_resource_group.odt_backoffice_sb_global[0].name
@@ -35,7 +35,7 @@ resource "azurerm_private_dns_zone" "back_office_private_dns_zone" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "back_office_private_dns_zone_vnet_link" {
-  count = var.odt_back_office_service_bus_enabled ? 1 : 0 && var.environment != "dev" ? 1 : 0
+  count = var.odt_back_office_service_bus_enabled && var.environment != "dev" ? 1 : 0
 
   name                  = "pins-pdns-vnet-link-backoffice-sb-${local.resource_suffix}"
   resource_group_name   = azurerm_resource_group.odt_backoffice_sb_global[0].name
