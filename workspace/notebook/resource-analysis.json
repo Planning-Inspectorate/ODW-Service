@@ -1,0 +1,385 @@
+{
+	"name": "resource-analysis",
+	"properties": {
+		"folder": {
+			"name": "utils"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodwpr",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "c85e6dec-3a21-41d4-a1ff-d53448cc849e"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
+				"name": "pinssynspodwpr",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.2",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"%pip install -U azure-identity"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install -U azure-mgmt-resource"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install -U azure-common"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install -U azure-mgmt-synapse"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install -U azure-mgmt-network"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install -U azurerm"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from azure.mgmt.synapse import SynapseManagementClient\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"from azure.identity import ClientSecretCredential\r\n",
+					"from azure.mgmt.resource import ResourceManagementClient\r\n",
+					"from azure.mgmt.network import NetworkManagementClient\r\n",
+					"# from azurerm.network.watcher import get_network_watcher_next_hop\r\n",
+					"import pandas as pd\r\n",
+					"import pprint\r\n",
+					"import requests\r\n",
+					"print(\"Imports complete\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"akv_name = \"pinskvsynwodwdevuks\"\r\n",
+					"secret_name = \"SVC-ODW-REPORTING\"\r\n",
+					"kv_linked_service = \"ls_kv\"\r\n",
+					"secret = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
+					"print(\"Got secret\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Define your Azure credentials with a service principal\r\n",
+					"client_id = \"f27d572e-49ec-4bd6-bbe7-de04ae34497f\"\r\n",
+					"client_secret = secret\r\n",
+					"tenant_id = \"5878df98-6f88-48ab-9322-998ce557088d\"\r\n",
+					"\r\n",
+					"credentials = ClientSecretCredential(tenant_id, client_id, client_secret)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"subscription_id = \"ff442a29-fc06-4a13-8e3e-65fd5da513b3\"\r\n",
+					"vnet_name = \"vnet-odw-dev-uks\"\r\n",
+					"workspace_name = \"pins-synw-odw-dev-uks\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def list_all_resources(credentials, subscription_id):\r\n",
+					"    resource_client = ResourceManagementClient(credentials, subscription_id)\r\n",
+					"    return resource_client.resources.list()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def is_resource_in_vnet(network_client, resource_id, vnet_name):\r\n",
+					"    # Use Azure Network Watcher to check network connectivity\r\n",
+					"    result = network_client.network_watchers.get_next_hop(resource_id, destination_ip=\"8.8.8.8\", destination_port=\"80\")\r\n",
+					"\r\n",
+					"    # Check if the result contains the Virtual Network name\r\n",
+					"    return vnet_name in result.route_table_name"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Initialize the Network Management Client\r\n",
+					"network_client = NetworkManagementClient(credentials, subscription_id)\r\n",
+					"print(\"Network client initialised\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Initialise Synapse client\r\n",
+					"synapse_client = SynapseManagementClient(credentials, subscription_id)\r\n",
+					"print(\"Synapse client initialised\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"access_token = credentials.get_token('https://management.azure.com/.default').token"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Set the URL for listing pipelines\r\n",
+					"resource_group_name = \"pins-rg-data-odw-dev-uks\"\r\n",
+					"workspace_url = \"https://pins-synw-odw-dev-uks.dev.azuresynapse.net\"\r\n",
+					"api_version = \"2020-12-01\"\r\n",
+					"\r\n",
+					"url = f'{workspace_url}/pipelines?api-version={api_version}'\r\n",
+					"\r\n",
+					"# Set the headers with the access token\r\n",
+					"headers = {\r\n",
+					"    'Authorization': f'Bearer {access_token}'\r\n",
+					"}\r\n",
+					"\r\n",
+					"# Make the HTTP GET request to list pipelines\r\n",
+					"response = requests.get(url, headers=headers)\r\n",
+					"\r\n",
+					"if response.status_code == 200:\r\n",
+					"    pipelines = response.json()\r\n",
+					"    for pipeline in pipelines.get('value', []):\r\n",
+					"        print(f\"Pipeline Name: {pipeline['name']}\")\r\n",
+					"else:\r\n",
+					"    print(f\"Failed to list pipelines. Status code: {response.status_code}\")\r\n",
+					"    print(response.text)"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
