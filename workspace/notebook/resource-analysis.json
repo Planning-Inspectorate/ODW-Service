@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c85e6dec-3a21-41d4-a1ff-d53448cc849e"
+				"spark.autotune.trackingId": "f896bc6d-95f6-4ad8-9a82-0fbbcfa74828"
 			}
 		},
 		"metadata": {
@@ -54,7 +54,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"%pip install -U azure-identity"
+					"%pip install -U azure-identity -q"
 				],
 				"execution_count": null
 			},
@@ -72,7 +72,7 @@
 					}
 				},
 				"source": [
-					"%pip install -U azure-mgmt-resource"
+					"%pip install -U azure-mgmt-resource -q"
 				],
 				"execution_count": null
 			},
@@ -90,7 +90,7 @@
 					}
 				},
 				"source": [
-					"%pip install -U azure-common"
+					"%pip install -U azure-common -q"
 				],
 				"execution_count": null
 			},
@@ -108,7 +108,7 @@
 					}
 				},
 				"source": [
-					"%pip install -U azure-mgmt-synapse"
+					"%pip install -U azure-mgmt-synapse -q"
 				],
 				"execution_count": null
 			},
@@ -126,7 +126,7 @@
 					}
 				},
 				"source": [
-					"%pip install -U azure-mgmt-network"
+					"%pip install -U azure-mgmt-network -q"
 				],
 				"execution_count": null
 			},
@@ -144,7 +144,7 @@
 					}
 				},
 				"source": [
-					"%pip install -U azurerm"
+					"%pip install -U azurerm -q"
 				],
 				"execution_count": null
 			},
@@ -337,7 +337,49 @@
 					}
 				},
 				"source": [
-					"access_token = credentials.get_token('https://management.azure.com/.default').token"
+					"# access_token = credentials.get_token('https://management.azure.com/.default').token\r\n",
+					"token_url = f\"https://login.microsoftonline.com/{tenant_id}/oauth2/token\"\r\n",
+					"authority = f\"https://login.microsoftonline.com/{tenant_id}\"\r\n",
+					"scope =  [ \"https://management.azure.com/.default\" ]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"app = msal.ConfidentialClientApplication(\r\n",
+					"    client_id, authority=authority,\r\n",
+					"    client_credential=secret,\r\n",
+					"    )\r\n",
+					"\r\n",
+					"result = None\r\n",
+					"\r\n",
+					"# Firstly, looks up a token from cache\r\n",
+					"# Since we are looking for token for the current app, NOT for an end user,\r\n",
+					"# notice we give account parameter as None.\r\n",
+					"result = app.acquire_token_silent(scope, account=None)\r\n",
+					"\r\n",
+					"if not result:\r\n",
+					"    logging.info(\"No suitable token exists in cache. Let's get a new one from AAD.\")\r\n",
+					"    result = app.acquire_token_for_client(scopes=scope)\r\n",
+					"\r\n",
+					"if \"access_token\" in result:\r\n",
+					"    print(\"Got access token\")\r\n",
+					"else:\r\n",
+					"    print(result.get(\"error\"))\r\n",
+					"    print(result.get(\"error_description\"))\r\n",
+					"    print(result.get(\"correlation_id\"))  # You may need this when reporting a bug"
 				],
 				"execution_count": null
 			},
@@ -358,9 +400,11 @@
 					"# Set the URL for listing pipelines\r\n",
 					"resource_group_name = \"pins-rg-data-odw-dev-uks\"\r\n",
 					"workspace_url = \"https://pins-synw-odw-dev-uks.dev.azuresynapse.net\"\r\n",
+					"# workspace_url = \"https://management.azure.com\"\r\n",
 					"api_version = \"2020-12-01\"\r\n",
+					"pipeline_name = \"0_Zendesk_API_to_RAW_historical_load\"\r\n",
 					"\r\n",
-					"url = f'{workspace_url}/pipelines?api-version={api_version}'\r\n",
+					"url = f'{workspace_url}/datasets?api-version={api_version}'\r\n",
 					"\r\n",
 					"# Set the headers with the access token\r\n",
 					"headers = {\r\n",
