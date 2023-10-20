@@ -199,6 +199,29 @@ variable "odt_back_office_service_bus_resource_group_name_failover" {
   type        = string
 }
 
+variable "odt_backoffice_sb_topic_subscriptions" {
+  description = "A collection of objects defining the topic subscriptions to be created"
+  type = list(object({
+    subscription_name                         = string
+    topic_name                                = string
+    status                                    = string
+    max_delivery_count                        = number
+    auto_delete_on_idle                       = string
+    default_message_ttl                       = string
+    lock_duration                             = string
+    dead_lettering_on_message_expiration      = bool
+    dead_lettering_on_filter_evaluation_error = bool
+    enable_batched_operations                 = bool
+    requires_session                          = bool
+    forward_to                                = string
+    role_assignments = map(object({
+      users              = list(string)
+      groups             = list(string)
+      service_principals = list(string)
+    }))
+  }))
+}
+
 variable "odt_subscription_id" {
   description = "The subscription ID of the ODT subscription"
   type        = string

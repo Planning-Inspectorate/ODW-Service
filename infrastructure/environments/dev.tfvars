@@ -65,6 +65,17 @@ odt_back_office_service_bus_name                         = "pins-sb-back-office-
 odt_back_office_service_bus_name_failover                = "pins-sb-back-office-dev-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-dev-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-dev-uks-001"
+odt_backoffice_sb_topic_subscriptions = [
+  {
+    subscription_name = "service-user"
+    topic_name        = "service-user"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principal_names = ["pins-synw-odw-dev-uks"]
+      }
+    }
+  },
+]
 
 service_bus_failover_enabled = false
 service_bus_role_assignments = {

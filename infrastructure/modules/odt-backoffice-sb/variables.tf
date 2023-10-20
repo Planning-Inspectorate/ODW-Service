@@ -9,6 +9,30 @@ variable "resource_group_name" {
   type        = string
 }
 
+variable "odt_backoffice_sb_topic_subscriptions" {
+  description = "A collection of objects defining the topic subscriptions to be created"
+  type = list(object({
+    subscription_name                         = string
+    topic_name                                = string
+    status                                    = string
+    max_delivery_count                        = number
+    auto_delete_on_idle                       = string
+    default_message_ttl                       = string
+    lock_duration                             = string
+    dead_lettering_on_message_expiration      = bool
+    dead_lettering_on_filter_evaluation_error = bool
+    enable_batched_operations                 = bool
+    requires_session                          = bool
+    forward_to                                = string
+    role_assignments = map(object({
+      users              = list(string)
+      groups             = list(string)
+      service_principals = list(string)
+    }))
+  }))
+}
+
+
 variable "odt_back_office_service_bus_name" {
   description = "The name of the Service Bus namespace into which resources will be deployed"
   type        = string
@@ -38,17 +62,6 @@ variable "synapse_private_endpoint_subnet_name" {
 variable "synapse_private_endpoint_vnet_subnets" {
   description = "A map of subnet names and IDs comprising the linked Virtual Network for private endpoint deployment"
   type        = map(string)
-}
-
-# variable "synapse_workspace_failover_principal_id" {
-#   default     = null
-#   description = "The managed identity for the failover Synapse Workspace"
-#   type        = string
-# }
-
-variable "synapse_workspace_principal_id" {
-  description = "The managed identity for the Synapse Workspace"
-  type        = string
 }
 
 variable "tags" {
