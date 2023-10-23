@@ -10,4 +10,6 @@
 
 ## Service User process  
 
+![architecture](../../images/service-user-architecture.drawio.svg)
+
 ## DaRT process  
