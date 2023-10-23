@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f896bc6d-95f6-4ad8-9a82-0fbbcfa74828"
+				"spark.autotune.trackingId": "ddd88819-3a94-4c3a-a992-13cbc63f2f3f"
 			}
 		},
 		"metadata": {
@@ -171,6 +171,8 @@
 					"import pandas as pd\r\n",
 					"import pprint\r\n",
 					"import requests\r\n",
+					"import msal\r\n",
+					"import logging\r\n",
 					"print(\"Imports complete\")"
 				],
 				"execution_count": null
@@ -340,7 +342,9 @@
 					"# access_token = credentials.get_token('https://management.azure.com/.default').token\r\n",
 					"token_url = f\"https://login.microsoftonline.com/{tenant_id}/oauth2/token\"\r\n",
 					"authority = f\"https://login.microsoftonline.com/{tenant_id}\"\r\n",
-					"scope =  [ \"https://management.azure.com/.default\" ]"
+					"# scope needs to be for the Data Plane API for pipeline info, not management\r\n",
+					"scope =  [ \"https://dev.azuresynapse.net/.default\" ]\r\n",
+					"# \"https://management.azure.com/.default\" "
 				],
 				"execution_count": null
 			},
@@ -376,6 +380,7 @@
 					"\r\n",
 					"if \"access_token\" in result:\r\n",
 					"    print(\"Got access token\")\r\n",
+					"    access_token = result['access_token']\r\n",
 					"else:\r\n",
 					"    print(result.get(\"error\"))\r\n",
 					"    print(result.get(\"error_description\"))\r\n",
@@ -402,9 +407,8 @@
 					"workspace_url = \"https://pins-synw-odw-dev-uks.dev.azuresynapse.net\"\r\n",
 					"# workspace_url = \"https://management.azure.com\"\r\n",
 					"api_version = \"2020-12-01\"\r\n",
-					"pipeline_name = \"0_Zendesk_API_to_RAW_historical_load\"\r\n",
 					"\r\n",
-					"url = f'{workspace_url}/datasets?api-version={api_version}'\r\n",
+					"url = f'{workspace_url}/triggers?api-version={api_version}'\r\n",
 					"\r\n",
 					"# Set the headers with the access token\r\n",
 					"headers = {\r\n",
@@ -415,12 +419,17 @@
 					"response = requests.get(url, headers=headers)\r\n",
 					"\r\n",
 					"if response.status_code == 200:\r\n",
-					"    pipelines = response.json()\r\n",
-					"    for pipeline in pipelines.get('value', []):\r\n",
-					"        print(f\"Pipeline Name: {pipeline['name']}\")\r\n",
-					"else:\r\n",
-					"    print(f\"Failed to list pipelines. Status code: {response.status_code}\")\r\n",
-					"    print(response.text)"
+					"    pipelines = response.json()['value']\r\n",
+					"    print(\"Got triggers\")\r\n",
+					"    print(len(pipelines))\r\n",
+					" \r\n",
+					"    pprint.pprint(pipelines)\r\n",
+					"#     for pipeline in pipelines.get('value', []):\r\n",
+					"#         if pipeline['name'] == \"0_Zendesk_API_to_RAW_historical_load\":\r\n",
+					"#             print(f\"Pipeline Name: {pipeline['name']}\")\r\n",
+					"# else:\r\n",
+					"#     print(f\"Failed to list pipelines. Status code: {response.status_code}\")\r\n",
+					"#     print(response.text)"
 				],
 				"execution_count": null
 			}
