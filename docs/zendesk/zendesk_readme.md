@@ -126,7 +126,7 @@ Data Validation:
 
 Handling New and Updated Tickets :
 
-      - The code includes functions to handle newly created and updated Zendesk tickets, storing them in separate Delta tables ([odw_standardised_db.zendesk_updated_tickets](https://web.azuresynapse.net/en/authoring/analyze/notebooks/zendesk_get_updated_tickets?workspace=%2Fsubscriptions%2Fff442a29-fc06-4a13-8e3e-65fd5da513b3%2FresourceGroups%2Fpins-rg-data-odw-dev-uks%2Fproviders%2FMicrosoft.Synapse%2Fworkspaces%2Fpins-synw-odw-dev-uks) and [odw_standardised_db.zendesk_new_tickets](https://web.azuresynapse.net/en/authoring/analyze/notebooks/zendesk_get_created_tickets?workspace=%2Fsubscriptions%2Fff442a29-fc06-4a13-8e3e-65fd5da513b3%2FresourceGroups%2Fpins-rg-data-odw-dev-uks%2Fproviders%2FMicrosoft.Synapse%2Fworkspaces%2Fpins-synw-odw-dev-uks)).
+      - The code includes functions to handle newly created and updated Zendesk tickets, storing them in separate Delta tables ([odw_standardised_db.zendesk_updated_tickets](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/workspace/notebook/zendesk_get_updated_tickets.json) and [odw_standardised_db.zendesk_new_tickets](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/workspace/notebook/zendesk_get_created_tickets.json).
     -The code includes a [pipeline](https://github.com/Planning-Inspectorate/ODW-Service/blob/feat/zendesk_documentaition/workspace/pipeline/0_Zendesk_API_to_RAW.json) which ingest the data on daily bases through all the layers 
 
 Merging Data:
