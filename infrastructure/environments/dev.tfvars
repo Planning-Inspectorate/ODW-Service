@@ -256,8 +256,8 @@ vnet_subnets = [
     "name" : "ComputeSubnet"
     "new_bits" : 2 # /26
   },
-  {
-    "name" : "ApimSubnet",
-    "new_bits" : 2 # /26
-  },
+  # {
+  #   "name" : "ApimSubnet",
+  #   "new_bits" : 2 # /26
+  # },
 ]
