@@ -37,14 +37,16 @@ The end-to-end process has been automated as follows.
 4. This pipeline will ingest the new data in Standardised, Harmonised, and Curated layers within the ODW and as a final step, publish the data to a **Service Bus** at `service-user` topic.
 5. Back Office will be able to subscribe to this topic and consume the processed data.
 
+### High level architecture  
+
+![architecture](../../images/service-user-architecture.drawio.svg)
+
 ### Key notes
 - Make sure the Function App and the Storage Account are in the same VNET to allow communication.
 - Make sure that the Data Factory has the right role assigned (EventGrid EventSubscription Contributor) in the Subscription to be able to publish the trigger.
 
 
 
-
-![architecture](../../images/service-user-architecture.drawio.svg)
 
 ## DaRT process  
 
