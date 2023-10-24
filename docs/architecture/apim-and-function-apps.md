@@ -19,6 +19,8 @@
 - APIs will be organised into logical products within APIM
 - Subscription keys will be required for all APIs
 - oAuth will also be used to authenticate against each API
+- APIM will be integrated with Azure Entra ID
+- The APIM developer portal will be used to access API documentation and to subscribe to APIs
 - A JWT validate policy will be applied to all APIs as part of auth flow
 - Azure Key Vault will be used to store subscription keys and service principal secrets used to call the APIs
 - Subscription keys and SPN secrets to be rotated on a regular basis (tbc) using Azure DevOps pipeline
@@ -107,6 +109,7 @@ functions:.
 ```
 
 ## Authorisation flow  
+#### Example shown for DaRT but very similar for other APIs  
 
 ```mermaid
 
