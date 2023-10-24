@@ -200,13 +200,6 @@ service_bus_topics_and_subscriptions = [
   },
 ]
 
-service_bus_failover_enabled = false
-service_bus_role_assignments = {
-  "Azure Service Bus Data Owner" = {
-    groups = ["pins-odw-prod-administrators"]
-  }
-}
-
 spark_pool_enabled         = true
 spark_pool_max_node_count  = 12
 spark_pool_min_node_count  = 3
