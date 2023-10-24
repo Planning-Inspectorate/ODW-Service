@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "85ea3caa-bc39-44db-a737-29c554c26c49"
+				"spark.autotune.trackingId": "4843ac38-a9d5-4248-b8d4-3fe0147fd166"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"    sender.send_messages(message)\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -133,7 +133,7 @@
 					"table_name=\"odw_curated_db.service_user\"\n",
 					"custom_props_attributes=[\"_change_type\"]"
 				],
-				"execution_count": null
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -169,7 +169,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -203,7 +203,7 @@
 					"    topic_accessed_at=get_topic_accessed_at(servicebus_mgmt_client)\n",
 					"print(topic_accessed_at)"
 				],
-				"execution_count": null
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -237,7 +237,7 @@
 					"# history_df = spark.sql(\"DESCRIBE HISTORY odw_curated_db.service_user\")\r\n",
 					"# hist_df_pandas = history_df.toPandas()"
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -255,7 +255,7 @@
 				"source": [
 					"# print(hist_df_pandas['version'].values)"
 				],
-				"execution_count": null
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -288,7 +288,7 @@
 					"# else:\r\n",
 					"#     starting_timestamp = topic_accessed_at"
 				],
-				"execution_count": null
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -306,7 +306,7 @@
 				"source": [
 					"starting_timestamp = '2023-10-23 13:50:16'"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -324,7 +324,7 @@
 				"source": [
 					"topic_accessed_at"
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -347,7 +347,7 @@
 					"%%sql\r\n",
 					"DESCRIBE HISTORY odw_curated_db.service_user"
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -395,7 +395,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -424,9 +424,7 @@
 					}
 				},
 				"source": [
-					"import asyncio\n",
-					"from azure.servicebus.aio import ServiceBusClient\n",
-					"from azure.servicebus import ServiceBusMessage\n",
+					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
 					"\n",
 					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
 					"\n",
@@ -440,52 +438,18 @@
 					"            row_count=df_json.count()\n",
 					"            batch_message = sender.create_message_batch()\n",
 					"            for row in df_json.collect(): \n",
-					"                batch_message.add_message(ServiceBusMessage(send_single_message(sender,row,custom_props_attributes)))\n",
+					"                content = row\n",
+					"                json_dict = json.loads(content)\n",
+					"                custom_props = { key: json_dict[key] for key in json_dict if key in custom_props_attributes}\n",
+					"                batch_message.add_message(ServiceBusMessage(content,content_type='application/json',application_properties=custom_props))\n",
 					"            await sender.send_messages(batch_message)\n",
 					"            print(\"Sent {} messages.\".format(row_count))\n",
 					"\n",
 					"except Exception as e:  \n",
 					"        print(f\"{e}\") \n",
-					"\n",
-					"\n",
-					"# import asyncio\n",
-					"# from azure.servicebus.aio import ServiceBusClient\n",
-					"# from azure.servicebus import ServiceBusMessage\n",
-					"\n",
-					"# async def send_single_message(sender):\n",
-					"#     # Create a Service Bus message\n",
-					"#     message = ServiceBusMessage(\"Single Message\")\n",
-					"#     # send the message to the topic\n",
-					"#     await sender.send_messages(message)\n",
-					"#     print(\"Sent a single message\")\n",
-					"\n",
-					"# async def send_a_list_of_messages(sender):\n",
-					"#     # Create a list of messages\n",
-					"#     messages = [ServiceBusMessage(\"Message in list\") for _ in range(5)]\n",
-					"#     # send the list of messages to the topic\n",
-					"#     await sender.send_messages(messages)\n",
-					"#     print(\"Sent a list of 5 messages\")\n",
-					"\n",
-					"# async def send_batch_message(sender):\n",
-					"#     # Create a batch of messages\n",
-					"#     async with sender:\n",
-					"#         batch_message = await sender.create_message_batch()\n",
-					"#         for _ in range(10):\n",
-					"#             try:\n",
-					"#                 # Add a message to the batch\n",
-					"#                 batch_message.add_message(ServiceBusMessage(\"Message inside a ServiceBusMessageBatch\"))\n",
-					"#             except ValueError:\n",
-					"#                 # ServiceBusMessageBatch object reaches max_size.\n",
-					"#                 # New ServiceBusMessageBatch object can be created here to send more data.\n",
-					"#                 break\n",
-					"#         # Send the batch of messages to the topic\n",
-					"#         await sender.send_messages(batch_message)\n",
-					"#     print(\"Sent a batch of 10 messages\")\n",
-					"\n",
-					"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -516,7 +480,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -540,7 +504,7 @@
 					"\n",
 					"SELECT * FROM odw_curated_db.service_user"
 				],
-				"execution_count": null
+				"execution_count": 14
 			}
 		]
 	}
