@@ -1,4 +1,4 @@
-Code Documentation Zendesk
+# Code Documentation Zendesk
 Document the data journey from source to curated, including
 Any transformations from unstructured source to structured format
 Any JSON source object nesting
@@ -6,23 +6,24 @@ Any business logic used, e.g. to find/identify Case References in Zendesk fields
 Link the readme items to examples in the code to provide context
 Anything else Zendesk-specific of note
 e.g. notes on limitations of unusable data, and on any limitations on how to use code (datatypes hard to ingest into pyspark)
-Data Source:
+
+### Data Source:
 
 The data is sourced from ZenDesk in JSON format, which is unstructured. The code processes this data to make it more structured and suitable for analysis.
 
-Transformation 1: JSON Source Object Nesting
+### Transformation 1: JSON Source Object Nesting
 
 The code reads JSON data from the source files using PySpark and loads it into a DataFrame named shows. The JSON data contains nested objects and arrays, which are automatically parsed and flattened by Spark's JSON reader.
 
 Example: Reading JSON data into a DataFrame - shows = spark.read.json(source_path)
 
-Transformation 2: Pandas DataFrame for Structuring
+### Transformation 2: Pandas DataFrame for Structuring
 
 The shows DataFrame is converted to a Pandas DataFrame (pandasDF). This step allows for more flexibility in manipulating the data since Pandas DataFrames are easier to work with for certain operations.
 
 Example: Conversion to Pandas DataFrame - pandasDF = shows.toPandas()
 
-Transformation 3: Data Type Standardization
+### Transformation 3: Data Type Standardization
 
 To ensure uniform data types, the Pandas DataFrame pandasDF is converted to a Spark DataFrame (sparkDF) after applying a transformation to ensure all data is represented as strings.
 
@@ -49,7 +50,7 @@ To ensure uniform data types, the Pandas DataFrame pandasDF is converted to a Sp
 					"    dfassigneelist.default_group_id = dfassigneelist.default_group_id.astype(str)
 ```
 
-Transformation 4: Adding Constant Values
+### Transformation 4: Adding Constant Values
 
 Several columns are added to sparkDF with constant values. For example, "SourceSystemID" is set to 6, "IngestionDate" is set to the current timestamp, "ValidTo" is set to "NULL," and "IsActive" is set to "Y."
 
@@ -66,7 +67,7 @@ Several columns are added to sparkDF with constant values. For example, "SourceS
                                     .withColumn('IsActive', lit("Y"))
 ```
 
-Transformation 5: Row Numbering
+### Transformation 5: Row Numbering
 
 A new column "RowID" is added to the DataFrame. It represents row numbers within partitions defined by "SourceSystemID" and ordered by the "id" column.
 
@@ -80,23 +81,20 @@ Example: Row numbering -
 
  ```
 
-Data Loading:
+### Data Loading:
 
 The final structured data in sparkDF is written to a Delta table named "odw_standardised_db.zendesk_system_extract."
 
 [Example](https://github.com/Planning-Inspectorate/ODW-Service/blob/feat/zendesk_documentaition/workspace/notebook/zendesk_raw_to_standerdised.json#L131): Writing to a Delta table - sparkDF.write.format('delta').saveAsTable("odw_standardised_db.zendesk_system_extract")
 
-Data Ingestion:
+### Data Ingestion:
 
       - Source: JSON files in blob storage.
 
       - Read and load JSON files using PySpark into a DataFrame called shows.
 
-Data Transformation:
 
-      - Add columns like SourceSystemID, IngestionDate, ValidTo, IsActive, and RowID to the DataFrame. These columns are used to standardize and structure the data.
-
-Table Creation:
+### Table Creation:
 
       - Create a Delta table named odw_standardised_db.zendesk_system_extract to store the transformed data.
 
@@ -120,36 +118,36 @@ Data Processing Functions:
 
           - collaborator_table(): Processes data related to collaborators on tickets.
 
-Data Validation:
+### Data Validation:
 
       - The script performs JSON [schema validation](https://github.com/Planning-Inspectorate/ODW-Service/blob/feat/zendesk_documentaition/workspace/notebook/zendesk_schema_validation.json#L147-L167) for Zendesk data using the jsonschema library. It checks if the JSON data conforms to a specified schema. This validation ensures that the data is structured correctly.
 
-Handling New and Updated Tickets :
+### Handling New and Updated Tickets :
 
       - The code includes functions to handle newly created and updated Zendesk tickets, storing them in separate Delta tables ([odw_standardised_db.zendesk_updated_tickets](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/workspace/notebook/zendesk_get_updated_tickets.json) and [odw_standardised_db.zendesk_new_tickets](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/workspace/notebook/zendesk_get_created_tickets.json).
     -The code includes a [pipeline](https://github.com/Planning-Inspectorate/ODW-Service/blob/feat/zendesk_documentaition/workspace/pipeline/0_Zendesk_API_to_RAW.json) which ingest the data on daily bases through all the layers 
 
-Merging Data:
+### Merging Data:
 
       - The script merges historical data from a file with the existing data in the odw_standardised_db.zendesk_system_extract table. This is done using a MERGE INTO SQL statement.
 
-SQL Queries:
+### SQL Queries:
 
       - The code includes SQL queries to interact with the Delta tables, such as retrieving data and performing counts.
 
-Logging :
+### Logging :
 
       - There are references to a [@logging_to_appins](https://github.com/Planning-Inspectorate/ODW-Service/blob/feat/zendesk_documentaition/workspace/notebook/py_logging_decorator.json) decorator, which include logging to an application insight for monitoring and logging purposes.
 
-Data journey
-
-https://drive.google.com/file/d/1RpvaOCcGcPAu5-rxpfT0EEqvgh7d80OA/view?usp=sharing
+### Data journey
+ 	- Follow belowe link for the data flow schmea 
+  https://drive.google.com/file/d/1RpvaOCcGcPAu5-rxpfT0EEqvgh7d80OA/view?usp=sharing
 
 Merging Zendesk with Service user 
 The data of the assisgnee, collaborator, requester and sumbitter is unified in one temporary view and then added to the harmonised layer of the serice user table via [odw-harmonised/adding_zendesk_to_serviceuser notebook](https://web.azuresynapse.net/en/authoring/analyze/notebooks/adding_zendesk_to_service_user?workspace=%2Fsubscriptions%2Fff442a29-fc06-4a13-8e3e-65fd5da513b3%2FresourceGroups%2Fpins-rg-data-odw-dev-uks%2Fproviders%2FMicrosoft.Synapse%2Fworkspaces%2Fpins-synw-odw-dev-uks)
 
   
-Zendesk steps
+### Zendesk steps
 
 Take a system extract from the SAP storgae and save it in the the blob storage (/ZenDesk/Export/export-2023-03-15-1051-10932060-13758561992081e5c3.json)
 Since the export file holds multiple zendesk tickets, run the odw-raw/zendesk_standardised_and_harmonised notebook to load the file and separate it in one json per ticket.
@@ -173,7 +171,7 @@ Pipeline zendesk/layer/0-raw 0_zendesk_api_to_raw
 
 Which will run the 2 notebooks Zendesk_get_updated_tickets and Zendesk_get_created_tickets
 
-Challenges and Findings:
+### Challenges and Findings:
 
 The export.json holds tickets which are different from each other.
 The difference is in the schema, as none of them respect a certain schema.
