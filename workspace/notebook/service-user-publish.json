@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c89b2e31-2971-46f1-bdb3-140ea80a40cb"
+				"spark.autotune.trackingId": "82a67385-cdd2-4501-97c1-2d7f86f97de3"
 			}
 		},
 		"metadata": {
@@ -83,6 +83,7 @@
 				"source": [
 					"import json\n",
 					"import pandas as pd\n",
+					"\n",
 					"def get_topic_accessed_at(servicebus_mgmt_client):\n",
 					"    get_topic_runtime_properties = servicebus_mgmt_client.get_topic_runtime_properties(topic_name)\n",
 					"    return(get_topic_runtime_properties.accessed_at_utc)    \n",
@@ -92,6 +93,22 @@
 					"    custom_props = { key: json_dict[key] for key in json_dict if key in custom_props_attributes}\n",
 					"    message = ServiceBusMessage(content,content_type='application/json',application_properties=custom_props)\n",
 					"    sender.send_messages(message)\n",
+					"\n",
+					"def send_batch_message(sender):\n",
+					"    # Create a batch of messages\n",
+					"    async with sender:\n",
+					"        batch_message = await sender.create_message_batch()\n",
+					"        for _ in range(10):\n",
+					"            try:\n",
+					"                # Add a message to the batch\n",
+					"                batch_message.add_message(ServiceBusMessage(\"Message inside a ServiceBusMessageBatch\"))\n",
+					"            except ValueError:\n",
+					"                # ServiceBusMessageBatch object reaches max_size.\n",
+					"                # New ServiceBusMessageBatch object can be created here to send more data.\n",
+					"                break\n",
+					"        # Send the batch of messages to the topic\n",
+					"        await sender.send_messages(batch_message)\n",
+					"    print(\"Sent a batch of 10 messages\")\n",
 					""
 				],
 				"execution_count": 60
@@ -305,7 +322,7 @@
 				"source": [
 					"starting_timestamp = '2023-10-23 13:50:16'"
 				],
-				"execution_count": null
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
@@ -323,7 +340,7 @@
 				"source": [
 					"topic_accessed_at"
 				],
-				"execution_count": null
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -346,7 +363,7 @@
 					"%%sql\r\n",
 					"DESCRIBE HISTORY odw_curated_db.service_user"
 				],
-				"execution_count": null
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -394,7 +411,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": null
+				"execution_count": 70
 			},
 			{
 				"cell_type": "markdown",
@@ -423,7 +440,10 @@
 					}
 				},
 				"source": [
-					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
+					"import asyncio\n",
+					"from azure.servicebus.aio import ServiceBusClient\n",
+					"from azure.servicebus import ServiceBusMessage\n",
+					"\n",
 					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
 					"\n",
 					"try:\n",
@@ -433,15 +453,53 @@
 					"        sender = servicebus_client.get_topic_sender(topic_name=topic_name)\n",
 					"        with sender:\n",
 					"            df_json = cdf_df.toJSON()\n",
-					"            # row_count=df_json.count()\n",
-					"            # for row in df_json.collect(): \n",
-					"            send_single_message(sender,df_json,custom_props_attributes)\n",
-					"            # print(\"Sent {} messages.\".format(row_count))\n",
+					"            row_count=df_json.count()\n",
+					"            for row in df_json.collect(): \n",
+					"                send_single_message(sender,row,custom_props_attributes)\n",
+					"            print(\"Sent {} messages.\".format(row_count))\n",
 					"\n",
 					"except Exception as e:  \n",
-					"        print(f\"{e}\") "
+					"        print(f\"{e}\") \n",
+					"\n",
+					"\n",
+					"import asyncio\n",
+					"from azure.servicebus.aio import ServiceBusClient\n",
+					"from azure.servicebus import ServiceBusMessage\n",
+					"\n",
+					"async def send_single_message(sender):\n",
+					"    # Create a Service Bus message\n",
+					"    message = ServiceBusMessage(\"Single Message\")\n",
+					"    # send the message to the topic\n",
+					"    await sender.send_messages(message)\n",
+					"    print(\"Sent a single message\")\n",
+					"\n",
+					"async def send_a_list_of_messages(sender):\n",
+					"    # Create a list of messages\n",
+					"    messages = [ServiceBusMessage(\"Message in list\") for _ in range(5)]\n",
+					"    # send the list of messages to the topic\n",
+					"    await sender.send_messages(messages)\n",
+					"    print(\"Sent a list of 5 messages\")\n",
+					"\n",
+					"async def send_batch_message(sender):\n",
+					"    # Create a batch of messages\n",
+					"    async with sender:\n",
+					"        batch_message = await sender.create_message_batch()\n",
+					"        for _ in range(10):\n",
+					"            try:\n",
+					"                # Add a message to the batch\n",
+					"                batch_message.add_message(ServiceBusMessage(\"Message inside a ServiceBusMessageBatch\"))\n",
+					"            except ValueError:\n",
+					"                # ServiceBusMessageBatch object reaches max_size.\n",
+					"                # New ServiceBusMessageBatch object can be created here to send more data.\n",
+					"                break\n",
+					"        # Send the batch of messages to the topic\n",
+					"        await sender.send_messages(batch_message)\n",
+					"    print(\"Sent a batch of 10 messages\")\n",
+					"\n",
+					"\n",
+					""
 				],
-				"execution_count": null
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -472,7 +530,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": null
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -496,7 +554,7 @@
 					"\n",
 					"SELECT * FROM odw_curated_db.service_user"
 				],
-				"execution_count": null
+				"execution_count": 73
 			}
 		]
 	}
