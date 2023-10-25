@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "41b80450-be42-43b4-9d75-15aacb4b2aa5"
+				"spark.autotune.trackingId": "683b5224-3428-4021-9d86-8fbf4443e096"
 			}
 		},
 		"metadata": {
@@ -101,7 +101,7 @@
 					"    batch_message.add_message(message)\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -139,7 +139,7 @@
 					"table_name=\"odw_curated_db.service_user\"\n",
 					"custom_props_attributes=[\"_change_type\"]"
 				],
-				"execution_count": 18
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -175,7 +175,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 47
 			},
 			{
 				"cell_type": "markdown",
@@ -209,7 +209,7 @@
 					"    topic_accessed_at=get_topic_accessed_at(servicebus_mgmt_client)\n",
 					"print(topic_accessed_at)"
 				],
-				"execution_count": 20
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -243,7 +243,7 @@
 					"# history_df = spark.sql(\"DESCRIBE HISTORY odw_curated_db.service_user\")\r\n",
 					"# hist_df_pandas = history_df.toPandas()"
 				],
-				"execution_count": 21
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -261,7 +261,7 @@
 				"source": [
 					"# print(hist_df_pandas['version'].values)"
 				],
-				"execution_count": 22
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -294,7 +294,7 @@
 					"# else:\r\n",
 					"#     starting_timestamp = topic_accessed_at"
 				],
-				"execution_count": 23
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -312,7 +312,7 @@
 				"source": [
 					"starting_timestamp = '2023-10-23 13:50:16'"
 				],
-				"execution_count": 24
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -330,7 +330,7 @@
 				"source": [
 					"topic_accessed_at"
 				],
-				"execution_count": 25
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +353,7 @@
 					"%%sql\r\n",
 					"DESCRIBE HISTORY odw_curated_db.service_user"
 				],
-				"execution_count": 26
+				"execution_count": 54
 			},
 			{
 				"cell_type": "markdown",
@@ -401,7 +401,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": 27
+				"execution_count": 55
 			},
 			{
 				"cell_type": "markdown",
@@ -446,16 +446,18 @@
 					"            for row in df_json.collect(): \n",
 					"                json_dict = json.loads(row)\n",
 					"                custom_props = { key: json_dict[key] for key in json_dict if key in custom_props_attributes}\n",
-					"                message = ServiceBusMessage(row,content_type='application/json',application_properties=custom_props)\n",
-					"                batch_message.add_message(message)\n",
-					"    sender.send_messages(batch_message)\n",
-					"    print(\"Sent {} messages.\".format(row_count))\n",
+					"                # message = ServiceBusMessage(row,content_type='application/json',application_properties=custom_props)\n",
+					"                batch_message.add_message(ServiceBusMessage(row,content_type='application/json',application_properties=custom_props))\n",
+					"                # print(\"Adding {}.\".format(row))\n",
+					"                print(\"Adding {}.\".format(batch_message))\n",
+					"            sender.send_messages(batch_message)\n",
+					"            print(\"Sent {} messages.\".format(row_count))\n",
 					"\n",
 					"except Exception as e:  \n",
 					"        print(f\"{e}\") \n",
 					""
 				],
-				"execution_count": 31
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -471,7 +473,54 @@
 					}
 				},
 				"source": [
-					"# TEST CODE TO SEND SIMPLE STRING MESSAGES\n",
+					"# COPY FROM DOCUMENTATION https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-python-how-to-use-topics-subscriptions?tabs=passwordless\n",
+					"from azure.servicebus import ServiceBusClient\n",
+					"from azure.servicebus import ServiceBusMessage\n",
+					"\n",
+					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
+					"\n",
+					"\n",
+					"try:\n",
+					"    #create a Service Bus client using the credential.\n",
+					"    with servicebus_client:\n",
+					"        # Get a Topic Sender object to send messages to the topic\n",
+					"        sender = servicebus_client.get_topic_sender(topic_name=topic_name)\n",
+					"        with sender:\n",
+					"            # Send a batch of messages\n",
+					"            batch_message = sender.create_message_batch()\n",
+					"            for _ in range(10):\n",
+					"                try:\n",
+					"                    # Add a message to the batch\n",
+					"                    batch_message.add_message(ServiceBusMessage(\"Message inside a ServiceBusMessageBatch {}\".format(_)))\n",
+					"                except ValueError:\n",
+					"                    # ServiceBusMessageBatch object reaches max_size.\n",
+					"                    # New ServiceBusMessageBatch object can be created here to send more data.\n",
+					"                    break\n",
+					"            # Send the batch of messages to the topic\n",
+					"            print(batch_message)\n",
+					"            sender.send_messages(batch_message)\n",
+					"        print(\"Sent a batch of 10 messages\")\n",
+					"\n",
+					"except Exception as e:  \n",
+					"        print(f\"{e}\") "
+				],
+				"execution_count": 60
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# # TEST CODE TO SEND SIMPLE STRING MESSAGES\n",
 					"\n",
 					"# from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
 					"# servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
@@ -486,7 +535,7 @@
 					"# except Exception as e:  \n",
 					"#         print(f\"{e}\") "
 				],
-				"execution_count": 29
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -510,7 +559,7 @@
 					"\n",
 					"SELECT * FROM odw_curated_db.service_user"
 				],
-				"execution_count": 30
+				"execution_count": 59
 			}
 		]
 	}
