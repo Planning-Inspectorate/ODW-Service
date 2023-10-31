@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "72b85798-05c5-4993-b941-69859d1be7bf"
+				"spark.autotune.trackingId": "08009008-ad6f-4351-a7ed-c17c6c3209cb"
 			}
 		},
 		"metadata": {
@@ -75,7 +75,7 @@
 					"topic_name='service-user'\n",
 					"subscription_name = 'service-user'"
 				],
-				"execution_count": 1
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -84,11 +84,12 @@
 					"spark = SparkSession.builder.getOrCreate()\n",
 					"akv_name=spark.sparkContext.environment.get('keyVaultName', 'get')\n",
 					"from notebookutils import mssparkutils\n",
+					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
 					"\n",
-					"servicebus_client = mssparkutils.notebook.run('/odw-sb/employee-publish')\n",
-					"# , arguments={'kv_linked_service'=kv_linked_service, 'secret_name': secret_name})"
+					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)"
 				],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -112,7 +113,7 @@
 					"with servicebus_client:\n",
 					"    receiver = servicebus_client.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription_name, max_wait_time=5)\n",
 					"    with receiver:\n",
-					"        received_msgs = receiver.peek_messages(max_wait_time=5, max_message_count=20)\n",
+					"        received_msgs = receiver.peek_messages(max_wait_time=5, max_message_count=20) # replace with receive \n",
 					"        for msg in received_msgs:\n",
 					"            msg = json.loads(str(msg))\n",
 					"            if isinstance(msg, list):\n",
@@ -122,7 +123,7 @@
 					"\n",
 					"new_messages = json.dumps(new_messages)"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -145,7 +146,7 @@
 					"\n",
 					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))\n",
 					"\n",
-					"output_folder_path = f\"abfss://odw-raw@{storage_account}Service-Bus/Service-User1/{todaysdate}/data.csv\"\n",
+					"output_folder_path = f\"abfss://odw-raw@{storage_account}Service-Bus/Service-User/{todaysdate}/data.csv\"\n",
 					"df.repartition(1).write.mode('overwrite').option(\"header\",True).csv(output_folder_path)\n",
 					"\n",
 					"output_files = mssparkutils.fs.ls(output_folder_path)\n",
@@ -156,7 +157,7 @@
 					"    mssparkutils.fs.mv(output_file.path, output_folder_path.replace('data', 'ServiceUser'), True)\n",
 					"    mssparkutils.fs.rm(output_folder_path, True)"
 				],
-				"execution_count": null
+				"execution_count": 12
 			}
 		]
 	}
