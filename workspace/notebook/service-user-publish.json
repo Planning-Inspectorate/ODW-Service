@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1fe4ad1c-e352-457b-a6f8-ed7044170ced"
+				"spark.autotune.trackingId": "0a040d47-88d4-4285-acd7-c6f88dd2b5fe"
 			}
 		},
 		"metadata": {
@@ -106,7 +106,7 @@
 					"\n",
 					"table_name='service-user'"
 				],
-				"execution_count": 17
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -141,66 +141,7 @@
 					"from notebookutils import mssparkutils\n",
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)"
 				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## Creates the Service Bus Client"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
-					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
-					"    "
-				],
-				"execution_count": 19
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"with servicebus_client:\n",
-					"    # get the Subscription Receiver object for the subscription\n",
-					"    receiver = servicebus_client.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription_name, max_wait_time=5)\n",
-					"    with receiver:\n",
-					"        received_msgs = receiver.receive_messages(max_wait_time=5, max_message_count=20)\n",
-					"        for msg in received_msgs:\n",
-					"            print(\"Received: \" + str(msg))\n",
-					"            # complete the message so that the message is removed from the subscription\n",
-					"            receiver.complete_message(msg)"
-				],
-				"execution_count": 26
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -234,14 +175,15 @@
 					"\n",
 					"def publish_full_message(msg):\n",
 					"    try:\n",
+					"        from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
+					"        servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)\n",
 					"        with servicebus_client:\n",
 					"            sender = servicebus_client.get_topic_sender(topic_name=topic_name)\n",
 					"            with sender:\n",
 					"                message = ServiceBusMessage(msg)\n",
 					"                sender.send_messages(message)\n",
 					"    except Exception as e:  \n",
-					"            print(f\"{e}\") \n",
-					""
+					"            print(f\"{e}\") "
 				],
 				"execution_count": 87
 			},
@@ -272,12 +214,11 @@
 					}
 				},
 				"source": [
-					"# import json\n",
+					"import json\n",
 					"\n",
-					"# df = spark.sql(f\"SELECT * FROM {table_name}\")\n",
-					"# json_data = df.toPandas().to_json(orient='records')\n",
-					"# publish_full_message(json_data)\n",
-					""
+					"df = spark.sql(f\"SELECT * FROM {table_name}\")\n",
+					"json_data = df.toPandas().to_json(orient='records')\n",
+					"publish_full_message(json_data)"
 				],
 				"execution_count": 88
 			}
