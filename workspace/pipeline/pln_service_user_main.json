@@ -3,50 +3,17 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Ingest Harmonised",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Std",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "service_user_dim",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
 				"name": "Ingest Curated",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Ingest Harmonised",
+						"activity": "Ingest Legacy Harmonised",
 						"dependencyConditions": [
 							"Succeeded"
 						]
 					},
 					{
-						"activity": "Ingest Legacy Harmonised",
+						"activity": "If New Data in Raw",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -64,54 +31,6 @@
 					"notebook": {
 						"referenceName": "service_user",
 						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Std",
-				"description": "Ingests raw data into the new standardised table i.e horizon_service_user_new",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Service Bus to Raw",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_raw_to_std",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"source_folder": {
-							"value": "ServiceBus",
-							"type": "string"
-						},
-						"source_frequency_folder": {
-							"value": "ServiceUser",
-							"type": "string"
-						},
-						"specific_file": {
-							"value": "ServiceUser",
-							"type": "string"
-						}
 					},
 					"snapshot": true,
 					"conf": {
@@ -255,6 +174,98 @@
 						"spark.dynamicAllocation.maxExecutors": null
 					},
 					"numExecutors": null
+				}
+			},
+			{
+				"name": "If New Data in Raw",
+				"description": "If there's new data ingested from the SB to odw-raw",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Service Bus to Raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"ifTrueActivities": [
+						{
+							"name": "Ingest Harmonised",
+							"type": "SynapseNotebook",
+							"dependsOn": [
+								{
+									"activity": "Ingest Std",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "service_user_dim",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						},
+						{
+							"name": "Ingest Std",
+							"description": "Ingests raw data into the new standardised table i.e horizon_service_user_new",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_raw_to_std",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"source_folder": {
+										"value": "ServiceBus",
+										"type": "string"
+									},
+									"source_frequency_folder": {
+										"value": "ServiceUser",
+										"type": "string"
+									},
+									"specific_file": {
+										"value": "ServiceUser",
+										"type": "string"
+									}
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
 				}
 			}
 		],
