@@ -50,6 +50,7 @@ variable "sku_name" {
   type        = string
   description = "The Sku of the ASP"
   default     = "EP1"
+}
 variable "per_site_scaling_enabled" {
   type        = bool
   description = "Can apps independently scale with this ASP?"
