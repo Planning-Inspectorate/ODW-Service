@@ -143,6 +143,35 @@ variable "failover_deployment" {
   type        = bool
 }
 
+variable "function_app_enabled" {
+  default     = false
+  description = "Determines whether the resources for the Function App should be deployed"
+  type        = bool
+}
+
+variable "function_app_name" {
+  description = "The name of the Function App to be deployed"
+  type        = string
+}
+
+variable "function_app_settings" {
+  default     = {}
+  description = "A map of app settings to be applied to the Function App"
+  type        = map(string)
+}
+
+variable "function_app_site_config" {
+  default     = {}
+  description = "A map of site configuration settings to be applied to the Function App"
+  type        = map(any)
+}
+
+variable "function_app_version" {
+  default     = "~4"
+  description = "The version of the Function App to be deployed"
+  type        = string
+}
+
 variable "key_vault_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for Key Vault"

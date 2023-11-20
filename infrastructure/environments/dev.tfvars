@@ -44,7 +44,18 @@ devops_agent_pool_resource_group_name          = "pins-rg-devops-odw-dev-uks"
 devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 
 environment = "dev"
-location    = "uk-south"
+
+function_app_enabled = true
+function_app_name    = "fnapp01"
+function_app_version = "~4"
+function_app_site_config = {
+  linux_fx_version = "PYTHON|3.11"
+}
+function_app_settings = {
+  FUNCTIONS_WORKER_RUNTIME = "python"
+}
+
+location = "uk-south"
 
 logic_app_enabled = true
 
