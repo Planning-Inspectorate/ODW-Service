@@ -49,9 +49,7 @@ variable "maximum_elastic_worker_count" {
 variable "sku_name" {
   type        = string
   description = "The Sku of the ASP"
-  default     = "B1"
-}
-
+  default     = "EP1"
 variable "per_site_scaling_enabled" {
   type        = bool
   description = "Can apps independently scale with this ASP?"
