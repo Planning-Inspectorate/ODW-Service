@@ -55,8 +55,6 @@ function_app_settings = {
   FUNCTIONS_WORKER_RUNTIME = "python"
 }
 
-location = "uk-south"
-
 logic_app_enabled = true
 
 key_vault_role_assignments = {

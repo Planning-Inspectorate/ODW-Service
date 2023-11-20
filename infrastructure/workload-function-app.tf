@@ -24,7 +24,7 @@ module "sp" {
   resource_group_name = azurerm_resource_group.function_app[count.index].name
   service_name        = local.service_name
   environment         = var.environment
-  location            = var.location
+  location            = module.azure_region.location_cli
   tags                = local.tags
 }
 
@@ -48,7 +48,7 @@ module "storage_account" {
   resource_group_name = azurerm_resource_group.function_app[count.index].name
   service_name        = local.service_name
   environment         = var.environment
-  location            = var.location
+  location            = module.azure_region.location_cli
   tags                = local.tags
 }
 

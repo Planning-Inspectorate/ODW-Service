@@ -9,7 +9,7 @@ variable "environment" {
 variable "location" {
   type        = string
   description = "The region resources will be deployed to"
-  default     = "northeurope"
+  default     = "uksouth"
 }
 
 variable "tags" {
