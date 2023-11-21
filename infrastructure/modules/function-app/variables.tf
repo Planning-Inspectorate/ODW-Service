@@ -81,34 +81,6 @@ variable "app_settings" {
   default     = {}
 }
 
-variable "application_stack_defaults" {
-  type = object({
-    dotnet_version              = string
-    use_dotnet_isolated_runtime = bool
-    java_version                = string
-    python_version              = string
-    node_version                = string
-    powershell_core_version     = string
-    use_custom_runtime          = bool
-  })
-  description = "The application stack to use for the function app"
-  default = {
-    dotnet_version              = "4.0"
-    use_dotnet_isolated_runtime = false
-    java_version                = null
-    python_version              = null
-    node_version                = null
-    powershell_core_version     = null
-    use_custom_runtime          = false
-  }
-}
-
-variable "application_stack" {
-  type        = any
-  description = "Application stack to override application_stack_defaults. Object structure identical to application_stack_defaults"
-  default     = {}
-}
-
 variable "site_config_defaults" {
   type = object({
     always_on = bool
@@ -127,6 +99,15 @@ variable "site_config_defaults" {
     use_32_bit_worker           = bool
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
+    application_stack = object({
+      dotnet_version              = string
+      use_dotnet_isolated_runtime = bool
+      java_version                = string
+      python_version              = string
+      node_version                = string
+      powershell_core_version     = string
+      use_custom_runtime          = bool
+    })
     ip_restrictions = object({
       ip_addresses = list(object({
         rule_name  = string
@@ -166,6 +147,15 @@ variable "site_config_defaults" {
     use_32_bit_worker           = false
     websockets_enabled          = true
     vnet_route_all_enabled      = false
+    application_stack = {
+      dotnet_version              = "4.0"
+      use_dotnet_isolated_runtime = false
+      java_version                = null
+      python_version              = null
+      node_version                = null
+      powershell_core_version     = null
+      use_custom_runtime          = false
+    }
     ip_restrictions = {
       ip_addresses = []
       service_tags = []

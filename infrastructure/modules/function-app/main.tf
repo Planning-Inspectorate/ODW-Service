@@ -31,6 +31,15 @@ resource "azurerm_linux_function_app" "function" {
     use_32_bit_worker           = local.site_config["use_32_bit_worker"]
     websockets_enabled          = local.site_config["websockets_enabled"]
     vnet_route_all_enabled      = local.site_config["vnet_route_all_enabled"]
+    application_stack {
+      dotnet_version              = local.site_config.application_stack["dotnet_version"]
+      use_dotnet_isolated_runtime = local.site_config.application_stack["use_dotnet_isolated_runtime"]
+      java_version                = local.site_config.application_stack["java_version"]
+      python_version              = local.site_config.application_stack["python_version"]
+      node_version                = local.site_config.application_stack["node_version"]
+      powershell_core_version     = local.site_config.application_stack["powershell_core_version"]
+      use_custom_runtime          = false
+    }
     dynamic "ip_restriction" {
       for_each = local.site_config.ip_restrictions.ip_addresses
       iterator = ip_addresses
@@ -61,17 +70,7 @@ resource "azurerm_linux_function_app" "function" {
         action                    = subnet_ids.value["action"]
       }
     }
-    application_stack {
-      dotnet_version              = local.application_stack["dotnet_version"]
-      use_dotnet_isolated_runtime = local.application_stack["use_dotnet_isolated_runtime"]
-      java_version                = local.application_stack["java_version"]
-      node_version                = local.application_stack["node_version"]
-      python_version              = local.application_stack["python_version"]
-      powershell_core_version     = local.application_stack["powershell_core_version"]
-      use_custom_runtime          = local.application_stack["use_custom_runtime"]
-    }
   }
-
   identity {
     type         = length(var.identity_ids) == 0 ? "SystemAssigned" : "UserAssigned"
     identity_ids = length(var.identity_ids) == 0 ? null : var.identity_ids
