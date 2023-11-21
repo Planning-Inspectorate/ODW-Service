@@ -120,11 +120,11 @@ variable "site_config_defaults" {
     health_check_path           = string
     http2_enabled               = bool
     linux_fx_version            = string
-    min_tls_version             = string
+    minimum_tls_version         = string
     pre_warmed_instance_count   = number
     scm_type                    = string
     scm_use_main_ip_restriction = bool
-    use_32_bit_worker_process   = bool
+    use_32_bit_worker           = bool
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
     ip_restrictions = object({
@@ -159,11 +159,11 @@ variable "site_config_defaults" {
     health_check_path           = null
     http2_enabled               = true
     linux_fx_version            = null
-    min_tls_version             = 1.2
+    minimum_tls_version         = 1.2
     pre_warmed_instance_count   = null
     scm_type                    = "None"
     scm_use_main_ip_restriction = true
-    use_32_bit_worker_process   = false
+    use_32_bit_worker           = false
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     ip_restrictions = {
