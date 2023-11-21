@@ -1,0 +1,365 @@
+{
+	"name": "py_sb_to_raw_examtimetable",
+	"properties": {
+		"folder": {
+			"name": "0-odw-source-to-raw"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "d53d260f-2fba-47a1-b94d-cbeaee16fb98"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Set the notebook parameters"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"kv_linked_service=\"ls_kv\"\n",
+					""
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# This cell is generated from runtime parameters. Learn more: https://go.microsoft.com/fwlink/?linkid=2161015\n",
+					"secret_name = \"servicebus-connectionstring\"\n",
+					"topic_name = \"nsip-exam-timetable\"\n",
+					"subscription_name = \"nsip-exam-timetable\"\n",
+					"output_file_name = \"NSIPExamTimeTable\"\n",
+					""
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Establish the connection with the Service Bus"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"akv_name=spark.sparkContext.environment.get('keyVaultName', 'get')\n",
+					"from notebookutils import mssparkutils\n",
+					"from azure.servicebus import ServiceBusClient, ServiceBusMessage\n",
+					"\n",
+					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"    with servicebus_client:\r\n",
+					"        receiver = servicebus_client.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription_name)\r\n",
+					"\r\n",
+					"        with receiver:\r\n",
+					"            received_msgs = receiver.peek_messages( max_message_count=20) \r\n",
+					"received_msgs"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Receive the new messages"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"try:\n",
+					"    import json\n",
+					"\n",
+					"    new_messages = []\n",
+					"\n",
+					"\n",
+					"    with servicebus_client:\n",
+					"        receiver = servicebus_client.get_subscription_receiver(topic_name=topic_name, subscription_name=subscription_name)\n",
+					"        with receiver:\n",
+					"            received_msgs = receiver.peek_messages( max_message_count=20) \n",
+					"            for msg in received_msgs:\n",
+					"                msg = json.loads(str(msg))\n",
+					"                if isinstance(msg, list):\n",
+					"                    new_messages.extend(msg)\n",
+					"                elif isinstance(msg, dict):\n",
+					"                    new_messages.append(msg)\n",
+					"\n",
+					"    if len(new_messages) == 0:\n",
+					"        mssparkutils.notebook.exit(False)\n",
+					"\n",
+					"    new_messages = json.dumps(new_messages)\n",
+					"except:\n",
+					"    mssparkutils.notebook.exit(False)\n",
+					""
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from datetime import date\r\n",
+					"\r\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"todaysdate = date.today().strftime(\"%Y-%m-%d\")\r\n",
+					"\r\n",
+					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df['events']\r\n",
+					"output_folder_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{output_file_name}/{todaysdate}/output.csv\"\r\n",
+					"\r\n",
+					"output_folder_path"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Ingest the new messages in the data lake i.e odw-raw"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from datetime import date\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"todaysdate = date.today().strftime(\"%Y-%m-%d\")\n",
+					"\n",
+					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))\n",
+					"\n",
+					"output_folder_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{output_file_name}/{todaysdate}/output.csv\"\n",
+					"output_folder_path"
+				],
+				"execution_count": 27
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"mssparkutils.fs.ls('abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/NSIPExamTimeTable/ServiceBus')\r\n",
+					"output_folder_path\r\n",
+					"\r\n",
+					"mssparkutils.fs.put(output_folder_path , df )"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\r\n",
+					"\r\n",
+					"df.repartition(1).write.mode('overwrite').option(\"header\",True).csv(output_folder_path)\r\n",
+					"\r\n",
+					"output_files = mssparkutils.fs.ls(output_folder_path)\r\n",
+					"output_files = [f for f in output_files if f.name.endswith('.csv')]\r\n",
+					"\r\n",
+					"if len(output_files) > 0:\r\n",
+					"    output_file = output_files[0]\r\n",
+					"    mssparkutils.fs.mv(output_file.path, output_folder_path.replace('output', output_file_name), True)\r\n",
+					"    mssparkutils.fs.rm(output_folder_path, True)\r\n",
+					"\r\n",
+					"mssparkutils.notebook.exit(True)"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
