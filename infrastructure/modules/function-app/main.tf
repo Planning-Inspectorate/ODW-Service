@@ -1,17 +1,19 @@
-resource "azurerm_function_app" "function" {
-  name                       = "pins-${var.function_app_name}-${local.resource_suffix}"
-  resource_group_name        = var.resource_group_name
-  location                   = var.location
-  app_service_plan_id        = var.app_service_plan_id
-  storage_account_name       = var.storage_account_name
-  storage_account_access_key = var.storage_account_access_key
-  https_only                 = true
-  tags                       = local.tags
-  version                    = var.function_version
+resource "azurerm_linux_function_app" "function" {
+  name                        = "pins-${var.function_app_name}-${local.resource_suffix}"
+  resource_group_name         = var.resource_group_name
+  location                    = var.location
+  service_plan_id             = var.app_service_plan_id
+  storage_account_name        = var.storage_account_name
+  storage_account_access_key  = var.storage_account_access_key
+  https_only                  = true
+  tags                        = local.tags
+  functions_extension_version = var.function_version
   auth_settings {
     enabled = var.auth_settings["enabled"]
   }
+
   app_settings = var.app_settings
+
   site_config {
     always_on = local.site_config["always_on"]
     cors {
@@ -21,15 +23,12 @@ resource "azurerm_function_app" "function" {
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
     http2_enabled               = local.site_config["http2_enabled"]
-    java_version                = local.site_config["java_version"]
     linux_fx_version            = local.site_config["linux_fx_version"]
-    dotnet_framework_version    = local.site_config["dotnet_framework_version"]
-    min_tls_version             = local.site_config["min_tls_version"]
+    minimum_tls_version         = local.site_config["minimum_tls_version"]
     pre_warmed_instance_count   = local.site_config["pre_warmed_instance_count"]
-    scm_ip_restriction          = local.site_config["scm_ip_restriction"]
     scm_type                    = local.site_config["scm_type"]
     scm_use_main_ip_restriction = local.site_config["scm_use_main_ip_restriction"]
-    use_32_bit_worker_process   = local.site_config["use_32_bit_worker_process"]
+    use_32_bit_worker           = local.site_config["use_32_bit_worker"]
     websockets_enabled          = local.site_config["websockets_enabled"]
     vnet_route_all_enabled      = local.site_config["vnet_route_all_enabled"]
     dynamic "ip_restriction" {
@@ -62,16 +61,19 @@ resource "azurerm_function_app" "function" {
         action                    = subnet_ids.value["action"]
       }
     }
+    application_stack {
+      dotnet_version              = local.application_stack["dotnet_version"]
+      use_dotnet_isolated_runtime = local.application_stack["use_dotnet_isolated_runtime"]
+      java_version                = local.application_stack["java_version"]
+      node_version                = local.application_stack["node_version"]
+      python_version              = local.application_stack["python_version"]
+      powershell_core_version     = local.application_stack["powershell_core_version"]
+      use_custom_runtime          = local.application_stack["use_custom_runtime"]
+    }
   }
 
   identity {
     type         = length(var.identity_ids) == 0 ? "SystemAssigned" : "UserAssigned"
     identity_ids = length(var.identity_ids) == 0 ? null : var.identity_ids
-  }
-
-  lifecycle {
-    ignore_changes = [
-      os_type
-    ]
   }
 }

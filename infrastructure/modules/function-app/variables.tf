@@ -81,6 +81,34 @@ variable "app_settings" {
   default     = {}
 }
 
+variable "application_stack_defaults" {
+  type = object({
+    dotnet_version              = string
+    use_dotnet_isolated_runtime = bool
+    java_version                = string
+    python_version              = string
+    node_version                = string
+    powershell_version          = string
+    use_custom_runtime          = bool
+  })
+  description = "The application stack to use for the function app"
+  default = {
+    dotnet_version              = "4.0"
+    use_dotnet_isolated_runtime = false
+    java_version                = null
+    python_version              = null
+    node_version                = null
+    powershell_version          = null
+    use_custom_runtime          = false
+  }
+}
+
+variable "application_stack" {
+  type        = any
+  description = "Application stack to override application_stack_defaults. Object structure identical to application_stack_defaults"
+  default     = {}
+}
+
 variable "site_config_defaults" {
   type = object({
     always_on = bool
@@ -91,12 +119,9 @@ variable "site_config_defaults" {
     ftps_state                  = string
     health_check_path           = string
     http2_enabled               = bool
-    java_version                = string
     linux_fx_version            = string
-    dotnet_framework_version    = string
     min_tls_version             = string
     pre_warmed_instance_count   = number
-    scm_ip_restriction          = list(any)
     scm_type                    = string
     scm_use_main_ip_restriction = bool
     use_32_bit_worker_process   = bool
@@ -133,12 +158,9 @@ variable "site_config_defaults" {
     ftps_state                  = "Disabled"
     health_check_path           = null
     http2_enabled               = true
-    java_version                = null
     linux_fx_version            = null
-    dotnet_framework_version    = "v4.0"
     min_tls_version             = 1.2
     pre_warmed_instance_count   = null
-    scm_ip_restriction          = []
     scm_type                    = "None"
     scm_use_main_ip_restriction = true
     use_32_bit_worker_process   = false

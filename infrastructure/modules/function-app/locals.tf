@@ -12,5 +12,12 @@ locals {
     }
   )
 
-  site_config = merge(var.site_config_defaults, var.site_config)
+  application_stack = merge(
+    var.application_stack_defaults,
+    var.application_stack
+  )
+  site_config = merge(
+    var.site_config_defaults,
+    var.site_config
+  )
 }
