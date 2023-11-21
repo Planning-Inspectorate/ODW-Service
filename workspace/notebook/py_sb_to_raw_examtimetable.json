@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c6b7e774-e445-49d6-a174-75e1c14b6dca"
+				"spark.autotune.trackingId": "62c506b9-a8ef-47b3-ab0b-01ce301db267"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 					"kv_linked_service=\"ls_kv\"\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 84
 			},
 			{
 				"cell_type": "code",
@@ -107,7 +107,7 @@
 					"output_file_name = \"NSIPExamTimeTable\"\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 85
 			},
 			{
 				"cell_type": "markdown",
@@ -134,7 +134,7 @@
 					"conn_str = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
 					"servicebus_client = ServiceBusClient.from_connection_string(conn_str=conn_str, logging_enable=True)"
 				],
-				"execution_count": 17
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -157,7 +157,7 @@
 					"            received_msgs = receiver.peek_messages( max_message_count=20) \r\n",
 					"received_msgs"
 				],
-				"execution_count": 18
+				"execution_count": 87
 			},
 			{
 				"cell_type": "markdown",
@@ -224,7 +224,7 @@
 					"    mssparkutils.notebook.exit(False)\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -242,7 +242,7 @@
 				"source": [
 					"new_messages"
 				],
-				"execution_count": 48
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -268,7 +268,8 @@
 					"\r\n",
 					"df=pd.DataFrame(dct)\r\n",
 					"\r\n",
-					"for ind in df['caseReference'].index.tolist():\r\n",
+					"new_lines = []\r\n",
+					"for ind in df['caseReference'].index.tolist()[:]:\r\n",
 					"\r\n",
 					"    caseReference = df.loc[ ind , 'caseReference' ]\r\n",
 					"\r\n",
@@ -280,29 +281,32 @@
 					"\r\n",
 					"        for ind in df_e.index.tolist():\r\n",
 					"\r\n",
+					"            new_dct={}\r\n",
+					"            new_dct['caseReference'] = caseReference\r\n",
+					"\r\n",
 					"            for col in df_e.columns.tolist():\r\n",
 					"\r\n",
 					"                if col!='eventLineItems':\r\n",
 					"\r\n",
-					"                    { col : df_e.loc[ind  , col ] }\r\n",
+					"                    new_dct[col] = df_e.loc[ind  , col ]\r\n",
 					"\r\n",
 					"                else:\r\n",
-					"\r\n",
+					"                    \r\n",
 					"                    eventline = df_e.loc[ind  , 'eventLineItems' ]\r\n",
-					"\r\n",
-					"                    print(eventline)\r\n",
 					"                    df_el=pd.DataFrame(eventline , index=[0])\r\n",
-					"                    print(df_el)\r\n",
 					"\r\n",
-					"                    for column in df_el.columns.tolist():\r\n",
-					"                        print(df_el)\r\n",
-					"                        { 'caseReference':caseReference , column: df_el.loc[0,column] }\r\n",
+					"                    desc = df_el.iloc[0,0]\r\n",
 					"\r\n",
+					"                    new_dct['eventLineItemDescription'] = desc\r\n",
+					"                    new_dct['eventLineItemID'] = ind + 1\r\n",
 					"\r\n",
+					"            print(new_dct)\r\n",
+					"            new_lines.append(new_dct)\r\n",
 					"\r\n",
-					""
+					"df = spark.read.json(spark.sparkContext.parallelize([new_lines]))\r\n",
+					"df"
 				],
-				"execution_count": 74
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -318,30 +322,14 @@
 					}
 				},
 				"source": [
-					"df['events']\r\n",
+					"\r\n",
 					"output_folder_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{output_file_name}/{todaysdate}/output.csv\"\r\n",
+					"output_folder_path\r\n",
 					"\r\n",
-					"output_folder_path"
+					"df.coalesce(1).write.option(\"header\",\"true\").option(\"sep\",\",\").mode(\"overwrite\").csv(output_folder_path)\r\n",
+					"mssparkutils.fs.ls(output_folder_path)"
 				],
-				"execution_count": 22
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"pd.DataFrame(eventline)"
-				],
-				"execution_count": 69
+				"execution_count": 100
 			},
 			{
 				"cell_type": "markdown",
@@ -355,95 +343,6 @@
 				"source": [
 					"# Ingest the new messages in the data lake i.e odw-raw"
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from datetime import date\n",
-					"\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"todaysdate = date.today().strftime(\"%Y-%m-%d\")\n",
-					"\n",
-					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))\n",
-					"\n",
-					"output_folder_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{output_file_name}/{todaysdate}/output.csv\"\n",
-					"output_folder_path\n",
-					"\n",
-					"new_messages\n",
-					"\n",
-					"sc= spark.sparkContext\n",
-					"df = sc.parallelize([new_messages]).map(lambda x: json.dumps(x))\n",
-					"df = spark.read.json(df)\n",
-					"df"
-				],
-				"execution_count": 47
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"mssparkutils.fs.ls('abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/NSIPExamTimeTable/ServiceBus')\r\n",
-					"output_folder_path\r\n",
-					"\r\n",
-					"#mssparkutils.fs.put(output_folder_path , df )\r\n",
-					"\r\n",
-					"#.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_new_tickets\")\r\n",
-					"type(df)\r\n",
-					"\r\n",
-					"df.coalesce(1).write.option(\"header\",\"true\").option(\"sep\",\",\").mode(\"overwrite\").csv(output_folder_path)"
-				],
-				"execution_count": 41
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"\r\n",
-					"\r\n",
-					"df.repartition(1).write.mode('overwrite').option(\"header\",True).csv(output_folder_path)\r\n",
-					"\r\n",
-					"output_files = mssparkutils.fs.ls(output_folder_path)\r\n",
-					"output_files = [f for f in output_files if f.name.endswith('.csv')]\r\n",
-					"\r\n",
-					"if len(output_files) > 0:\r\n",
-					"    output_file = output_files[0]\r\n",
-					"    mssparkutils.fs.mv(output_file.path, output_folder_path.replace('output', output_file_name), True)\r\n",
-					"    mssparkutils.fs.rm(output_folder_path, True)\r\n",
-					"\r\n",
-					"mssparkutils.notebook.exit(True)"
-				],
-				"execution_count": null
 			}
 		]
 	}
