@@ -4425,6 +4425,17 @@
 							"type": "ParquetReadSettings"
 						}
 					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
 					"enableStaging": false,
 					"translator": {
 						"type": "TabularTranslator",
@@ -4435,7 +4446,8 @@
 								},
 								"sink": {
 									"name": "CaseReference",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4444,7 +4456,8 @@
 								},
 								"sink": {
 									"name": "TypeOfExamination",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4453,7 +4466,8 @@
 								},
 								"sink": {
 									"name": "Name",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4462,7 +4476,8 @@
 								},
 								"sink": {
 									"name": "Description",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4471,7 +4486,8 @@
 								},
 								"sink": {
 									"name": "DeadlineStartDateTime",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4480,7 +4496,8 @@
 								},
 								"sink": {
 									"name": "Date",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							},
 							{
@@ -4489,15 +4506,27 @@
 								},
 								"sink": {
 									"name": "Location",
-									"type": "String"
+									"type": "String",
+									"physicalType": "String"
 								}
 							}
-						]
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
 					}
 				},
 				"inputs": [
 					{
 						"referenceName": "Parquet3",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DelimitedText1",
 						"type": "DatasetReference"
 					}
 				]
@@ -4509,6 +4538,12 @@
 				"dependsOn": [
 					{
 						"activity": "Examination_Timetable",
+						"dependencyConditions": [
+							"Failed"
+						]
+					},
+					{
+						"activity": "Notebook1",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -4569,6 +4604,12 @@
 				"dependsOn": [
 					{
 						"activity": "Examination_Timetable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "HZN_Right_of_Way",
 						"dependencyConditions": [
 							"Completed"
 						]
@@ -5116,6 +5157,37 @@
 						"spark.dynamicAllocation.maxExecutors": null
 					},
 					"numExecutors": null
+				}
+			},
+			{
+				"name": "Notebook1",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Examination_Timetable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_sb_to_raw_examtimetable",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					}
 				}
 			}
 		],
