@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d53d260f-2fba-47a1-b94d-cbeaee16fb98"
+				"spark.autotune.trackingId": "261eab48-5bb4-45f7-af8a-4aee625d02fc"
 			}
 		},
 		"metadata": {
@@ -240,14 +240,52 @@
 					}
 				},
 				"source": [
+					"new_messages"
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"from datetime import date\r\n",
+					"import pandas as pd\r\n",
 					"\r\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"todaysdate = date.today().strftime(\"%Y-%m-%d\")\r\n",
 					"\r\n",
-					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))"
+					"dct=json.loads(new_messages)\r\n",
+					"\r\n",
+					"df=pd.DataFrame(dct)\r\n",
+					"\r\n",
+					"for event in df['events'].tolist():\r\n",
+					"    #print(event)\r\n",
+					"\r\n",
+					"    df_e=pd.DataFrame(event)\r\n",
+					"    #print(df_e)\r\n",
+					"\r\n",
+					"    if 'eventLineItems' in df_e.columns.tolist():\r\n",
+					"\r\n",
+					"        for eventline in df_e['eventLineItems'].tolist():\r\n",
+					"\r\n",
+					"            df_el=pd.DataFrame(eventline)\r\n",
+					"            print(df_el)\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"#df = spark.read.json(spark.sparkContext.parallelize([new_messages]))"
 				],
-				"execution_count": 20
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -305,9 +343,16 @@
 					"df = spark.read.json(spark.sparkContext.parallelize([new_messages]))\n",
 					"\n",
 					"output_folder_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{output_file_name}/{todaysdate}/output.csv\"\n",
-					"output_folder_path"
+					"output_folder_path\n",
+					"\n",
+					"new_messages\n",
+					"\n",
+					"sc= spark.sparkContext\n",
+					"df = sc.parallelize([new_messages]).map(lambda x: json.dumps(x))\n",
+					"df = spark.read.json(df)\n",
+					"df"
 				],
-				"execution_count": 27
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -326,9 +371,14 @@
 					"mssparkutils.fs.ls('abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/NSIPExamTimeTable/ServiceBus')\r\n",
 					"output_folder_path\r\n",
 					"\r\n",
-					"mssparkutils.fs.put(output_folder_path , df )"
+					"#mssparkutils.fs.put(output_folder_path , df )\r\n",
+					"\r\n",
+					"#.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_new_tickets\")\r\n",
+					"type(df)\r\n",
+					"\r\n",
+					"df.coalesce(1).write.option(\"header\",\"true\").option(\"sep\",\",\").mode(\"overwrite\").csv(output_folder_path)"
 				],
-				"execution_count": 33
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
