@@ -88,7 +88,7 @@ variable "application_stack_defaults" {
     java_version                = string
     python_version              = string
     node_version                = string
-    powershell_version          = string
+    powershell_core_version     = string
     use_custom_runtime          = bool
   })
   description = "The application stack to use for the function app"
@@ -98,7 +98,7 @@ variable "application_stack_defaults" {
     java_version                = null
     python_version              = null
     node_version                = null
-    powershell_version          = null
+    powershell_core_version     = null
     use_custom_runtime          = false
   }
 }
