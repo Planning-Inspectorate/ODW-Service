@@ -26,7 +26,6 @@ resource "azurerm_linux_function_app" "function" {
     linux_fx_version            = local.site_config["linux_fx_version"]
     minimum_tls_version         = local.site_config["minimum_tls_version"]
     pre_warmed_instance_count   = local.site_config["pre_warmed_instance_count"]
-    scm_type                    = local.site_config["scm_type"]
     scm_use_main_ip_restriction = local.site_config["scm_use_main_ip_restriction"]
     use_32_bit_worker           = local.site_config["use_32_bit_worker"]
     websockets_enabled          = local.site_config["websockets_enabled"]

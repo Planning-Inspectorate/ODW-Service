@@ -94,7 +94,6 @@ variable "site_config_defaults" {
     linux_fx_version            = string
     minimum_tls_version         = string
     pre_warmed_instance_count   = number
-    scm_type                    = string
     scm_use_main_ip_restriction = bool
     use_32_bit_worker           = bool
     websockets_enabled          = bool
@@ -142,7 +141,6 @@ variable "site_config_defaults" {
     linux_fx_version            = null
     minimum_tls_version         = 1.2
     pre_warmed_instance_count   = null
-    scm_type                    = "None"
     scm_use_main_ip_restriction = true
     use_32_bit_worker           = false
     websockets_enabled          = true
