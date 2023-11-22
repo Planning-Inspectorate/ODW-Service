@@ -166,12 +166,6 @@ variable "function_app_site_config" {
   type        = map(any)
 }
 
-variable "function_app_version" {
-  default     = "~4"
-  description = "The version of the Function App to be deployed"
-  type        = string
-}
-
 variable "key_vault_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for Key Vault"

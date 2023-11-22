@@ -30,13 +30,22 @@ resource "azurerm_linux_function_app" "function" {
     use_32_bit_worker           = local.site_config["use_32_bit_worker"]
     websockets_enabled          = local.site_config["websockets_enabled"]
     vnet_route_all_enabled      = local.site_config["vnet_route_all_enabled"]
+    # application_stack {
+    #   dotnet_version              = local.site_config.application_stack["dotnet_version"]
+    #   use_dotnet_isolated_runtime = local.site_config.application_stack["use_dotnet_isolated_runtime"]
+    #   java_version                = local.site_config.application_stack["java_version"]
+    #   python_version              = local.site_config.application_stack["python_version"]
+    #   node_version                = local.site_config.application_stack["node_version"]
+    #   powershell_core_version     = local.site_config.application_stack["powershell_core_version"]
+    #   use_custom_runtime          = local.site_config.application_stack["use_custom_runtime"]
+    # }
     application_stack {
-      dotnet_version              = local.site_config.application_stack["dotnet_version"]
-      use_dotnet_isolated_runtime = local.site_config.application_stack["use_dotnet_isolated_runtime"]
-      java_version                = local.site_config.application_stack["java_version"]
-      python_version              = local.site_config.application_stack["python_version"]
-      node_version                = local.site_config.application_stack["node_version"]
-      powershell_core_version     = local.site_config.application_stack["powershell_core_version"]
+      dotnet_version              = "dotnetcore|3.1"
+      use_dotnet_isolated_runtime = false
+      java_version                = "1.8"
+      python_version              = "3.7"
+      node_version                = "10.14"
+      powershell_core_version     = "7.0"
       use_custom_runtime          = false
     }
     dynamic "ip_restriction" {

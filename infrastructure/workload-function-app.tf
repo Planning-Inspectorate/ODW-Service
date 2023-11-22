@@ -79,7 +79,6 @@ module "function_app" {
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
   app_settings               = var.function_app_settings
-  function_version           = var.function_app_version
   site_config                = var.function_app_site_config
 }
 
@@ -98,6 +97,5 @@ module "function_app_failover" {
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
   app_settings               = var.function_app_settings
-  function_version           = var.function_app_version
   site_config                = var.function_app_site_config
 }
