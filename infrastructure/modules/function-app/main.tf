@@ -22,7 +22,6 @@ resource "azurerm_linux_function_app" "function" {
     }
     application_stack {
       dotnet_version = "4.0"
-      python_version = "3.10"
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
