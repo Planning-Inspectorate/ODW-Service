@@ -39,15 +39,6 @@ resource "azurerm_linux_function_app" "function" {
     #   powershell_core_version     = local.site_config.application_stack["powershell_core_version"]
     #   use_custom_runtime          = local.site_config.application_stack["use_custom_runtime"]
     # }
-    application_stack {
-      dotnet_version              = "dotnetcore|3.1"
-      use_dotnet_isolated_runtime = false
-      java_version                = "1.8"
-      python_version              = "3.7"
-      node_version                = "10.14"
-      powershell_core_version     = "7.0"
-      use_custom_runtime          = false
-    }
     dynamic "ip_restriction" {
       for_each = local.site_config.ip_restrictions.ip_addresses
       iterator = ip_addresses

@@ -47,7 +47,6 @@ environment = "dev"
 
 function_app_enabled = true
 function_app_name    = "fnapp01"
-function_app_version = "~4"
 function_app_settings = {
   FUNCTIONS_WORKER_RUNTIME = "python"
 }
