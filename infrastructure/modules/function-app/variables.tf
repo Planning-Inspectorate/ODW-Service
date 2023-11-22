@@ -66,6 +66,7 @@ variable "functions_extension_version" {
   description = "The version of the Azure Functions runtime to use"
   default    = "~4"
 }
+
 variable "auth_settings" {
   type        = map(string)
   description = "Function app auth settings"
