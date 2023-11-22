@@ -21,7 +21,7 @@ resource "azurerm_linux_function_app" "function" {
       support_credentials = local.site_config.cors["support_credentials"]
     }
     application_stack {
-      python_version = 3.10
+      python_version = "3.10"
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
