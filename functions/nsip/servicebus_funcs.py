@@ -13,7 +13,11 @@ MAX_MESSAGE_COUNT = 10
 STORAGE = 'https://pinsstodwdevuks9h80mb.blob.core.windows.net'
 CONTAINER = 'odw-raw/odt/test'
 CREDENTIAL = DefaultAzureCredential()
-UTC_TIMESTAMP = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+UTC_TIMESTAMP = (
+    datetime.datetime.now(datetime.timezone.utc)
+    .replace(tzinfo=datetime.timezone.utc)
+    .isoformat()
+)
 FILENAME = f'messages_{UTC_TIMESTAMP}.json'
 
 def get_messages(namespace: str,
@@ -80,16 +84,3 @@ def send_to_storage(account_url: str,
     blob_client.upload_blob(json_data, overwrite=True)
 
     print(f"JSON file '{filename}' uploaded to Azure Blob Storage.")
-
-
-send_to_storage(
-    account_url=STORAGE,
-    credential=CREDENTIAL,
-    container=CONTAINER,
-    filename=FILENAME,
-    data=get_messages(NAMESPACE,
-                      CREDENTIAL,
-                      TOPIC,
-                      SUBSCRIPTION,
-                      MAX_MESSAGE_COUNT)
-)

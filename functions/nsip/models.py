@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ValidationError, ConfigDict
 import json
 import pprint
-from typing import List
 from datetime import datetime
 from model_funcs import fill_nonexistent_properties, remove_undefined_properties, convert_to_lower
 
@@ -28,7 +27,7 @@ def model():
       region: str = None
       easting: int = None
       northing: int = None
-      transboundary: bool = None
+      transboundary: bool
       welshlanguage: bool = None
       mapzoomlevel: str = None
       projectdescription: str = None
@@ -66,10 +65,10 @@ def model():
       operationsleadid: str = None
       operationsmanagerid: str = None
       casemanagerid: str = None
-      nsipofficerids: List[str] = []
-      nsipadministrationofficerids: List[str] = []
+      nsipofficerids: list[str] = []
+      nsipadministrationofficerids: list[str] = []
       leadinspectorid: str = None
-      inspectorids: List[str] = []
+      inspectorids: list[str] = []
       environmentalservicesofficerid: str = None
       legalofficerid: str = None
       sourcesystem: str = None
@@ -79,11 +78,11 @@ def model():
       notificationdateforpmandeventsdirectlyfollowingpm: datetime = None
       notificationdateforeventsdeveloper: datetime = None
       rule8letterpublishdate: datetime = None
-      regions: List[str] = []
+      regions: list[str] = []
       applicantid: str = None
 
   test_data = {
-    "caseId": 1498,
+    "caseId": "string",
     "projectName": "AutoTest_1698666963287",
     "caseReference": "WW0110055",
     "projectDescription": "Libero assumenda quam accusamus iste quos.",
@@ -148,21 +147,29 @@ def model():
     "applicantId": "100000005",
     "nsipOfficerIds": [],
     "nsipAdministrationOfficerIds": [],
-    "inspectorIds": []
+    "inspectorIds": [],
+    "extra_field": 123
   }
 
   # convert input data dicionary keys to lowercase for comparison with model
   test_data_lower = convert_to_lower(test_data)
 
+  # pprint.pprint(test_data_lower)
+  # print("*"*20)
+
   # define json schema for model
   json_schema = nsip.model_json_schema(by_alias=False)
 
   # pprint.pprint(json_schema)
+  # print("*"*20)
+  # output_dict = fill_nonexistent_properties(test_data_lower, json_schema)
 
-  output_dict = fill_nonexistent_properties(test_data_lower, json_schema)
+  # pprint.pprint(output_dict)
+
+  # nsip.model_rebuild()
 
   try:
-      nsip(**output_dict)
+      print(nsip(**test_data_lower).model_dump())
       print("Success!")
   except ValidationError as e:
       print(e)

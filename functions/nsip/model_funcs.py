@@ -88,5 +88,4 @@ def remove_undefined_properties(input_dictionary, schema):
 
 # convert input data dicionary keys to lowercase for comparison with model
 def convert_to_lower(data: dict):
-    lowercase_dict = {k.lower() if isinstance(k, str) else k: v for k, v in data.items()}
-    return lowercase_dict
+    return {k.lower() if isinstance(k, str) else k: v for k, v in data.items()}
