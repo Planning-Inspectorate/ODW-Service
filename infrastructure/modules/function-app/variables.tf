@@ -138,7 +138,7 @@ variable "site_config_defaults" {
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     application_stack = {
-      python_version = "3.11"
+      python_version = "3.10"
     }
     ip_restrictions = {
       ip_addresses = []
