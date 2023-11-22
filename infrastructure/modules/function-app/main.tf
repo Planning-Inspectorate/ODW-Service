@@ -21,9 +21,7 @@ resource "azurerm_linux_function_app" "function" {
       support_credentials = local.site_config.cors["support_credentials"]
     }
     application_stack {
-      dotnet_version          = "7.0"
-      powershell_core_version = "7"
-      use_custom_runtime      = true
+      python_version = local.site_config.application_stack["python_version"]
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
