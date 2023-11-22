@@ -51,7 +51,7 @@ function_app_name    = "fnapp01"
 #   FUNCTIONS_WORKER_RUNTIME = "python"
 # }
 function_app_site_config = {
-  application_stack {
+  application_stack = {
     python_version = "3.10"
   }
 }
