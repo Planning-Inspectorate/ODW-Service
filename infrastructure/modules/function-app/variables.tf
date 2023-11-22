@@ -99,7 +99,7 @@ variable "site_config_defaults" {
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
     application_stack = object({
-
+      python_version = string
     })
     ip_restrictions = object({
       ip_addresses = list(object({
