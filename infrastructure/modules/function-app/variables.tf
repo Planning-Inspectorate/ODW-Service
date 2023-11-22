@@ -98,9 +98,7 @@ variable "site_config_defaults" {
     use_32_bit_worker           = bool
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
-    application_stack = object({
-      python_version = string
-    })
+    application_stack = any
     ip_restrictions = object({
       ip_addresses = list(object({
         rule_name  = string
