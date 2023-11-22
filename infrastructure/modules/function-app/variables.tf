@@ -99,13 +99,7 @@ variable "site_config_defaults" {
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
     application_stack = object({
-      dotnet_version              = string
-      use_dotnet_isolated_runtime = bool
-      java_version                = string
-      python_version              = string
-      node_version                = string
-      powershell_core_version     = string
-      use_custom_runtime          = bool
+
     })
     ip_restrictions = object({
       ip_addresses = list(object({
