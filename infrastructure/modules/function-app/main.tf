@@ -7,7 +7,7 @@ resource "azurerm_linux_function_app" "function" {
   storage_account_access_key  = var.storage_account_access_key
   https_only                  = true
   tags                        = local.tags
-  functions_extension_version = var.function_version
+  functions_extension_version = var.functions_extension_version
   auth_settings {
     enabled = var.auth_settings["enabled"]
   }
@@ -20,6 +20,9 @@ resource "azurerm_linux_function_app" "function" {
       allowed_origins     = local.site_config.cors["allowed_origins"]
       support_credentials = local.site_config.cors["support_credentials"]
     }
+    application_stack {
+      python_version = 3.11
+    }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
     http2_enabled               = local.site_config["http2_enabled"]
@@ -30,15 +33,6 @@ resource "azurerm_linux_function_app" "function" {
     use_32_bit_worker           = local.site_config["use_32_bit_worker"]
     websockets_enabled          = local.site_config["websockets_enabled"]
     vnet_route_all_enabled      = local.site_config["vnet_route_all_enabled"]
-    # application_stack {
-    #   dotnet_version              = local.site_config.application_stack["dotnet_version"]
-    #   use_dotnet_isolated_runtime = local.site_config.application_stack["use_dotnet_isolated_runtime"]
-    #   java_version                = local.site_config.application_stack["java_version"]
-    #   python_version              = local.site_config.application_stack["python_version"]
-    #   node_version                = local.site_config.application_stack["node_version"]
-    #   powershell_core_version     = local.site_config.application_stack["powershell_core_version"]
-    #   use_custom_runtime          = local.site_config.application_stack["use_custom_runtime"]
-    # }
     dynamic "ip_restriction" {
       for_each = local.site_config.ip_restrictions.ip_addresses
       iterator = ip_addresses

@@ -61,12 +61,11 @@ variable "storage_account_access_key" {
   sensitive   = true
 }
 
-variable "function_version" {
-  type        = string
-  description = "The function version. ~1 through ~4"
-  default     = "~3"
+variable "functions_extension_version" {
+  type       = string
+  description = "The version of the Azure Functions runtime to use"
+  default    = "~4"
 }
-
 variable "auth_settings" {
   type        = map(string)
   description = "Function app auth settings"
