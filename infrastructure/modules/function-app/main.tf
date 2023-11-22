@@ -20,9 +20,17 @@ resource "azurerm_linux_function_app" "function" {
       allowed_origins     = local.site_config.cors["allowed_origins"]
       support_credentials = local.site_config.cors["support_credentials"]
     }
-    application_stack {
-      python_version = local.site_config.application_stack["python_version"]
+    dynamic "application_stack" {
+      for_each = local.site_config.application_stack
+      iterator = application_stack
+      content {
+        python_version          = application_stack.value["python_version"]
+        powershell_core_version = application_stack.value["powershell_core_version"]
+        java_version            = application_stack.value["java_version"]
+        node_version            = application_stack.value["node_version"]
+      }
     }
+
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
     http2_enabled               = local.site_config["http2_enabled"]

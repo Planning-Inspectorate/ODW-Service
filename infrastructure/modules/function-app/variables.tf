@@ -138,7 +138,8 @@ variable "site_config_defaults" {
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     application_stack = {
-      powershell_core_version = "7.0"
+      powershell_core_version     = "7.0"
+      use_dotnet_isolated_runtime = false
     }
     ip_restrictions = {
       ip_addresses = []
