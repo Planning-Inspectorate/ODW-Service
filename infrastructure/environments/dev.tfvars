@@ -261,7 +261,7 @@ vnet_subnets = [
     "new_bits" : 4 # /28
   },
   {
-    "name" : "AzureFunctionSubnet",
+    "name" : "FunctionAppSubnet",
     "new_bits" : 4 # /28
   },
   {

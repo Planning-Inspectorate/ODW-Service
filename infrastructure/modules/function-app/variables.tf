@@ -165,3 +165,20 @@ variable "site_config" {
   description = "Site config to override site_config_defaults. Object structure identical to site_config_defaults"
   default     = {}
 }
+
+
+variable "synapse_function_app_subnet_name" {
+  default     = "FunctionAppSubnet"
+  description = "The name of the subnet into which the function App's should be deployed"
+  type        = string
+}
+
+# variable "synapse_vnet_security_groups" {
+#   description = "A map of subnet names to network security group IDs"
+#   type        = map(string)
+# }
+
+variable "synapse_vnet_subnet_names" {
+  description = "A map of subnet names to IDs comprising the linked Virtual Network for Function App deployment"
+  type        = map(string)
+}
