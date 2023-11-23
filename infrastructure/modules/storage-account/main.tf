@@ -14,7 +14,7 @@ resource "azurerm_storage_account" "storage" {
   #checkov:skip=CKV2_AZURE_8: Firewall is enabled using azurerm_storage_account_network_rules
   #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   #checkov:skip=CKV2_AZURE_33: Private Endpoint is not enabled as networking is controlled by Firewall
-  name                      = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
+  name                      = "pins-st-${local.resource_suffix}-${random_string.unique_id.id}"
   resource_group_name       = var.resource_group_name
   location                  = var.location
   account_tier              = var.storage_tier
