@@ -47,12 +47,13 @@ environment = "dev"
 
 function_app_enabled = true
 function_app_name    = "fnapp01"
-function_app_settings = {
-  FUNCTIONS_WORKER_RUNTIME = "python"
-}
+# function_app_settings = {
+#   FUNCTIONS_WORKER_RUNTIME = "python"
+# }
 function_app_site_config = {
   application_stack = {
-    python_version = "3.10"
+    #python_version = "3.10"
+    powershell_core_version = "7.1"
   }
 }
 
