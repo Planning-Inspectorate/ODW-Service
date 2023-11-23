@@ -26,7 +26,7 @@ resource "azurerm_linux_function_app" "function" {
       java_version                = try(local.site_config.application_stack["java_version"], null)
       python_version              = try(local.site_config.application_stack["python_version"], null)
       powershell_core_version     = try(local.site_config.application_stack["powershell_core_version"], null)
-      use_custom_runtime          = try(ocal.site_config.application_stack["use_custom_runtime"], null)
+      use_custom_runtime          = try(local.site_config.application_stack["use_custom_runtime"], null)
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
