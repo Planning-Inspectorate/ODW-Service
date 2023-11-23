@@ -22,10 +22,10 @@ resource "azurerm_linux_function_app" "function" {
     }
 
     application_stack {
-      python_version          = local.site_config.application_stack["python_version"] == "" ? null : local.site_config.application_stack["python_version"]
-      powershell_core_version = local.site_config.application_stack["powershell_core_version"] == "" ? null : local.site_config.application_stack["powershell_core_version"]
-      java_version            = local.site_config.application_stack["java_version"] == "" ? null : local.site_config.application_stack["java_version"]
-      dotnet_version          = local.site_config.application_stack["dotnet_version"] == "" ? null : local.site_config.application_stack["dotnet_version"]
+      python_version          = local.site_config.application_stack["python_version"]
+      powershell_core_version = local.site_config.application_stack["powershell_core_version"] 
+      java_version            = local.site_config.application_stack["java_version"] 
+      dotnet_version          = local.site_config.application_stack["dotnet_version"]
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
     health_check_path           = local.site_config["health_check_path"]
