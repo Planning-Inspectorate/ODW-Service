@@ -98,7 +98,7 @@ variable "site_config_defaults" {
     use_32_bit_worker           = bool
     websockets_enabled          = bool
     vnet_route_all_enabled      = bool
-    application_stack           = any
+    application_stack           = map(string)
     ip_restrictions = object({
       ip_addresses = list(object({
         rule_name  = string
@@ -138,8 +138,10 @@ variable "site_config_defaults" {
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     application_stack = {
-      powershell_core_version     = "7.0"
-      use_dotnet_isolated_runtime = false
+      dotnet_version          = ""
+      python_version          = ""
+      java_version            = ""
+      powershell_core_version = "7.0"
     }
     ip_restrictions = {
       ip_addresses = []
