@@ -20,11 +20,10 @@ resource "azurerm_linux_function_app" "function" {
       allowed_origins     = local.site_config.cors["allowed_origins"]
       support_credentials = local.site_config.cors["support_credentials"]
     }
-
     application_stack {
       python_version          = local.site_config.application_stack["python_version"]
-      powershell_core_version = local.site_config.application_stack["powershell_core_version"] 
-      java_version            = local.site_config.application_stack["java_version"] 
+      powershell_core_version = local.site_config.application_stack["powershell_core_version"]
+      java_version            = local.site_config.application_stack["java_version"]
       dotnet_version          = local.site_config.application_stack["dotnet_version"]
     }
     ftps_state                  = local.site_config["ftps_state"] == "AllAllowed" ? "FtpsOnly" : local.site_config["ftps_state"]
