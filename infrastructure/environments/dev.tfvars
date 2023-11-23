@@ -45,7 +45,7 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 
 environment = "dev"
 
-function_app_enabled = true
+function_app_enabled = false
 function_app_name    = "fnapp01"
 function_app_settings = {
   FUNCTIONS_WORKER_RUNTIME = "python"
