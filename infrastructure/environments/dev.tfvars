@@ -10,7 +10,7 @@ apim_publisher_email = "alex.delany@planninginspectorate.gov.uk"
 apim_publisher_name  = "Alex Delany"
 apim_sku_name        = "Developer_1"
 
-bastion_host_enabled = true
+bastion_host_enabled = false
 bastion_vm_username  = "basadmin"
 bastion_vm_size      = "Standard_F2s_v2"
 bastion_vm_image = {
@@ -256,14 +256,6 @@ tenant_id = "5878df98-6f88-48ab-9322-998ce557088d"
 vnet_base_cidr_block          = "10.70.0.0/24"
 vnet_base_cidr_block_failover = "10.70.1.0/24"
 vnet_subnets = [
-  {
-    "name" : "AzureBastionSubnet",
-    "new_bits" : 2 # /28
-  },
-  {
-    "name" : "AzureFunctionappSubnet",
-    "new_bits" : 2 # /28
-  },
   {
     "name" : "SynapseEndpointSubnet",
     "new_bits" : 2 # /26
