@@ -258,11 +258,11 @@ vnet_base_cidr_block_failover = "10.70.1.0/24"
 vnet_subnets = [
   {
     "name" : "AzureBastionSubnet",
-    "new_bits" : 2 # /28
+    "new_bits" : 4 # /28
   },
   {
     "name" : "AzureFunctionSubnet",
-    "new_bits" : 2 # /28
+    "new_bits" : 4 # /28
   },
   {
     "name" : "SynapseEndpointSubnet",
