@@ -52,8 +52,7 @@ function_app_settings = {
 }
 function_app_site_config = {
   application_stack = {
-    python_version              = "3.10"
-    use_dotnet_isolated_runtime = false
+    python_version = "3.10"
   }
 }
 
