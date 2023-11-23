@@ -143,10 +143,10 @@ variable "site_config_defaults" {
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     application_stack = {
-      python_version          = null
-      java_version            = null
-      dotnet_version          = null
-      powershell_core_version = null
+      python_version          = ""
+      java_version            = ""
+      dotnet_version          = ""
+      powershell_core_version = ""
     }
     ip_restrictions = {
       ip_addresses = []
