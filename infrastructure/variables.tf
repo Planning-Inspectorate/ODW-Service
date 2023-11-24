@@ -160,11 +160,11 @@ variable "function_app_settings" {
   type        = map(string)
 }
 
-variable "function_app_site_config" {
-  default     = {}
-  description = "A map of site configuration settings to be applied to the Function App"
-  type        = map(any)
-}
+# variable "function_app_site_config" {
+#   default     = {}
+#   description = "A map of site configuration settings to be applied to the Function App"
+#   type        = map(any)
+# }
 
 variable "key_vault_role_assignments" {
   default     = {}
