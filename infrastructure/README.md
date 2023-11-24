@@ -191,8 +191,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="module_logic_app_failover"></a> [logic\_app\_failover](#module\_logic\_app\_failover) | ./modules/logic-app | n/a |
 | <a name="module_odt_backoffice_sb"></a> [odt\_backoffice\_sb](#module\_odt\_backoffice\_sb) | ./modules/odt-backoffice-sb | n/a |
 | <a name="module_odt_backoffice_sb_failover"></a> [odt\_backoffice\_sb\_failover](#module\_odt\_backoffice\_sb\_failover) | ./modules/odt-backoffice-sb | n/a |
-| <a name="module_sp"></a> [sp](#module\_sp) | ./modules/service-plan | n/a |
-| <a name="module_sp_failover"></a> [sp\_failover](#module\_sp\_failover) | ./modules/service-plan | n/a |
+| <a name="module_service_plan"></a> [service\_plan](#module\_service\_plan) | ./modules/service-plan | n/a |
+| <a name="module_service_plan_failover"></a> [service\_plan\_failover](#module\_service\_plan\_failover) | ./modules/service-plan | n/a |
 | <a name="module_storage_account"></a> [storage\_account](#module\_storage\_account) | ./modules/storage-account | n/a |
 | <a name="module_storage_account_failover"></a> [storage\_account\_failover](#module\_storage\_account\_failover) | ./modules/storage-account | n/a |
 | <a name="module_synapse_data_lake"></a> [synapse\_data\_lake](#module\_synapse\_data\_lake) | ./modules/synapse-data-lake | n/a |
