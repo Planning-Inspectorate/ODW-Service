@@ -31,7 +31,7 @@ variable "function_app_name" {
 
 # app service plan related
 
-variable "app_service_plan_id" {
+variable "service_plan_id" {
   type        = string
   description = "ID of the app service plan instance to host this app service. If unspecified one will be created for you"
   default     = null
