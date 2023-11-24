@@ -10,7 +10,7 @@ apim_publisher_email = "alex.delany@planninginspectorate.gov.uk"
 apim_publisher_name  = "Alex Delany"
 apim_sku_name        = "Developer_1"
 
-bastion_host_enabled = false
+bastion_host_enabled = true
 bastion_vm_username  = "basadmin"
 bastion_vm_size      = "Standard_F2s_v2"
 bastion_vm_image = {
@@ -45,7 +45,7 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 
 environment = "dev"
 
-function_app_enabled = false
+function_app_enabled = true
 function_app_name    = "fnapp01"
 function_app_settings = {
   FUNCTIONS_WORKER_RUNTIME = "python"
