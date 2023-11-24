@@ -10,17 +10,18 @@ from azure.servicebus import ServiceBusClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from servicebus_funcs import get_messages, send_to_storage
+from pydantic import BaseModel, ValidationError, ConfigDict, Field
+from uuid import UUID
+import pprint
+from model_funcs import convert_to_lower
+from models import model
 
-_NAMESPACE = "https://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net"
-_SUBSCRIPTION = "service-user"
 _TOPIC = "service-user"
-_MAX_MESSAGE_COUNT = 10
 _STORAGE = "https://pinsstodwdevuks9h80mb.blob.core.windows.net"
 _CONTAINER = "odw-raw/odt/test"
 _CREDENTIAL = DefaultAzureCredential()
 
 _app = func.FunctionApp()
-
 
 @_app.function_name("serviceuser")
 @_app.route(route="serviceuser", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
@@ -51,10 +52,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             credential=_CREDENTIAL,
             container=_CONTAINER,
             filename=_FILENAME,
-            data=get_messages(
-                _NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT
-            ),
-        )
+            data=model()
+            )
 
     except Exception as e:
         logging.error(f"Error occurred: {str(e)}")
