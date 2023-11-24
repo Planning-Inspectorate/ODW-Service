@@ -345,5 +345,6 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="output_synapse_dev_endpoint"></a> [synapse\_dev\_endpoint](#output\_synapse\_dev\_endpoint) | The development connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_dsql_endpoint"></a> [synapse\_dsql\_endpoint](#output\_synapse\_dsql\_endpoint) | The dedicated SQL pool connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_ssql_endpoint"></a> [synapse\_ssql\_endpoint](#output\_synapse\_ssql\_endpoint) | The serverless SQL pool connectivity endpoint for the Synapse Workspace |
+| <a name="output_synapse_subnets_cidr_blocks"></a> [synapse\_subnets\_cidr\_blocks](#output\_synapse\_subnets\_cidr\_blocks) | values of the Synapse subnets |
 | <a name="output_synapse_workspace_name"></a> [synapse\_workspace\_name](#output\_synapse\_workspace\_name) | The name of the Synapse Workspace |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
