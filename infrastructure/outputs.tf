@@ -71,5 +71,5 @@ output "synapse_workspace_name" {
 
 output "synapse_subnets_cidr_blocks" {
   description = "values of the Synapse subnets"
-  value       = module.subnets.network_cidr_blocks
+  value       = module.synapse_network.network_cidr_blocks
 }
