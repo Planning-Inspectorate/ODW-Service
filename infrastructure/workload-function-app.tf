@@ -57,7 +57,7 @@ module "storage_account_failover" {
 
   source = "./modules/storage-account"
 
-  resource_group_name = azurerm_resource_group.function_app_failover[0].name
+  resource_group_name = azurerm_resource_group.function_app_failover[count.index].name
   service_name        = local.service_name
   environment         = var.environment
   location            = module.azure_region.paired_location.location_cli
@@ -69,10 +69,10 @@ module "function_app" {
 
   source = "./modules/function-app"
 
-  resource_group_name        = azurerm_resource_group.function_app[0].name
+  resource_group_name        = azurerm_resource_group.function_app[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  app_service_plan_id        = module.sp[0].id
+  service_plan_id            = module.sp[0].id
   storage_account_name       = module.storage_account[0].storage_name
   storage_account_access_key = module.storage_account[0].primary_access_key
   environment                = var.environment
@@ -88,10 +88,10 @@ module "function_app_failover" {
 
   source = "./modules/function-app"
 
-  resource_group_name        = azurerm_resource_group.function_app_failover[0].name
+  resource_group_name        = azurerm_resource_group.function_app_failover[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  app_service_plan_id        = module.sp_failover[0].id
+  service_plan_id            = module.sp_failover[0].id
   storage_account_name       = module.storage_account_failover[0].storage_name
   storage_account_access_key = module.storage_account_failover[0].primary_access_key
   environment                = var.environment
