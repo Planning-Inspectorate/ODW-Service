@@ -76,7 +76,7 @@ module "function_app" {
   storage_account_name       = module.storage_account[0].storage_name
   storage_account_access_key = module.storage_account[0].primary_access_key
   environment                = var.environment
-  location                   = module.azure_region.paired_location.location_cli
+  location                   = module.azure_region.location_cli
   tags                       = local.tags
   synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
   app_settings               = var.function_app_settings
