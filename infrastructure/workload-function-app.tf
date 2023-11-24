@@ -72,9 +72,9 @@ module "function_app" {
   resource_group_name        = azurerm_resource_group.function_app[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  service_plan_id            = module.sp[0].id
-  storage_account_name       = module.storage_account[0].storage_name
-  storage_account_access_key = module.storage_account[0].primary_access_key
+  service_plan_id            = module.sp[count.index].id
+  storage_account_name       = module.storage_account[count.index].storage_name
+  storage_account_access_key = module.storage_account[count.index].primary_access_key
   environment                = var.environment
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
@@ -91,9 +91,9 @@ module "function_app_failover" {
   resource_group_name        = azurerm_resource_group.function_app_failover[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  service_plan_id            = module.sp_failover[0].id
-  storage_account_name       = module.storage_account_failover[0].storage_name
-  storage_account_access_key = module.storage_account_failover[0].primary_access_key
+  service_plan_id            = module.sp_failover[count.index].id
+  storage_account_name       = module.storage_account_failover[count.index].storage_name
+  storage_account_access_key = module.storage_account_failover[count.index].primary_access_key
   environment                = var.environment
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
