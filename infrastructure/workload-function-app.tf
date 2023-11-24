@@ -16,7 +16,7 @@ resource "azurerm_resource_group" "function_app_failover" {
   tags = local.tags
 }
 
-module "sp" {
+module "service_plan" {
   count = var.function_app_enabled ? 1 : 0
 
   source = "./modules/service-plan"
@@ -28,7 +28,7 @@ module "sp" {
   tags                = local.tags
 }
 
-module "sp_failover" {
+module "service_plan_failover" {
   count = var.function_app_enabled && var.failover_deployment ? 1 : 0
 
   source = "./modules/service-plan"
@@ -72,7 +72,7 @@ module "function_app" {
   resource_group_name        = azurerm_resource_group.function_app[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  service_plan_id            = module.sp[count.index].id
+  service_plan_id            = module.service_plan[count.index].id
   storage_account_name       = module.storage_account[count.index].storage_name
   storage_account_access_key = module.storage_account[count.index].primary_access_key
   environment                = var.environment
@@ -91,7 +91,7 @@ module "function_app_failover" {
   resource_group_name        = azurerm_resource_group.function_app_failover[count.index].name
   function_app_name          = var.function_app_name
   service_name               = local.service_name
-  service_plan_id            = module.sp_failover[count.index].id
+  service_plan_id            = module.service_plan_failover[count.index].id
   storage_account_name       = module.storage_account_failover[count.index].storage_name
   storage_account_access_key = module.storage_account_failover[count.index].primary_access_key
   environment                = var.environment
