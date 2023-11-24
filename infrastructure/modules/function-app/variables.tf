@@ -81,90 +81,90 @@ variable "app_settings" {
   default     = {}
 }
 
-variable "site_config_defaults" {
-  type = object({
-    always_on = bool
-    cors = object({
-      allowed_origins     = list(string)
-      support_credentials = bool
-    })
-    ftps_state                  = string
-    health_check_path           = string
-    http2_enabled               = bool
-    linux_fx_version            = string
-    minimum_tls_version         = string
-    pre_warmed_instance_count   = number
-    scm_use_main_ip_restriction = bool
-    use_32_bit_worker           = bool
-    websockets_enabled          = bool
-    vnet_route_all_enabled      = bool
-    application_stack = object({
-      dotnet_version          = string
-      use_dotnet_isolated     = bool
-      java_version            = string
-      python_version          = string
-      powershell_core_version = string
-      use_custom_runtime      = bool
-    })
-    ip_restrictions = object({
-      ip_addresses = list(object({
-        rule_name  = string
-        ip_address = string
-        priority   = number
-        action     = string
-      }))
-      service_tags = list(object({
-        rule_name        = string
-        service_tag_name = string
-        priority         = number
-        action           = string
-      }))
-      subnet_ids = list(object({
-        rule_name = string
-        subnet_id = string
-        priority  = number
-        action    = string
-      }))
-    })
-  })
-  description = "A site config block for configuring the function"
-  default = {
-    always_on = false
-    cors = {
-      allowed_origins     = ["*"]
-      support_credentials = false
-    }
-    ftps_state                  = "Disabled"
-    health_check_path           = null
-    http2_enabled               = true
-    linux_fx_version            = null
-    minimum_tls_version         = 1.2
-    pre_warmed_instance_count   = null
-    scm_use_main_ip_restriction = true
-    use_32_bit_worker           = false
-    websockets_enabled          = true
-    vnet_route_all_enabled      = false
-    application_stack = {
-      dotnet_version          = ""
-      use_dotnet_isolated     = false
-      java_version            = ""
-      python_version          = ""
-      powershell_core_version = ""
-      use_custom_runtime      = false
-    }
-    ip_restrictions = {
-      ip_addresses = []
-      service_tags = []
-      subnet_ids   = []
-    }
-  }
-}
+# variable "site_config_defaults" {
+#   type = object({
+#     always_on = bool
+#     cors = object({
+#       allowed_origins     = list(string)
+#       support_credentials = bool
+#     })
+#     ftps_state                  = string
+#     health_check_path           = string
+#     http2_enabled               = bool
+#     linux_fx_version            = string
+#     minimum_tls_version         = string
+#     pre_warmed_instance_count   = number
+#     scm_use_main_ip_restriction = bool
+#     use_32_bit_worker           = bool
+#     websockets_enabled          = bool
+#     vnet_route_all_enabled      = bool
+#     application_stack = object({
+#       dotnet_version          = string
+#       use_dotnet_isolated     = bool
+#       java_version            = string
+#       python_version          = string
+#       powershell_core_version = string
+#       use_custom_runtime      = bool
+#     })
+#     ip_restrictions = object({
+#       ip_addresses = list(object({
+#         rule_name  = string
+#         ip_address = string
+#         priority   = number
+#         action     = string
+#       }))
+#       service_tags = list(object({
+#         rule_name        = string
+#         service_tag_name = string
+#         priority         = number
+#         action           = string
+#       }))
+#       subnet_ids = list(object({
+#         rule_name = string
+#         subnet_id = string
+#         priority  = number
+#         action    = string
+#       }))
+#     })
+#   })
+#   description = "A site config block for configuring the function"
+#   default = {
+#     always_on = false
+#     cors = {
+#       allowed_origins     = ["*"]
+#       support_credentials = false
+#     }
+#     ftps_state                  = "Disabled"
+#     health_check_path           = null
+#     http2_enabled               = true
+#     linux_fx_version            = null
+#     minimum_tls_version         = 1.2
+#     pre_warmed_instance_count   = null
+#     scm_use_main_ip_restriction = true
+#     use_32_bit_worker           = false
+#     websockets_enabled          = true
+#     vnet_route_all_enabled      = false
+#     application_stack = {
+#       dotnet_version          = ""
+#       use_dotnet_isolated     = false
+#       java_version            = ""
+#       python_version          = ""
+#       powershell_core_version = ""
+#       use_custom_runtime      = false
+#     }
+#     ip_restrictions = {
+#       ip_addresses = []
+#       service_tags = []
+#       subnet_ids   = []
+#     }
+#   }
+# }
 
-variable "site_config" {
-  type        = any
-  description = "Site config to override site_config_defaults. Object structure identical to site_config_defaults"
-  default     = {}
-}
+# variable "site_config" {
+#   type        = any
+#   description = "Site config to override site_config_defaults. Object structure identical to site_config_defaults"
+#   default     = {}
+# }
 
 
 variable "synapse_function_app_subnet_name" {
