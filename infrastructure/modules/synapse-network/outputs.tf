@@ -35,5 +35,5 @@ output "vnet_subnet_prefixes" {
 
 output "networks" {
   description = "A map of subnet names to CIDR ranges deployed in this module"
-  value       = module.subnets.networks
+  value       = flatten(module.subnets.networks)
 }
