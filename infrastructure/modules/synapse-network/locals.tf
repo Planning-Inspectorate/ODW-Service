@@ -10,7 +10,7 @@ locals {
   nsg_path = "providers/Microsoft.Network/networkSecurityGroups"
 
   networks_delegation = {
-    for k, v in module.subnet.subnets : k => {
+    for k, v in module.subnet.networks : k => {
       name    = v.name
       address = v.address_prefixes[0]
     }
