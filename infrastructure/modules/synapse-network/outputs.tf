@@ -33,7 +33,7 @@ output "vnet_subnet_prefixes" {
   value       = { for k, v in azurerm_subnet.synapse : k => one(v.address_prefixes) }
 }
 
-output "networks" {
+output "networks_delegation" {
   description = "A map of subnet names to CIDR ranges deployed in this module"
-  value       = flatten(module.subnets.networks)
+  value       = local.networks_delegation
 }
