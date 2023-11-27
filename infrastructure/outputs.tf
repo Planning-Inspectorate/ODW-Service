@@ -69,7 +69,7 @@ output "synapse_workspace_name" {
   value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_workspace_name : module.synapse_workspace_private.synapse_workspace_name
 }
 
-output "synapse_networks" {
+output "synapse_networks_delegation" {
   description = "values of the Synapse subnets"
-  value       = module.synapse_network.networks
+  value       = modules.synapse_network.networks_delegation
 }
