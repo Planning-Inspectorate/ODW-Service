@@ -71,5 +71,5 @@ output "synapse_workspace_name" {
 
 output "synapse_networks_delegation" {
   description = "values of the Synapse subnets"
-  value       = modules.synapse_network.networks_delegation
+  value       = module.synapse_network.networks_delegation
 }
