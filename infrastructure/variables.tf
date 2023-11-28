@@ -476,7 +476,7 @@ variable "vnet_base_cidr_block_failover" {
 
 variable "vnet_subnets" {
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
-  type        = list(object({
+  type = list(object({
     name     = string
     new_bits = number
     service_delegation = list(object({

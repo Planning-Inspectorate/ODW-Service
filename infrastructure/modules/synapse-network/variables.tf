@@ -85,7 +85,6 @@ variable "vnet_subnets" {
   }))
 }
 
-
 variable "synapse_private_endpoint_subnet_name" {
   default     = "SynapseEndpointSubnet"
   description = "The name of the subnet into which Synapse private endpoints should be deployed"
