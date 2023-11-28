@@ -34,6 +34,6 @@ output "vnet_subnet_prefixes" {
 }
 
 output "vnet_subnet_ids" {
-  description = "A map of subnet names to IDs deployed in this module"
-  value       = { for k, v in azurerm_subnet.synapse : k => v.id }
+  description = "A list of subnet IDs deployed in this module"
+  value       = [ azurerm_subnet.synapse[*].id ]
 }
