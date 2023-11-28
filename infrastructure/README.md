@@ -342,6 +342,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="output_key_vault_uri"></a> [key\_vault\_uri](#output\_key\_vault\_uri) | The URI of the Key Vault |
 | <a name="output_service_bus_namespace_name"></a> [service\_bus\_namespace\_name](#output\_service\_bus\_namespace\_name) | The name of the Service Bus Namespace |
 | <a name="output_service_bus_primary_connection_string"></a> [service\_bus\_primary\_connection\_string](#output\_service\_bus\_primary\_connection\_string) | The primary connection string of the Service Bus Namespace |
+| <a name="output_subnets"></a> [subnets](#output\_subnets) | A map of subnet names to CIDR ranges deployed in this module |
+| <a name="output_subnets_cidr"></a> [subnets\_cidr](#output\_subnets\_cidr) | A map of subnet names to CIDR ranges deployed in this module |
 | <a name="output_synapse_dev_endpoint"></a> [synapse\_dev\_endpoint](#output\_synapse\_dev\_endpoint) | The development connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_dsql_endpoint"></a> [synapse\_dsql\_endpoint](#output\_synapse\_dsql\_endpoint) | The dedicated SQL pool connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_ssql_endpoint"></a> [synapse\_ssql\_endpoint](#output\_synapse\_ssql\_endpoint) | The serverless SQL pool connectivity endpoint for the Synapse Workspace |

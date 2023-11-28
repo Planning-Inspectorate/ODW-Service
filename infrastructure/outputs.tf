@@ -68,3 +68,13 @@ output "synapse_workspace_name" {
   description = "The name of the Synapse Workspace"
   value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_workspace_name : module.synapse_workspace_private.synapse_workspace_name
 }
+
+# output "subnets" {
+#   description = "A map of subnet names to CIDR ranges deployed in this module"
+#   value       = modules.synapse_network.subnets
+# }
+
+output "subnets_cidr" {
+  description = "A map of subnet names to CIDR ranges deployed in this module"
+  value       = modules.synapse_network.subnets_cidr
+}
