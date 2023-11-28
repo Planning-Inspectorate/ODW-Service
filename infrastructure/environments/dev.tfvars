@@ -53,7 +53,6 @@ function_app_site_config = {
   }
 }
 
-
 location          = "uk-south"
 logic_app_enabled = true
 
