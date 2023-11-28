@@ -260,6 +260,8 @@ vnet_subnets = [
   {
     "name" : "FunctionAppSubnet",
     "new_bits" : 4 # /28
+    "service_delegation" : "Microsoft.Web/serverFarms"
+    "service_delegation_actions" : ["Microsoft.Network/virtualNetworks/subnets/action"]
   },
   {
     "name" : "SynapseEndpointSubnet",
