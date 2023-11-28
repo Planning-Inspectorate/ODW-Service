@@ -256,6 +256,7 @@ vnet_subnets = [
   {
     "name" : "AzureBastionSubnet",
     "new_bits" : 4 # /28
+    service_delegation = []
   },
   {
     "name" : "FunctionAppSubnet",
@@ -270,13 +271,16 @@ vnet_subnets = [
   {
     "name" : "SynapseEndpointSubnet",
     "new_bits" : 2 # /26
+    service_delegation = []
   },
   {
     "name" : "ComputeSubnet"
     "new_bits" : 2 # /26
+    service_delegation = []
   },
   {
     "name" : "ApimSubnet",
     "new_bits" : 2 # /26
+    service_delegation = []
   },
 ]
