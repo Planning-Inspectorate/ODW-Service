@@ -53,8 +53,8 @@ variable "vnet_subnets" {
       "new_bits" : 4 # /28
       service_delegation = [
         {
-          name    = "Microsoft.Web/serverFarms"
-          actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+          delegation_name = "Microsoft.Web/serverFarms"
+          actions         = ["Microsoft.Network/virtualNetworks/subnets/action"]
         }
       ]
     },
@@ -79,8 +79,8 @@ variable "vnet_subnets" {
     name     = string
     new_bits = number
     service_delegation = list(object({
-      name    = string
-      actions = list(string)
+      delegation_name = string
+      actions         = list(string)
     }))
   }))
 }

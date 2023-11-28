@@ -263,8 +263,8 @@ vnet_subnets = [
     "new_bits" : 4 # /28
     service_delegation = [
       {
-        name    = "Microsoft.Web/serverFarms"
-        actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+        delegation_name = "Microsoft.Web/serverFarms"
+        actions         = ["Microsoft.Network/virtualNetworks/subnets/action"]
       }
     ]
   },
