@@ -46,6 +46,7 @@ variable "vnet_subnets" {
   {
     "name" : "AzureBastionSubnet",
     "new_bits" : 4 # /28
+    service_delegation = []
   },
   {
     "name" : "FunctionAppSubnet",
@@ -60,14 +61,17 @@ variable "vnet_subnets" {
   {
     "name" : "SynapseEndpointSubnet",
     "new_bits" : 2 # /26
+    service_delegation = []
   },
   {
     "name" : "ComputeSubnet"
     "new_bits" : 2 # /26
+    service_delegation = []
   },
   {
     "name" : "ApimSubnet",
     "new_bits" : 2 # /26
+    service_delegation = []
   },
 ]
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
