@@ -29,7 +29,7 @@ resource "azurerm_subnet" "synapse" {
     content {
       name = each.key
       service_delegation {
-        name    = delegation.value.name
+        name    = delegation.value.delegation_name
         actions = delegation.value.actions
       }
     }
