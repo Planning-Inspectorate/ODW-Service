@@ -475,24 +475,13 @@ variable "vnet_base_cidr_block_failover" {
 }
 
 variable "vnet_subnets" {
-  default = [
-    {
-      name     = "ManagementSubnet"
-      new_bits = 2
-    },
-    {
-      name     = "SynapseEndpointSubnet"
-      new_bits = 2
-    },
-    {
-      name     = null
-      new_bits = 2
-    },
-    {
-      name     = null
-      new_bits = 2
-    }
-  ]
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
-  type        = list(map(string))
+  type        = list(object({
+    name     = string
+    new_bits = number
+    service_delegation = list(object({
+      name    = string
+      actions = list(string)
+    }))
+  }))
 }
