@@ -38,7 +38,7 @@ output "vnet_subnet_prefixes" {
 #   value       = local.subnets
 # }
 
-output "subnets_cidr" {
+output "subnets" {
   description = "A map of subnet names to CIDR ranges deployed in this module"
-  value       = module.subnets.network_cidr_blocks
+  value       = module.subnets.networks
 }
