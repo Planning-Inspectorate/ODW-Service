@@ -71,6 +71,6 @@ output "synapse_workspace_name" {
 
 output "subnets" {
   description = "A map of subnet names to CIDR ranges deployed in this module"
-  value       = modules.synapse_network.subnets
+  value       = module.synapse_network.subnets
 }
 
