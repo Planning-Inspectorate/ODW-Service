@@ -1,10 +1,12 @@
 from pydantic import BaseModel, ValidationError
 import json
 import pprint
-from typing import List
+import csv
+from collections import defaultdict
+from model_funcs import convert_to_lower
+
 
 class Contact(BaseModel):
-
     ContactID: str
     Title: str
     Salutation: str
@@ -12,44 +14,44 @@ class Contact(BaseModel):
     LastName: str
     TypeOfInvolvement: str
 
-class Specialism(BaseModel):
 
+class Specialism(BaseModel):
     SpecialismID: int | str
     Specialism: str
 
-class GroundForAppeal(BaseModel):
 
+class GroundForAppeal(BaseModel):
     GroundsForAppeal: str
     GroundLetter: str
     GroundForAppealStartDate: str
 
-class EventType(BaseModel):
 
+class EventType(BaseModel):
     EventType: str
     StartDateOfEvent: str
     StartTimeOfEvent: str
     EndDateOfEvent: str
     DateEventRequested: str
 
-class ChartStatus(BaseModel):
 
+class ChartStatus(BaseModel):
     ChartStatus: str
     EstPrepTime: str
     EstSitTime: str
     EstRepTime: str
     ActualDuration: str
 
-class Cases(BaseModel):
 
-    CaseReference: str
+class Cases(BaseModel):
+    # CaseReference: str
     AppealRefNumber: int | str
     ApplicationType: str
-    AppealTypeReason: str = None # default value indicates optional
-    # Contacts: list[Contact] = []
+    AppealTypeReason: str
+    Contacts: list[Contact] = []
     Specialisms: list[Specialism] = []
-    # GroundsForAppeal: list[GroundForAppeal] = []
-    # EventTypes: list[EventType] = []
-    # ChartStatuses: list[ChartStatus] = []
+    GroundsForAppeal: list[GroundForAppeal] = []
+    EventTypes: list[EventType] = []
+    ChartStatuses: list[ChartStatus] = []
     # AppealTypeGroup: str
     # AppealType: str
     # ProcedureName: str
@@ -124,85 +126,98 @@ class Cases(BaseModel):
     # DateEventRequested: str
     # ActualDuration: str
 
-class ExternalDataModel(BaseModel):
-    external_data: List[Cases]
 
-external_data = [{
-    'CaseReference': 123,
-    'AppealRefNumber': 12345678,
-    'ApplicationType': 'whatever',
-    'AppealTypeReason': 'hello',
-    'SpecialismID': 12345,
-    'Specialism': 'MySpecialism'
-    },
-    {
-    'CaseReference': 123,
-    'AppealRefNumber': 12345678,
-    'ApplicationType': 'whatever',
-    'AppealTypeReason': 'hello',
-    'SpecialismID': 67891,
-    'Specialism': 'Generalist'
-    },
-    {
-    'CaseReference': '987',
-    'AppealRefNumber': 765487,
-    'ApplicationType': 457,
-    'AppealTypeReason': 'hi',
-    'SpecialismID': 65438765,
-    'Specialism': 'football'
-    },
-    {
-    'CaseReference': '987',
-    'AppealRefNumber': 765487,
-    'ApplicationType': 457,
-    'AppealTypeReason': 'hi',
-    'SpecialismID': 8965487,
-    'Specialism': 'running'
+class DartInstances (BaseModel):
+    dart_data: list[Cases]
+
+
+file_name = r"C:\Users\ChrisTopping\Downloads\dart_sample_ordered.csv"
+
+data = []
+with open(file_name, encoding="utf-8") as csvfile:
+    reader = csv.DictReader(csvfile)
+    data.extend(reader)
+
+merged_data = defaultdict(
+    lambda: {
+        "Contacts": [],
+        "Specialisms": [],
+        "GroundsForAppeal": [],
+        "Events": [],
+        "ChartStatus": [],
     }
-]
+)
 
-# Preprocess the data to merge specialisms for the same CaseReference
-merged_data = {}
-for item in external_data:
-    AppealRefNumber = item['AppealRefNumber']
-    if AppealRefNumber not in merged_data:
-        merged_data[AppealRefNumber] = {
-            'CaseReference': item['CaseReference'],
-            'AppealRefNumber': AppealRefNumber,
-            'ApplicationType': item['ApplicationType'],
-            'AppealTypeReason': item['AppealTypeReason'],
-            'Specialisms': []
-        }
-    merged_data[AppealRefNumber]['Specialisms'].append({'SpecialismID': item['SpecialismID'], 'Specialism': item['Specialism']})
+for item in data:
+    AppealRefNumber = item["AppealRefNumber"]
+    case = merged_data[AppealRefNumber]
+    case.update({k: v for k, v in item.items() if k not in case})
+
+    contacts = case["Contacts"]
+    new_contact = {
+        "ContactID": item["ContactID"],
+        "Title": item["Title"],
+        "Salutation": item["Salutation"],
+        "FirstName": item["FirstName"],
+        "LastName": item["LastName"],
+        "TypeOfInvolvement": item["TypeOfInvolvement"],
+    }
+    if new_contact not in contacts:
+        contacts.append(new_contact)
+
+    specialisms = case["Specialisms"]
+    new_specialism = {
+        "SpecialismID": item["SpecialismID"],
+        "Specialism": item["Specialism"],
+    }
+    if new_specialism not in specialisms:
+        specialisms.append(new_specialism)
+
+    groundsforappeal = case["GroundsForAppeal"]
+    new_groundsforappeal = {
+        "GroundForAppeal": item["GroundForAppeal"],
+        "GroundLetter": item["GroundLetter"],
+        "GroundForAppealStartDate": item["GroundForAppealStartDate"],
+    }
+    if new_groundsforappeal not in groundsforappeal:
+        groundsforappeal.append(new_groundsforappeal)
+
+    events = case["Events"]
+    new_events = {
+        "EventType": item["EventType"],
+        "StartDateOfEvent": item["StartDateOfEvent"],
+        "StartTimeOfEvent": item["StartTimeOfEvent"],
+        "EndDateOfEvent": item["EndDateOfEvent"],
+        "DateEventRequested": item["DateEventRequested"],
+    }
+    if new_events not in events:
+        events.append(new_events)
+
+    chartstatus = case["ChartStatus"]
+    new_chartstatus = {
+        "ChartStatus": item["ChartStatus"],
+        "EstPrepTime": item["EstPrepTime"],
+        "EstSitTime": item["EstSitTime"],
+        "EstRepTime": item["EstRepTime"],
+        "ActualDuration": item["ActualDuration"],
+    }
+    if new_chartstatus not in chartstatus:
+        chartstatus.append(new_chartstatus)
 
 final_data = list(merged_data.values())
 
-pprint.pprint(final_data)
+messages_lower = []
+for message in final_data:
+    message_lower = convert_to_lower(message)
+    messages_lower.append(message_lower)
 
-# # Accessing the validated data
-# print(external_data_model_instance.dict())
-
-try:
-    external_data_model_instance = ExternalDataModel(external_data=final_data)
-    print("Success!")
-except ValidationError as e:
-    print(e)
-    pprint.pprint(e.errors())
-
-# print("Creating dictionary of model...")
-# pprint.pprint(Cases.model_dump(self))
-
-# case_instances = []
-# for data in final_data:
-#     try:
-#         case_instance = Cases(**data)
-#         case_instances.append(case_instance)
-#         print("Success!!")
+pprint.pprint(DartInstances(dart_data=messages_lower).model_dump(warnings=False))
+# if not messages_lower:
+#     print("NO MESSAGES TO PROCESS - VALIDATION OK")
+# else:
+#     try:    
+#         DartInstances(dart_data=messages_lower)
+#         print("VALIDATION SUCCEEDED!")
+#         print(f'{len(data)} MESSAGES PROCESSED')
 #     except ValidationError as e:
 #         print(e)
-
-# # print jaon schema from pydantic model above
-# # print(json.dumps(Cases.model_json_schema(by_alias=False), indent=2))
-
-# cases_dict = [Cases(**data) for data in external_data]
-# pprint.pprint(cases_dict)
