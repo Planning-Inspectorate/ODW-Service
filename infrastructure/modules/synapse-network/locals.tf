@@ -9,16 +9,13 @@ locals {
 
   nsg_path = "providers/Microsoft.Network/networkSecurityGroups"
 
-  subnets = flatten([
-    for subnet in var.vnet_subnets : [
-      {
-        name               = subnet.name
-        new_bits           = subnet.new_bits
-        cidr_block         = module.subnets.network_cidr_blocks[subnet.name]
-        service_delegation = subnet.service_delegation
-      }
-    ]
-  ])
+  subnets = flatten({
+    for subnet in var.vnet_subnets : subnet.name => {
+      new_bits           = subnet.new_bits
+      cidr_block         = module.subnets.network_cidr_blocks[subnet.name]
+      service_delegation = subnet.service_delegation
+    }
+  })
 
   tags = merge(
     var.tags,
