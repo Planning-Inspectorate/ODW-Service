@@ -1,0 +1,40 @@
+{
+	"name": "0_Horizon_Document_Folder",
+	"properties": {
+		"description": "This pipeline get the data from folders to ingest into Raw",
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH folder_cte AS (\n \nSELECT\nD.DataID \t\tAS id, \n[Name] \t\t\tAS displayNameEnglish,\nNULL \t\t\tAS displayNameWelsh,\nD.ParentID \t\tAS parentFolderId, \n1 \t\t\t\tAS [level]\nFROM [otcs].[dbo].[DTree] D \n\tLEFT JOIN dbo.Horizon_CaseReference c \n\t\tON D.ParentID = c.CaseNodeId\nUNION ALL\nSELECT\nD2.DataID \t\tAS id,\nD2.[Name] \t\tAS displayNameEnglish,\nNULL \t\t\tAS displayNameWelsh,\nD2.ParentID \tAS parentFolderId, \nlevel + 1\t\tAS [level]\nFROM [otcs].[dbo].[DTree] D2\t\n\tINNER JOIN folder_cte r \n\t\tON D2.ParentID = r.id\nWHERE\n\tD2.SubType = 0\n)\nSELECT\nc2.CaseReference,\nc.*\nFROM folder_cte c \n\tLEFT JOIN dbo.Horizon_CaseReference c2 \n\t\tON c.parentFolderId = c2.CaseNodeId\nORDER BY\nc.level,\nc.parentFolderId,\nc.displayNameEnglish",
+						"queryTimeout": "06:40:00",
+						"partitionOption": "None"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "Doc_Folder",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "casework/layers/0-raw"
+		},
+		"annotations": []
+	}
+}
