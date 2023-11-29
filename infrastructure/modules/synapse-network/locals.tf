@@ -7,6 +7,11 @@ locals {
     "Microsoft.KeyVault"
   ]
 
+  subnet_service_endpoints = [
+    var.devops_agent_subnet_name,
+    "FunctionAppSubnet"
+  ]
+
   nsg_path = "providers/Microsoft.Network/networkSecurityGroups"
 
   subnets = {

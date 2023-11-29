@@ -1,7 +1,7 @@
-variable "devops_agent_subnet_names" {
-  default     = ["ComputeSubnet", "FunctionAppSubnet"]
+variable "devops_agent_subnet_name" {
+  default     = "ComputeSubnet"
   description = "The name of the subnet into which the devops agents will be deployed"
-  type        = list(string)
+  type        = string
 }
 
 variable "environment" {

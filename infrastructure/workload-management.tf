@@ -23,7 +23,7 @@ module "synapse_management" {
   service_name        = local.service_name
 
   deploy_purview                         = true
-  devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_names
+  devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
   key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.key_vault.id
   key_vault_role_assignments             = var.key_vault_role_assignments
@@ -46,7 +46,7 @@ module "synapse_management_failover" {
   service_name        = local.service_name
 
   deploy_purview                         = false # Not supported in the UK West region
-  devops_agent_subnet_name               = module.synapse_network_failover.devops_agent_subnet_names
+  devops_agent_subnet_name               = module.synapse_network_failover.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
   key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.key_vault.id
   key_vault_role_assignments             = var.key_vault_role_assignments

@@ -22,7 +22,7 @@ resource "azurerm_subnet" "synapse" {
   resource_group_name  = var.resource_group_name
   address_prefixes     = [each.value.cidr_block]
   virtual_network_name = azurerm_virtual_network.synapse.name
-  service_endpoints    = each.key == var.devops_agent_subnet_names ? local.devops_agent_subnet_service_endpoints : []
+  service_endpoints    = each.key == local.subnet_service_endpoints ? local.devops_agent_subnet_service_endpoints : []
 
   dynamic "delegation" {
     for_each = each.value.service_delegation
