@@ -272,6 +272,7 @@ vnet_subnets = [
   {
     "name" : "SynapseEndpointSubnet",
     "new_bits" : 2 # /26
+    service_endpoints  = []
     service_delegation = []
   },
   {
