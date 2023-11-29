@@ -202,9 +202,3 @@ variable "soft_delete_retention_policy" {
   description = "Is soft delete enabled for containers and blobs?"
   default     = false
 }
-
-variable "subnet_ids" {
-  type        = list(string)
-  description = "List of subnet IDs to deploy storage account into"
-  default     = []
-}
