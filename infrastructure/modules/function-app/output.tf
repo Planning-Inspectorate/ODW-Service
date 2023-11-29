@@ -8,7 +8,7 @@ output "name" {
   value       = azurerm_linux_function_app.function[*].name
 }
 
-output "id" {
+output "function_app_id" {
   description = "Id of the function app"
   value       = azurerm_linux_function_app.function[*].id
 }
