@@ -45,7 +45,7 @@ variable "environment" {
 
 variable "function_app_id" {
   description = "The ID of the Function App from which to collect diagnostic logs"
-  type        = string
+  type        = list(string)
 }
 
 variable "key_vault_id" {
