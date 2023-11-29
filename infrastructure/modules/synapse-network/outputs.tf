@@ -1,6 +1,6 @@
-output "devops_agent_subnet_name" {
+output "devops_agent_subnet_names" {
   description = "The name of the subnet into which the devops agents will be deployed"
-  value       = var.devops_agent_subnet_name
+  value       = var.devops_agent_subnet_names
 }
 
 output "synapse_private_endpoint_subnet_name" {
