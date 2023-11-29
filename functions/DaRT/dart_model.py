@@ -1,5 +1,4 @@
 from pydantic import BaseModel, ValidationError
-import json
 import pprint
 import csv
 from collections import defaultdict
@@ -7,125 +6,116 @@ from model_funcs import convert_to_lower
 
 
 class Contact(BaseModel):
-    ContactID: str
-    Title: str
-    Salutation: str
-    Firstname: str
-    LastName: str
-    TypeOfInvolvement: str
+
+    contactid: str
+    title: str
+    salutation: str
+    firstname: str
+    lastname: str
+    typeofinvolvement: str
 
 
 class Specialism(BaseModel):
-    SpecialismID: int | str
-    Specialism: str
+
+    specialismid: int | str
+    specialism: str
 
 
 class GroundForAppeal(BaseModel):
-    GroundsForAppeal: str
-    GroundLetter: str
-    GroundForAppealStartDate: str
+
+    groundsforappeal: str
+    groundletter: str
+    groundforappealstartdate: str
 
 
 class EventType(BaseModel):
-    EventType: str
-    StartDateOfEvent: str
-    StartTimeOfEvent: str
-    EndDateOfEvent: str
-    DateEventRequested: str
+
+    eventtype: str
+    startdateofevent: str
+    starttimeofevent: str
+    enddateofevent: str
+    dateeventrequested: str
 
 
 class ChartStatus(BaseModel):
-    ChartStatus: str
-    EstPrepTime: str
-    EstSitTime: str
-    EstRepTime: str
-    ActualDuration: str
+
+    chartstatus: str
+    estpreptime: str
+    estsittime: str
+    estreptime: str
+    actualduration: str
 
 
 class Cases(BaseModel):
-    # CaseReference: str
-    AppealRefNumber: int | str
-    ApplicationType: str
-    AppealTypeReason: str
-    Contacts: list[Contact] = []
-    Specialisms: list[Specialism] = []
-    GroundsForAppeal: list[GroundForAppeal] = []
-    EventTypes: list[EventType] = []
-    ChartStatuses: list[ChartStatus] = []
-    # AppealTypeGroup: str
-    # AppealType: str
-    # ProcedureName: str
-    # validity: str
-    # ProcessingState: str
-    # LinkedAppeal: str
-    # LastPublishedDate: str
-    # LPACode: str
-    # LPAName: str
-    # Jurisdiction: str
-    # DevelopmentOrAllegation: str
-    # CaseProcess: str
-    # DevelopmentType: str
-    # RelatedReferences: str
-    # AppealSourceIndicator: str
-    # Level: str
-    # Specialisms: str
-    # SpecialCircumstance: str
-    # AppellantStatementSubmitted: str
-    # WelshLanguage: str
-    # ProcedureAppellant: str
-    # AppealRecDate: str
-    # AppealStartDate: str
-    # ValidTo: str
-    # ValidityStatusDate: str
-    # CallInDate: str
-    # TargetDate: str
-    # StatementsDue: str
-    # ThirdPartyRepsDue: str
-    # FinalCommentsDue: str
-    # StatementOfCommonGroundDue: str
-    # ProofsDue: str
-    # ConsentDate: str
-    # OwnershipPermission: str
-    # ModifyDate: str
-    # LpaDecisionDate: str
-    # OutcomePublicSafety: str
-    # AdvertDetailsID: str
-    # ReasonPublicSafety: str
-    # OutcomeAmenity: str
-    # ReasonAmenity: str
-    # AdvertInPosition: str
-    # AdvertDescription: str
-    # LPAApplicationDate: str
-    # LPAApplicationReference: str
-    # Section: str
-    # ContactIDs: str
-    # AddressLine1: str
-    # AddressLine2: str
-    # AddressTown: str
-    # PostCode: str
-    # Easting: str
-    # Northing: str
-    # InspectorNeedToEnterSite: str
-    # NumberOfResidences: str
-    # AreaOfSiteInHectares: str
-    # FloorSpaceInSquareMetres: str
-    # SiteGreenBelt: str
-    # HistoricBuildingGrantMade: str
-    # AgriculturalHolding: str
-    # GroundsForAppeal: str
-    # GroundForAppealStartDate: str
-    # EventTypes: str
-    # EstPrepTime: str
-    # EstSitTime: str
-    # EstRepTime: str
-    # ChartStatuses: str
-    # StartDatesOfEvent: str
-    # StartTimesOfEvent: str
-    # EndDateOfEvent: str
-    # NotificationOfSV: str
-    # DateEventRequested: str
-    # ActualDuration: str
 
+    casereference: str
+    appealrefnumber: str
+    contacts: list[Contact] = []
+    specialisms: list[Specialism] = []
+    groundsforappeal: list[GroundForAppeal] = []
+    eventtypes: list[EventType] = []
+    chartstatuses: list[ChartStatus] = []
+    applicationtype: str
+    appealtypereason: str
+    appealtypegroup: str
+    appealtype: str
+    procedurename: str
+    validity: str
+    processingstate: str
+    linkedappeal: str
+    lastpublisheddate: str
+    lpacode: str
+    lpaname: str
+    jurisdiction: str
+    developmentorallegation: str
+    caseprocess: str
+    developmenttype: str
+    relatedreferences: str
+    appealsourceindicator: str
+    level: str
+    specialcircumstance: str
+    appellantstatementsubmitted: str
+    welshlanguage: str
+    procedureappellant: str
+    appealrecdate: str
+    appealstartdate: str
+    validto: str
+    validitystatusdate: str
+    callindate: str
+    targetdate: str
+    statementsdue: str
+    thirdpartyrepsdue: str
+    finalcommentsdue: str
+    statementofcommongrounddue: str
+    proofsdue: str
+    consentdate: str
+    ownershippermission: str
+    modifydate: str
+    lpadecisiondate: str
+    outcomepublicsafety: str
+    advertdetailsid: str
+    reasonpublicsafety: str
+    outcomeamenity: str
+    reasonamenity: str
+    advertinposition: str
+    advertdescription: str
+    lpaapplicationdate: str
+    lpaapplicationreference: str
+    section: str
+    addressline1: str
+    addressline2: str
+    addresstown: str
+    postcode: str
+    easting: str
+    northing: str
+    inspectorneedtoentersite: str
+    numberofresidences: str
+    areaofsiteinhectares: str
+    floorspaceinsquaremetres: str
+    sitegreenbelt: str
+    historicbuildinggrantmade: str
+    agriculturalholding: str
+    notificationofsv: str
 
 class DartInstances (BaseModel):
     dart_data: list[Cases]
@@ -134,7 +124,7 @@ class DartInstances (BaseModel):
 file_name = r"C:\Users\ChrisTopping\Downloads\dart_sample_ordered.csv"
 
 data = []
-with open(file_name, encoding="utf-8") as csvfile:
+with open(file_name, encoding="utf-8-sig") as csvfile:
     reader = csv.DictReader(csvfile)
     data.extend(reader)
 
@@ -150,17 +140,17 @@ merged_data = defaultdict(
 
 for item in data:
     AppealRefNumber = item["AppealRefNumber"]
-    case = merged_data[AppealRefNumber]
-    case.update({k: v for k, v in item.items() if k not in case})
+    case = merged_data["AppealRefNumber"]
+    case.update({k.lower(): v for k, v in item.items() if k.lower() not in case or not isinstance(case[k.lower()], list)})
 
     contacts = case["Contacts"]
     new_contact = {
-        "ContactID": item["ContactID"],
-        "Title": item["Title"],
-        "Salutation": item["Salutation"],
-        "FirstName": item["FirstName"],
-        "LastName": item["LastName"],
-        "TypeOfInvolvement": item["TypeOfInvolvement"],
+        "contactid": item["ContactID"],
+        "title": item["Title"],
+        "salutation": item["Salutation"],
+        "firstname": item["FirstName"],
+        "lastname": item["LastName"],
+        "typeofinvolvement": item["TypeOfInvolvement"],
     }
     if new_contact not in contacts:
         contacts.append(new_contact)
@@ -211,7 +201,7 @@ for message in final_data:
     message_lower = convert_to_lower(message)
     messages_lower.append(message_lower)
 
-pprint.pprint(DartInstances(dart_data=messages_lower).model_dump(warnings=False))
+pprint.pprint(messages_lower)
 # if not messages_lower:
 #     print("NO MESSAGES TO PROCESS - VALIDATION OK")
 # else:
