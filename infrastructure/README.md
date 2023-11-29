@@ -327,7 +327,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id) | The ID of the Azure AD tenant containing the identities used for RBAC assignments | `string` | n/a | yes |
 | <a name="input_vnet_base_cidr_block"></a> [vnet\_base\_cidr\_block](#input\_vnet\_base\_cidr\_block) | The base IPv4 range for the Virtual Network in CIDR notation | `string` | `"10.90.0.0/24"` | no |
 | <a name="input_vnet_base_cidr_block_failover"></a> [vnet\_base\_cidr\_block\_failover](#input\_vnet\_base\_cidr\_block\_failover) | The base IPv4 range for the failover Virtual Network in CIDR notation | `string` | `"10.90.1.0/24"` | no |
-| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | <pre>list(object({<br>    name     = string<br>    new_bits = number<br>    service_delegation = list(object({<br>      delegation_name = string<br>      actions         = list(string)<br>    }))<br>  }))</pre> | n/a | yes |
+| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | <pre>list(object({<br>    name              = string<br>    new_bits          = number<br>    service_endpoints = list(string)<br>    service_delegation = list(object({<br>      delegation_name = string<br>      actions         = list(string)<br>    }))<br>  }))</pre> | n/a | yes |
 
 ## Outputs
 

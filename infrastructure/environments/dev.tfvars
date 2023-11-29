@@ -255,11 +255,13 @@ vnet_subnets = [
   {
     "name" : "AzureBastionSubnet",
     "new_bits" : 4 # /28
+    service_endpoints  = []
     service_delegation = []
   },
   {
     "name" : "FunctionAppSubnet",
     "new_bits" : 4 # /28
+    service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
     service_delegation = [
       {
         delegation_name = "Microsoft.Web/serverFarms"
@@ -275,11 +277,13 @@ vnet_subnets = [
   {
     "name" : "ComputeSubnet"
     "new_bits" : 2 # /26
+    service_endpoints  = ["Microsoft.Storage", "Microsoft.KeyVault"]
     service_delegation = []
   },
   {
     "name" : "ApimSubnet",
     "new_bits" : 2 # /26
+    service_endpoints  = []
     service_delegation = []
   },
 ]
