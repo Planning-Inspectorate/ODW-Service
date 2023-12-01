@@ -9,7 +9,7 @@ from servicebus_funcs import get_messages
 import config
 
 _NAMESPACE = config.ODT_NAMESPACE
-_SUBSCRIPTION = config.NSIP_SUBSCRIPTION_SUBSCRIPTION
+_SUBSCRIPTION = config.NSIP_SUBSCRIPTION
 _TOPIC = config.NSIP_TOPIC
 _MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
 _CREDENTIAL = config.CREDENTIAL
