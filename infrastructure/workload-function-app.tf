@@ -82,7 +82,7 @@ module "function_app" {
   tags                       = local.tags
   synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
   app_settings               = var.function_app_settings
-  site_config                = var.function_app_site_config
+  #site_config                = var.function_app_site_config
 }
 
 module "function_app_failover" {
@@ -101,5 +101,5 @@ module "function_app_failover" {
   tags                       = local.tags
   synapse_vnet_subnet_names  = module.synapse_network_failover.vnet_subnets
   app_settings               = var.function_app_settings
-  site_config                = var.function_app_site_config
+  #site_config                = var.function_app_site_config
 }

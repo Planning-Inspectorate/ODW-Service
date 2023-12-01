@@ -290,7 +290,6 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_function_app_enabled"></a> [function\_app\_enabled](#input\_function\_app\_enabled) | Determines whether the resources for the Function App should be deployed | `bool` | `false` | no |
 | <a name="input_function_app_name"></a> [function\_app\_name](#input\_function\_app\_name) | The name of the Function App to be deployed | `string` | n/a | yes |
 | <a name="input_function_app_settings"></a> [function\_app\_settings](#input\_function\_app\_settings) | A map of app settings to be applied to the Function App | `map(string)` | `{}` | no |
-| <a name="input_function_app_site_config"></a> [function\_app\_site\_config](#input\_function\_app\_site\_config) | A map of site configuration settings to be applied to the Function App | `map(any)` | `{}` | no |
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_logic_app_enabled"></a> [logic\_app\_enabled](#input\_logic\_app\_enabled) | Determines whether the resources for the App Service Plan, Storage Account and Logic App Standard should be deployed | `bool` | `false` | no |
@@ -346,5 +345,6 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="output_synapse_dev_endpoint"></a> [synapse\_dev\_endpoint](#output\_synapse\_dev\_endpoint) | The development connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_dsql_endpoint"></a> [synapse\_dsql\_endpoint](#output\_synapse\_dsql\_endpoint) | The dedicated SQL pool connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_ssql_endpoint"></a> [synapse\_ssql\_endpoint](#output\_synapse\_ssql\_endpoint) | The serverless SQL pool connectivity endpoint for the Synapse Workspace |
+| <a name="output_synapse_workspace_id"></a> [synapse\_workspace\_id](#output\_synapse\_workspace\_id) | The ARM ID of the Synapse Workspace |
 | <a name="output_synapse_workspace_name"></a> [synapse\_workspace\_name](#output\_synapse\_workspace\_name) | The name of the Synapse Workspace |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
