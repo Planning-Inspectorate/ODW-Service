@@ -12,8 +12,8 @@ locals {
     }
   )
 
-  # site_config = merge(
-  #   var.site_config_defaults,
-  #   var.site_config
-  # )
+  site_config = merge(
+    var.site_config_defaults,
+    var.site_config
+  )
 }

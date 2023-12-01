@@ -47,10 +47,13 @@ environment = "dev"
 
 function_app_enabled = true
 function_app_name    = "fnapp01"
+function_app_settings = {
+  WEBSITE_CONTENTOVERVNET = 1
+}
 function_app_site_config = {
-  # application_stack = {
-  #   python_version = "3.11"
-  # }
+  application_stack = {
+    python_version = "3.11"
+  }
 }
 
 location          = "uk-south"
@@ -261,7 +264,7 @@ vnet_subnets = [
   {
     "name" : "FunctionAppSubnet",
     "new_bits" : 4 # /28
-    service_endpoints = []
+    service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
     service_delegation = [
       {
         delegation_name = "Microsoft.Web/serverFarms"
