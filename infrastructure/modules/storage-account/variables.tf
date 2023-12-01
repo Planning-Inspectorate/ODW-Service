@@ -76,7 +76,7 @@ variable "static_website" {
 variable "network_default_action" {
   type        = string
   description = "If a source IPs fails to match a rule should it be allowed for denied"
-  default     = "Deny"
+  default     = "Allow"
 }
 
 variable "network_rule_ips" {
