@@ -5,6 +5,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import json
 import pprint
+from azure.eventhub import EventHubProducerClient, TransportType
 
 NAMESPACE = 'https://pins-sb-odw-dev-uks-b9rt9m.servicebus.windows.net'
 SUBSCRIPTION = 'nsip-exam-timetable'
@@ -30,7 +31,8 @@ def get_messages(namespace: str,
 
     servicebus_client = ServiceBusClient(
     fully_qualified_namespace=namespace,
-    credential=credential
+    credential=credential,
+    transport_type=TransportType.AmqpOverWebsocket
 )
 
     print("Servicebus client created")
