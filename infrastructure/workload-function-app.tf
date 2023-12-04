@@ -80,7 +80,7 @@ module "function_app" {
   environment                = var.environment
   location                   = module.azure_region.location_cli
   tags                       = local.tags
-  # synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
+  synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
   app_settings               = var.function_app_settings
   site_config                = var.function_app_site_config
 }
@@ -99,7 +99,7 @@ module "function_app_failover" {
   environment                = var.environment
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
-  # synapse_vnet_subnet_names  = module.synapse_network_failover.vnet_subnets
+  synapse_vnet_subnet_names  = module.synapse_network_failover.vnet_subnets
   app_settings               = var.function_app_settings
   site_config                = var.function_app_site_config
 }

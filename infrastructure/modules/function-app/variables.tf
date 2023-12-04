@@ -178,7 +178,7 @@ variable "synapse_function_app_subnet_name" {
 #   type        = map(string)
 # }
 
-# variable "synapse_vnet_subnet_names" {
-#   description = "A map of subnet names to IDs comprising the linked Virtual Network for Function App deployment"
-#   type        = map(string)
-# }
+variable "synapse_vnet_subnet_names" {
+  description = "A map of subnet names to IDs comprising the linked Virtual Network for Function App deployment"
+  type        = map(string)
+}
