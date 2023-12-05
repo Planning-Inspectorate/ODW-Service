@@ -129,7 +129,7 @@ variable "site_config_defaults" {
   })
   description = "A site config block for configuring the function"
   default = {
-    always_on = false
+    always_on = true
     cors = {
       allowed_origins     = ["*"]
       support_credentials = false
@@ -140,7 +140,7 @@ variable "site_config_defaults" {
     linux_fx_version            = null
     minimum_tls_version         = 1.2
     pre_warmed_instance_count   = null
-    scm_use_main_ip_restriction = false
+    scm_use_main_ip_restriction = true
     use_32_bit_worker           = false
     websockets_enabled          = true
     vnet_route_all_enabled      = false
