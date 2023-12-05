@@ -129,7 +129,7 @@ variable "site_config_defaults" {
   })
   description = "A site config block for configuring the function"
   default = {
-    always_on = true
+    always_on = false
     cors = {
       allowed_origins     = ["*"]
       support_credentials = false
