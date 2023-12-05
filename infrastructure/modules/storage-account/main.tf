@@ -19,14 +19,6 @@ resource "azurerm_storage_account" "storage" {
   access_tier               = var.access_tier
   is_hns_enabled            = var.is_hns_enabled
   large_file_share_enabled  = var.large_file_share_enabled
-  network_rules {
-    default_action             = var.network_default_action
-    ip_rules                   = var.network_rule_ips
-    virtual_network_subnet_ids = var.network_rule_virtual_network_subnet_ids
-    bypass                     = var.network_rule_bypass
-  }
-
-
   dynamic "custom_domain" {
     for_each = var.custom_domain
     content {
@@ -62,13 +54,14 @@ resource "azurerm_storage_account" "storage" {
   tags = local.tags
 }
 
-# resource "azurerm_storage_account_network_rules" "storage_network_rule" {
-#   storage_account_id         = azurerm_storage_account.storage.id
-#   default_action             = var.network_default_action
-#   ip_rules                   = var.network_rule_ips
-#   virtual_network_subnet_ids = var.network_rule_virtual_network_subnet_ids
-#   bypass                     = var.network_rule_bypass
-# }
+resource "azurerm_storage_account_network_rules" "storage_network_rule" {
+  #checkov:skip=CKV_AZURE_35: "Ensure default network access rule for Storage Accounts is set to deny"
+  storage_account_id         = azurerm_storage_account.storage.id
+  default_action             = var.network_default_action
+  ip_rules                   = var.network_rule_ips
+  virtual_network_subnet_ids = var.network_rule_virtual_network_subnet_ids
+  bypass                     = var.network_rule_bypass
+}
 
 resource "azurerm_storage_container" "container" {
   #checkov:skip=CKV2_AZURE_21: "Ensure Storage logging is enabled for Blob service for read requests"
