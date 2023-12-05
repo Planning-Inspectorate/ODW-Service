@@ -143,7 +143,7 @@ variable "site_config_defaults" {
     scm_use_main_ip_restriction = true
     use_32_bit_worker           = false
     websockets_enabled          = true
-    vnet_route_all_enabled      = false
+    vnet_route_all_enabled      = true
     application_stack = {
       dotnet_version          = ""
       use_dotnet_isolated     = false
