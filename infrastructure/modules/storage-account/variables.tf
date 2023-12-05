@@ -73,35 +73,28 @@ variable "static_website" {
   default     = {}
 }
 
-# variable "network_default_action" {
-#   type        = string
-#   description = "If a source IPs fails to match a rule should it be allowed for denied"
-#   default     = "Deny"
-# }
+variable "network_default_action" {
+  type        = string
+  description = "If a source IPs fails to match a rule should it be allowed for denied"
+  default     = "Deny"
+}
 
-# variable "network_rule_ips" {
-#   type        = list(string)
-#   description = "List of public IPs that are allowed to access the storage account. Private IPs in RFC1918 are not allowed here"
-#   default     = []
-# }
+variable "network_rule_ips" {
+  type        = list(string)
+  description = "List of public IPs that are allowed to access the storage account. Private IPs in RFC1918 are not allowed here"
+  default     = []
+}
 
 variable "network_rule_virtual_network_subnet_ids" {
   type        = list(string)
   description = "List of subnet IDs which are allowed to access the storage account"
   default     = []
 }
-
-# variable "network_rule_virtual_network_subnet_ids_include_cicd_agents" {
-#   type        = bool
-#   description = "A boolean switch to allow for scenarios where the default set of cicd subnets (containing for example ADO agents) should not be added to the storage accounts network rules. An example would be a storage accounts used as a cloud witness for a windows failover cluster that exists outside of the paired regions of the cluster nodes"
-#   default     = true
-# }
-
-# variable "network_rule_bypass" {
-#   type        = list(string)
-#   description = "Specifies whether traffic is bypassed for Logging/Metrics/AzureServices. Valid options are any combination of Logging, Metrics, AzureServices, or None"
-#   default     = ["AzureServices", "Logging", "Metrics"]
-# }
+variable "network_rule_bypass" {
+  type        = list(string)
+  description = "Specifies whether traffic is bypassed for Logging/Metrics/AzureServices. Valid options are any combination of Logging, Metrics, AzureServices, or None"
+  default     = ["AzureServices", "Logging", "Metrics"]
+}
 
 variable "container_name" {
   type        = list(string)
