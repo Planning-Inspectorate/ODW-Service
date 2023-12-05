@@ -85,17 +85,17 @@ variable "network_rule_ips" {
   default     = []
 }
 
-# variable "network_rule_virtual_network_subnet_ids" {
-#   type        = list(string)
-#   description = "List of subnet IDs which are allowed to access the storage account"
-#   default     = []
-# }
+variable "network_rule_virtual_network_subnet_ids" {
+  type        = list(string)
+  description = "List of subnet IDs which are allowed to access the storage account"
+  default     = []
+}
 
-# variable "network_rule_virtual_network_subnet_ids_include_cicd_agents" {
-#   type        = bool
-#   description = "A boolean switch to allow for scenarios where the default set of cicd subnets (containing for example ADO agents) should not be added to the storage accounts network rules. An example would be a storage accounts used as a cloud witness for a windows failover cluster that exists outside of the paired regions of the cluster nodes"
-#   default     = true
-# }
+variable "network_rule_virtual_network_subnet_ids_include_cicd_agents" {
+  type        = bool
+  description = "A boolean switch to allow for scenarios where the default set of cicd subnets (containing for example ADO agents) should not be added to the storage accounts network rules. An example would be a storage accounts used as a cloud witness for a windows failover cluster that exists outside of the paired regions of the cluster nodes"
+  default     = true
+}
 
 variable "network_rule_bypass" {
   type        = list(string)

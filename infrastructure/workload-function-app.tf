@@ -45,12 +45,12 @@ module "storage_account" {
 
   source = "./modules/storage-account"
 
-  resource_group_name = azurerm_resource_group.function_app[0].name
-  service_name        = local.service_name
-  environment         = var.environment
-  location            = module.azure_region.location_cli
-  tags                = local.tags
-  #network_rule_virtual_network_subnet_ids = [module.synapse_network.vnet_subnets[local.functionapp_subnet_name]]
+  resource_group_name                     = azurerm_resource_group.function_app[0].name
+  service_name                            = local.service_name
+  environment                             = var.environment
+  location                                = module.azure_region.location_cli
+  tags                                    = local.tags
+  network_rule_virtual_network_subnet_ids = [module.synapse_network.vnet_subnets[local.functionapp_subnet_name]]
 }
 
 module "storage_account_failover" {
@@ -58,12 +58,12 @@ module "storage_account_failover" {
 
   source = "./modules/storage-account"
 
-  resource_group_name = azurerm_resource_group.function_app_failover[0].name
-  service_name        = local.service_name
-  environment         = var.environment
-  location            = module.azure_region.paired_location.location_cli
-  tags                = local.tags
-  #network_rule_virtual_network_subnet_ids = [module.synapse_network_failover.vnet_subnets[local.functionapp_subnet_name]]
+  resource_group_name                     = azurerm_resource_group.function_app_failover[0].name
+  service_name                            = local.service_name
+  environment                             = var.environment
+  location                                = module.azure_region.paired_location.location_cli
+  tags                                    = local.tags
+  network_rule_virtual_network_subnet_ids = [module.synapse_network_failover.vnet_subnets[local.functionapp_subnet_name]]
 }
 
 module "function_app" {
