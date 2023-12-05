@@ -141,7 +141,7 @@ variable "site_config_defaults" {
     minimum_tls_version         = 1.2
     pre_warmed_instance_count   = null
     scm_use_main_ip_restriction = true
-    use_32_bit_worker           = true
+    use_32_bit_worker           = false
     websockets_enabled          = true
     vnet_route_all_enabled      = false
     application_stack = {
