@@ -50,7 +50,7 @@ module "storage_account" {
   environment                             = var.environment
   location                                = module.azure_region.location_cli
   tags                                    = local.tags
-  network_rules_enabled                   = false
+  network_rules_enabled                   = true
   network_rule_virtual_network_subnet_ids = concat([module.synapse_network.vnet_subnets[local.functionapp_subnet_name], module.synapse_network.vnet_subnets[local.compute_subnet_name]])
 }
 
@@ -64,7 +64,7 @@ module "storage_account_failover" {
   environment                             = var.environment
   location                                = module.azure_region.paired_location.location_cli
   tags                                    = local.tags
-  network_rules_enabled                   = false
+  network_rules_enabled                   = true
   network_rule_virtual_network_subnet_ids = concat([module.synapse_network_failover.vnet_subnets[local.functionapp_subnet_name], module.synapse_network_failover.vnet_subnets[local.compute_subnet_name]])
 }
 
