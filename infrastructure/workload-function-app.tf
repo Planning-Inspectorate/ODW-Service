@@ -52,6 +52,12 @@ module "storage_account" {
   tags                                    = local.tags
   network_rules_enabled                   = true
   network_rule_virtual_network_subnet_ids = concat([module.synapse_network.vnet_subnets[local.functionapp_subnet_name], module.synapse_network.vnet_subnets[local.compute_subnet_name]])
+  shares = [
+    {
+      name  = "pins-${var.function_app_name}-${local.resource_suffix}"
+      quota = 5120
+    }
+  ]
 }
 
 module "storage_account_failover" {
@@ -66,6 +72,12 @@ module "storage_account_failover" {
   tags                                    = local.tags
   network_rules_enabled                   = true
   network_rule_virtual_network_subnet_ids = concat([module.synapse_network_failover.vnet_subnets[local.functionapp_subnet_name], module.synapse_network_failover.vnet_subnets[local.compute_subnet_name]])
+  shares = [
+    {
+      name  = "pins-${var.function_app_name}-${local.resource_suffix_failover}"
+      quota = 5120
+    }
+  ]
 }
 
 module "function_app" {
@@ -85,6 +97,7 @@ module "function_app" {
   synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
   app_settings               = var.function_app_settings
   site_config                = var.function_app_site_config
+  file_share_name            = module.storage_account[0].share_name[var.function_app_name]
 }
 
 module "function_app_failover" {
@@ -104,4 +117,5 @@ module "function_app_failover" {
   synapse_vnet_subnet_names  = module.synapse_network_failover.vnet_subnets
   app_settings               = var.function_app_settings
   site_config                = var.function_app_site_config
+  file_share_name            = module.storage_account_failover[0].share_name[var.function_app_name]
 }
