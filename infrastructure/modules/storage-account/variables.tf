@@ -6,7 +6,7 @@ variable "environment" {
 variable "location" {
   type        = string
   description = "The region resources will be deployed to"
-  default     = "ukwest"
+  default     = "uksouth"
 }
 
 variable "tags" {
@@ -100,7 +100,7 @@ variable "network_rule_virtual_network_subnet_ids" {
 variable "network_rule_bypass" {
   type        = list(string)
   description = "Specifies whether traffic is bypassed for Logging/Metrics/AzureServices. Valid options are any combination of Logging, Metrics, AzureServices, or None"
-  default     = ["AzureServices"]
+  default     = ["AzureServices", "Logging", "Metrics"]
 }
 
 variable "container_name" {
