@@ -11,9 +11,6 @@ resource "azurerm_linux_function_app" "function" {
   functions_extension_version   = var.functions_extension_version
   virtual_network_subnet_id     = var.synapse_vnet_subnet_names[var.synapse_function_app_subnet_name]
   app_settings                  = local.app_settings
-  auth_settings {
-    enabled = var.auth_settings["enabled"]
-  }
   site_config {
     always_on = local.site_config["always_on"]
     cors {

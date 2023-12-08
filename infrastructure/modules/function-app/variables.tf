@@ -72,14 +72,6 @@ variable "functions_extension_version" {
   default     = "~4"
 }
 
-variable "auth_settings" {
-  type        = map(string)
-  description = "Function app auth settings"
-  default = {
-    enabled = true
-  }
-}
-
 variable "app_settings" {
   type        = map(string)
   description = "Function app settings"
