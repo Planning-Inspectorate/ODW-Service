@@ -7,7 +7,7 @@ resource "azurerm_linux_function_app" "function" {
   storage_account_access_key    = var.storage_account_access_key
   https_only                    = true
   tags                          = local.tags
-  public_network_access_enabled = false
+  public_network_access_enabled = true
   functions_extension_version   = var.functions_extension_version
   virtual_network_subnet_id     = var.synapse_vnet_subnet_names[var.synapse_function_app_subnet_name]
   app_settings                  = local.app_settings
