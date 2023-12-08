@@ -86,6 +86,12 @@ variable "app_settings" {
   default     = {}
 }
 
+variable "servicebus_namespace" {
+  type        = string
+  description = "The name of the service bus namespace to use for the function app"
+  default     = null
+}
+
 variable "site_config_defaults" {
   type = object({
     always_on = bool
@@ -147,7 +153,7 @@ variable "site_config_defaults" {
     pre_warmed_instance_count   = null
     scm_use_main_ip_restriction = true
     use_32_bit_worker           = false
-    websockets_enabled          = true
+    websockets_enabled          = false
     vnet_route_all_enabled      = false
     application_stack = {
       dotnet_version          = ""
