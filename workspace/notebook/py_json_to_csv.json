@@ -1,0 +1,296 @@
+{
+	"name": "py_json_to_csv",
+	"properties": {
+		"folder": {
+			"name": "1-odw-raw-to-standardised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "732a8a3d-dcea-4d79-bf5e-02e48bac3a12"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Set the notebook parameters"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"date_folder='2023-12-07'\n",
+					"source_folder='ServiceBus'\n",
+					"source_frequency_folder='nsip-project'"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Get Storage Account"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"import json\n",
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"import pandas as pd\n",
+					"import os\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"raw_container = \"abfss://odw-raw@\" + storage_account"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Utils"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def convert_json_array_to_csv(json_obj):\n",
+					"    def process_json(obj):\n",
+					"        if isinstance(obj, dict):\n",
+					"            for key, value in obj.items():\n",
+					"                obj[key] = process_json(value)\n",
+					"            return obj\n",
+					"        elif isinstance(obj, list):\n",
+					"            return ', '.join(obj)\n",
+					"        else:\n",
+					"            return obj\n",
+					"\n",
+					"    return process_json(json_obj)\n",
+					"\n",
+					"\n",
+					"def get_creation_date(file_path):\n",
+					"    statinfo = os.stat(file_path)\n",
+					"    modified_date = datetime.fromtimestamp(statinfo.st_mtime)\n",
+					"    return datetime.fromtimestamp(statinfo.st_ctime)\n",
+					"\n",
+					"\n",
+					"def get_latest_file(source_path):\n",
+					"    jobId = mssparkutils.env.getJobId()\n",
+					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"    mssparkutils.fs.mount(source_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"})   \n",
+					"\n",
+					"    path = f\"/synfs/{jobId}/temp_raw/\"\n",
+					"    fpaths = [path + fd for fd in os.listdir(path)]\n",
+					"    \n",
+					"    return max(fpaths, key=get_creation_date).replace(path, '')"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Read the JSON files"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"source_path = f\"{raw_container}{source_folder}/{source_frequency_folder}/{date_folder}\"\n",
+					"latest_file = get_latest_file(source_path)\n",
+					"files = [file for file in files if file.name == latest_file]\n",
+					"\n",
+					"data = []\n",
+					"\n",
+					"for file in files:\n",
+					"    df = spark.read.json(file.path)\n",
+					"    json_data = [json.loads(d) for d in df.toJSON().collect()]\n",
+					"    json_data_parsed = [convert_json_array_to_csv(d) for d in json_data]\n",
+					"    data.extend(json_data_parsed)\n",
+					"\n",
+					"if len(data) == 0:\n",
+					"    print('No new data')\n",
+					"    mssparkutils.notebook.exit(False)"
+				],
+				"execution_count": 42
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Write the data in a CSV file"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"output_folder_path = f\"{source_path}/output.csv/\"\n",
+					"final_output_file_path = f\"{source_path}/{source_frequency_folder}.csv\"\n",
+					"\n",
+					"try:\n",
+					"    df = spark.createDataFrame(data)\n",
+					"    df.repartition(1).write.mode('overwrite').option(\"header\",True).csv(output_folder_path)\n",
+					"\n",
+					"    files = mssparkutils.fs.ls(output_folder_path)\n",
+					"    output_files = [f for f in files if f.name.endswith('.csv')]\n",
+					"\n",
+					"    if len(output_files) > 0:\n",
+					"        output_file = output_files[0]\n",
+					"        try:\n",
+					"            mssparkutils.fs.rm(final_output_file_path, True)\n",
+					"        except Exception as e:\n",
+					"            print(f\"File does not exist already. Continuing conversion.\")\n",
+					"        mssparkutils.fs.mv(output_file.path, final_output_file_path, True)\n",
+					"        mssparkutils.fs.rm(output_folder_path, True)\n",
+					"    \n",
+					"        mssparkutils.notebook.exit(True)\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\"An error occurred while writing to CSV: {str(e)}\")\n",
+					"    mssparkutils.notebook.exit(False)\n",
+					"\n",
+					"mssparkutils.notebook.exit(False)"
+				],
+				"execution_count": 67
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Ingest the new messages in the data lake i.e odw-raw"
+				]
+			}
+		]
+	}
+}
