@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "732a8a3d-dcea-4d79-bf5e-02e48bac3a12"
+				"spark.autotune.trackingId": "a061ebe2-a638-4662-8065-fd2150909d4e"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,20 @@
 					}
 				},
 				"source": [
-					"# Set the notebook parameters"
+					"# Converts JSON files received from Service Bus to a CSV"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Set the notebook parameters"
 				]
 			},
 			{
@@ -85,7 +98,7 @@
 					"source_folder='ServiceBus'\n",
 					"source_frequency_folder='nsip-project'"
 				],
-				"execution_count": 1
+				"execution_count": 90
 			},
 			{
 				"cell_type": "markdown",
@@ -97,7 +110,7 @@
 					}
 				},
 				"source": [
-					"# Get Storage Account"
+					"## Get Storage Account"
 				]
 			},
 			{
@@ -116,7 +129,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": 2
+				"execution_count": 91
 			},
 			{
 				"cell_type": "markdown",
@@ -128,7 +141,7 @@
 					}
 				},
 				"source": [
-					"# Utils"
+					"## Utils"
 				]
 			},
 			{
@@ -156,26 +169,9 @@
 					"        else:\n",
 					"            return obj\n",
 					"\n",
-					"    return process_json(json_obj)\n",
-					"\n",
-					"\n",
-					"def get_creation_date(file_path):\n",
-					"    statinfo = os.stat(file_path)\n",
-					"    modified_date = datetime.fromtimestamp(statinfo.st_mtime)\n",
-					"    return datetime.fromtimestamp(statinfo.st_ctime)\n",
-					"\n",
-					"\n",
-					"def get_latest_file(source_path):\n",
-					"    jobId = mssparkutils.env.getJobId()\n",
-					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
-					"    mssparkutils.fs.mount(source_path, \"/temp_raw\", {\"linkedService\":\"ls_storage\"})   \n",
-					"\n",
-					"    path = f\"/synfs/{jobId}/temp_raw/\"\n",
-					"    fpaths = [path + fd for fd in os.listdir(path)]\n",
-					"    \n",
-					"    return max(fpaths, key=get_creation_date).replace(path, '')"
+					"    return process_json(json_obj)"
 				],
-				"execution_count": 36
+				"execution_count": 92
 			},
 			{
 				"cell_type": "markdown",
@@ -187,7 +183,7 @@
 					}
 				},
 				"source": [
-					"# Read the JSON files"
+					"## Read the JSON files"
 				]
 			},
 			{
@@ -205,22 +201,26 @@
 				},
 				"source": [
 					"source_path = f\"{raw_container}{source_folder}/{source_frequency_folder}/{date_folder}\"\n",
-					"latest_file = get_latest_file(source_path)\n",
-					"files = [file for file in files if file.name == latest_file]\n",
+					"files = mssparkutils.fs.ls(source_path)\n",
+					"files = [f for f in files if f.name.endswith('.json')]\n",
 					"\n",
 					"data = []\n",
 					"\n",
 					"for file in files:\n",
+					"    print(f\"Processing: {file.name}\")\n",
 					"    df = spark.read.json(file.path)\n",
-					"    json_data = [json.loads(d) for d in df.toJSON().collect()]\n",
-					"    json_data_parsed = [convert_json_array_to_csv(d) for d in json_data]\n",
+					"    try:\n",
+					"        json_data = [json.loads(d) for d in df.toJSON().collect()]\n",
+					"        json_data_parsed = [convert_json_array_to_csv(d) for d in json_data]\n",
+					"    except Exception as e:\n",
+					"        print(f\"Unable to process {file.name}: {str(e)}\")\n",
 					"    data.extend(json_data_parsed)\n",
 					"\n",
 					"if len(data) == 0:\n",
 					"    print('No new data')\n",
 					"    mssparkutils.notebook.exit(False)"
 				],
-				"execution_count": 42
+				"execution_count": 95
 			},
 			{
 				"cell_type": "markdown",
@@ -232,7 +232,7 @@
 					}
 				},
 				"source": [
-					"# Write the data in a CSV file"
+					"## Write the data in a CSV file"
 				]
 			},
 			{
@@ -259,37 +259,24 @@
 					"    files = mssparkutils.fs.ls(output_folder_path)\n",
 					"    output_files = [f for f in files if f.name.endswith('.csv')]\n",
 					"\n",
-					"    if len(output_files) > 0:\n",
-					"        output_file = output_files[0]\n",
-					"        try:\n",
-					"            mssparkutils.fs.rm(final_output_file_path, True)\n",
-					"        except Exception as e:\n",
-					"            print(f\"File does not exist already. Continuing conversion.\")\n",
-					"        mssparkutils.fs.mv(output_file.path, final_output_file_path, True)\n",
-					"        mssparkutils.fs.rm(output_folder_path, True)\n",
-					"    \n",
-					"        mssparkutils.notebook.exit(True)\n",
+					"    if len(output_files) == 0:\n",
+					"        mssparkutils.notebook.exit(False)\n",
 					"\n",
+					"    output_file = output_files[0]\n",
+					"    try:\n",
+					"        mssparkutils.fs.rm(final_output_file_path, True)\n",
+					"    except Exception as e:\n",
+					"        print(f\"File does not exist already. Continuing conversion.\")\n",
+					"    mssparkutils.fs.mv(output_file.path, final_output_file_path, True)\n",
+					"    mssparkutils.fs.rm(output_folder_path, True)\n",
+					"    \n",
 					"except Exception as e:\n",
 					"    print(f\"An error occurred while writing to CSV: {str(e)}\")\n",
 					"    mssparkutils.notebook.exit(False)\n",
 					"\n",
-					"mssparkutils.notebook.exit(False)"
+					"mssparkutils.notebook.exit(True)"
 				],
-				"execution_count": 67
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Ingest the new messages in the data lake i.e odw-raw"
-				]
+				"execution_count": 94
 			}
 		]
 	}
