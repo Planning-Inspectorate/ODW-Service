@@ -32,7 +32,7 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         send_to_storage(
-            account_url=config.STORAGE,
+            account_url=config.STORAGE_DEV,
             credential=config.CREDENTIAL,
             container=config.CONTAINER,
             filename=_FILENAME,
@@ -67,7 +67,7 @@ def nsipproject(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         send_to_storage(
-            account_url=config.STORAGE,
+            account_url=config.STORAGE_DEV,
             credential=config.CREDENTIAL,
             container=config.CONTAINER,
             filename=_FILENAME,

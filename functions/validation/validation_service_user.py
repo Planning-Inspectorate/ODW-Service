@@ -16,7 +16,7 @@ from pydantic import BaseModel, ValidationError
 from servicebus_funcs import get_messages
 import config
 
-_NAMESPACE = config.ODT_NAMESPACE_DEV
+_NAMESPACE = config.ODW_NAMESPACE_DEV
 _SUBSCRIPTION = config.SERVICE_USER_SUBSCRIPTION
 _TOPIC = config.SERVICE_USER_TOPIC
 _CREDENTIAL = config.CREDENTIAL
