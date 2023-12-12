@@ -1,5 +1,11 @@
+"""
+Module containing a validate function to be called to run validation
+of a list of sevricebus messages
+"""
+
 import sys
 from pathlib import Path
+
 current_file = Path(__file__).resolve()
 functions_folder = current_file.parent.parent
 sys.path.append(str(functions_folder))
@@ -10,14 +16,19 @@ from pydantic import BaseModel, ValidationError
 from servicebus_funcs import get_messages
 import config
 
-_NAMESPACE = config.ODT_NAMESPACE
-_SUBSCRIPTION = config.NSIP_PROJECT_SUBSCRIPTION
-_TOPIC = config.NSIP_PROJECT_TOPIC
-_MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
+_NAMESPACE = config.ODT_NAMESPACE_DEV
+_SUBSCRIPTION = config.SERVICE_USER_SUBSCRIPTION
+_TOPIC = config.SERVICE_USER_TOPIC
 _CREDENTIAL = config.CREDENTIAL
 _MESSAGES = service_user.ServiceUser
+_MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
+
 
 def validate():
+    """
+    Function to validate a list of servicebus messages
+    """
+
     class MessageInstances(BaseModel):
 
         """
