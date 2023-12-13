@@ -19,9 +19,9 @@ output "resource_group_name" {
 }
 
 output "subscription_ids" {
-  value = { 
-    for key, subscription in azurerm_servicebus_subscription.odt_backoffice_subscriptions : 
-      subscription.name => subscription.id 
+  value = {
+    for key, subscription in azurerm_servicebus_subscription.odt_backoffice_subscriptions :
+    subscription.name => subscription.id
   }
   description = "A map map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
 }
