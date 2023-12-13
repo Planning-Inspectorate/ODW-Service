@@ -74,21 +74,13 @@ variable "firewall_allowed_ip_addresses" {
   type        = list(string)
 }
 
-variable "function_app_name" {
-  default     = ""
-  description = "The names of the function app to be deployed"
+variable "function_app_principal_id" {
+  description = "The ID of the principal to which the function app should be assigned"
   type        = string
 }
-
 variable "function_app_subnet_name" {
   default     = "FunctionAppSubnet"
   description = "The name of the subnet into which the function apps will be deployed"
-  type        = string
-}
-
-variable "function_app_resource_group_name" {
-  default     = ""
-  description = "The name of the resource group into which function apps will be deployed"
   type        = string
 }
 

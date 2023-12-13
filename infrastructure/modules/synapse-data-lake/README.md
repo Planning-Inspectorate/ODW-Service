@@ -47,7 +47,6 @@ No requirements.
 | [azurerm_storage_management_policy.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_management_policy) | resource |
 | [random_string.unique_id](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) | resource |
 | [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) | data source |
-| [azurerm_function_app.function_app](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/function_app) | data source |
 
 ## Inputs
 
@@ -66,8 +65,7 @@ No requirements.
 | <a name="input_devops_agent_subnet_name"></a> [devops\_agent\_subnet\_name](#input\_devops\_agent\_subnet\_name) | The name of the subnet into which the devops agents will be deployed | `string` | `"ComputeSubnet"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | The name of the environment in which resources will be deployed | `string` | n/a | yes |
 | <a name="input_firewall_allowed_ip_addresses"></a> [firewall\_allowed\_ip\_addresses](#input\_firewall\_allowed\_ip\_addresses) | A list of CIDR ranges to be permitted access to the data lake Storage Account | `list(string)` | `[]` | no |
-| <a name="input_function_app_name"></a> [function\_app\_name](#input\_function\_app\_name) | The name of the function app to be deployed | `string` | `""` | no |
-| <a name="input_function_app_resource_group_name"></a> [function\_app\_resource\_group\_name](#input\_function\_app\_resource\_group\_name) | The name of the resource group into which function apps will be deployed | `string` | `""` | no |
+| <a name="input_function_app_principal_id"></a> [function\_app\_principal\_id](#input\_function\_app\_principal\_id) | The ID of the principal to which the function app should be assigned | `string` | n/a | yes |
 | <a name="input_function_app_subnet_name"></a> [function\_app\_subnet\_name](#input\_function\_app\_subnet\_name) | The name of the subnet into which the function apps will be deployed | `string` | `"FunctionAppSubnet"` | no |
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |

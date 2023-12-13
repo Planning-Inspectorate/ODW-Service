@@ -32,8 +32,7 @@ module "synapse_data_lake" {
   data_lake_storage_containers           = var.data_lake_storage_containers
   devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
-  function_app_name                     =  module.function_app.function_app_name
-  function_app_resource_group_name       = module.function_app.resource_group_name
+  function_app_principal_id              = module.function_app[0].function_app_id
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network.name
   synapse_private_endpoint_subnet_name   = module.synapse_network.synapse_private_endpoint_subnet_name
@@ -64,8 +63,7 @@ module "synapse_data_lake_failover" {
   data_lake_storage_containers           = var.data_lake_storage_containers
   devops_agent_subnet_name               = module.synapse_network_failover.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
-  function_app_name                      = module.function_app_failover.function_app_name
-  function_app_resource_group_name       = module.function_app_failover.resource_group_name
+  function_app_principal_id              = module.function_app_failover[0].function_app_id
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network_failover.name
   synapse_private_endpoint_subnet_name   = module.synapse_network_failover.synapse_private_endpoint_subnet_name
