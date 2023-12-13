@@ -17,11 +17,15 @@ _MESSAGES = model_nsip_project.NsipProject
 _MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
 
 
-def validate():
+def validate() -> list:
     """
     Function to validate a list of servicebus messages
     """
 
+    _data = get_messages(
+    _NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT
+    )   
+    
     class MessageInstances(BaseModel):
 
         """
@@ -36,14 +40,11 @@ def validate():
 
         messagedata: list[_MESSAGES]
 
-    _data = get_messages(
-        _NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT
-    )
-
     try:
         MessageInstances(messagedata=_data)
         print("VALIDATION SUCCEEDED!")
         print(f"{len(_data)} MESSAGES PROCESSED")
+        return _data
     except ValidationError as e:
         print(e)
         raise e
