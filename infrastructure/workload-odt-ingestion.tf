@@ -1,7 +1,7 @@
 locals {
-    odt_ingestion_fn_app = {
-        name = "odt-ingestion-fa"
-    }
+  odt_ingestion_fn_app = {
+    name = "odt-ingestion-fa"
+  }
 }
 
 module "odt_ingestion_function_app" {
@@ -31,6 +31,6 @@ resource "azurerm_role_assignment" "servicebus_data_receiver" {
   scope                = each.value
   role_definition_name = "Azure Service Bus Data Receiver"
   # TODO: Why is the output a list?
-  principal_id         = one(module.function_app).identity[0].principal_id
+  principal_id = one(module.function_app).identity[0].principal_id
 }
 
