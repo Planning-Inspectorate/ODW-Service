@@ -76,7 +76,7 @@ variable "firewall_allowed_ip_addresses" {
 
 variable "function_app_name" {
   default     = ""
-  description = "The name of the function app to be deployed"
+  description = "The names of the function app to be deployed"
   type        = string
 }
 
