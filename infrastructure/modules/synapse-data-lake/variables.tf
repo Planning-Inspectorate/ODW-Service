@@ -75,7 +75,7 @@ variable "firewall_allowed_ip_addresses" {
 }
 
 variable "function_app_principal_id" {
-  description = "The ID of the principal to which the function app should be assigned"
+  description = "The ID of the Azure AD principal used by the function apps"
   type        = string
 }
 variable "function_app_subnet_name" {
