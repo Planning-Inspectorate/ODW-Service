@@ -5,12 +5,12 @@ output "resource_group_name" {
 
 output "name" {
   description = "Name of the function app"
-  value       = azurerm_linux_function_app[*].function.name
+  value       = azurerm_linux_function_app.function[*].name
 }
 
 output "function_app_id" {
   description = "Id of the function app"
-  value       = azurerm_linux_function_app[*].function.id
+  value       = azurerm_linux_function_app.function[*].id
 }
 
 output "hostname" {
