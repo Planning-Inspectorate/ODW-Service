@@ -19,7 +19,6 @@ module "odt_ingestion_function_app" {
   location                   = module.azure_region.location_cli
   tags                       = local.tags
   synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets # TODO: This is likely not needed
-  app_settings               = local.odt_ingestion_fn_app.settings
   site_config                = var.function_app_site_config
   file_share_name            = "pins-${local.odt_ingestion_fn_app.name}-${local.resource_suffix}"
   servicebus_namespace       = var.odt_back_office_service_bus_name
