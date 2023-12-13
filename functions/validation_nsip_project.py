@@ -3,14 +3,7 @@ Module containing a validate function to be called to run validation
 of a list of sevricebus messages
 """
 
-import sys
-from pathlib import Path
-
-current_file = Path(__file__).resolve()
-functions_folder = current_file.parent.parent
-sys.path.append(str(functions_folder))
-
-from models import nsip_project
+import model_nsip_project
 
 from pydantic import BaseModel, ValidationError
 from servicebus_funcs import get_messages
@@ -20,7 +13,7 @@ _NAMESPACE = config.ODW_NAMESPACE_DEV
 _SUBSCRIPTION = config.NSIP_PROJECT_SUBSCRIPTION
 _TOPIC = config.NSIP_PROJECT_TOPIC
 _CREDENTIAL = config.CREDENTIAL
-_MESSAGES = nsip_project.NsipProject
+_MESSAGES = model_nsip_project.NsipProject
 _MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
 
 

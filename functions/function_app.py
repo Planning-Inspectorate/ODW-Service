@@ -5,7 +5,7 @@ Azure Function code to read messages from Azure Service Bus and send them to Azu
 import azure.functions as func
 import logging
 from servicebus_funcs import send_to_storage
-from validation import validation_nsip_project, validation_service_user
+import validation_nsip_project, validation_service_user
 import config
 
 _app = func.FunctionApp()

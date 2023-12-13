@@ -3,14 +3,7 @@ Module containing a validate function to be called to run validation
 of a list of sevricebus messages
 """
 
-import sys
-from pathlib import Path
-
-current_file = Path(__file__).resolve()
-functions_folder = current_file.parent.parent
-sys.path.append(str(functions_folder))
-
-from models import service_user
+import model_service_user
 
 from pydantic import BaseModel, ValidationError
 from servicebus_funcs import get_messages
@@ -20,7 +13,7 @@ _NAMESPACE = config.ODW_NAMESPACE_DEV
 _SUBSCRIPTION = config.SERVICE_USER_SUBSCRIPTION
 _TOPIC = config.SERVICE_USER_TOPIC
 _CREDENTIAL = config.CREDENTIAL
-_MESSAGES = service_user.ServiceUser
+_MESSAGES = model_service_user.ServiceUser
 _MAX_MESSAGE_COUNT = config.MAX_MESSAGE_COUNT
 
 
