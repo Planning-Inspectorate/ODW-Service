@@ -127,5 +127,5 @@ resource "azurerm_role_assignment" "servicebus_data_receiver" {
 
   scope                = each.value
   role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
+  principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0][0].principal_id : module.function_app[0].identity[0][0].principal_id
 }
