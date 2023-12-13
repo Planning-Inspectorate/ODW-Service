@@ -35,7 +35,6 @@ module "synapse_data_lake" {
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network.name
   synapse_private_endpoint_subnet_name   = module.synapse_network.synapse_private_endpoint_subnet_name
-  synapse_workspace_id                   = module.synapse_workspace_private.synapse_workspace_id
   tenant_id                              = var.tenant_id
   vnet_subnet_ids                        = module.synapse_network.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network_failover.vnet_subnets
@@ -65,6 +64,7 @@ module "synapse_data_lake_failover" {
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network_failover.name
+  synapse_private_endpoint_subnet_name   = module.synapse_network_failover.synapse_private_endpoint_subnet_name
   tenant_id                              = var.tenant_id
   vnet_subnet_ids                        = module.synapse_network_failover.vnet_subnets
   vnet_subnet_ids_failover               = module.synapse_network.vnet_subnets
