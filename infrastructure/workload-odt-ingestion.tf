@@ -4,7 +4,7 @@ locals {
     }
 }
 
-module "function_app" {
+module "odt_ingestion_function_app" {
   count = var.odt_back_office_service_bus_enabled ? 1 : 0
 
   source = "./modules/function-app"
@@ -26,9 +26,7 @@ module "function_app" {
 }
 
 resource "azurerm_role_assignment" "servicebus_data_receiver" {
-  count = var.odt_back_office_service_bus_enabled ? 1 : 0
-
-  for_each = one(module.odt_backoffice_sb).servicebus_subscription_ids
+  for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).servicebus_subscription_ids : []
 
   scope                = each.value
   role_definition_name = "Azure Service Bus Data Receiver"
