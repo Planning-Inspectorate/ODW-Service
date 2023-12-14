@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cb4c694e-8423-4c88-ade5-223a12ef0aa8"
+				"spark.autotune.trackingId": "badbcb12-8961-473a-a326-f5504b0d65ec"
 			}
 		},
 		"metadata": {
@@ -45,11 +45,44 @@
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 28
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Prerequisites\n",
+					"1. Make sure the new raw file's entry has been added to the Orchestration i.e `/infrastructure/configuration/data-lake/orchestration/orchestration.json`\n",
+					"2. Make sure the standardised table's schema is present on the path specified in the entry added in step 1.\n",
+					"3. Only if the raw file is huge (several GBs), the spark pool might need some upscaling i.e go to manage spark pools and add the following properties in the Apache Spark Configuration\n",
+					"    - spark.kryoserializer.buffer.max: 2047m\n",
+					"    - spark.driver.maxResultSize: 10g\n",
+					"    - spark.rpc.message.maxSize: 1280   "
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Get the Storage Account"
+				]
+			},
 			{
 				"cell_type": "code",
 				"source": [
@@ -87,6 +120,19 @@
 				"execution_count": 2
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Initialise the parameters"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -113,6 +159,19 @@
 					"is_source_from_function_app = False # has the source file come from the function app - in which case it will have a random filename "
 				],
 				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Utility functions"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -146,6 +205,20 @@
 					"    return max(fpaths, key=get_creation_date).replace(path, '')"
 				],
 				"execution_count": 4
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Ingest the data from the raw/source into the standardised table. \n",
+					"If the table doesn't already exist, this will create the table first and ingest the data."
+				]
 			},
 			{
 				"cell_type": "code",
@@ -184,10 +257,10 @@
 					"\n",
 					"    for file in files:\n",
 					"\n",
-					"        if is_source_from_function_app:\n",
-					"            definition = next((d for d in definitions if source_id == d['Source_ID']))\n",
+					"        if is_source_from_function_app or source_id != -1:\n",
+					"            definition = next((d for d in definitions if source_id == d['Source_ID']), None)\n",
 					"        else:\n",
-					"            definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) and (source_frequency_folder == '' or d['Source_Frequency_Folder'] == source_frequency_folder) and d['Source_Filename_Format'] == file.name), None)\n",
+					"            definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) and (source_frequency_folder == '' or d['Source_Frequency_Folder'] == source_frequency_folder) and file.name.startswith(d['Source_Filename_Start'])), None)\n",
 					"        \n",
 					"        if definition:\n",
 					"            expected_from = date_folder - timedelta(days=1)\n",
