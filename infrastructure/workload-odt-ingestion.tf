@@ -25,11 +25,12 @@ module "odt_ingestion_function_app" {
 }
 
 resource "azurerm_role_assignment" "servicebus_data_receiver" {
-  for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : []
+  for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : {}
 
   scope                = each.value
   role_definition_name = "Azure Service Bus Data Receiver"
   # TODO: Why is the output a list?
-  principal_id = one(module.function_app).identity[0].principal_id
+  principal_id = var.odt_back_office_service_bus_enabled ? module.odt_ingestion_function_app[0].identity[0][0].principal_id : null
+
 }
 
