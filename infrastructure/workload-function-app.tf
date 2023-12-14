@@ -122,7 +122,7 @@ module "function_app_failover" {
   servicebus_namespace       = var.odt_back_office_service_bus_name_failover
 }
 
-resource "azurerm_role_assignment" "servicebus_data_receiver" {
+resource "azurerm_role_assignment" "servicebus_receiver" {
   for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : {}
 
   scope                = each.value
