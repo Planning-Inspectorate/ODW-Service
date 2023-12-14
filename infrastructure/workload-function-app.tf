@@ -122,13 +122,13 @@ module "function_app_failover" {
   servicebus_namespace       = var.odt_back_office_service_bus_name_failover
 }
 
-resource "azurerm_role_assignment" "servicebus_receiver" {
-  for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : {}
+# resource "azurerm_role_assignment" "servicebus_receiver" {
+#   for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : {}
 
-  scope                = each.value
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
-}
+#   scope                = each.value
+#   role_definition_name = "Azure Service Bus Data Receiver"
+#   principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
+# }
 output "functioan_app_idenitity" {
   description = "The identity of the Function App"
   value       = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
