@@ -129,13 +129,7 @@ resource "azurerm_role_assignment" "servicebus_receiver" {
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
 }
-
-output "function_app_id" {
-  description = "The ID of the Function App"
-  value       = var.failover_deployment ? module.function_app_failover[0].id : module.function_app[0].id
-}
-
 output "functioan_app_idenitity" {
   description = "The identity of the Function App"
-  value       = var.failover_deployment ? module.function_app_failover[0].identity[0] : module.function_app[0].identity[0]
+  value       = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
 }
