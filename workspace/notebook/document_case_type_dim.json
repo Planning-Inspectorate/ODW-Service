@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e41b835c-a040-4859-b5b9-0fdbc4cbf064"
+				"spark.autotune.trackingId": "5213b5d3-58cd-4c73-a8bc-3d2a136af8b7"
 			}
 		},
 		"metadata": {
@@ -81,10 +81,10 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Build document_case_reference_dim table\r\n",
+					"-- Build document_case_type_dim table\r\n",
 					"-- Gets modified or deleted from source rows\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW document_case_reference_dim_new\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW document_case_type_dim_new\r\n",
 					"\r\n",
 					"     AS\r\n",
 					"\r\n",
@@ -134,7 +134,7 @@
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 \r\n",
 					"    ON \"DocumentTree\" = T2.Description AND \r\n",
 					"        T2.IsActive = 'Y'\r\n",
-					"FULL JOIN odw_harmonised_db.document_case_reference_dim T3 \r\n",
+					"FULL JOIN odw_harmonised_db.document_case_type_dim T3 \r\n",
 					"    ON T1.Abbreviation = T3.Abbreviation AND \r\n",
 					"        T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
@@ -181,7 +181,7 @@
 					"# Dataset is created that contains changed data and corresponding target data\n",
 					"- This script combines data that has been updated, Deleted or is new, with corresponding target data\n",
 					"- View **casework_all_appeals_new** is unioned to the target data filter to only those rows where changes have been detected\n",
-					"## View document_case_reference_dim_changed_rows is created"
+					"## View document_case_type_dim_changed_rows is created"
 				]
 			},
 			{
@@ -205,7 +205,7 @@
 					"%%sql\r\n",
 					"-- Create new and updated dataset\r\n",
 					"\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW document_case_reference_dim_changed_rows\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW document_case_type_dim_changed_rows\r\n",
 					"\r\n",
 					"    AS\r\n",
 					"\r\n",
@@ -231,7 +231,7 @@
 					"    IsActive\r\n",
 					"    \r\n",
 					"\r\n",
-					"From document_case_reference_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
+					"From document_case_type_dim_new WHERE HistoricIsActive = 'Y' or HistoricIsActive IS NULL\r\n",
 					"\r\n",
 					"    UNION ALL\r\n",
 					"\r\n",
@@ -256,7 +256,7 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.document_case_reference_dim\r\n",
+					"FROM odw_harmonised_db.document_case_type_dim\r\n",
 					"WHERE Abbreviation IN (SELECT Abbreviation FROM document_case_type_dim_new WHERE DocumentCaseTypeID IS NULL) AND IsActive = 'Y'; "
 				],
 				"execution_count": 7
@@ -290,9 +290,9 @@
 					"    to_timestamp(date_sub(IngestionDate,1)) AS ClosingDate,\n",
 					"    'Y' AS IsActive\n",
 					"\n",
-					"FROM document_case_reference_dim_new;\n",
+					"FROM document_case_type_dim_new;\n",
 					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW document_case_reference_dim_changed_rows_final\n",
+					"CREATE OR REPLACE TEMPORARY VIEW document_case_type_dim_changed_rows_final\n",
 					"\n",
 					"    AS\n",
 					"\n",
@@ -315,7 +315,7 @@
 					"    T1.RowID,\n",
 					"    T1.IsActive,\n",
 					"    T2.ClosingDate\n",
-					"FROM document_case_reference_dim_changed_rows T1\n",
+					"FROM document_case_type_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
 				"execution_count": 8
@@ -343,10 +343,10 @@
 					}
 				},
 				"source": [
-					"# View document_case_reference_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
+					"# View document_case_type_dim_changed_rows is used in a merge (Upsert) statement into the target table\n",
 					"- **WHEN MATCHED** ON the surrogate Key (i.e. AllAppealsID), EndDate is set to today -1 day and the IsActive flag is set to 'N'\n",
 					"- **WHEN NOT MATCHED** ON the surrogate Key, insert rows\n",
-					"## Table odw_harmonised_db.document_case_reference_dim is updated"
+					"## Table odw_harmonised_db.document_case_type_dim is updated"
 				]
 			},
 			{
@@ -370,8 +370,8 @@
 					"%%sql\r\n",
 					"-- merge into dim table\r\n",
 					"\r\n",
-					"MERGE INTO odw_harmonised_db.document_case_reference_dim AS Target\r\n",
-					"USING document_case_reference_dim_changed_rows_final AS Source\r\n",
+					"MERGE INTO odw_harmonised_db.document_case_type_dim AS Target\r\n",
+					"USING document_case_type_dim_changed_rows_final AS Source\r\n",
 					"\r\n",
 					"ON Source.DocumentCaseTypeID = Target.DocumentCaseTypeID\r\n",
 					"\r\n",
@@ -441,7 +441,7 @@
 					"# Fix the IDs\n",
 					"- No auto-increment feature is available in delta tables, therefore we need to create new IDs for the inserted rows\n",
 					"- This is done by select the target data and using INSERT OVERWRITE to re-insert the data is a new Row Number\n",
-					"## Table odw_harmonised_db.document_case_reference_dim is updated"
+					"## Table odw_harmonised_db.document_case_type_dim is updated"
 				]
 			},
 			{
@@ -463,9 +463,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"-- Insert new document_case_reference_dim\r\n",
+					"-- Insert new document_case_type_dim\r\n",
 					"\r\n",
-					"INSERT OVERWRITE odw_harmonised_db.document_case_reference_dim\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.document_case_type_dim\r\n",
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY DocumentCaseTypeID NULLS LAST) AS DocumentCaseTypeID,\r\n",
@@ -486,7 +486,7 @@
 					"    ValidTo,\r\n",
 					"    RowID,\r\n",
 					"    IsActive\r\n",
-					"FROM odw_harmonised_db.document_case_reference_dim;\r\n",
+					"FROM odw_harmonised_db.document_case_type_dim;\r\n",
 					""
 				],
 				"execution_count": 10
