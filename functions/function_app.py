@@ -28,6 +28,8 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
     Returns:
         An instance of `func.HttpResponse` representing the HTTP response.
     """
+    
+    import var_funcs
 
     logging.info("FUNCTION STARTED...")
 
@@ -64,6 +66,8 @@ def nsipproject(req: func.HttpRequest) -> func.HttpResponse:
     Returns:
         An instance of `func.HttpResponse` representing the HTTP response.
     """
+    
+    import var_funcs
 
     logging.info("FUNCTION STARTED...")
 
