@@ -10,7 +10,8 @@ from azure.servicebus import ServiceBusClient
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import json
-
+from validate import validate
+from pydantic import BaseModel
 
 def get_messages(
     namespace: str,
@@ -19,6 +20,7 @@ def get_messages(
     subscription: str,
     max_message_count: int,
     max_wait_time: int,
+    model: BaseModel,
 ) -> list:
     """
     Retrieve messages from a Service Bus topic subscription.
@@ -62,10 +64,19 @@ def get_messages(
             for message in received_msgs:
                 message_body = json.loads(str(message))
                 messages.append(message_body)
-                subscription_receiver.complete_message(message)
 
-    print(f"{len(messages)} messages received from topic")
+            try:
+                print("Validating message data...")
+                validate(messages, model)
+                for message in received_msgs:
+                    subscription_receiver.complete_message(message)
+                print("Messages validated and completed")
 
+            except Exception as e:
+                print("Error - abandoning messages - sending to dead letter queue")
+                for message in received_msgs:
+                    subscription_receiver.abandon_message(message)
+    
     return messages
 
 def send_to_storage(
