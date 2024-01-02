@@ -9,8 +9,8 @@ import validation_nsip_project, validation_service_user
 from set_environment import current_config, config
 import var_funcs
 
-_STORAGE = current_config['storage_account']
-_CONTAINER = current_config['storage_container']
+_STORAGE = current_config["storage_account"]
+_CONTAINER = current_config["storage_container"]
 _CREDENTIAL = var_funcs.CREDENTIAL
 
 _app = func.FunctionApp()
@@ -33,7 +33,7 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
 
     logging.info("FUNCTION STARTED...")
 
-    _ENTITY = config['global']['service-user-entity']
+    _ENTITY = config["global"]["service-user-entity"]
     _CURRENT_DATE = var_funcs.CURRENT_DATE
     _UTC_TIMESTAMP = var_funcs.UTC_TIMESTAMP
     _FILENAME = f"{_ENTITY}/{_CURRENT_DATE}/{_ENTITY}_{_UTC_TIMESTAMP}.json"
@@ -68,10 +68,10 @@ def nsipproject(req: func.HttpRequest) -> func.HttpResponse:
     """
 
     import var_funcs
-    
+
     logging.info("FUNCTION STARTED...")
 
-    _ENTITY = config['global']['nsip-project-entity']
+    _ENTITY = config["global"]["nsip-project-entity"]
     _CURRENT_DATE = var_funcs.CURRENT_DATE
     _UTC_TIMESTAMP = var_funcs.UTC_TIMESTAMP
     _FILENAME = f"{_ENTITY}/{_CURRENT_DATE}/{_ENTITY}_{_UTC_TIMESTAMP}.json"

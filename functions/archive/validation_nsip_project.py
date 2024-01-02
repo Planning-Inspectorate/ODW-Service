@@ -10,13 +10,14 @@ from servicebus_funcs import get_messages
 import var_funcs
 from set_environment import current_config, config
 
-_NAMESPACE = current_config['servicebus_namespace_odt']
-_SUBSCRIPTION = config['global']['nsip-project-entity']
-_TOPIC = config['global']['nsip-project-entity']
+_NAMESPACE = current_config["servicebus_namespace_odt"]
+_SUBSCRIPTION = config["global"]["nsip-project-entity"]
+_TOPIC = config["global"]["nsip-project-entity"]
 _CREDENTIAL = var_funcs.CREDENTIAL
 _MESSAGES = model_nsip_project.NsipProject
-_MAX_MESSAGE_COUNT = config['global']['max_message_count']
-_MAX_WAIT_TIME = config['global']['max_wait_time']
+_MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
+_MAX_WAIT_TIME = config["global"]["max_wait_time"]
+
 
 def validate() -> list:
     """
@@ -24,9 +25,14 @@ def validate() -> list:
     """
 
     _data = get_messages(
-    _NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT, _MAX_WAIT_TIME
-    )   
-    
+        _NAMESPACE,
+        _CREDENTIAL,
+        _TOPIC,
+        _SUBSCRIPTION,
+        _MAX_MESSAGE_COUNT,
+        _MAX_WAIT_TIME,
+    )
+
     class MessageInstances(BaseModel):
 
         """

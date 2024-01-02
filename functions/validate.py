@@ -5,12 +5,12 @@ of a list of sevricebus messages
 
 from pydantic import BaseModel, ValidationError
 
-def validate(data: list, model: BaseModel) -> list:
 
+def validate(data: list, model: BaseModel) -> list:
     """
     Function to validate a list of servicebus messages
     """
-    
+
     class MessageInstances(BaseModel):
 
         """

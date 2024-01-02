@@ -13,6 +13,7 @@ import json
 from validate import validate
 from pydantic import BaseModel
 
+
 def get_messages_and_validate(
     namespace: str,
     credential: DefaultAzureCredential,
@@ -59,8 +60,7 @@ def get_messages_and_validate(
 
         with subscription_receiver:
             received_msgs = subscription_receiver.receive_messages(
-                max_message_count,
-                max_wait_time
+                max_message_count, max_wait_time
             )
             for message in received_msgs:
                 message_body = json.loads(str(message))
@@ -77,8 +77,9 @@ def get_messages_and_validate(
                 print("Error - abandoning messages - sending to dead letter queue")
                 for message in received_msgs:
                     subscription_receiver.abandon_message(message)
-    
+
     return messages
+
 
 def send_to_storage(
     account_url: str,
