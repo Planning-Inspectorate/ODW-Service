@@ -13,7 +13,7 @@ import json
 from validate import validate
 from pydantic import BaseModel
 
-def get_messages(
+def get_messages_and_validate(
     namespace: str,
     credential: DefaultAzureCredential,
     topic: str,
@@ -32,6 +32,7 @@ def get_messages(
         subscription (str): The name of the subscription.
         max_message_count (int): The maximum number of messages to retrieve.
         max_wait_time (int): The maximum wait time in seconds.
+        model (BaseModel): The pydantic model to validate against.
 
     Returns:
         list: A list of messages retrieved from the topic subscription.
@@ -72,7 +73,7 @@ def get_messages(
                     subscription_receiver.complete_message(message)
                 print("Messages validated and completed")
 
-            except Exception as e:
+            except Exception:
                 print("Error - abandoning messages - sending to dead letter queue")
                 for message in received_msgs:
                     subscription_receiver.abandon_message(message)
