@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b8e9b969-8ad3-41b4-a80b-674a22646534"
+				"spark.autotune.trackingId": "992f4bd3-e990-40ed-bf65-615f1fc81a64"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,7 @@
 				"source": [
 					"source_id=-1"
 				],
-				"execution_count": 39
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 				"source": [
 					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
 				],
-				"execution_count": 40
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -100,9 +100,10 @@
 					"from notebookutils import mssparkutils\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
 					"\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					""
 				],
-				"execution_count": 41
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +119,7 @@
 					}
 				},
 				"source": [
-					"def get_latest_file_path(definition):\n",
+					"def get_latest_file(definition):\n",
 					"    import calendar\n",
 					"    from datetime import datetime, timedelta, date\n",
 					"\n",
@@ -139,9 +140,10 @@
 					"                    return file\n",
 					"    except:  \n",
 					"        print('File not found for SourceID: ', definition['Source_ID'])\n",
-					""
+					"        \n",
+					"    print('File not found for SourceID: ', definition['Source_ID'])"
 				],
-				"execution_count": 42
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -162,21 +164,16 @@
 					"df = spark.read.option(\"multiline\",\"true\").json(path_to_file)\n",
 					"\n",
 					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"definition = next((d for d in definitions if d['Source_ID'] == source_id), None)\n",
 					"\n",
-					"for d in definitions:\n",
-					"    file = get_latest_file_path(d)\n",
-					"    print(file.name if file else 'Not found')\n",
-					"    # print(get_latest_file_path(d))\n",
-					"\n",
-					"# definition = next(d for d in definitions if d['Source_ID'] == source_id)\n",
-					"\n",
-					"# source_file = get_latest_file_path(definition)\n",
-					"# target_folder = \"abfss://odw-config@\"+storage_account+\"schema_creation/\"\n",
-					"\n",
-					"# if source_file and source_file.path:\n",
-					"#     mssparkutils.fs.cp(source_file.path, target_folder)"
+					"if definition:\n",
+					"    file = get_latest_file(definition)\n",
+					"    if file:\n",
+					"        print(file)\n",
+					"        mssparkutils.notebook.run('/utils/py_generate_schema_script', 300, arguments={'path_to_source': file.path})\n",
+					"        "
 				],
-				"execution_count": 43
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
