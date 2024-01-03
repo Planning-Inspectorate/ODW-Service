@@ -27,8 +27,8 @@ def validate(data: list, model: BaseModel) -> list:
 
     try:
         MessageInstances(messagedata=data)
-        print("VALIDATION SUCCEEDED!")
-        print(f"{len(data)} MESSAGES PROCESSED")
+        print("Validation succeeded!")
+        print(f"{len(data)} messages processed")
         return data
     except ValidationError as e:
         print(e)
