@@ -11,7 +11,7 @@ from var_funcs import CREDENTIAL
 _STORAGE = current_config["storage_account"]
 _CONTAINER = current_config["storage_container"]
 _CREDENTIAL = CREDENTIAL
-_NAMESPACE = current_config["servicebus_namespace_odw"]
+_NAMESPACE = current_config["servicebus_namespace_odt"]
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
 _MAX_WAIT_TIME = config["global"]["max_wait_time"]
 
