@@ -48,11 +48,6 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
             max_wait_time=_MAX_WAIT_TIME,
             model=_MODEL,
         )
-    except Exception as e:
-        logging.error(f"Error occurred: {str(e)}")
-        raise e
-
-    try:
         send_to_storage(
             account_url=_STORAGE,
             credential=_CREDENTIAL,
@@ -60,11 +55,14 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
             entity=_ENTITY,
             data=_data,
         )
-    except Exception as e:
-        logging.error(f"Error occurred: {str(e)}")
-        raise e
-    return func.HttpResponse()
+        return func.HttpResponse("Function executed successfully", status_code=200)
 
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if "MessageInstances" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
 
 @_app.function_name("nsipproject")
 @_app.route(route="nsipproject", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
@@ -96,11 +94,6 @@ def nsipproject(req: func.HttpRequest) -> func.HttpResponse:
             max_wait_time=_MAX_WAIT_TIME,
             model=_MODEL,
         )
-    except Exception as e:
-        logging.error(f"Error occurred: {str(e)}")
-        raise e
-
-    try:
         send_to_storage(
             account_url=_STORAGE,
             credential=_CREDENTIAL,
@@ -108,7 +101,11 @@ def nsipproject(req: func.HttpRequest) -> func.HttpResponse:
             entity=_ENTITY,
             data=_data,
         )
+        return func.HttpResponse("Function executed successfully", status_code=200)
+
     except Exception as e:
-        logging.error(f"Error occurred: {str(e)}")
-        raise e
-    return func.HttpResponse()
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if "MessageInstances" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
