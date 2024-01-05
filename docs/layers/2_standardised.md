@@ -34,13 +34,13 @@ The standardised layer makes the raw layer, which is a sink of data from various
 
 In order to add a new raw source and convert the data in standardised form, follow the following steps
 
-- Create a new branch and add a new record in the `orchestration.json` file. This new record will have a new `Source_ID` which we will use at a later step.
-- Generate a PR of your branch and after it gets merged, head over to the [Azure DevOps](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build) and run the **Platform Deploy** pipeline. This will deploy your changes into Synapse.
-- When the pipeline succeeds, go to `[synapse_data_lake]/odw-config/orchestration/orchestration.json` and verify that your change has been deployed.
-- Go to the pipeline `pln_raw_to_standardised_e2e` and set the new `Source_ID` and the source date folder as the parameters of the pipeline.
-	- Click the activity Set SourceID > Settings > Edit the Value of the variable
+- Add a new record in the `orchestration.json` file. This new record will have a new `Source_ID` which we will use at a later step.
+- Go to `[synapse_data_lake]/odw-config/orchestration/` and replace the existing `orchestration.json` with the updated file.
+- Run the pipeline `pln_raw_to_standardised_e2e` and set the `source_id` and the `source_folder_date` parameters. 
+  - The `source_id` parameter is the Source_ID of the new record you added in the orchestration.json. 
+  - The `source_folder_date` parameter is the name of the dated folder in which your raw file is present. i.e 2024-01-01
 - Run the pipeline and cross your fingers. If it succeeds, you should be able to find your Standardised table at the specified location with the data ingested.
-- Finally, go to `[synapse_data_lake]/odw-config/standardised_table_definitions/` and download the newly created schema json file and push it in your branch. Delete this json file then from synapse so that terraform can deploy it without "file exists" error. This will help keep things consistent between environments.
+- Make sure to add your changes in the `orchestration.json` and `[synapse_data_lake]/odw-config/standardised_table_definitions/{newly_created_schema.json}` to your branch. This will help keep things consistent between environments.
 
 
 ## Pipeline
