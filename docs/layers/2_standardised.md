@@ -10,10 +10,8 @@ The standardised layer makes the raw layer, which is a sink of data from various
 	"Source_ID": 1,
 	"Source_Folder": "Fileshare/SAP_HR/HR",
 	"Source_Frequency_Folder": "Weekly",
-	"Source_Folder_Date_Format": "YYYY-MM-DD",
 	"Source_Filename_Format": "Addresses - YYYYMMDD.XLSX",
 	"Source_Filename_Start": "Addresses - ",
-	"Source_Filename_Date_Format": "YYYYMMDD",
 	"Completion_Frequency_CRON": "0 0 * * 1",
 	"Expected_Within_Weekdays": 5,
 	"Standardised_Path": "HR",
@@ -25,12 +23,9 @@ The standardised layer makes the raw layer, which is a sink of data from various
 -   **Source_ID** : Unique value for each definition in the array, starting at 1 and increasing in values of 1
 -   **Source_Folder**: The folder within [synapse_data_lake]/odw-raw/ that the source file date folders are located. Using the example above, within [synapse_data_lake]/odw-raw/Fileshare/SAP_HR/HR/ we would expect all data pertaining to this Source_ID to sit under this folder.
 -   **Source_Frequency_Folder**: If the data is to be received at multiple frequencies, the next folder underneath Source_Folder in the folder structure should be ‘Weekly’ or ‘Monthly’
--   **Source_Folder_Date_Format**: This is the format of the last folder in the folder structure within which our file sits. For the above example, this might be [synapse_data_lake]/odw-raw/Fileshare/SAP_HR/HR/Weekly/2022-10-01/
 -   **Source_Filename_Format**: This entry describes the format of the name of the source file
 -   **Source_Filename_Start**: This string should be contained within our filename and uniquely identify a single file within our example folder structure above. So, for ‘Addresses - 20221001.XLSX’, ‘Addresses - ‘ would be able to uniquely identify the file. Only one file with this naming should be available in the dated folder.
--   **Source_Filename_Date_Format**: The format of the date in the filename. ‘None’ if none in use.
--   **Completion_Frequency_CRON**: This CRON notation determines the frequency at which we would expect a file for this Source_ID to arrive. Use [crontab guru](https://crontab.guru/) to translate into plaintext what each CRON means.
--   **Expected_Within_Weekdays**: The Completion_Frequency_CRON parameter can determine when the last expected date for the file was, but to determine when we expect the file by, we add the number of days on according to this parameter.
+-   **Expected_Within_Weekdays**: To determine when we expect the file by, we add the number of days on according to this parameter.
 -   **Standardised_Path**: This is the path to the standardised Delta table storage folder in the synapse data lake storage within [synapse_data_lake]/odw-standardised/
 -   **Standardised_Table_Name**: This is the name of the standardised Delta table
 -   **Standardised_Table_Definition**: This is the location of the Json schema for the standardised Delta table, and will be located within [synapse_data_lake]/odw-config/standardised_table_definitions
