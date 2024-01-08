@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "34d0bc82-e3b9-47c7-9fcb-40acbe988852"
+				"spark.autotune.trackingId": "cf45186d-653f-4544-9aa0-a8c438d43868"
 			}
 		},
 		"metadata": {
@@ -86,11 +86,11 @@
 					"is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
 					"\n",
 					"# limiting the number of output to 20 rows for dev environment\n",
-					"max_limit = 20 if 'dev' in storage_account else 100000000\n",
+					"max_limit = 100000000 if 'dev' in storage_account else 100000000\n",
 					"\n",
 					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 14
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -122,40 +122,45 @@
 					"\r\n",
 					"SELECT DISTINCT\r\n",
 					"\r\n",
-					"    REPLACE(SU.ContactID, 'P_', '')         AS id,\r\n",
-					"    SU.Salutation                           AS salutation,\r\n",
-					"    SU.FirstName                            AS firstName,\r\n",
-					"    SU.LastName                             AS lastName,\r\n",
-					"    SU.AddressLine1                         AS addressLine1,\r\n",
-					"    SU.AddressLine2                         AS addressLine2,\r\n",
-					"    SU.AddressTown                          AS addressTown,\r\n",
-					"    SU.AddressCounty                        AS addressCounty,\r\n",
-					"    SU.Postcode                             AS postcode,\r\n",
-					"    \"United Kingdom\"                        AS addressCountry,\r\n",
-					"    SU.Organisation                         AS organisation,\r\n",
-					"    SU.OrganisationType                     AS organisationType,\r\n",
-					"    SU.Role                                 AS role,\r\n",
-					"    SU.TelephoneNumber                      AS telephoneNumber,\r\n",
-					"    SU.OtherPhoneNumber                     AS otherPhoneNumber,\r\n",
-					"    SU.FaxNumber                            AS faxNumber,\r\n",
-					"    SU.EmailAddress                         AS emailAddress,\r\n",
-					"    -- SU.WebAddress                           AS webAddress,\r\n",
-					"    \"No Info\"                               AS webAddress,\r\n",
-					"    SU.ServiceUserType                      AS serviceUserType,\r\n",
-					"    SU.CaseReference                        AS caseReference,\r\n",
-					"    SU.IngestionDate                        AS ingestionDate,\r\n",
-					"    SU.ODTSourceSystem                      AS sourceSystem,\r\n",
-					"    SU.SUAreaID                             AS sourceSuid\r\n",
+					"    REPLACE(SU.ContactID, 'P_', '')                     AS id,\r\n",
+					"    SU.Salutation                                       AS salutation,\r\n",
+					"    SU.FirstName                                        AS firstName,\r\n",
+					"    SU.LastName                                         AS lastName,\r\n",
+					"    SU.AddressLine1                                     AS addressLine1,\r\n",
+					"    SU.AddressLine2                                     AS addressLine2,\r\n",
+					"    SU.AddressTown                                      AS addressTown,\r\n",
+					"    SU.AddressCounty                                    AS addressCounty,\r\n",
+					"    SU.Postcode                                         AS postcode,\r\n",
+					"    \"United Kingdom\"                                    AS addressCountry,\r\n",
+					"    SU.Organisation                                     AS organisation,\r\n",
+					"    SU.OrganisationType                                 AS organisationType,\r\n",
+					"    SU.Role                                             AS role,\r\n",
+					"    SU.TelephoneNumber                                  AS telephoneNumber,\r\n",
+					"    SU.OtherPhoneNumber                                 AS otherPhoneNumber,\r\n",
+					"    SU.FaxNumber                                        AS faxNumber,\r\n",
+					"    SU.EmailAddress                                     AS emailAddress,\r\n",
+					"    \"No Info\"                                           AS webAddress,\r\n",
+					"    SU.ServiceUserType                                  AS serviceUserType,\r\n",
+					"CASE \r\n",
+					"    WHEN NSIP.CaseReference IS NULL\r\n",
+					"    THEN SU.CaseReference\r\n",
+					"    ELSE NSIP.CaseReference\r\n",
+					"END                                                     AS caseReference,\r\n",
+					"--  SU.CaseReference                                    AS SUCaseRef,\r\n",
+					"    SU.IngestionDate                                    AS ingestionDate,\r\n",
+					"    SU.ODTSourceSystem                                  AS sourceSystem,\r\n",
+					"    SU.SUAreaID                                         AS sourceSuid\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.service_user_dim     AS SU\r\n",
+					"FROM odw_harmonised_db.service_user_dim                 AS SU\r\n",
+					"    LEFT JOIN odw_harmonised_db.casework_nsip_data_dim  AS NSIP\r\n",
+					"        ON NSIP.CaseID = SU.CaseReference\r\n",
 					"\r\n",
 					"WHERE SU.IsActive = 'Y'\r\n",
-					"\r\n",
 					"ORDER BY ingestionDate DESC\r\n",
 					"\r\n",
 					"LIMIT ${MAX_LIMIT}"
 				],
-				"execution_count": 15
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -218,7 +223,7 @@
 					"    \r\n",
 					"FROM odw_curated_db.vw_service_user"
 				],
-				"execution_count": 16
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -253,7 +258,7 @@
 					"%%pyspark\n",
 					"pip install Faker"
 				],
-				"execution_count": 17
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -304,7 +309,7 @@
 					"        table_loc = \"abfss://odw-curated@\"+storage_account+'service_user'\n",
 					"        df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
 				],
-				"execution_count": 18
+				"execution_count": 10
 			}
 		]
 	}
