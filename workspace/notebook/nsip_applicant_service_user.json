@@ -1,0 +1,376 @@
+{
+	"name": "nsip_applicant_service_user",
+	"properties": {
+		"description": "creating a NSIP applicant view of service user.",
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "51578e73-c598-4b4b-9581-b37aa4e58f10"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Checking the Environment\n",
+					"#### If dev or test, limiting the number of output rows and anonymisation of the sensitive fields is required."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from notebookutils import mssparkutils\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"is_dev = 'dev' in storage_account\n",
+					"is_test = 'test' in storage_account\n",
+					"\n",
+					"# limiting the number of output to 20 rows for dev environment\n",
+					"max_limit = 20 if is_dev else 100000000\n",
+					"\n",
+					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## View odw_curated_db.vw_service_user is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"\r\n",
+					"--CREATE OR REPLACE VIEW odw_curated_db.vw_service_user\r\n",
+					"\r\n",
+					"--AS\r\n",
+					"\r\n",
+					"SELECT DISTINCT\r\n",
+					"\r\n",
+					"    REPLACE(SU.ContactID, 'P_', '')                     AS id,\r\n",
+					"    SU.Salutation                                       AS salutation,\r\n",
+					"    NSIP.ApplicantFirstName                             AS firstName,\r\n",
+					"    NSIP.ApplicantLastName                              AS lastName,\r\n",
+					"    CASE\r\n",
+					"        WHEN SU.AddressLine1 IS NULL\r\n",
+					"        THEN NSIP.AddressLine1\r\n",
+					"    END                                                 AS addressLine1,\r\n",
+					"    CASE\r\n",
+					"        WHEN SU.AddressLine2 IS NULL\r\n",
+					"        THEN NSIP.AddressLine2\r\n",
+					"    END                                                 AS addressLine2,\r\n",
+					"    CASE \r\n",
+					"        WHEN SU.AddressTown IS NULL\r\n",
+					"        THEN NSIP.AddressTown\r\n",
+					"    END                                                 AS addressTown,\r\n",
+					"    CASE\r\n",
+					"        WHEN SU.AddressCounty IS NULL\r\n",
+					"        THEN NSIP.AddressCounty  \r\n",
+					"    END                                                 AS addressCounty,\r\n",
+					"    CASE\r\n",
+					"        WHEN SU.Postcode IS NULL\r\n",
+					"        THEN NSIP.Postcode\r\n",
+					"    END                                                 AS postcode,\r\n",
+					"    'United Kingdom'                                    AS addressCountry,\r\n",
+					"    SU.Organisation                                     AS organisation,\r\n",
+					"    SU.OrganisationType                                 AS organisationType,\r\n",
+					"    SU.Role                                             AS role,\r\n",
+					"    CASE\r\n",
+					"        WHEN SU.TelephoneNumber IS NULL\r\n",
+					"        THEN NSIP.ApplicantPhoneNumber\r\n",
+					"    END                                                 AS telephoneNumber,\r\n",
+					"    SU.OtherPhoneNumber                                 AS otherPhoneNumber,\r\n",
+					"    SU.FaxNumber                                        AS faxNumber,\r\n",
+					"    CASE \r\n",
+					"        WHEN SU.EmailAddress IS NULL\r\n",
+					"        THEN NSIP.ApplicantEmailAddress\r\n",
+					"    END                                                 AS emailAddress,\r\n",
+					"    CASE \r\n",
+					"        WHEN NSIP.ApplicantWebAddress IS NULL\r\n",
+					"        THEN \"No Info\"   \r\n",
+					"    END                                                 AS webAddress,\r\n",
+					"    CASE   \r\n",
+					"        WHEN NSIP.ApplicantFirstName IS NOT NULL\r\n",
+					"        THEN 'Applicant'\r\n",
+					"        WHEN NSIP.ApplicantLastName IS NOT NULL\r\n",
+					"        THEN 'Applicant'\r\n",
+					"        ELSE SU.ServiceUserType\r\n",
+					"    END                                                 AS serviceUserType,\r\n",
+					"    CASE \r\n",
+					"        WHEN NSIP.CaseReference IS NULL\r\n",
+					"        THEN SU.CaseReference\r\n",
+					"        ELSE NSIP.CaseReference\r\n",
+					"    END                                                 AS caseReference,\r\n",
+					"--  SU.CaseReference                                    AS SUCaseRef,\r\n",
+					"    SU.IngestionDate                                    AS ingestionDate,\r\n",
+					"    SU.ODTSourceSystem                                  AS sourceSystem,\r\n",
+					"    SU.SUAreaID                                         AS sourceSuid\r\n",
+					"    \r\n",
+					"FROM odw_harmonised_db.service_user_dim                 AS SU\r\n",
+					"    JOIN odw_harmonised_db.casework_nsip_data_dim  AS NSIP\r\n",
+					"        ON NSIP.CaseID = SU.CaseReference\r\n",
+					"    LEFT JOIN odw_harmonised_db.casework_nsip_relevant_representation_dim AS RR\r\n",
+					"        ON RR.CaseReference = NSIP.CaseID\r\n",
+					"\r\n",
+					"WHERE SU.IsActive = 'Y'\r\n",
+					"    AND NSIP.CaseReference = 'TR020002'\r\n",
+					"ORDER BY ingestionDate DESC\r\n",
+					"\r\n",
+					"--LIMIT ${MAX_LIMIT}"
+				],
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * \r\n",
+					"FROM odw_harmonised_db.casework_nsip_data_dim\r\n",
+					"WHERE CaseReference = 'TR020002'\r\n",
+					""
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Table odw_curated_db.service_user is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE OR REPLACE TABLE odw_curated_db.service_user\r\n",
+					"USING delta\r\n",
+					"AS\r\n",
+					"SELECT \r\n",
+					"    id,\r\n",
+					"    salutation,\r\n",
+					"    firstName,\r\n",
+					"    lastName,\r\n",
+					"    addressLine1,\r\n",
+					"    addressLine2,\r\n",
+					"    addressTown,\r\n",
+					"    addressCounty,\r\n",
+					"    postcode,\r\n",
+					"    addressCountry,\r\n",
+					"    organisation,\r\n",
+					"    organisationType,\r\n",
+					"    role,\r\n",
+					"    telephoneNumber,\r\n",
+					"    otherPhoneNumber,\r\n",
+					"    faxNumber,\r\n",
+					"    emailAddress,\r\n",
+					"    webAddress,\r\n",
+					"    serviceUserType,\r\n",
+					"    caseReference,\r\n",
+					"    sourceSystem,\r\n",
+					"    sourceSuid\r\n",
+					"    \r\n",
+					"FROM odw_curated_db.vw_service_user"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Install anonymisation library i.e Faker"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "python"
+					}
+				},
+				"source": [
+					"%%pyspark\n",
+					"pip install Faker"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Anonymisation of sensitive fields in dev and test"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if is_dev or is_test:\n",
+					"\n",
+					"    import pandas as pd\n",
+					"    from faker import Faker\n",
+					"    \n",
+					"    df = spark.sql(\"select * from odw_curated_db.service_user\").toPandas()\n",
+					"\n",
+					"    if(len(df) > 0):\n",
+					"        fake = Faker()\n",
+					"        \n",
+					"        df['firstName'] = [fake.first_name() for _ in range(len(df))]\n",
+					"        df['lastName'] = [fake.last_name() for _ in range(len(df))]\n",
+					"        df['emailAddress'] = [fake.email() for _ in range(len(df))]\n",
+					"        df['telephoneNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        df['otherPhoneNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        df['faxNumber'] = [fake.phone_number() for _ in range(len(df))]\n",
+					"        \n",
+					"        df = spark.createDataFrame(df)\n",
+					"\n",
+					"        table_loc = \"abfss://odw-curated@\"+storage_account+'service_user'\n",
+					"        df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
