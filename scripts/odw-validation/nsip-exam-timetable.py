@@ -19,7 +19,7 @@ with open(_file_name, encoding="utf-8-sig") as csvfile:
 
 _merged_data = defaultdict(dict)
 
-for row in _data[:1]:
+for row in _data:
     _lowercase_row = {k.lower(): v for k, v in row.items()}
     _caseReference = _lowercase_row["casereference"]
     if _caseReference not in _merged_data:
@@ -46,4 +46,4 @@ try:
     ExaminationTimetableInstances(data=_final_data)
 except ValidationError as e:
     print(e)
-    pprint.pprint(e.errors())
+    # pprint.pprint(e.errors())
