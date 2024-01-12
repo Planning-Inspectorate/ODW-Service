@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a6433d29-e08f-464a-971d-811dcb8c1c14"
+				"spark.autotune.trackingId": "18000fdb-bc66-4b9f-9a27-fac68118fc16"
 			}
 		},
 		"metadata": {
@@ -155,12 +155,12 @@
 					"        AND T2.IsActive = 'Y'\r\n",
 					"\r\n",
 					"FULL JOIN odw_harmonised_db.casework_nsip_advice_dim T3 \r\n",
-					"    ON T1.advicenodeid = T3.AdviceNodeID      \r\n",
+					"    ON T1.advicenodeid = T3.AdviceNodeID AND T1.attachmentdataID = T3.AttachmentID\r\n",
 					"        AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.advicenodeid = T3.AdviceNodeID \r\n",
+					"                WHEN T1.advicenodeid = T3.AdviceNodeID AND T1.attachmentdataID = T3.AttachmentID\r\n",
 					"                AND  \r\n",
 					"                md5(concat(IFNULL(T1.advicenodeid,'.'),\t\r\n",
 					"                IFNULL(T1.title,'.'),\r\n",
@@ -195,7 +195,33 @@
 					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_nsip_advice)\r\n",
 					";"
 				],
-				"execution_count": 1
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"SELECT count(*) FROM casework_nsip_advice_dim_new;\n",
+					"\n",
+					"SELECT * FROM casework_nsip_advice_dim_new;"
+				],
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -257,7 +283,7 @@
 					"    Advice,\r\n",
 					"    AdviceLastModified,\r\n",
 					"    AttachmentCount,\r\n",
-					"    AttachmentID\r\n",
+					"    AttachmentID,\r\n",
 					"    AttachmentLastModified,\r\n",
 					"    LastPublishedDate,\r\n",
 					"    CaseNodeID,\r\n",
@@ -304,16 +330,23 @@
 					"    RowID,\r\n",
 					"    IsActive\r\n",
 					"    \r\n",
-					"FROM odw_harmonised_db.casework_nsip_advice_dim\r\n",
+					"FROM odw_harmonised_db.casework_nsip_advice_dim T1\r\n",
 					"WHERE AdviceNodeID IN \r\n",
 					"(\r\n",
 					"    SELECT AdviceNodeID \r\n",
 					"    FROM casework_nsip_advice_dim_new \r\n",
 					"    WHERE NSIPAdviceID IS NULL\r\n",
 					") \r\n",
+					"AND AttachmentID IN\r\n",
+					"(\r\n",
+					"    SELECT AttachmentID \r\n",
+					"    FROM casework_nsip_advice_dim_new \r\n",
+					"    WHERE AdviceNodeID = T1.AdviceNodeID\r\n",
+					"        AND NSIPAdviceID IS NULL\r\n",
+					") \r\n",
 					"AND IsActive = 'Y'; "
 				],
-				"execution_count": 4
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -329,7 +362,8 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -383,7 +417,7 @@
 					"FROM casework_nsip_advice_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": null
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -424,7 +458,7 @@
 					"\r\n",
 					"MERGE INTO odw_harmonised_db.casework_nsip_advice_dim AS Target\r\n",
 					"USING casework_nsip_advice_dim_changed_rows_final AS Source\r\n",
-					"ON Source.NSIPAdviceID = Target.NSIPAdviceID\r\n",
+					"ON Source.NSIPAdviceID = Target.NSIPAdviceID AND Source.AttachmentID = Target.AttachmentID AND Target.IsActive = 'Y' \r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
@@ -499,7 +533,7 @@
 					"        Source.IsActive)\r\n",
 					"     ;   "
 				],
-				"execution_count": 5
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -573,7 +607,33 @@
 					"    FROM odw_harmonised_db.casework_nsip_advice_dim;\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"\n",
+					"SELECT count(*) FROM odw_harmonised_db.casework_nsip_advice_dim;\n",
+					"SELECT count(*) FROM odw_standardised_db.horizon_nsip_advice;\n",
+					""
+				],
+				"execution_count": 35
 			}
 		]
 	}
