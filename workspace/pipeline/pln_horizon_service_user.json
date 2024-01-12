@@ -1,121 +1,28 @@
 {
-	"name": "pln_service_user_clean_slate",
+	"name": "pln_horizon_service_user",
 	"properties": {
 		"activities": [
 			{
-				"name": "Delete Hrm Table",
-				"type": "SynapseNotebook",
+				"name": "Hzn - Src to Raw",
+				"description": "Copies migration data from Horizon to odw-raw",
+				"type": "ExecutePipeline",
 				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
 				"userProperties": [],
 				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_delete_table",
-						"type": "NotebookReference"
+					"pipeline": {
+						"referenceName": "0_Horizon_Service_User",
+						"type": "PipelineReference"
 					},
-					"parameters": {
-						"db_name": {
-							"value": "odw_harmonised_db",
-							"type": "string"
-						},
-						"table_name": {
-							"value": "service_user_dim",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
+					"waitOnCompletion": true
 				}
 			},
 			{
-				"name": "Delete Standardised Table",
-				"type": "SynapseNotebook",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_delete_table",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"db_name": {
-							"value": "odw_standardised_db",
-							"type": "string"
-						},
-						"table_name": {
-							"value": "horizon_service_user_new",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Delete Legacy Standardised Table",
-				"type": "SynapseNotebook",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_delete_table",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"db_name": {
-							"value": "odw_standardised_db",
-							"type": "string"
-						},
-						"table_name": {
-							"value": "horizon_service_user",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Creation of the Hrm Table",
+				"name": "Hzn - Raw to Std",
+				"description": "Ingests the raw migration data from Horizon to the standardised table i.e horizon_service_user",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Delete Hrm Table",
+						"activity": "Hzn - Src to Raw",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -131,12 +38,16 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_odw_harmonised_table_creation",
+						"referenceName": "py_raw_to_std",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"specific_table": {
-							"value": "service_user_dim",
+						"source_folder": {
+							"value": "Horizon",
+							"type": "string"
+						},
+						"specific_file": {
+							"value": "CaseInvolvement",
 							"type": "string"
 						}
 					},
@@ -150,21 +61,74 @@
 				}
 			},
 			{
-				"name": "pln_nisp_relevant_reps_clean_slate",
-				"type": "ExecutePipeline",
-				"dependsOn": [],
+				"name": "Hzn - Std to Hrm",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Hzn - Raw to Std",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
 				"userProperties": [],
 				"typeProperties": {
-					"pipeline": {
-						"referenceName": "pln_nisp_relevant_reps_clean_slate",
-						"type": "PipelineReference"
+					"notebook": {
+						"referenceName": "legacy_service_user_dim",
+						"type": "NotebookReference"
 					},
-					"waitOnCompletion": true
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Hzn - Hrm to Cur",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Hzn - Std to Hrm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "service_user",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
 				}
 			}
 		],
 		"folder": {
-			"name": "service user/utils"
+			"name": "service user"
 		},
 		"annotations": []
 	}
