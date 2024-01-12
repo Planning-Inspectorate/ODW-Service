@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "805c6da1-ce11-4ca6-b177-d33550e73062"
+				"spark.autotune.trackingId": "1f466f38-7064-4ead-baa8-a98ffc4ffd47"
 			}
 		},
 		"metadata": {
@@ -114,11 +114,7 @@
 					"    T1.advice                                   AS Advice,\r\n",
 					"    T1.advicelastmodified                       AS AdviceLastModified,\r\n",
 					"    T1.attachmentcount                          AS AttachmentCount,\r\n",
-					"    CASE\r\n",
-					"        WHEN T1.attachmentdataID IS NULL\r\n",
-					"        THEN 'None'\r\n",
-					"        ELSE T1.attachmentdataID \r\n",
-					"    END                                         AS AttachmentID,\r\n",
+					"    IFNULL(T1.attachmentdataID,'None')          AS AttachmentID,\r\n",
 					"    T1.attachmentslastmodified                  AS AttachmentLastModified,\r\n",
 					"    T1.lastpublisheddate                        AS LastPublishedDate,\r\n",
 					"    T1.casenodeid                               AS CaseNodeID,\r\n",
@@ -144,7 +140,7 @@
 					"        IFNULL(T1.advice,'.'),\t\r\n",
 					"        IFNULL(T1.advicelastmodified,'.'),\t\r\n",
 					"        IFNULL(T1.attachmentcount,'.'),\t\r\n",
-					"        IFNULL(T1.attachmentdataID,'.'),\r\n",
+					"        IFNULL(T1.attachmentdataID,'None'),\r\n",
 					"        IFNULL(T1.attachmentslastmodified,'.'),\t\r\n",
 					"        IFNULL(T1.lastpublisheddate,'.'),\t\r\n",
 					"        IFNULL(T1.casenodeid,'.'),\t\r\n",
@@ -159,12 +155,13 @@
 					"        AND T2.IsActive = 'Y'\r\n",
 					"\r\n",
 					"FULL JOIN odw_harmonised_db.casework_nsip_advice_dim T3 \r\n",
-					"    ON T1.advicenodeid = T3.AdviceNodeID AND T1.attachmentdataID = T3.AttachmentID\r\n",
+					"    ON T1.advicenodeid = T3.AdviceNodeID AND \r\n",
+					"        IFNULL(T1.attachmentdataID,'None') = T3.AttachmentID\r\n",
 					"        AND T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"        -- flags new data        \r\n",
 					"        (   CASE\r\n",
-					"                WHEN T1.advicenodeid = T3.AdviceNodeID AND T1.attachmentdataID = T3.AttachmentID\r\n",
+					"                WHEN T1.advicenodeid = T3.AdviceNodeID AND IFNULL(T1.attachmentdataID,'None') = T3.AttachmentID\r\n",
 					"                AND  \r\n",
 					"                md5(concat(IFNULL(T1.advicenodeid,'.'),\t\r\n",
 					"                IFNULL(T1.title,'.'),\r\n",
@@ -183,7 +180,7 @@
 					"                IFNULL(T1.advice,'.'),\t\r\n",
 					"                IFNULL(T1.advicelastmodified,'.'),\t\r\n",
 					"                IFNULL(T1.attachmentcount,'.'),\t\r\n",
-					"                IFNULL(T1.attachmentdataID,'.'),\r\n",
+					"                IFNULL(T1.attachmentdataID,'None'),\r\n",
 					"                IFNULL(T1.attachmentslastmodified,'.'),\t\r\n",
 					"                IFNULL(T1.lastpublisheddate,'.'),\t\r\n",
 					"                IFNULL(T1.casenodeid,'.'),\t\r\n",
@@ -199,33 +196,7 @@
 					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_nsip_advice)\r\n",
 					";"
 				],
-				"execution_count": 36
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql \n",
-					"\n",
-					"SELECT count(*) FROM casework_nsip_advice_dim_new;\n",
-					"\n",
-					"SELECT * FROM casework_nsip_advice_dim_new;"
-				],
-				"execution_count": 38
+				"execution_count": 64
 			},
 			{
 				"cell_type": "markdown",
@@ -350,7 +321,7 @@
 					") \r\n",
 					"AND IsActive = 'Y'; "
 				],
-				"execution_count": 31
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -421,7 +392,7 @@
 					"FROM casework_nsip_advice_dim_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": 32
+				"execution_count": 60
 			},
 			{
 				"cell_type": "markdown",
@@ -537,7 +508,7 @@
 					"        Source.IsActive)\r\n",
 					"     ;   "
 				],
-				"execution_count": 33
+				"execution_count": 61
 			},
 			{
 				"cell_type": "markdown",
@@ -611,33 +582,7 @@
 					"    FROM odw_harmonised_db.casework_nsip_advice_dim;\r\n",
 					""
 				],
-				"execution_count": 34
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql \n",
-					"\n",
-					"SELECT count(*) FROM odw_harmonised_db.casework_nsip_advice_dim;\n",
-					"SELECT count(*) FROM odw_standardised_db.horizon_nsip_advice;\n",
-					""
-				],
-				"execution_count": 35
+				"execution_count": 62
 			}
 		]
 	}
