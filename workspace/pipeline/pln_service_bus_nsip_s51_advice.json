@@ -1,88 +1,14 @@
 {
-	"name": "pln_nsip_project_clean_slate",
+	"name": "pln_service_bus_nsip_s51_advice",
 	"properties": {
 		"activities": [
 			{
-				"name": "Delete horizon_nsip_data",
-				"description": "Deletes standardised table horizon_nsip_data",
-				"type": "SynapseNotebook",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_delete_table",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"db_name": {
-							"value": "odw_standardised_db",
-							"type": "string"
-						},
-						"table_name": {
-							"value": "horizon_nsip_data",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Delete casework_nsip_data_dim",
-				"description": "Deletes harmonised table casework_nsip_data_dim",
-				"type": "SynapseNotebook",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_delete_table",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"db_name": {
-							"value": "odw_harmonised_db",
-							"type": "string"
-						},
-						"table_name": {
-							"value": "casework_nsip_data_dim",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Create casework_nsip_data_dim",
-				"description": "Creates harmonised table casework_nsip_data_dim",
+				"name": "Raw to Std",
+				"description": "Ingests raw data into the standardised table",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Delete casework_nsip_data_dim",
+						"activity": "JSON to CSV",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -98,12 +24,26 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_odw_harmonised_table_creation",
+						"referenceName": "py_raw_to_std",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"specific_table": {
-							"value": "casework_nsip_data_dim",
+						"source_folder": {
+							"value": "ServiceBus",
+							"type": "string"
+						},
+						"source_frequency_folder": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
+							"type": "string"
+						},
+						"specific_file": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
 							"type": "string"
 						}
 					},
@@ -117,10 +57,17 @@
 				}
 			},
 			{
-				"name": "Delete nsip_project",
-				"description": "Deletes standardised table nsip_project",
+				"name": "Std to Hrm",
+				"description": "Ingests the standardised data into the harmonised table",
 				"type": "SynapseNotebook",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Raw to Std",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -131,16 +78,53 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_delete_table",
+						"referenceName": "casework_nsip_advice_dim",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "JSON to CSV",
+				"description": "Converts the messages stored in json format to csv format",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Src to Raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_service_bus_json_to_csv",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"db_name": {
-							"value": "odw_standardised_db",
+						"source_folder": {
+							"value": "ServiceBus",
 							"type": "string"
 						},
-						"table_name": {
-							"value": "nsip_project",
+						"source_frequency_folder": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
 							"type": "string"
 						}
 					},
@@ -152,10 +136,36 @@
 					},
 					"numExecutors": null
 				}
+			},
+			{
+				"name": "Src to Raw",
+				"description": "Triggers Function App to read messages from Service Bus and write to odw-raw",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_trigger_function_app",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"function_name": {
+							"value": "@variables('entity_name')",
+							"type": "Expression"
+						}
+					}
+				}
 			}
 		],
+		"variables": {
+			"entity_name": {
+				"type": "String",
+				"defaultValue": "nsip-s51-advice"
+			}
+		},
 		"folder": {
-			"name": "nsip project/utils"
+			"name": "nsip s51 advice"
 		},
 		"annotations": []
 	}
