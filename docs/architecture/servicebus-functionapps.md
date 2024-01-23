@@ -322,7 +322,7 @@ For reference, one issue we found when using datamodel-codegen to generate the p
 #### Removing a function
 
 1. In config.yaml, remove the entity
-2. IN function_app.py, remove the function, being careful not to delete part of any other function
+2. In function_app.py, remove the function, being careful not to delete part of any other function
 
 #### Deploy changes
 
