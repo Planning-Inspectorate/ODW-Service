@@ -6,7 +6,9 @@
 [Function app - how it works](#function-app---how-it-works)  
 [Dependencies](#dependencies)  
 [Pydantic and json schemas](#pydantic-and-json-schemas)  
-[Change process](#change-process)
+[Change process](#change-process)  
+[Unit tests](#unit-tests)  
+[Local setup](#local-setup)
 
 ## Functions folder structure
 
@@ -340,3 +342,48 @@ CURRENT_ENVIRONMENT = "dev"
 ```bash
 func azure functionapp publish $function_app_dev --subscription $subscription_dev
 ```
+## Unit tests
+
+A test file can be found here:  
+
+**functions/tests/test_http_calls.py**
+
+This contains tests for the function urls. The urls are listed and a separate test is executed for each url. The listed urls are the localhost urls for testing locally. Changing these to actual function urls will also work but bear in mind the function urls contain a function code appended to them and they're stored in KeyVault for this reason. These should not appear in code in Github. If you want a list of all the actual function urls you can extract those using this file **functions/helper/getfunctionurlsandsetkeyvaultsecrets.py**
+
+To run the tests, make sure you have your vitual environment activated and have installed the dependencies in requirements.txt, which includes pytest. In a terminal run the following command from the tests directory:  
+
+```bash
+python -m pytest -v test_http_calls.py -s --tb=line
+```
+The -s parameter prints out any print statement to the terminal and --tb=line makes sure only a simple one line traceback is printed in the pytest output.  
+
+## Local setup
+
+There is guidance online about setting up your device to work with Azure Functions locally. I will attempt to outline the main tasks here.  
+
+1. Read this guidance as the specifics are likely to change over time and it's best to follow official guideance where possible rather than my interpretation - [Azure Functions python developer guide](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference-python?tabs=asgi%2Capplication-level&pivots=python-mode-decorators)
+
+2. When using VS Code, open the functions folder in its own workspace. If the Azure Functions core tools detect more than one function_app.py in the workspace then it won't work properly. If you have more than one function app then each one must be opened in a different workspace. You can work on the code all in one workspace but the individual workspaces are needed for testing purposes.    
+
+3. Install the VS Code Azure extension. This will enable you to login and see resources in VS Code as shown here.  
+
+![](../../images/azure-extension.png)  
+
+4. If a function app is found in the workspace you'll see this in the bottom left in VS Code  
+
+![](../../images/functions-core-tools-debugging.png)  
+
+Which will then show the functions once it's debugged  
+
+![](../../images/functions-core-tools-list-functions.png)  
+
+5. Make sure to start the Azure storage emulator as per Microsoft guideance  
+
+6. Debugging will start a local function app emulator. Dependencies listed in requirements.txt will be installed to a virtual environment which gets created automatically for this purpose. The functions in the function app will then be listed in the terminal with the localhost urls.  
+
+![](../../images/functions-terminal-emulator.png)  
+
+7. You can then call these urls however you wish to test, e.g. using tests/test_http_calls as documented above in the Unit test section.  
+
+**NB: remember that the function app is running locally but any code that exists inside the functions will be run as normal, i.e. you make a GET request to the localhost url but the function code is still receiving Servicebus messages from a namespace in Azure. This is fine but bear in mind any permissions needed for your personal account to test what the function does.**
+
