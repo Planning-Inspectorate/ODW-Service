@@ -2,7 +2,7 @@
 
 [Functions folder structure](#functions-folder-structure)  
 [Description of code](#description-of-code)  
-[Process flow](#process-flow)
+[Process flow](#process-flow)  
 [Function app - how it works](#function-app---how-it-works)  
 [Dependencies](#dependencies)  
 [Pydantic and json schemas](#pydantic-and-json-schemas)  
