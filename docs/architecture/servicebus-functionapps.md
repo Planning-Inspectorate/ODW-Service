@@ -31,6 +31,7 @@ functions/
         config_test.ipynb
         servicebus_funcs.py
         set_environment.py
+        test_http_calls.py
         test.ipynb
         validate_messages.py
         validate_test.ipynb
