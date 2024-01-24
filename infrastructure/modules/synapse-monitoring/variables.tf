@@ -43,11 +43,6 @@ variable "environment" {
   type        = string
 }
 
-variable "function_app_id" {
-  description = "The ID of the Function App from which to collect diagnostic logs"
-  type        = string
-}
-
 variable "key_vault_id" {
   description = "The ID of the Key Vault from which to collect diagnostic logs"
   type        = string
