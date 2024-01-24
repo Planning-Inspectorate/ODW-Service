@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "18dc16dd-7622-48d9-b03d-aef722688f6a"
+				"spark.autotune.trackingId": "e115f751-908d-4b9d-927b-83f6efe5f928"
 			}
 		},
 		"metadata": {
@@ -383,7 +383,7 @@
 					"        df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str, sheet_name=sheet_name, na_filter=False)\n",
 					"    elif '.csv' in filename.lower():\n",
 					"        # df = pd.read_csv(f\"/synfs/{jobId}/temp_raw/{filename}\", quotechar='\"', escapechar='\\\\', encoding=\"utf8\", dtype=str, na_filter=False)\n",
-					"        df = spark.read.options(quote='\"', escape='\\\\', encoding='utf8', header=True).csv(f\"{folder_path}/{filename}\")\n",
+					"        df = spark.read.options(quote='\"', escape='\\\\', encoding='utf8', header=True, multiLine=True).csv(f\"{folder_path}/{filename}\")\n",
 					"        df = df.toPandas()\n",
 					"    elif '.json' in filename.lower():\n",
 					"        df = spark.read.json(f\"{folder_path}/{filename}\")\n",
@@ -402,7 +402,6 @@
 					"    sparkDF = sparkDF.withColumn(\"expected_from\",lit(expected_from))\n",
 					"    sparkDF = sparkDF.withColumn(\"expected_to\",lit(expected_to))\n",
 					"\n",
-					"                    \n",
 					"    schema = StructType.fromJson(json.loads(standardised_table_def_json))\n",
 					"    \n",
 					"    ### remove characters that Delta can't allow in headers and add numbers to repeated column headers\n",
@@ -417,6 +416,11 @@
 					"    for colix in range(len(cols_orig)):\n",
 					"        sparkDF = sparkDF.toDF(*newlist) \n",
 					"\n",
+					"    ### Cast any column in sparkDF with type mismatch into String\n",
+					"    for field in sparkDF.schema:\n",
+					"        table_field = next((f for f in schema if f.name == field.name), None)\n",
+					"        if table_field is not None and field.dataType != table_field.dataType:\n",
+					"            sparkDF = sparkDF.withColumn(field.name, col(field.name).cast(StringType()))\n",
 					"\n",
 					"    ### writing the dataframe to the existing standardised table\n",
 					"    sparkDF.write.option(\"mergeSchema\", \"true\").format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",

@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "01d90cdd-c82d-4cda-b42b-6d2e4f67d2dc"
+				"spark.autotune.trackingId": "e5451200-442d-44ac-9280-bd9fa0750c24"
 			}
 		},
 		"metadata": {
@@ -76,35 +76,36 @@
 					"        WHEN T3.casereference IS NULL\r\n",
 					"        THEN T1.ServiceDataID\r\n",
 					"        ELSE NULL\r\n",
-					"    END                             AS ServiceDataID, -- surrogate key\r\n",
-					"    T3.id                           AS TicketID,\r\n",
-					"    T3.casereference                AS CaseReference,\r\n",
-					"    T3.sourcesuid                   AS SUAreaID,\r\n",
-					"    T3.salutation                   AS Salutation,\r\n",
-					"    T3.firstname                    AS FirstName, \r\n",
-					"    T3.lastname                     AS LastName,\r\n",
-					"    T3.addressline1                 AS AddressLine1,\r\n",
-					"    T3.addressline2                 AS AddressLine2,\r\n",
-					"    T3.addresstown                  AS AddressTown,\r\n",
-					"    T3.addresscounty                AS AddressCounty,\r\n",
-					"    T3.postcode                     AS Postcode,\r\n",
-					"    'United Kingdom'                AS AddressCountry,\r\n",
-					"    T3.organisation                 AS Organisation,\r\n",
-					"    T3.organisationtype             AS OrganisationType,\r\n",
-					"    T3.serviceusertype              AS ServiceUserType,\r\n",
-					"    T3.role                         AS Role,\r\n",
-					"    T3.telephonenumber              AS TelephoneNumber,\r\n",
-					"    T3.otherphonenumber             AS OtherPhoneNumber,\r\n",
-					"    T3.faxnumber                    AS FaxNumber,\r\n",
-					"    T3.emailaddress                 AS EmailAddress,\r\n",
-					"    '1'                             AS Migrated,\r\n",
-					"    T3.sourcesystem                 AS ODTSourceSystem,\r\n",
-					"    T2.SourceSystemID               AS SourceSystemID, -- NOT CORRECT\r\n",
+					"    END                                 AS ServiceDataID, -- surrogate key\r\n",
+					"    T3.id                               AS ContactID,\r\n",
+					"    T3.casereference                    AS CaseReference,\r\n",
+					"    T3.sourcesuid                       AS SUAreaID,\r\n",
+					"    T3.salutation                       AS Salutation,\r\n",
+					"    T3.firstname                        AS FirstName, \r\n",
+					"    T3.lastname                         AS LastName,\r\n",
+					"    T3.addressline1                     AS AddressLine1,\r\n",
+					"    T3.addressline2                     AS AddressLine2,\r\n",
+					"    T3.addresstown                      AS AddressTown,\r\n",
+					"    T3.addresscounty                    AS AddressCounty,\r\n",
+					"    T3.postcode                         AS Postcode,\r\n",
+					"    'United Kingdom'                    AS AddressCountry,\r\n",
+					"    T3.organisation                     AS Organisation,\r\n",
+					"    T3.organisationtype                 AS OrganisationType,\r\n",
+					"    T3.serviceusertype                  AS ServiceUserType,\r\n",
+					"    T3.role                             AS Role,\r\n",
+					"    T3.telephonenumber                  AS TelephoneNumber,\r\n",
+					"    T3.otherphonenumber                 AS OtherPhoneNumber,\r\n",
+					"    T3.faxnumber                        AS FaxNumber,\r\n",
+					"    T3.emailaddress                     AS EmailAddress,\r\n",
+					"    '1'                                 AS Migrated,\r\n",
+					"    T3.sourcesystem                     AS ODTSourceSystem,\r\n",
+					"    T2.SourceSystemID                   AS SourceSystemID, -- NOT CORRECT\r\n",
 					"    to_timestamp(T3.ingested_datetime)  AS IngestionDate,\r\n",
 					"    NULL                                AS ValidTo,\r\n",
 					"    md5(\r\n",
 					"        concat(\r\n",
 					"            IFNULL(T3.casereference,'.'), \r\n",
+					"            IFNULL(T3.id, '.'),\r\n",
 					"            IFNULL(T3.firstname,'.'), \r\n",
 					"            IFNULL(T3.lastname,'.'), \r\n",
 					"            IFNULL(T3.emailaddress,'.'), \r\n",
@@ -118,9 +119,9 @@
 					"FROM odw_harmonised_db.service_user_dim T1\r\n",
 					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 \r\n",
 					"    ON T1.SourceSystemID = T2.SourceSystemID\r\n",
-					"FULL JOIN odw_standardised_db.horizon_service_user_new T3 \r\n",
+					"FULL JOIN odw_standardised_db.service_user T3 \r\n",
 					"    ON T1.CaseReference = T3.casereference\r\n",
-					"        AND T1.TicketID = T3.id\r\n",
+					"        AND T1.ContactID = T3.id\r\n",
 					"        AND T1.IsActive = 'Y'\r\n",
 					"\r\n",
 					"WHERE\r\n",
@@ -129,7 +130,8 @@
 					"            WHEN T3.casereference = T1.CaseReference \r\n",
 					"            AND md5(\r\n",
 					"                concat(\r\n",
-					"                    IFNULL(T3.casereference,'.'), \r\n",
+					"                    IFNULL(T3.casereference,'.'),\r\n",
+					"                    IFNULL(T3.id, '.'),\r\n",
 					"                    IFNULL(T3.firstname,'.'), \r\n",
 					"                    IFNULL(T3.lastname,'.'), \r\n",
 					"                    IFNULL(T3.emailaddress,'.'), \r\n",
@@ -144,36 +146,11 @@
 					"        END  = 'Y' )\r\n",
 					"    )\r\n",
 					"    AND T3.casereference IS NOT NULL\r\n",
-					"    AND T3.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_service_user_new)\r\n",
+					"    AND T3.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.service_user)\r\n",
 					";\r\n",
 					""
 				],
-				"execution_count": 1
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT count(*) FROM service_user_dim_new;\n",
-					"SELECT * FROM service_user_dim_new;"
-				],
-				"execution_count": 2
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -204,7 +181,7 @@
 					"\r\n",
 					"Select\r\n",
 					"    ServiceDataID,\r\n",
-					"    TicketID,\r\n",
+					"    ContactID,\r\n",
 					"    CaseReference,\r\n",
 					"    SUAreaID,\r\n",
 					"    Salutation,\r\n",
@@ -239,7 +216,7 @@
 					"\r\n",
 					"SELECT\r\n",
 					"    ServiceDataID,\r\n",
-					"    TicketID,\r\n",
+					"    ContactID,\r\n",
 					"    CaseReference,\r\n",
 					"    SUAreaID,\r\n",
 					"    Salutation,\r\n",
@@ -268,36 +245,11 @@
 					"    IsActive\r\n",
 					"FROM odw_harmonised_db.service_user_dim T1\r\n",
 					"WHERE CaseReference IN (SELECT CaseReference FROM service_user_dim_new WHERE ServiceDataID IS NULL) \r\n",
-					"    AND TicketID IN (SELECT TicketID FROM service_user_dim_new WHERE CaseReference = T1.CaseReference AND CaseReference IS NULL)\r\n",
+					"    AND ContactID IN (SELECT ContactID FROM service_user_dim_new WHERE CaseReference = T1.CaseReference AND CaseReference IS NULL)\r\n",
 					"    AND IsActive = 'Y'; \r\n",
 					""
 				],
-				"execution_count": 3
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT * FROM service_user_dim_changed_rows;\n",
-					"SELECT count(*) FROM service_user_dim_changed_rows"
-				],
-				"execution_count": 4
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -336,7 +288,7 @@
 					"\n",
 					"SELECT \n",
 					"    ServiceDataID,\n",
-					"    TicketID,\n",
+					"    ContactID,\n",
 					"    CaseReference,\n",
 					"    SUAreaID,\n",
 					"    Salutation,\n",
@@ -368,7 +320,25 @@
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive\n",
 					";"
 				],
-				"execution_count": 5
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"TokenLibrary"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -391,9 +361,10 @@
 					"\n",
 					"%%sql\n",
 					"\n",
-					"SELECT * FROM service_user_dim_changed_rows_final;"
+					"SELECT * FROM service_user_dim_changed_rows_final;\n",
+					""
 				],
-				"execution_count": 6
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -432,7 +403,7 @@
 					"-- Insert completely new rows\r\n",
 					"WHEN NOT MATCHED \r\n",
 					"    THEN INSERT (ServiceDataID,\r\n",
-					"        TicketID,\r\n",
+					"        ContactID,\r\n",
 					"        CaseReference,\r\n",
 					"        SUAreaID,\r\n",
 					"        Salutation,\r\n",
@@ -460,7 +431,7 @@
 					"        RowID,\r\n",
 					"        IsActive)  \r\n",
 					"        VALUES (Source.ServiceDataID,\r\n",
-					"        Source.TicketID,\r\n",
+					"        Source.ContactID,\r\n",
 					"        Source.CaseReference,\r\n",
 					"        Source.SUAreaID,\r\n",
 					"        Source.Salutation,\r\n",
@@ -489,7 +460,7 @@
 					"        Source.IsActive)\r\n",
 					";  "
 				],
-				"execution_count": 7
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -516,7 +487,7 @@
 					"\r\n",
 					"SELECT \r\n",
 					"    ROW_NUMBER() OVER (ORDER BY ServiceDataID NULLS LAST) AS ServiceDataID,\r\n",
-					"    TicketID,\r\n",
+					"    ContactID,\r\n",
 					"    CaseReference,\r\n",
 					"    SUAreaID,\r\n",
 					"    Salutation,\r\n",
@@ -546,7 +517,7 @@
 					"FROM odw_harmonised_db.service_user_dim;\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 10
 			}
 		]
 	}

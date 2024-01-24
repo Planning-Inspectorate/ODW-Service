@@ -3,173 +3,56 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Ingest Curated",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Legacy Harmonised",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "Ingest Harmonised",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "service_user",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Horizon to Raw",
-				"description": "Copies migration data from Horizon to odw-raw",
+				"name": "Hzn - Rel Reps",
+				"description": "Processes and ingests Relevant Reps data sourced by Horizon from raw layer up to the harmonised layer",
 				"type": "ExecutePipeline",
 				"dependsOn": [],
 				"userProperties": [],
 				"typeProperties": {
 					"pipeline": {
-						"referenceName": "0_Horizon_Service_User",
+						"referenceName": "pln_nsip_relevant_reps_main",
 						"type": "PipelineReference"
 					},
 					"waitOnCompletion": true
 				}
 			},
 			{
-				"name": "Ingest Std Legacy",
-				"description": "Ingests the raw migration data from Horizon to the standardised table i.e horizon_service_user",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Horizon to Raw",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_raw_to_std",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"source_folder": {
-							"value": "Horizon",
-							"type": "string"
-						},
-						"specific_file": {
-							"value": "CaseInvolvement",
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Legacy Harmonised",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Std Legacy",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "legacy_service_user_dim",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Harmonised",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Ingest Std",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "service_user_dim",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "Ingest Std",
-				"description": "Ingests raw data into the new standardised table i.e horizon_service_user_new",
-				"type": "SynapseNotebook",
+				"name": "SB - Service User",
+				"description": "Processes and ingests Service User data sourced by Service Bus from raw layer up to the harmonised layer",
+				"type": "ExecutePipeline",
 				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_service_bus_service_user",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "NSIP Applicant Service User Curated",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "SB - Service User",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "Hzn - Rel Reps",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "NSIP Project",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -180,22 +63,8 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_raw_to_std",
+						"referenceName": "nsip_applicant_service_user",
 						"type": "NotebookReference"
-					},
-					"parameters": {
-						"source_folder": {
-							"value": "ServiceBus",
-							"type": "string"
-						},
-						"source_frequency_folder": {
-							"value": "ServiceUser",
-							"type": "string"
-						},
-						"specific_file": {
-							"value": "ServiceUser",
-							"type": "string"
-						}
 					},
 					"snapshot": true,
 					"conf": {
@@ -204,6 +73,19 @@
 						"spark.dynamicAllocation.maxExecutors": null
 					},
 					"numExecutors": null
+				}
+			},
+			{
+				"name": "NSIP Project",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_nsip_project_main",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
 				}
 			}
 		],

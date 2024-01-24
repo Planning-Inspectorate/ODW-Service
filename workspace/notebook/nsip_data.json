@@ -1,0 +1,438 @@
+{
+	"name": "nsip_data",
+	"properties": {
+		"description": "please refer to the NSIP Entity Message Topic Requirements  documentation",
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "63faf9ee-1afa-46e7-9176-ef2ddf416e7d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Checking the Environment\n",
+					"#### If dev or test, limiting the number of output rows and anonymisation of the sensitive fields is required."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# from notebookutils import mssparkutils\n",
+					"# storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"# is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
+					"\n",
+					"# # limiting the number of output to 20 rows for dev environment\n",
+					"# max_limit = 20 if 'dev' in storage_account else 100000000\n",
+					"\n",
+					"# spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## View odw_curated_db.vw_nsip_data is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_data\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"\n",
+					"\tT1.ProjectName \t\t\t\t\t\t\t\t\t\t\tAS projectName,\n",
+					"\tLOWER(T1.Decision)  \t\t\t\t\t\t\t\t\tAS decision,\n",
+					"\tCASE WHEN LOWER(T1.ProjectStatus) = 'published' \n",
+					"\t\t THEN 'published'\n",
+					"\t\t ELSE 'unpublished'\n",
+					"\tEND\t\t\t\t\t\t\t\t\t\t\t\t\t\tAS publishStatus,\n",
+					"\tT1.ExamTimetablePublishStatus \t\t\t\t\t\t\tAS examTimetablePublishStatus,\n",
+					"\tT1.Sector \t\t\t\t\t\t\t\t\t\t\t\tAS sector,\n",
+					"\tT1.ProjectType \t\t\t\t\t\t\t\t\t\t\tAS projectType,\n",
+					"\tLOWER(REPLACE(REPLACE(T1.Stage,'-', '_'),' ', '_'))\t\tAS stage,\n",
+					"\tT1.CaseReference \t\t\t\t\t\t\t\t\t\tAS caseReference,\n",
+					"\tCAST(CASE WHEN T1.Migrated = '0' \n",
+					"\t\t THEN T1.CaseNodeID\n",
+					"\t\t ELSE T1.CaseID\n",
+					"\tEND\tAS INT)\t\t\t\t\t\t\t\t\t\t\t\tAS caseId,\n",
+					"\tT1.CaseNodeID\t\t\t\t\t\t\t\t\t\t\tAS caseNodeId,\n",
+					"\tT1.ProjectLocation \t\t\t\t\t\t\t\t\t\tAS projectLocation,\n",
+					"\tT1.ProjectEmailAddress \t\t\t\t\t\t\t\t\tAS projectEmailAddress,\n",
+					"\tLOWER(\n",
+					"\t\tREPLACE(\n",
+					"\t\t\tREPLACE(\n",
+					"\t\t\t\tREPLACE(T1.Region,' ', '_'),\n",
+					"\t\t\t'[', ''),\n",
+					"\t\t']', '')) \t\t\t\t\t\t\t\t\t\t\tAS region,\n",
+					"\tCAST(T1.Easting AS INT)\t\t\t\t\t\t\t\t\tAS easting,\n",
+					"\tCAST(T1.Northing AS INT)\t\t\t\t\t\t\t\tAS northing,\n",
+					"\tT1.Transboundary \t\t\t\t\t\t\t\t\t\tAS transboundary,\n",
+					"\tCASE WHEN T1.WelshLanguage = 'YES' \n",
+					"\t\t THEN TRUE\n",
+					"\t\t ELSE FALSE\n",
+					"\tEND\t\t\t\t\t\t\t\t\t\t\t\t\t\tAS welshLanguage,\n",
+					"\tLOWER(T1.MapZoomLevel) \t\t\t\t\t\t\t\t\tAS mapZoomLevel,\n",
+					"\tT1.Summary\t\t\t \t\t\t\t\t\t\t\t\tAS projectDescription,\n",
+					"\tT1.SoS \t\t\t\t\t\t\t\t\t\t\t\t\tAS secretaryOfState,\n",
+					"\tT1.DateProjectAppearsOnWebsite \t\t\t\t\t\t\tAS dateProjectAppearsOnWebsite,\n",
+					"\tT1.DateOfDCOAcceptance \t\t\t\t\t\t\t\t\tAS dateOfDCOAcceptance,\n",
+					"\tT1.AnticipatedDateOfSubmission \t\t\t\t\t\t\tAS anticipatedDateOfSubmission,\n",
+					"\tT1.AnticipatedSubmissionDateNonSpecific \t\t\t\tAS anticipatedSubmissionDateNonSpecific,\n",
+					"\tT1.DateOfDCOSubmission \t\t\t\t\t\t\t\t\tAS dateOfDCOSubmission,\n",
+					"\tT1.DateOfRepresentationPeriodOpen \t\t\t\t\t\tAS dateOfRepresentationPeriodOpen,\n",
+					"\tT1.DateOfRelevantRepresentationClose \t\t\t\t\tAS dateOfRelevantRepresentationClose,\n",
+					"\tT1.DateRRepAppearOnWebsite \t\t\t\t\t\t\t\tAS dateRRepAppearOnWebsite,\n",
+					"\tT1.ConfirmedStartOfExamination \t\t\t\t\t\t\tAS confirmedStartOfExamination,\n",
+					"\tT1.DateTimeExaminationEnds\t\t\t\t\t\t\t\tAS dateTimeExaminationEnds,\n",
+					"\tT1.Stage4ExtensionToExamCloseDate\t\t\t\t\t\tAS stage4ExtensionToExamCloseDate,\n",
+					"\tT1.Stage5ExtensionToRecommendationDeadline\t \t\t\tAS stage5ExtensionToRecommendationDeadline,\n",
+					"\tT1.DateOfRecommendations \t\t\t\t\t\t\t\tAS dateOfRecommendations,\n",
+					"\tT1.ConfirmedDateOfDecision \t\t\t\t\t\t\t\tAS confirmedDateOfDecision,\n",
+					"\tT1.Stage5ExtensionToDecisionDeadline \t\t\t\t\tAS stage5ExtensionToDecisionDeadline,\n",
+					"\tT1.DateProjectWithdrawn \t\t\t\t\t\t\t\tAS dateProjectWithdrawn,\n",
+					"\tT1.Section46Notification \t\t\t\t\t\t\t\tAS section46Notification,\n",
+					"\tT1.DatePINSFirstNotifiedOfProject \t\t\t\t\t\tAS datePINSFirstNotifiedOfProject,\n",
+					"\tT1.ScreeningOpinionSought \t\t\t\t\t\t\t\tAS screeningOpinionSought,\n",
+					"\tT1.ScreeningOpinionIssued \t\t\t\t\t\t\t\tAS screeningOpinionIssued,\n",
+					"\tT1.ScopingOpinionSought \t\t\t\t\t\t\t\tAS scopingOpinionSought,\n",
+					"\tT1.ScopingOpinionIssued \t\t\t\t\t\t\t\tAS scopingOpinionIssued,\n",
+					"\tT1.DeadlineForAcceptanceDecision \t\t\t\t\t\tAS deadlineForAcceptanceDecision,\n",
+					"\tT1.DateSection58NoticeReceived \t\t\t\t\t\t\tAS dateSection58NoticeReceived,\n",
+					"\tT1.PreliminaryMeetingStartDate \t\t\t\t\t\t\tAS preliminaryMeetingStartDate,\n",
+					"\tT1.DeadlineForCloseOfExamination \t\t\t\t\t\tAS deadlineForCloseOfExamination,\n",
+					"\tT1.DeadlineForSubmissionOfRecommendation \t\t\t\tAS deadlineForSubmissionOfRecommendation,\n",
+					"\tT1.DeadlineForDecision \t\t\t\t\t\t\t\t\tAS deadlineForDecision,\n",
+					"\tT1.JRPeriodEndDate \t\t\t\t\t\t\t\t\t\tAS jrPeriodEndDate,\n",
+					"\tT1.ExtensionToDateRelevantRepresentationsClose \t\t\tAS extensionToDateRelevantRepresentationsClose,\n",
+					"\tCASE\n",
+					"        WHEN T3.TypeOfInvolvement LIKE '%Operations%Lead%'\n",
+					"        THEN T3.ContactID\n",
+					"        ELSE NULL\n",
+					"    END \t\t\t\t\t\t\t\t\t\t\t\t\tAS operationsLeadID,\n",
+					"\tCASE\n",
+					"        WHEN T3.TypeOfInvolvement LIKE '%Operations%Manager%'\n",
+					"        THEN T3.ContactID\n",
+					"        ELSE NULL\n",
+					"    END \t\t\t\t\t\t\t\t\t\t\t\t\tAS operationsManagerID,\n",
+					"\tCASE\n",
+					"        WHEN T3.TypeOfInvolvement LIKE '%Case&Manager%'\n",
+					"        THEN T3.ContactID\n",
+					"        ELSE NULL\n",
+					"    END \t\t\t\t\t\t\t\t\t\t\t\t\tAS caseManagerID,\n",
+					"\tT1.NsipOfficerID \t\t\t\t\t\t\t\t\t\tAS nsipOfficerID,\n",
+					"\tT1.NsipAdministrationOfficerID \t\t\t\t\t\t\tAS nsipAdministrationOfficerID,\n",
+					"    '' \t\t\t\t\t\t\t\t\t\t\t\t\t    AS leadInspectorID,\n",
+					"    T1.InspectorID \t\t\t\t\t\t\t\t\t\t\tAS inspectorID, -- surrogate key\n",
+					"\t''\t\t\t\t\t\t\t\t\t\t\t\t\t    AS environmentalServicesOfficerID,\n",
+					"\t'' \t\t\t\t\t\t\t\t\t\t\t\t\t    AS legalOfficerID,\n",
+					"\tT1.DateOfNonAcceptance \t\t\t\t\t\t\t\t\tAS dateOfNonAcceptance,\n",
+					"\tT1.Rule6LetterPublishDate \t\t\t\t\t\t\t\tAS rule6LetterPublishDate,\n",
+					"\tT1.NotificationDateForPMAndEventsDirectlyFollowingPM \tAS notificationDateForPMAndEventsDirectlyFollowingPM,\n",
+					"\tT1.NotificationDateForEventsDeveloper \t\t\t\t\tAS notificationDateForEventsDeveloper,\n",
+					"\tT1.Rule8LetterPublishDate \t\t\t\t\t\t\t\tAS rule8LetterPublishDate,\n",
+					"\tLOWER(T1.ODTSourceSystem)\t\t\t\t\t\t\t\tAS sourceSystem\n",
+					"\n",
+					"FROM odw_harmonised_db.casework_nsip_data_dim T1\n",
+					"LEFT JOIN odw_harmonised_db.casework_inspector_cases_dim T2 \n",
+					"\tON T1.CaseReference=T2.CaseReference \n",
+					"\t\tAND T2.IsActive='Y'\n",
+					"LEFT JOIN odw_harmonised_db.casework_contact_information_dim T3\n",
+					"\tON  T1.ApplicantEmailAddress = T3.Email  \n",
+					"\t\tAND CAST(T1.CaseCreatedDate AS date) = CAST(T3.CaseCreatedDate AS date)\n",
+					"\t\tAND T3.IsActive='Y'\n",
+					"\n",
+					"-- LIMIT ${MAX_LIMIT}"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Table odw_curated_db.nsip_data is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE TABLE odw_curated_db.nsip_data\n",
+					"\n",
+					"USING delta\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT \t\t\t\t\t\t\t\t\n",
+					"    projectName,\t\t\t\t\t\t\t\t\t\t\n",
+					"    decision,\t\t\t\t\t\t\t\t\t\n",
+					"    publishStatus,\t\t\t\t\t\t\n",
+					"    examTimetablePublishStatus,\t\t\t\t\t\t\t\t\n",
+					"    sector,\t\t\t\t\t\t\t\t\n",
+					"    projectType,\t\t\t\t\t\t\t\t\t\t\n",
+					"    stage,\t\t\t\t\t\t\t\t\t\n",
+					"    caseReference,\t\t\t\t\t\t\t\t\t\t\n",
+					"    caseId,\t\t\t\t\n",
+					"    caseNodeId,\t\t\t\t\t\t\n",
+					"    projectLocation,\t\t\t\t\t\t\t\t\t\n",
+					"    projectEmailAddress,\t\t\t\t\t\t\t\t\t\n",
+					"    region,\t\t\t\t\t\t\t\t\t\t\n",
+					"    easting,\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    northing, \t\t\t\t\t\t\t\t\t\t\n",
+					"    transboundary,\t\t\t\t\t\t\t\t\t\t\n",
+					"    welshLanguage,\t\t\t\t\t\t\t\t\t\n",
+					"    mapZoomLevel,\t\t\t\t\t\t\t\t\t\n",
+					"    projectDescription,\t\t\t\t\t\t\t\t\t\n",
+					"    secretaryOfState,\t\t\t\t\t\t\n",
+					"    dateProjectAppearsOnWebsite,\t\t\t\t\t\t\t\n",
+					"    dateOfDCOAcceptance,\t\t\t\t\t\t\n",
+					"    anticipatedDateOfSubmission,\t\t\t\t\n",
+					"    anticipatedSubmissionDateNonSpecific,\t\t\t\t\n",
+					"    dateOfDCOSubmission,\t\t\t\t\t\t\n",
+					"    dateOfRepresentationPeriodOpen,\t\t\t\t\t\n",
+					"    dateOfRelevantRepresentationClose,\t\t\t\t\t\n",
+					"    dateRRepAppearOnWebsite,\t\t\t\t\t\n",
+					"    confirmedStartOfExamination,\t\t\t\t\t\t\n",
+					"    dateTimeExaminationEnds,\t\t\t\t\t\t\n",
+					"    stage4ExtensionToExamCloseDate,\t\t\t\n",
+					"    stage5ExtensionToRecommendationDeadline,\t\t\t\t\n",
+					"    dateOfRecommendations,\t\t\t\t\t\n",
+					"    confirmedDateOfDecision, \t\t\t\t\t\n",
+					"    stage5ExtensionToDecisionDeadline,\t\t\t\t\t\n",
+					"    dateProjectWithdrawn,\t\t\t\t\t\t\n",
+					"    section46Notification, \t\t\t\t\t\t\n",
+					"    datePINSFirstNotifiedOfProject,\t\t\t\t\t\t\n",
+					"    screeningOpinionSought,\t\t\t\t\t\t\t\n",
+					"    screeningOpinionIssued,\t\t\t\t\t\t\t\n",
+					"    scopingOpinionSought,\t\t\t\t\t\t\t\n",
+					"    scopingOpinionIssued,\t\t\t\t\t\t\n",
+					"    deadlineForAcceptanceDecision,\t\t\t\t\t\t\n",
+					"    dateSection58NoticeReceived,\t\t\t\t\t\t\n",
+					"    preliminaryMeetingStartDate,\t\t\t\t\t\t\n",
+					"    deadlineForCloseOfExamination,\t\t\t\t\n",
+					"    deadlineForSubmissionOfRecommendation,\t\t\t\t\n",
+					"    deadlineForDecision,\t\t\t\t\t\n",
+					"    jrPeriodEndDate,\t\t\t\n",
+					"    extensionToDateRelevantRepresentationsClose,\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    operationsLeadID,\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    operationsManagerID,\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    caseManagerID,\t\t\t\t\t\t\t\t\t\t\n",
+					"    nsipOfficerID,\t\t\t\t\t\t\n",
+					"    nsipAdministrationOfficerID,\t\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    leadInspectorID,\t\t\t\t\t\t\t\t\t\t\n",
+					"    inspectorID,\t\t\t\t\t\t\t\t\t\t\t\n",
+					"    environmentalServicesOfficerID,\t\t\t\t\t\t\n",
+					"    legalOfficerID,\t\t\t\t\t\t\t\n",
+					"    dateOfNonAcceptance,\t\t\t\t\t\t\t\t\n",
+					"    rule6LetterPublishDate,\t\n",
+					"    notificationDateForPMAndEventsDirectlyFollowingPM,\t\n",
+					"    notificationDateForEventsDeveloper,\t\t\t\t\t\n",
+					"    rule8LetterPublishDate,\n",
+					"    sourceSystem\n",
+					"    \n",
+					"FROM odw_curated_db.vw_nsip_data\n",
+					"\n",
+					"WHERE caseId IS NOT NULL;"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Install anonymisation library i.e Faker"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# %%pyspark\n",
+					"# pip install Faker"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Anonymisation of sensitive fields"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# if is_dev_or_test_env:\n",
+					"\n",
+					"#     import pandas as pd\n",
+					"#     import uuid\n",
+					"    \n",
+					"#     df = spark.sql(\"select * from odw_curated_db.nsip_data\").toPandas()\n",
+					"\n",
+					"#     if(len(df) > 0):\n",
+					"        \n",
+					"#         df['OperationsLeadID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['OperationsManagerID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['CaseManagerID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['NSIPAdministrationOfficerID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['LeadInspectorID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['InspectorID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['EnvironmentalServicesOfficerID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"#         df['LegalOfficerID'] = [str(uuid.uuid4()) for _ in range(len(df))]\n",
+					"\n",
+					"        \n",
+					"#         df = spark.createDataFrame(df)\n",
+					"\n",
+					"#         table_loc = \"abfss://odw-curated@\"+storage_account+'nsip_data'\n",
+					"#         df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
+				],
+				"execution_count": 21
+			}
+		]
+	}
+}
