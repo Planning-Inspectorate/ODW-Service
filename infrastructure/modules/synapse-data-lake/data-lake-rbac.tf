@@ -15,7 +15,8 @@ resource "azurerm_role_assignment" "terraform" {
 }
 
 resource "azurerm_role_assignment" "function_app" {
+  count                = length(var.function_app_identity)
   scope                = azurerm_storage_account.synapse.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = var.function_app_principal_id
+  principal_id         = var.function_app_identity[count.index].principal_id
 }
