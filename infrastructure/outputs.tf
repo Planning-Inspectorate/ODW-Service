@@ -33,11 +33,6 @@ output "devops_agent_pool_resource_group_name" {
   value       = var.failover_deployment ? module.devops_agent_pool_failover.resource_group_name : module.devops_agent_pool.resource_group_name
 }
 
-output "function_app_identities" {
-  description = "values of the function app managed identities"
-  value       = var.failover_deployment ? module.function_app_failover[*].identity : module.function_app[*].identity
-}
-
 output "key_vault_uri" {
   description = "The URI of the Key Vault"
   value       = var.failover_deployment ? module.synapse_data_lake_failover.key_vault_uri : module.synapse_data_lake.key_vault_uri
