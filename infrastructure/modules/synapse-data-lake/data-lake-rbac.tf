@@ -16,10 +16,9 @@ resource "azurerm_role_assignment" "terraform" {
 
 resource "azurerm_role_assignment" "function_app" {
   for_each = var.function_app_identity != null ? {
-    for identity in var.function_app_identity : identity.principal_id => identity
+    for identity in var.function_app_identity : identity => identity
   } : {}
 
   scope                = azurerm_storage_account.synapse.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = each.value.principal_id
-}
+  principal_id         = each.value
