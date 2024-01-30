@@ -35,7 +35,7 @@ output "devops_agent_pool_resource_group_name" {
 
 output "function_app_identities" {
   description = "values of the function app managed identities"
-  value       = var.failover_deployment ? module.function_app_failover.identity : module.function_app.identity
+  value       = var.failover_deployment ? module.function_app_failover[*].identity : module.function_app[*].identity
 }
 
 output "key_vault_uri" {
