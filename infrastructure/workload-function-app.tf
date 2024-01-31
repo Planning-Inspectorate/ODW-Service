@@ -134,6 +134,6 @@ resource "azurerm_role_assignment" "servicebus_receiver" {
   for_each = var.odt_back_office_service_bus_enabled ? one(module.odt_backoffice_sb).subscription_ids : {}
 
   scope                = each.value
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = module.function_app[each.key].identity[0].principal_id
+  role_definition_name = "Azure Service Bus Data Receiver" 
+  principal_id         = var.failover_deployment ? module.function_app_failover[0].identity[0].principal_id : module.function_app[0].identity[0].principal_id
 }
