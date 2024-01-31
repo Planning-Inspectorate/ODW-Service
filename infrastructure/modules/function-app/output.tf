@@ -20,5 +20,5 @@ output "hostname" {
 
 output "identity" {
   description = "Identity block function app managed identity"
-  value       = azurerm_linux_function_app[*].function.identity
+  value       = azurerm_linux_function_app.function[*].identity
 }
