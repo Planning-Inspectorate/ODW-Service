@@ -135,5 +135,5 @@ resource "azurerm_role_assignment" "servicebus_receiver" {
 
   scope                = each.value
   role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = module.function_app[*].identity.principal_id
+  principal_id         = module.function_app[fnapp01].identity.principal_id
 }
