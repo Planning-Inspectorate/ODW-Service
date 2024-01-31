@@ -20,10 +20,5 @@ output "hostname" {
 
 output "identity" {
   description = "Identity block function app managed identity"
-  value       = azurerm_linux_function_app.function.identity
-}
-
-output "principal_ids" {
-  description = "List of principal IDs"
-  value       = azurerm_linux_function_app.function.identity[*].principal_id
+  value       = azurerm_linux_function_app[*].function.identity
 }
