@@ -1,0 +1,654 @@
+{
+	"name": "0_Horizon_Service_User_WithLogging",
+	"properties": {
+		"description": "Pipeline to ingest service user information into Raw",
+		"activities": [
+			{
+				"name": "HZN_Case_Involvement",
+				"description": "This is getting the case involvement information using a SQL query. The purpose of this data is to be used in conjunction with Zendesk data for the Service User entity",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Log_Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [
+					{
+						"name": "Source",
+						"value": "dbo.Horizon_CaseReference"
+					},
+					{
+						"name": "Destination",
+						"value": "odw-raw/@{concat('Horizon', '/', formatDateTime(utcnow(), 'yyyy-MM-dd'))}/@{'<FileName>'}"
+					}
+				],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH cases AS\n(\nSELECT DISTINCT\n      cases.CaseNodeId, \n\t  dtree.SubType,  \n\t  cases.CaseReference, \n\t  cases.CaseUniqueId \t\t\t\t\t\tAS case_number\n      \nFROM\n      Horizon_CaseReference cases\n      INNER JOIN DTree dtree \t\t\tON cases.CaseNodeId = dtree.DataID\n      INNER JOIN Horizon_TypeOfCase t \tON cases.CaseTypeId = t.ID\nWHERE\n\t  dtree.OwnerID != '-235834' \t-- Recycle bin ownerid\n)\n,\ncase_involvement(DataId, ContactID, ContactDetails, TypeOfInvolvement) AS\n       (SELECT DISTINCT d.DataId AS DataId, ll1.ValStr AS [ContactID], ll2.ValStr AS [ContactDetails], ll3.ValStr AS [TypeOfInvolvement]\n       FROM DTree d\n\t\t   INNER JOIN llattrdata ll1 ON d.DataId = ll1.Id\n\t\t   INNER JOIN llattrdata ll2 ON d.DataId = ll2.Id\n\t\t   INNER JOIN llattrdata ll3 ON d.DataId = ll3.Id\n       WHERE\n\t\t   ll1.DefId = 95501 AND ll1.AttrId = 20\n\t\t   AND ll2.DefId = 95501 AND ll2.AttrId = 19\n\t\t   AND ll3.DefId = 95501 AND ll3.AttrId = 3 \n\t\t   AND ll1.ParentKeyId = ll2.ParentKeyId\n\t\t   AND ll1.ParentKeyId = ll3.ParentKeyId)\n\nSELECT\n\tcr.case_number,\n\tD.CreateDate as case_created_date,\n\tci.ContactID,\n\tci.TypeOfInvolvement,\n\tv.ContactType,\n\tv.FirstName,\n\tv.LastName,\n\tv.PostName,\n\tv.Title,\n\tv.Salutation,\n\tv.Suffix,\n\tv.POBox,\n\tv.Address1,\n\tv.Address2,\n\tv.City,\n\tv.County,\n\tv.Postcode,\n\tv.Country,\n\tv.TelephoneOffice,\n\tv.TelephoneMobile,\n\tv.Fax,\n\tv.Email,\n\tv.LPACode,\n\tv.OrganisationName,\n\tt.OrganisationTypeName\nFROM \n\tcases cr WITH (NOLOCK)\n\t\tINNER JOIN DTree D  WITH (NOLOCK) ON cr.CaseNodeId = D.DataID\n\t\tINNER JOIN case_involvement ci on D.DataID = ci.DataId\n\t\tLEFT JOIN [dbo].[Horizon_vw_AllContacts] v on ci.ContactID =v.Id\n\t\tLEFT JOIN Contacts_OrganisationType t on v.OrganisationTypeID = t.ID",
+						"queryTimeout": "02:00:00",
+						"isolationLevel": "ReadCommitted",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "case_number",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "case_number",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "case_created_date",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "case_created_date",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ContactID",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ContactID",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TypeOfInvolvement",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TypeOfInvolvement",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ContactType",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ContactType",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FirstName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "FirstName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LastName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "LastName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "PostName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "PostName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Title",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Title",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Salutation",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Salutation",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Suffix",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Suffix",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "POBox",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "POBox",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Address1",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Address1",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Address2",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Address2",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "City",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "City",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "County",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "County",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Postcode",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Postcode",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Country",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Country",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TelephoneOffice",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TelephoneOffice",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TelephoneMobile",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TelephoneMobile",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Fax",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Fax",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Email",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "Email",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LPACode",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "LPACode",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OrganisationName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "OrganisationName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OrganisationTypeName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "OrganisationTypeName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "AzureSqlTable2",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Horizon_Case_Involvement",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileName": "CaseInvolvement.csv"
+						}
+					}
+				]
+			},
+			{
+				"name": "Logging Failed Activities",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_fail_activity_logging",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"output": {
+							"value": {
+								"value": "@activity('Case_Involvement_Data_Copy_Failure').output.message",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": false,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Log_Start",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[logging].[INSERT_LOGS]",
+						"storedProcedureParameters": {
+							"Deletes": {
+								"type": "Int32",
+								"value": null
+							},
+							"DurationSeconds": {
+								"type": "Int32",
+								"value": null
+							},
+							"EndTime": {
+								"type": "DateTime",
+								"value": null
+							},
+							"ErrorMessage": {
+								"type": "String",
+								"value": null
+							},
+							"Inserts": {
+								"type": "Int32",
+								"value": null
+							},
+							"PipelineName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							},
+							"PipelineRunID": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"StartTime": {
+								"type": "DateTime",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"StatusMessage": {
+								"type": "String",
+								"value": null
+							},
+							"Updates": {
+								"type": "Int32",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Azure_Sql_LogTable",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Success_Logs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "HZN_Case_Involvement",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[logging].[UPDATE_LOGS]",
+					"storedProcedureParameters": {
+						"Deletes": {
+							"value": null,
+							"type": "Int32"
+						},
+						"DurationSeconds": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.copyDuration",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"EndTime": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"ErrorMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"Inserts": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"LogId": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.firstRow.LogId",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"StatusMessage": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.exectuionDetails[0].status",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Updates": {
+							"value": null,
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_LogDB_Dev",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Failed_Logs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "HZN_Case_Involvement",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[logging].[UPDATE_LOGS]",
+					"storedProcedureParameters": {
+						"Deletes": {
+							"value": null,
+							"type": "Int32"
+						},
+						"DurationSeconds": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.copyDuration",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"EndTime": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"ErrorMessage": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.errors[0].Message",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Inserts": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.rowsRead",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"LogId": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.fristRow.LogId",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"StatusMessage": {
+							"value": {
+								"value": "@activity('HZN_Case_Involvement').output.excutionDetails[0].status",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Updates": {
+							"value": null,
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_LogDB_Dev",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "service user/layers/0-raw"
+		},
+		"annotations": []
+	}
+}
