@@ -8,9 +8,16 @@
 [Pydantic and json schemas](#pydantic-and-json-schemas)  
 [Change process](#change-process)  
 [Unit tests](#unit-tests)  
-[Local setup](#local-setup)
+[Deployment](#deployment)  
+[Local setup](#local-setup)  
+[Terraform](#terraform)  
+[Function App Permissions](#function-app-permissions)  
+[Issues](#issues)
 
 ## Functions folder structure
+
+Source code Github location:  
+https://github.com/Planning-Inspectorate/ODW-Service/tree/main/functions
 
 ```bash
 functions/
@@ -358,6 +365,84 @@ python -m pytest -v test_http_calls.py -s --tb=line
 ```
 The -s parameter prints out any print statement to the terminal and --tb=line makes sure only a simple one line traceback is printed in the pytest output.  
 
+## Deployment
+
+An Azure DevOps pipeline has been created to deploy function app code to the existing function app in Azure.  
+
+Pipeline: [function-app-deploy Azure DevOps](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170)  
+
+The pipeline essentially performs a few simple steps outlined below. The full code can be found at the link above in Azure DevOps or in Github here - [function-app-deploy Github](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/pipelines/function_app_deploy.yaml)
+
+1. Create an archive zip file of the code to deploy to the function app  
+
+```yaml
+# Switch to functions directory and create a file containing a list of all files in the top level folder.
+  - script: |
+
+      cd $(Build.SourcesDirectory)/functions
+      find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+
+    displayName: 'Creating top level files list'
+
+# Create a zip file of all the files in the filelist.
+  - script: |
+
+        cd $(Build.SourcesDirectory)/functions
+        cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
+
+    displayName: 'Archive top level files'
+```
+
+2. Publish the zip file as an artifact to be used further in the pipeline  
+
+```yaml
+# Publish the zip file as an artifact to be used further in the pipeline.
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish build artifact'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'FunctionCode'
+```
+
+3. Download the zip file artifact and deploy it to the function app  
+
+```yaml
+# Job to deploy the zip file to an existing Azure Function App.
+- job: DeployToAzureFunctions
+  displayName: 'Deploy to Azure Functions'
+  dependsOn: BuildAndPackage
+  
+  steps:
+
+# Download the artifact first - the zip file.
+  - task: DownloadBuildArtifacts@1
+    displayName: 'Download build artifact'
+    inputs:
+      buildType: 'current'
+      artifactName: 'FunctionCode'
+      downloadPath: '$(System.ArtifactsDirectory)'
+
+# Use the Azure CLI to deploy the zip file to the Function App in Azure.
+  - task: AzureCLI@2
+    displayName: 'Deploy to function app'
+    inputs:
+      azureSubscription: '$(armServiceConnectionName)'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)
+```
+
+This pipeline is triggered by any change to the function app code in the **functions** top level folder that gets merged with the main branch. The pipeline currently deploys to Dev only but will be changed soon to sequentially deploy to Test and Prod as well.  
+
+To run the pipeline manually just go to Azure DevOps here [function-app-deploy](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170&_a=summary) and click **Run pipeline**.  
+
+![](../../images/function-app-deploy-run-manually.png)  
+
+Select the branch you want to run from and the environment. When testing this would be your feature branch but otherwise the main branch. This may change once it's amended to deploy to 3 environments sequentially.  
+
+![](../../images/function-app-deploy-run-parameters.png)
+
 ## Local setup
 
 There is guidance online about setting up your device to work with Azure Functions locally. I will attempt to outline the main tasks here.  
@@ -386,5 +471,57 @@ Which will then show the functions once it's debugged
 
 7. You can then call these urls however you wish to test, e.g. using tests/test_http_calls as documented above in the Unit test section.  
 
-**NB: remember that the function app is running locally but any code that exists inside the functions will be run as normal, i.e. you make a GET request to the localhost url but the function code is still receiving Servicebus messages from a namespace in Azure. This is fine but bear in mind any permissions needed for your personal account to test what the function does.**
+**NB: remember that the function app is running locally but any code that exists inside the functions will be run as normal, i.e. you make a GET request to the localhost url but the function code is still receiving Servicebus messages from a namespace in Azure. This is fine but bear in mind any permissions needed for your personal account to test what the function does.**  
 
+## Terraform
+
+The function app, like any other infrastructure, is created using Terraform. The function app Terraform code can be found in Github here:  
+
+[Function app Terraform code](https://github.com/Planning-Inspectorate/ODW-Service/tree/main/infrastructure/modules/function-app)
+
+## Function App Permissions
+
+There are some permissions needed by the function app to work. These are outlined below.  
+
+1. A system assigned managed identity is created for the function app when it is created by Terraform. The Dev identity looks like this.  
+
+![](../../images/function-app-managed-identity-dev.png)  
+
+2. The app is then granted **Storage Blob Data Contributor** role on the storage account where it is writing data to the RAW layer. This is the account used by Synapse.
+
+    Account (Dev): pinsstodwdevuks9h80mb  
+
+![](../../images/function-app-storage-role.png)  
+
+3. The app is then granted **Azure Service Bus Data Receiver** role on the Service Bus namespace which it needs to read data from. In this case it's the ODT namespace.  
+
+    Namespace: pins-sb-back-office-dev-ukw-001  
+
+![](../../images/function-app-servicebus-role.png)  
+
+## User permissions
+
+**Azure Devops**
+
+In Azure DevOps you need to be added to the following group:  
+
+Project: operational-data-warehouse  
+Team: operational-data-warehouse Team
+
+**Azure**
+
+In Azure, standard data engineer permissions should suffice. Deployment of changes are done via an Azure DevOps pipeline so you should not need to run deployments from your own device. Testing the function app locally is covered under the local setup section.  
+
+## Issues
+
+One issue you may come across is if you deploy the function app code using different deployment methods to the same function app. The current app code has been deployed using zip deploy via the Azure DevOps pipeline using an Azure CLI script, as shown below.  
+
+```bash
+az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)
+```
+
+If you try to deploy using an Azure DevOps pipeline task, i.e. AzureFunctionApp@2, this may cause an issue where the functions become disabled and will no longer be visible in the portal and will not be able to be called via a GET request.  
+
+[AzureFunctionApp@2](https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/azure-function-app-v2?view=azure-pipelines)  
+
+Therefore it is best to stick to the same deployment method for an existing app. Documentation from Microsoft is available online for various situations that you may come across in this case.  
