@@ -16,11 +16,11 @@ locals {
   synapse_subnet_name     = "SynapseEndpointSubnet"
 
   function_app_principal_ids = {
-    for function_app in var.function_app : function_app.name => function_app.identity[0].principal_id if var.function_app_enabled == true
+    for function_app in var.function_app : function_app.name => function_app.principal_id if var.function_app_enabled == true
   }
 
   function_app_principal_ids_failover = {
-    for function_app in var.function_app : function_app.name => function_app.identity[0].principal_id if var.function_app_enabled && var.failover_deployment == true
+    for function_app in var.function_app : function_app.name => function_app.principal_id if var.function_app_enabled && var.failover_deployment == true
   }
 
   tags = merge(
