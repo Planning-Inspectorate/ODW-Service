@@ -15,14 +15,6 @@ locals {
   functionapp_subnet_name = "FunctionAppSubnet"
   synapse_subnet_name     = "SynapseEndpointSubnet"
 
-  function_app_principal_ids = {
-    for function_app in var.function_app : function_app.name => function_app.principal_id if var.function_app_enabled == true
-  }
-
-  function_app_principal_ids_failover = {
-    for function_app in var.function_app : function_app.name => function_app.principal_id if var.function_app_enabled && var.failover_deployment == true
-  }
-
   tags = merge(
     var.tags,
     {
