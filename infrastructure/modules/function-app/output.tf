@@ -25,5 +25,5 @@ output "identity" {
 
 output "principal_ids" {
   description = "List of principal IDs"
-  value       = azurerm_linux_function_app.function.identity[0].principal_id
+  value       = azurerm_linux_function_app.function.identity[*].principal_id
 }
