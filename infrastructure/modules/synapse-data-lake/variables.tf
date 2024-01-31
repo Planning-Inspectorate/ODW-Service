@@ -74,8 +74,8 @@ variable "firewall_allowed_ip_addresses" {
   type        = list(string)
 }
 
-variable "function_app_identity" {
-  description = "The identity block for the function app managed identity"
+variable "function_app_principal_id" {
+  description = "The principal ID of the function app identity"
   type        = any
 }
 
