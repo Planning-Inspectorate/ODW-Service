@@ -75,6 +75,7 @@ output "synapse_workspace_name" {
 }
 
 output "function_app_principal_id" {
+  description = "value of the function app principal id"
   value = {
     for key, function_app in module.function_app :
     function_app.name => function_app.identity_principal_id
