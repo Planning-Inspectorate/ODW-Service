@@ -74,10 +74,10 @@ variable "firewall_allowed_ip_addresses" {
   type        = list(string)
 }
 
-# variable "function_app_principal_id" {
-#   description = "The principal ID of the function app identity"
-#   type        = any
-# }
+variable "function_app_principal_ids" {
+  description = "The principal ID's of the function app identity"
+  type        = any
+}
 
 variable "function_app_subnet_name" {
   default     = "FunctionAppSubnet"

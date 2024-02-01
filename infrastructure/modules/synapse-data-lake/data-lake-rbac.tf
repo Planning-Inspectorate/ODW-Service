@@ -14,12 +14,12 @@ resource "azurerm_role_assignment" "terraform" {
   principal_id         = data.azurerm_client_config.current.object_id
 }
 
-# resource "azurerm_role_assignment" "function_app" {
-#   for_each = {
-#     for key, principal_id in var.function_app_principal_id : key => principal_id
-#   }
+resource "azurerm_role_assignment" "function_app" {
+  for_each = {
+    for k, v in var.function_app_principal_ids : k => v
+  }
 
-#   scope                = azurerm_storage_account.synapse.id
-#   role_definition_name = "Storage Blob Data Contributor"
-#   principal_id         = each.value.principal_id
-# }
+  scope                = azurerm_storage_account.synapse.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = each.value
+}
