@@ -74,9 +74,9 @@ output "synapse_workspace_name" {
   value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_workspace_name : module.synapse_workspace_private.synapse_workspace_name
 }
 
-output "function_app_identity" {
+output "function_app_prinicpal_ids" {
   description = "value of the function app principal id"
   value = {
-    for function_app in module.function_app : function_app.name => function_app.identity
+    for function_app in module.function_app : function_app.name => function_app.identity.principal_id
   }
 }
