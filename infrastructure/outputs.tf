@@ -76,5 +76,5 @@ output "synapse_workspace_name" {
 
 output "function_app_principal_ids" {
   description = "The principal IDs of the function app identities"
-  value       = module.function_app.identity
+  value       = var.failover_deployment ? module.function_app_failover[*].function_app_principal_id : module.function_app[*].function_app_principal_id
 }
