@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7ed439b4-3a03-4edd-9bc7-4d3f3f5c9fe7"
+				"spark.autotune.trackingId": "3eab96c1-a932-4eb4-aa6b-b4d8dff89710"
 			}
 		},
 		"metadata": {
@@ -76,7 +76,10 @@
 					"import pandas\r\n",
 					"import json\r\n",
 					"from collections import defaultdict\r\n",
-					"import pprint"
+					"import pprint\r\n",
+					"from jsonschema import validate, FormatChecker, ValidationError\r\n",
+					"from iso8601 import parse_date, ParseError\r\n",
+					"from pins_data_model import load_schemas"
 				],
 				"execution_count": null
 			},
@@ -98,7 +101,7 @@
 				},
 				"source": [
 					"%%pyspark\r\n",
-					"df = spark.sql(\"SELECT * FROM `odw_curated_db`.`nsip_s51_advice`\")"
+					"df = spark.sql(\"SELECT * FROM `odw_curated_db`.`nsip_s51_advice` WHERE caseReference in ('BC010006', 'BC020002') order by caseReference asc\")"
 				],
 				"execution_count": null
 			},
@@ -116,8 +119,9 @@
 					}
 				},
 				"source": [
-					"data = df.toPandas()\r\n",
-					"data.head(10)"
+					"data = df.toPandas().drop(columns=[\"enquiryDetails\", \"adviceDetails\"])\r\n",
+					"data.rename(columns={\"attachmentIds\": \"attachmentId\"}, inplace=True)\r\n",
+					"data.head(5)"
 				],
 				"execution_count": null
 			},
@@ -137,18 +141,33 @@
 				"source": [
 					"data_dict = defaultdict(dict)\r\n",
 					"\r\n",
+					"array_fields_to_exclude = [\"attachmentId\"]\r\n",
+					"\r\n",
 					"for index, row in data.iterrows():\r\n",
 					"    caseReference = row[\"caseReference\"]\r\n",
+					"\r\n",
 					"    if caseReference not in data_dict:\r\n",
-					"        data_dict[caseReference] = defaultdict(dict)\r\n",
-					"    for column, value in row.items():\r\n",
-					"        data_dict[caseReference][column] = value\r\n",
+					"\r\n",
+					"        data_dict[caseReference][\"attachmentIds\"] = []\r\n",
+					"\r\n",
+					"        for column, value in row.items():\r\n",
+					"            if column in array_fields_to_exclude:\r\n",
+					"                continue\r\n",
+					"            data_dict[caseReference][column] = value\r\n",
+					"\r\n",
+					"    attachments = data_dict[caseReference][\"attachmentIds\"]\r\n",
+					"    new_attachment = row[\"attachmentId\"]\r\n",
+					"    if new_attachment not in attachments:\r\n",
+					"        attachments.append(new_attachment)\r\n",
+					"\r\n",
+					"\r\n",
+					"# pprint.pprint(data_dict)\r\n",
 					"\r\n",
 					"final_dict = {key: dict(value) for key, value in data_dict.items()}\r\n",
 					"\r\n",
-					"json_object = final_dict.values()\r\n",
+					"dict_to_compare = list(final_dict.values())\r\n",
 					"\r\n",
-					"pprint.pprint(json_object)"
+					"pprint.pprint(dict_to_compare)"
 				],
 				"execution_count": null
 			}
