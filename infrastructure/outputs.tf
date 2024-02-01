@@ -76,5 +76,5 @@ output "synapse_workspace_name" {
 
 output "function_app_principal_ids" {
   description = "The principal IDs of the function app identities"
-  value       = module.function_app[*].principal_ids
+  value       = module.function_app.principal_ids
 }
