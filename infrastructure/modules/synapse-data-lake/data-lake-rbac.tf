@@ -16,7 +16,7 @@ resource "azurerm_role_assignment" "terraform" {
 
 resource "azurerm_role_assignment" "function_app" {
   for_each = {
-    for key, principal_id in module.function_app.principal_ids : key => principal_id
+    for key, principal_id in var.function_app_principal_id : key => principal_id
   }
 
   scope                = azurerm_storage_account.synapse.id
