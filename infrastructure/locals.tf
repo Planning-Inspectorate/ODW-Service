@@ -15,6 +15,10 @@ locals {
   functionapp_subnet_name = "FunctionAppSubnet"
   synapse_subnet_name     = "SynapseEndpointSubnet"
 
+  function_app_prinicpal_ids = {
+    for function_app in module.function_app : function_app.name => function_app.identity[0].principal_id
+  }
+
   tags = merge(
     var.tags,
     {
