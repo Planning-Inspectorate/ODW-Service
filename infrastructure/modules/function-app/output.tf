@@ -25,7 +25,7 @@ output "identity" {
 
 output "principal_ids" {
   value = {
-    for key, principal_id in azurerm_linux_function_app.function : function_app.name => function_app.identity[0].principal_id
+    for key, principal_id in azurerm_linux_function_app.function : key => function_app.identity[0].principal_id
   }
   description = "Principal ids of the function app"
 }
