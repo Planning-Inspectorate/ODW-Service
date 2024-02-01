@@ -58,7 +58,7 @@ module "synapse_monitoring_failover" {
   alert_scope_service_health               = var.alert_scope_service_health
   alert_threshold_data_lake_capacity_bytes = var.alert_threshold_data_lake_capacity_bytes
   data_lake_account_id                     = module.synapse_data_lake_failover.data_lake_account_id
-  key_vault_id                             = module.synapse_data_lake_failover.key_vault_idid
+  key_vault_id                             = module.synapse_data_lake_failover.key_vault_id
   service_bus_namespace_id                 = module.synapse_ingestion_failover[0].service_bus_namespace_id
   spark_pool_enabled                       = var.spark_pool_enabled
   sql_pool_enabled                         = var.sql_pool_enabled
