@@ -22,10 +22,3 @@ output "identity" {
   description = "Identity block function app managed identity"
   value       = azurerm_linux_function_app.function.identity
 }
-
-output "principal_ids" {
-  value = {
-    for key, function_app in azurerm_linux_function_app.function.identity : key => function_app.principal_id
-  }
-  description = "Principal ids of the function app"
-}
