@@ -64,7 +64,7 @@ module "synapse_data_lake_failover" {
   data_lake_storage_containers           = var.data_lake_storage_containers
   devops_agent_subnet_name               = module.synapse_network_failover.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
-  function_app_principal_id              = module.function_app_failover.principal_ids
+  function_app_principal_id              = try(module.function_app_failover.principal_ids, {})
   key_vault_role_assignments             = var.key_vault_role_assignments
   network_resource_group_name            = azurerm_resource_group.network_failover.name
   synapse_private_endpoint_subnet_name   = module.synapse_network_failover.synapse_private_endpoint_subnet_name
