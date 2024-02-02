@@ -85,5 +85,13 @@ locals {
     ])
   ))
 
-  function_app_subscriptions = { for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name => merge(var.function_app_principal_ids, v) }
+  function_app_subscriptions = flatten([
+    for function_app, principal_id in var.function_app_principal_ids : [
+      for subscription in local.odt_backoffice_sb_subscriptions : {
+        function_app_name = function_app
+        subscription_name = subscription.value.subscription_name
+        principal_id      = principal_id
+      }
+    ]
+  ])
 }
