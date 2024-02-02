@@ -135,5 +135,4 @@ module "function_app_failover" {
 
 #   scope                = each.value
 #   role_definition_name = "Azure Service Bus Data Receiver"
-#   principal_id         = [for k, v in local.function_app_prinicpal_ids : v]
-# }
+#   principal_id         = module.function_app[each.key].identity[0].principal_id

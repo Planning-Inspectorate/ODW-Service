@@ -84,4 +84,10 @@ locals {
       ]
     ])
   ))
+
+  function_app_principal_ids = flatten([
+  for v in var.function_app_principal_ids : [
+    for principal in v : principal
+  ]
+  ])
 }

@@ -17,10 +17,20 @@ resource "azurerm_servicebus_subscription" "odt_backoffice_subscriptions" {
 
 resource "azurerm_role_assignment" "odt_backoffice_sb_subscription_role_assignments" {
   for_each = {
-    for assignment in local.odt_backoffice_sb_roles : "${assignment.role_definition_name}.${assignment.principal_id}.${assignment.subscription_name}" => assignment
+    for assignment in local.odt_backoffice_sb_roles : "${assignment.role_definition_name}.${assignment.principal_id}.${assignment.subscription_name}" => assignment 
   }
 
   scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.value.subscription_name].id
   role_definition_name = each.value.role_definition_name
   principal_id         = each.value.principal_id
+}
+
+resource "azurerm_role_assignment" "odt_backoffice_sb_topic_role_assignments" {
+  for_each = {
+    for assignment in local.odt_backoffice_sb_roles : "${assignment.subscription_name}" => assignment 
+  }
+
+  scope                = azurerm_servicebus_topic.odt_backoffice_topics[each.value.subscription_name].id
+  role_definition_name = "Azure Service Bus Data Receiver"
+  principal_id         = local.function_app_principal_ids
 }
