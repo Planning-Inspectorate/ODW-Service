@@ -90,7 +90,7 @@ locals {
   function_app_subscriptions = flatten([
     for subscription_name in local.odt_backoffice_sb_subscription_names : [
       for function_app, principal_id in var.function_app_principal_ids : {
-        subscription_name = subscription
+        subscription_name = subscription_name
         principal_id      = principal_id
       }
     ]
