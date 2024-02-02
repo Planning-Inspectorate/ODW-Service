@@ -89,7 +89,7 @@ locals {
     for function_app, principal_id in var.function_app_principal_ids : [
       for subscription in local.odt_backoffice_sb_subscriptions : {
         function_app_name = function_app
-        subscription_name = subscription.value.subscription_name
+        subscription_name = subscription
         principal_id      = principal_id
       }
     ]
