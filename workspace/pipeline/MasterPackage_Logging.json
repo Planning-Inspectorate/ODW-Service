@@ -25,7 +25,14 @@
 			{
 				"name": "Log_Start",
 				"type": "Lookup",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set_StartTime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -121,7 +128,10 @@
 							},
 							"StartTime1": {
 								"type": "String",
-								"value": null
+								"value": {
+									"value": "@{formatDateTime(variables('StartTime'),'yyyy-MM-dd HH:mm:ss')}",
+									"type": "Expression"
+								}
 							},
 							"StatusMessage": {
 								"type": "String",
@@ -147,6 +157,12 @@
 				"dependsOn": [
 					{
 						"activity": "Run_ServiceUser_Logging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set_EndTime",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -202,11 +218,17 @@
 							"type": "Int32"
 						},
 						"StartTime1": {
-							"value": null,
+							"value": {
+								"value": "@variables('StartTime')",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"EndTime1": {
-							"value": null,
+							"value": {
+								"value": "@variables('EndTime')",
+								"type": "Expression"
+							},
 							"type": "String"
 						}
 					}
@@ -254,7 +276,10 @@
 							"type": "DateTime"
 						},
 						"EndTime1": {
-							"value": null,
+							"value": {
+								"value": "@variables('EndTime')",
+								"type": "Expression"
+							},
 							"type": "String"
 						},
 						"ErrorMessage": {
@@ -280,7 +305,10 @@
 							"type": "Int32"
 						},
 						"StartTime1": {
-							"value": null,
+							"value": {
+								"value": "@variables('StartTime')",
+								"type": "Expression"
+							},
 							"type": "String"
 						}
 					}
@@ -289,8 +317,58 @@
 					"referenceName": "AzureSQL_LogDB_Dev",
 					"type": "LinkedServiceReference"
 				}
+			},
+			{
+				"name": "Set_StartTime",
+				"description": "Start Time Variable",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "StartTime",
+					"value": {
+						"value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set_EndTime",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Run_ServiceUser_Logging",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "EndTime",
+					"value": {
+						"value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss')",
+						"type": "Expression"
+					}
+				}
 			}
 		],
+		"variables": {
+			"StartTime": {
+				"type": "String"
+			},
+			"EndTime": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "service user"
 		},
