@@ -84,4 +84,6 @@ locals {
       ]
     ])
   ))
+
+  function_app_subscriptions = { for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name => merge(var.function_app_principal_ids, v) }
 }
