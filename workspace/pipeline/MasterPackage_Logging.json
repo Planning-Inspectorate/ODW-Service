@@ -1,0 +1,299 @@
+{
+	"name": "MasterPackage_Logging",
+	"properties": {
+		"activities": [
+			{
+				"name": "Run_ServiceUser_Logging",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Log_Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "0_Horizon_Service_User_WithLogging",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Log_Start",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[logging].[INSERT_LOGS]",
+						"storedProcedureParameters": {
+							"Deletes": {
+								"type": "Int32",
+								"value": null
+							},
+							"DurationSeconds": {
+								"type": "Int32",
+								"value": null
+							},
+							"EndTime": {
+								"type": "DateTime",
+								"value": null
+							},
+							"EndTime1": {
+								"type": "String",
+								"value": null
+							},
+							"ErrorMessage": {
+								"type": "String",
+								"value": null
+							},
+							"Inserts": {
+								"type": "Int32",
+								"value": null
+							},
+							"PipelineName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().Pipeline",
+									"type": "Expression"
+								}
+							},
+							"PipelineRunID": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineTriggeredbyPipelineName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline()?.TriggeredByPipelineName",
+									"type": "Expression"
+								}
+							},
+							"PipelineTriggeredbyPipelineRunId": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline()?.TriggeredByPipelineRunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineTriggerID": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().TriggerId",
+									"type": "Expression"
+								}
+							},
+							"PipelineTriggerName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().TriggerName",
+									"type": "Expression"
+								}
+							},
+							"pipelineTriggerType": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().TriggerType",
+									"type": "Expression"
+								}
+							},
+							"StartTime": {
+								"type": "DateTime",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"StartTime1": {
+								"type": "String",
+								"value": null
+							},
+							"StatusMessage": {
+								"type": "String",
+								"value": null
+							},
+							"Updates": {
+								"type": "Int32",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Azure_Sql_LogTable",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Success_Logs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Run_ServiceUser_Logging",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[logging].[UPDATE_LOGS]",
+					"storedProcedureParameters": {
+						"Deletes": {
+							"value": null,
+							"type": "Int32"
+						},
+						"DurationSeconds": {
+							"value": null,
+							"type": "Int32"
+						},
+						"EndTime": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"ErrorMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"Inserts": {
+							"value": null,
+							"type": "Int32"
+						},
+						"LogId": {
+							"value": {
+								"value": "@activity('Log_Start').output.firstRow.LogId",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"StatusMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"Updates": {
+							"value": null,
+							"type": "Int32"
+						},
+						"StartTime1": {
+							"value": null,
+							"type": "String"
+						},
+						"EndTime1": {
+							"value": null,
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_LogDB_Dev",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Failed_Logs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Run_ServiceUser_Logging",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[logging].[UPDATE_LOGS]",
+					"storedProcedureParameters": {
+						"Deletes": {
+							"value": null,
+							"type": "Int32"
+						},
+						"DurationSeconds": {
+							"value": null,
+							"type": "Int32"
+						},
+						"EndTime": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"EndTime1": {
+							"value": null,
+							"type": "String"
+						},
+						"ErrorMessage": {
+							"value": null,
+							"type": "String"
+						},
+						"Inserts": {
+							"value": null,
+							"type": "Int32"
+						},
+						"LogId": {
+							"value": {
+								"value": "@activity('Log_Start').output.firstRow.LogId",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"StatusMessage": {
+							"type": "String"
+						},
+						"Updates": {
+							"value": null,
+							"type": "Int32"
+						},
+						"StartTime1": {
+							"value": null,
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_LogDB_Dev",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "service user"
+		},
+		"annotations": []
+	}
+}
