@@ -85,11 +85,11 @@ locals {
     ])
   ))
 
-  function_app_subscriptions = {
-    for subscription_name in local.odt_backoffice_sb_subscriptions : subscription_name => [
-      for principal_id in var.function_app_principal_ids : principal_id
+  function_app_subscriptions = flatten({
+    for k in local.odt_backoffice_sb_subscriptions : k.subscription_name => [
+      for v in var.function_app_principal_ids : v.principal_id
     ]
-  }
+  })
 
   # odt_backoffice_sb_subscription_names = distinct(flatten([for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name]))
 
