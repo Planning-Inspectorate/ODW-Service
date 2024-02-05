@@ -81,7 +81,11 @@ output "function_app_prinicpal_ids" {
   }
 }
 
-output "function_app_subscriptions" {
-  description = "value of the function app subscriptions."
-  value       = module.odt_backoffice_sb.function_app_subscriptions
+output "odt_backoffice_sb_subscription_names" {
+  value = {
+    for key, subscription in module.odt_backoffice_sb.odt_backoffice_sb_topic_subscriptions :
+    subscription.subscription_name => subscription.role_assignments
+  }
+  description = "A map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
 }
+s
