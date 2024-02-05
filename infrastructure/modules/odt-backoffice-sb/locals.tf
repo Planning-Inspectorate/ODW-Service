@@ -85,14 +85,14 @@ locals {
     ])
   ))
 
-  # odt_backoffice_sb_subscription_names = distinct(flatten([for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name]))
+  odt_backoffice_sb_subscription_names = distinct(flatten([for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name]))
 
-  # function_app_subscriptions = flatten([
-  #   for subscription_name in { for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name } : [
-  #     for principal_id in var.function_app_principal_ids : {
-  #       subscription_name = subscription_name
-  #       principal_id      = principal_id
-  #     }
-  #   ]
-  #])
+  function_app_subscriptions = {
+    for function in module.function_app : function.name => [
+      for subscription in local.odt_backoffice_sb_subscription_names : {
+        subscription_name = subscription
+        principal_id      = function.principal_id
+      }
+    ]
+  }
 }

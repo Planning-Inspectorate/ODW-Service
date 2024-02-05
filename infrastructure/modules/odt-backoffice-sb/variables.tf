@@ -9,12 +9,6 @@ variable "resource_group_name" {
   type        = string
 }
 
-# variable "function_app_principal_ids" {
-#   description = "A map of principal IDs for the function app to be used in role assignments"
-#   type        = map(string)
-#   default     = {}
-# }
-
 variable "odt_backoffice_sb_topic_subscriptions" {
   default     = {}
   type        = any
