@@ -85,18 +85,10 @@ locals {
     ])
   ))
 
-  odt_backoffice_sb_subscription_ids = {
-    for key, subscription in azurerm_servicebus_subscription.odt_backoffice_subscriptions : subscription.name => subscription.id
-  }
-
   function_app_subscriptions = flatten([
-    for subscription_name, subscription_id in local.odt_backoffice_sb_subscription_ids : [
-      for principal_id in var.function_app_principal_ids : {
-        subscription_name = subscription_name
-        subscription_id   = subscription_id
-        principal_id      = principal_id
-      }
-    ]
+    for subscription_name in local.odt_backoffice_sb_subscriptions : {
+      for principal_id in var.function_app_principal_ids : subscription_name => principal_id
+    }
   ])
 
   # odt_backoffice_sb_subscription_names = distinct(flatten([for v in var.odt_backoffice_sb_topic_subscriptions : v.subscription_name]))

@@ -26,11 +26,9 @@ resource "azurerm_role_assignment" "odt_backoffice_sb_subscription_role_assignme
 }
 
 resource "azurerm_role_assignment" "function_app_servicebus_subscription_role_assignments" {
-  for_each = {
-    for assignment in local.function_app_subscriptions : "${assignment.principal_id}.${assignment.subscription_name}" => assignment
-  }
+  for_each = local.function_app_subscriptions
 
-  scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.value.subscription_name].id
+  scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.key].id
   role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = each.value.principal_id
+  principal_id         = each.value
 }
