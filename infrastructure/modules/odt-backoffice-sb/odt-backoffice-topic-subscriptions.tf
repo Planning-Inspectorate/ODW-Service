@@ -25,10 +25,10 @@ resource "azurerm_role_assignment" "odt_backoffice_sb_subscription_role_assignme
   principal_id         = each.value.principal_id
 }
 
-resource "azurerm_role_assignment" "function_app_servicebus_subscription_role_assignments" {
-  for_each = local.function_app_subscriptions
+# resource "azurerm_role_assignment" "function_app_servicebus_subscription_role_assignments" {
+#   for_each = local.function_app_subscriptions
 
-  scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.key].id
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = each.value
-}
+#   scope                = azurerm_servicebus_subscription.odt_backoffice_subscriptions[each.key].id
+#   role_definition_name = "Azure Service Bus Data Receiver"
+#   principal_id         = each.value
+# }
