@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "68ea04bd-c15e-40e5-a02a-ad58650d2342"
+				"spark.autotune.trackingId": "8ee2f42f-40e5-402c-826a-476b6c153438"
 			}
 		},
 		"metadata": {
@@ -117,7 +117,7 @@
 					"import json\r\n",
 					"from collections import defaultdict\r\n",
 					"import pprint\r\n",
-					"from jsonschema import validate, FormatChecker, ValidationError\r\n",
+					"from jsonschema import validate, FormatChecker, ValidationError, Draft202012Validator\r\n",
 					"from iso8601 import parse_date, ParseError"
 				],
 				"execution_count": null
@@ -151,7 +151,7 @@
 				"source": [
 					"DATABASE = \"odw_curated_db\"\r\n",
 					"TABLE = \"document_meta_data\"\r\n",
-					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\""
+					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}` limit 5\""
 				],
 				"execution_count": null
 			},
@@ -203,16 +203,23 @@
 					"    \r\n",
 					"    format_checker = FormatChecker()\r\n",
 					"    format_checker.checks(\"date-time\")(is_iso8601_date_time)\r\n",
+					"    validator = Draft202012Validator(schema, format_checker=format_checker)\r\n",
 					"\r\n",
 					"    success = True\r\n",
 					"\r\n",
-					"    for message in data:\r\n",
-					"        try:\r\n",
-					"            validate(instance = message, schema = schema, format_checker = format_checker)\r\n",
-					"        except ValidationError as e:\r\n",
-					"            print(e)\r\n",
+					"    for index, message in enumerate(data, start=1):\r\n",
+					"        errors = list(validator.iter_errors(message))\r\n",
+					"        if errors:\r\n",
 					"            success = False\r\n",
-					"            # raise e\r\n",
+					"            print(\"OVERALL VALIDATION FAILED!\")\r\n",
+					"            print(\"*\"*100)\r\n",
+					"            print(f\"Validation failed for object at index {index}:\")\r\n",
+					"            for error in errors:\r\n",
+					"                print(error)\r\n",
+					"                print(\"-\"*100)\r\n",
+					"        print(\"#\"*100)\r\n",
+					"        print(\"#\"*100)\r\n",
+					"\r\n",
 					"    return success"
 				],
 				"execution_count": null
@@ -476,7 +483,7 @@
 				"source": [
 					"df = spark.sql(QUERY)\r\n",
 					"data = df.toPandas()\r\n",
-					"data.rename(columns={\"attachmentIds\": \"attachmentId\"}, inplace=True)"
+					"data.head(5)"
 				],
 				"execution_count": null
 			},
@@ -521,22 +528,19 @@
 					"\r\n",
 					"    data_dict = defaultdict(dict)\r\n",
 					"\r\n",
+					"    final_dict = []\r\n",
+					"\r\n",
 					"    date_format = \"%Y-%m-%d %H:%M:%S\"\r\n",
 					"\r\n",
 					"    for index, row in data.iterrows():\r\n",
 					"\r\n",
-					"        caseReference = row[\"caseReference\"]\r\n",
+					"        for column, value in row.items():\r\n",
+					"            data_dict[column] = value.strftime(date_format) if isinstance(value, pd.Timestamp) else value\r\n",
+					"        \r\n",
+					"        row_dict = {key: value for key, value in data_dict.items()}\r\n",
+					"        final_dict.append(row_dict)\r\n",
 					"\r\n",
-					"        if caseReference not in data_dict:\r\n",
-					"\r\n",
-					"            for column, value in row.items():\r\n",
-					"                data_dict[caseReference][column] = value.strftime(date_format) if isinstance(value, pd.Timestamp) else value\r\n",
-					"\r\n",
-					"    final_dict = {key: dict(value) for key, value in data_dict.items()}\r\n",
-					"\r\n",
-					"    data_to_compare = list(final_dict.values())\r\n",
-					"\r\n",
-					"    return data_to_compare"
+					"    return final_dict"
 				],
 				"execution_count": null
 			},
