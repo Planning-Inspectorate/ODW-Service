@@ -83,5 +83,5 @@ output "function_app_prinicpal_ids" {
 
 output "function_app_subscriptions" {
   description = "value of the function app subscriptions."
-  value = module.odt_backoffice_sb.function_app_subscriptions
+  value       = module.odt_backoffice_sb.function_app_subscriptions
 }

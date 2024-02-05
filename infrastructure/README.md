@@ -339,6 +339,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="output_data_resource_group_name"></a> [data\_resource\_group\_name](#output\_data\_resource\_group\_name) | The name of the data application resource group |
 | <a name="output_devops_agent_pool_resource_group_name"></a> [devops\_agent\_pool\_resource\_group\_name](#output\_devops\_agent\_pool\_resource\_group\_name) | The name of the resource group containing the devops agent pool resources |
 | <a name="output_function_app_prinicpal_ids"></a> [function\_app\_prinicpal\_ids](#output\_function\_app\_prinicpal\_ids) | value of the function app principal id |
+| <a name="output_function_app_subscriptions"></a> [function\_app\_subscriptions](#output\_function\_app\_subscriptions) | value of the function app subscriptions. |
 | <a name="output_key_vault_uri"></a> [key\_vault\_uri](#output\_key\_vault\_uri) | The URI of the Key Vault |
 | <a name="output_service_bus_namespace_name"></a> [service\_bus\_namespace\_name](#output\_service\_bus\_namespace\_name) | The name of the Service Bus Namespace |
 | <a name="output_service_bus_primary_connection_string"></a> [service\_bus\_primary\_connection\_string](#output\_service\_bus\_primary\_connection\_string) | The primary connection string of the Service Bus Namespace |

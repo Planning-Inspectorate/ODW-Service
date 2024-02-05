@@ -27,6 +27,6 @@ output "subscription_ids" {
 }
 
 output "function_app_subscriptions" {
-  value = local.function_app_subscriptions
+  value       = local.function_app_subscriptions
   description = "value of the function app subscriptions."
 }

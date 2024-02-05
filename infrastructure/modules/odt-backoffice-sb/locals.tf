@@ -92,7 +92,7 @@ locals {
       for function_app, principal_id in var.function_app_principal_ids : {
         subscription_name = subscription_name
         principal_id      = principal_id
-      } 
+      }
     ]
   ])
 }
