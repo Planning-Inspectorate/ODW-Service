@@ -80,11 +80,3 @@ output "function_app_prinicpal_ids" {
     for function_app in module.function_app : function_app.name => function_app.identity[0].principal_id
   }
 }
-
-output "odt_backoffice_sb_subscription_names" {
-  value = {
-    for key, subscription in module.odt_backoffice_sb.odt_backoffice_sb_topic_subscriptions :
-    subscription.subscription_name => subscription.role_assignments
-  }
-  description = "A map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
-}
