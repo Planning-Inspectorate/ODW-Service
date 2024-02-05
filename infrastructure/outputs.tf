@@ -88,4 +88,3 @@ output "odt_backoffice_sb_subscription_names" {
   }
   description = "A map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
 }
-s
