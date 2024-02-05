@@ -80,3 +80,8 @@ output "function_app_prinicpal_ids" {
     for function_app in module.function_app : function_app.name => function_app.identity[0].principal_id
   }
 }
+
+output "function_app_subscriptions" {
+  description = "value of the function app subscriptions."
+  value = module.odt_backoffice_sb.function_app_subscriptions
+}

@@ -25,3 +25,8 @@ output "subscription_ids" {
   }
   description = "A map map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
 }
+
+output "function_app_subscriptions" {
+  value = local.function_app_subscriptions
+  description = "value of the function app subscriptions."
+}
