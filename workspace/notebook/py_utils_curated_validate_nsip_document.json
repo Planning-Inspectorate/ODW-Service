@@ -8,7 +8,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodwpr",
+			"referenceName": "pinssynspodw",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8d9af972-28df-4b7d-a8da-26caa95b78eb"
+				"spark.autotune.trackingId": "ffe33c8a-ec24-4794-8453-47154eedcfe3"
 			}
 		},
 		"metadata": {
@@ -35,15 +35,15 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
-				"name": "pinssynspodwpr",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.2",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -62,7 +62,9 @@
 					}
 				},
 				"source": [
-					"### Validation notebook for validating curated layer tables against the json schema"
+					"### Validation notebook for validating curated layer tables against the json schema\r\n",
+					"\r\n",
+					"#### NB: PLEASE ATTACH TO THE SPARK POOL \"PINSSYNSPODW\" AS THIS IS RUNNING PYTHON 3.10 WHICH IS NEEDED"
 				]
 			},
 			{
@@ -82,7 +84,7 @@
 				"cell_type": "code",
 				"source": [
 					"%pip install --quiet --upgrade pip\r\n",
-					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0"
+					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0 git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model"
 				],
 				"execution_count": null
 			},
@@ -118,7 +120,8 @@
 					"from collections import defaultdict\r\n",
 					"import pprint\r\n",
 					"from jsonschema import validate, FormatChecker, ValidationError, Draft202012Validator\r\n",
-					"from iso8601 import parse_date, ParseError"
+					"from iso8601 import parse_date, ParseError\r\n",
+					"from pins_data_model import load_schemas"
 				],
 				"execution_count": null
 			},
@@ -180,237 +183,11 @@
 					}
 				},
 				"source": [
+					"SCHEMAS = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
+					"SCHEMA = SCHEMAS[\"nsip-document.schema.json\"]\r\n",
 					"DATABASE = \"odw_curated_db\"\r\n",
 					"TABLE = \"document_meta_data\"\r\n",
 					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}` limit 5\""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### json schema for the relevant entity\r\n",
-					"\r\n",
-					"This needs pasting here manually from https://github.com/Planning-Inspectorate/data-model/tree/main/schemas as the spark pool is using python 3.8 and the schema package was written using python 3.11 and there are incompatibilities so the package can't be imported."
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"schema = {\r\n",
-					"\t\"$schema\": \"http://json-schema.org/draft-07/schema#\",\r\n",
-					"\t\"$id\": \"nsip-document.schema.json\",\r\n",
-					"\t\"title\": \"NSIP Document\",\r\n",
-					"\t\"type\": \"object\",\r\n",
-					"\t\"required\": [\r\n",
-					"\t\t\"documentId\",\r\n",
-					"\t\t\"version\",\r\n",
-					"\t\t\"filename\",\r\n",
-					"\t\t\"originalFilename\",\r\n",
-					"\t\t\"size\",\r\n",
-					"\t\t\"documentURI\",\r\n",
-					"\t\t\"dateCreated\"\r\n",
-					"\t],\r\n",
-					"\t\"properties\": {\r\n",
-					"\t\t\"documentId\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"01c958f2-4e9f-4ce2-adf9-81038702cafa\"],\r\n",
-					"\t\t\t\"description\": \"The unique identifier for the file. This will be different to documentReference\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"caseId\": {\r\n",
-					"\t\t\t\"type\": \"integer\",\r\n",
-					"\t\t\t\"examples\": [1],\r\n",
-					"\t\t\t\"description\": \"Internal case identifier\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"caseRef\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"EN010120\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"documentReference\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"WA0110015-000002\"],\r\n",
-					"\t\t\t\"description\": \"Reference used throughout ODT <CaseRef>-<SequenceNo>\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"version\": {\r\n",
-					"\t\t\t\"type\": \"integer\",\r\n",
-					"\t\t\t\"examples\": [1]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"examinationRefNo\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"XXX-0000\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"filename\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"filename.pdf\"],\r\n",
-					"\t\t\t\"description\": \"Current stored filename of the file\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"originalFilename\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"original_filename.pdf\"],\r\n",
-					"\t\t\t\"description\": \"Original filename of file\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"size\": {\r\n",
-					"\t\t\t\"type\": \"integer\",\r\n",
-					"\t\t\t\"examples\": [23452]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"mime\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"application/pdf\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"documentURI\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\r\n",
-					"\t\t\t\t\"https://pinsstdocsboprodukw001.blob.core.windows.net/document-service-uploads/application/BC0110001/01adeade-791a-483a-a51d-99df2122b5cc/1\"\r\n",
-					"\t\t\t],\r\n",
-					"\t\t\t\"description\": \"The internal location of the document\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"publishedDocumentURI\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\r\n",
-					"\t\t\t\t\"https://pinsstdocsboprodukw001.blob.core.windows.net/published-documents/BC0110003-001-olive-oil.pdf\"\r\n",
-					"\t\t\t],\r\n",
-					"\t\t\t\"description\": \"The location of the published document. Only applicable to documents which are published.\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"path\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"EN010011/2. Post-Submission/Application Documents/Application Form/Letter.PDF\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"virusCheckStatus\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\"not_scanned\", \"scanned\", \"affected\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"fileMD5\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"b1946ac92492d2347c6235b4d2611184\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"dateCreated\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"format\": \"date-time\",\r\n",
-					"\t\t\t\"examples\": [\"2023-07-27T20:30:00.000Z\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"lastModified\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"format\": \"date-time\",\r\n",
-					"\t\t\t\"examples\": [\"2023-07-27T20:30:00.000Z\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"caseType\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\"nsip\", \"has\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"redactedStatus\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\"not_redacted\", \"redacted\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"publishedStatus\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\r\n",
-					"\t\t\t\t\"not_checked\",\r\n",
-					"\t\t\t\t\"checked\",\r\n",
-					"\t\t\t\t\"ready_to_publish\",\r\n",
-					"\t\t\t\t\"do_not_publish\",\r\n",
-					"\t\t\t\t\"publishing\",\r\n",
-					"\t\t\t\t\"published\",\r\n",
-					"\t\t\t\t\"archived\"\r\n",
-					"\t\t\t]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"datePublished\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"format\": \"date-time\",\r\n",
-					"\t\t\t\"examples\": [\"2023-07-27T20:30:00.000Z\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"documentType\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"Rule 8 letter\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"securityClassification\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\"public\", \"official\", \"secret\", \"top-secret\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"sourceSystem\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\r\n",
-					"\t\t\t\t\"back-office-appeals\",\r\n",
-					"\t\t\t\t\"back-office-applications\",\r\n",
-					"\t\t\t\t\"horizon\",\r\n",
-					"\t\t\t\t\"ni_file\",\r\n",
-					"\t\t\t\t\"sharepoint\"\r\n",
-					"\t\t\t]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"origin\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\"pins\", \"citizen\", \"lpa\", \"ogd\"]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"owner\": {\r\n",
-					"\t\t\t\"type\": \"string\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"author\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"description\": \"Name of person who authored document\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"representative\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"ZZZ Agency\"],\r\n",
-					"\t\t\t\"description\": \"The on behalf of or agent submitter of document\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"description\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\r\n",
-					"\t\t\t\t\"Attachments to the letter to Department for Business, Energy & Industrial Strategy\"\r\n",
-					"\t\t\t]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"documentCaseStage\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"enum\": [\r\n",
-					"\t\t\t\t\"draft\",\r\n",
-					"\t\t\t\t\"pre-application\",\r\n",
-					"\t\t\t\t\"acceptance\",\r\n",
-					"\t\t\t\t\"pre-examination\",\r\n",
-					"\t\t\t\t\"examination\",\r\n",
-					"\t\t\t\t\"recommendation\",\r\n",
-					"\t\t\t\t\"decision\",\r\n",
-					"\t\t\t\t\"post_decision\",\r\n",
-					"\t\t\t\t\"withdrawn\",\r\n",
-					"\t\t\t\t\"developers_application\"\r\n",
-					"\t\t\t]\r\n",
-					"\t\t},\r\n",
-					"\t\t\"filter1\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"Deadline 2\"],\r\n",
-					"\t\t\t\"description\": \"Filter field to provide additional filtering\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"filter2\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"examples\": [\"Scoping Option Report\"],\r\n",
-					"\t\t\t\"description\": \"Filter field to provide additional filtering\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"horizonFolderId\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"description\": \"The folder where the document exists\"\r\n",
-					"\t\t},\r\n",
-					"\t\t\"transcriptId\": {\r\n",
-					"\t\t\t\"type\": \"string\",\r\n",
-					"\t\t\t\"description\": \"The GUID of the transcript document (if one was provided).\"\r\n",
-					"\t\t}\r\n",
-					"\t}\r\n",
-					"}"
 				],
 				"execution_count": null
 			},
@@ -478,7 +255,7 @@
 					}
 				},
 				"source": [
-					"validate = validate_data(create_json_from_table_flat(data), schema)"
+					"validate = validate_data(create_json_from_table_flat(data), SCHEMA)"
 				],
 				"execution_count": null
 			},
