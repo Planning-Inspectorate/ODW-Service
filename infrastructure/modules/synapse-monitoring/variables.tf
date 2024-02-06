@@ -43,6 +43,20 @@ variable "environment" {
   type        = string
 }
 
+variable "function_app_enabled" {
+  default     = false
+  description = "Determines whether a Function App is deployed and should be monitored"
+  type        = bool
+}
+
+variable "function_app" {
+  default     = []
+  description = "A list of objects representing Function Apps to monitor"
+  type        = list(object({
+    name = string
+  }))
+}
+
 variable "key_vault_id" {
   description = "The ID of the Key Vault from which to collect diagnostic logs"
   type        = string
