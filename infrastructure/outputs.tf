@@ -83,5 +83,5 @@ output "function_app_prinicpal_ids" {
 
 output "function_app_subscriptions" {
   description = "A map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
-  value = local.function_app_subscriptions
+  value       = local.function_app_subscriptions
 }
