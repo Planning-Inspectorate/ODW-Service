@@ -133,7 +133,7 @@ module "function_app_failover" {
 resource "azurerm_role_assignment" "servicebus_receiver" {
   for_each = {
     for function_app in var.function_app : function_app.name => {
-      for subscription in module.odt_backoffice_sb[0].subscription_ids : {
+      for subscription in module.odt_backoffice_sb[0].subscription_ids : subscription => {
         subscription = subscription
       }
     }
