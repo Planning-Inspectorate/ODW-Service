@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9ae2fe77-ea3d-4e84-aa8e-ca53d0415b49"
+				"spark.autotune.trackingId": "f0918a20-f8b6-4847-a706-84f21d560bee"
 			}
 		},
 		"metadata": {
@@ -269,6 +269,86 @@
 					"    return data_to_compare"
 				],
 				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_json_from_table_examination_timetable(data: pd.DataFrame) -> list:\r\n",
+					"\r\n",
+					"    \"\"\"\r\n",
+					"    Args:\r\n",
+					"        data: pandas dataframe\r\n",
+					"        primary_key: string\r\n",
+					"        array: string\r\n",
+					"        array_fields: list of strings\r\n",
+					"        nested_array: string\r\n",
+					"        nested_array_fields: list of strings\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        list of dictionaries\r\n",
+					"    \"\"\"\r\n",
+					"\r\n",
+					"    data_dict = defaultdict(dict)\r\n",
+					"\r\n",
+					"    primary_key_field = \"caseReference\"\r\n",
+					"    event_fields = [\"eventID\", \"eventType\", \"eventTitle\", \"eventDeadlineStartDate\", \"eventDate\"]\r\n",
+					"    eventLineItemFields = [\"eventLineItemDescription\"]\r\n",
+					"\r\n",
+					"    date_format = \"%Y-%m-%d %H:%M:%S\"\r\n",
+					"\r\n",
+					"    for index, row in data.iterrows():\r\n",
+					"\r\n",
+					"        if primary_key_field not in data_dict:\r\n",
+					"\r\n",
+					"            data_dict[primary_key_field][\"events\"] = []\r\n",
+					"            data_dict[primary_key_field][\"events\"][\"eventLineItems\"] = []\r\n",
+					"\r\n",
+					"            for column, value in row.items():\r\n",
+					"                if column in array_fields_to_exclude or column in nested_array_fields_to_exclude:\r\n",
+					"                    continue\r\n",
+					"\r\n",
+					"                if isinstance(value, (pd.Timestamp, pd._libs.tslibs.nattype.NaTType)):\r\n",
+					"                    formatted_value = value.to_pydatetime().strftime(date_format) if not pd.isna(value) else None\r\n",
+					"                else:\r\n",
+					"                    formatted_value = value\r\n",
+					"\r\n",
+					"                data_dict[primary_key_field][column] = formatted_value\r\n",
+					"\r\n",
+					"                if column == nested_array:\r\n",
+					"                    data_dict[primary_key_field][column] = []\r\n",
+					"                    for nested_field in nested_array_fields_to_exclude[column]:\r\n",
+					"                        data_dict[primary_key_field][column].append({nested_field: formatted_value})\r\n",
+					"                \r\n",
+					"                # array_to_populate = data_dict[primary_key_field][array].setdefault(array, [])\r\n",
+					"        new_item = {field: row[field] for field in array_fields}\r\n",
+					"        data_dict[primary_key_field][array].append(new_item)\r\n",
+					"        # if new_item not in array_to_populate:\r\n",
+					"        #     array_to_populate.append(new_item)\r\n",
+					"\r\n",
+					"        # for item in array_to_populate:\r\n",
+					"        #     nested_array_to_populate = nested_array\r\n",
+					"        #     new_nested_item = row[field] nested_array_field\r\n",
+					"        #     if new_nested_item not in nested_array_to_populate:\r\n",
+					"        #         nested_array_to_populate.append(new_nested_item)\r\n",
+					"\r\n",
+					"    final_dict = {key: dict(value) for key, value in data_dict.items()}\r\n",
+					"\r\n",
+					"    data_to_compare = list(final_dict.values())\r\n",
+					"\r\n",
+					"    return data_to_compare[0]"
+				],
+				"execution_count": null
 			}
 		]
 	}
