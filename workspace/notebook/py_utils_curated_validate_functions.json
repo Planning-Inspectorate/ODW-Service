@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f0918a20-f8b6-4847-a706-84f21d560bee"
+				"spark.autotune.trackingId": "7d065939-36f3-491a-bada-7b3eb0aa1e88"
 			}
 		},
 		"metadata": {
@@ -325,10 +325,10 @@
 					"\r\n",
 					"                data_dict[primary_key_field][column] = formatted_value\r\n",
 					"\r\n",
-					"                if column == nested_array:\r\n",
-					"                    data_dict[primary_key_field][column] = []\r\n",
-					"                    for nested_field in nested_array_fields_to_exclude[column]:\r\n",
-					"                        data_dict[primary_key_field][column].append({nested_field: formatted_value})\r\n",
+					"                # if column == nested_array:\r\n",
+					"                #     data_dict[primary_key_field][column] = []\r\n",
+					"                #     for nested_field in nested_array_fields_to_exclude[column]:\r\n",
+					"                #         data_dict[primary_key_field][column].append({nested_field: formatted_value})\r\n",
 					"                \r\n",
 					"                # array_to_populate = data_dict[primary_key_field][array].setdefault(array, [])\r\n",
 					"        new_item = {field: row[field] for field in array_fields}\r\n",
@@ -347,6 +347,52 @@
 					"    data_to_compare = list(final_dict.values())\r\n",
 					"\r\n",
 					"    return data_to_compare[0]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_json_from_table_examination_timetable(data: pd.DataFrame) -> list:\r\n",
+					"    # create a list of fields that sit in the events nested array. Taken directly from pydantic model Event class\r\n",
+					"    event_fields = [\"eventID\", \"eventType\", \"eventTitle\", \"eventDeadlineStartDate\", \"eventDate\"]\r\n",
+					"    eventLineItemFields = [\"eventLineItemDescription\"]\r\n",
+					"    # convert to a dictionary\r\n",
+					"    # _event_dict = {k.lower(): v for k, v in _event_fields.items()}\r\n",
+					"    # list the keys that need to be excluded form the top level,\r\n",
+					"    # i.e. if a field is in a nested array it shouldn't be in the top level as well\r\n",
+					"    # _excluded_fields = [k.lower() for k, v in _event_dict.items()]\r\n",
+					"\r\n",
+					"    _merged_data = defaultdict(dict)\r\n",
+					"\r\n",
+					"    for row in _data:\r\n",
+					"        _caseReference = _lowercase_row[\"casereference\"]\r\n",
+					"        if _caseReference not in _merged_data:\r\n",
+					"            # set casereference as the primary key and add all other fields to top level\r\n",
+					"            _merged_data[_caseReference] = {\r\n",
+					"                k: v for k, v in _lowercase_row.items() if k.lower() not in _excluded_fields\r\n",
+					"            }\r\n",
+					"            # create empty nested array for events\r\n",
+					"            _merged_data[_caseReference][\"events\"] = []\r\n",
+					"        # populate events array\r\n",
+					"        _events = _merged_data[_caseReference][\"events\"]\r\n",
+					"        _new_event = {k.lower(): _lowercase_row[k] for k, v in _event_dict.items()}\r\n",
+					"        if _new_event not in _events:\r\n",
+					"            _events.append(_new_event)\r\n",
+					"\r\n",
+					"    _final_data = list(_merged_data.values())\r\n",
+					""
 				],
 				"execution_count": null
 			}
