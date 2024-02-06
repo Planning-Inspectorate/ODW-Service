@@ -135,11 +135,11 @@ resource "azurerm_role_assignment" "servicebus_receiver" {
     for function_app in var.function_app : function_app.name => {
       for k, v in module.odt_backoffice_sb.subscription_ids : k => {
         subscription_id = v
-        }
       }
     }
+  }
 
-  scope                = each.value
+  scope                = each.value.subscription_id
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = module.function_app[each.key].identity[0].principal_id
 }
