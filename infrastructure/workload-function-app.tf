@@ -132,10 +132,12 @@ module "function_app_failover" {
 
 resource "azurerm_role_assignment" "servicebus_receiver" {
   for_each = {
-    for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
+    for function_app in var.function_app : function_app.name => {
+      subscription_ids = [for subscription in module.odt_backoffice_sb.subscription_ids : subscription.id]
+    }
   }
 
-  scope                = [for values in one(module.odt_backoffice_sb).subscription_ids : values]
+  scope                = each.value.subscription_ids[0]
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = module.function_app[each.key].identity[0].principal_id
 }
