@@ -83,5 +83,5 @@ output "function_app_prinicpal_ids" {
 
 output "subscription_ids" {
   description = "A map of Subscription Name to Subscription Keys (used for consumer RBAC assignments)"
-  value       = [for values in one(module.odt_backoffice_sb).subscription_ids : values]
+  value       =  { for key, values in one(module.odt_backoffice_sb).subscription_ids : key => values }
 }
