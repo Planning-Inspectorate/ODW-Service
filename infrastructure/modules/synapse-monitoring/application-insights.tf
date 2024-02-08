@@ -12,7 +12,7 @@ resource "azurerm_application_insights" "synapse" {
 resource "azurerm_application_insights" "function_app_insights" {
   for_each = var.function_app_identity
 
-  name                = "pins-appi-${each.key}-${local.resource_suffix}"
+  name                = "${each.key}-app-insights"
   location            = var.location
   resource_group_name = var.resource_group_name
   application_type    = "web"
