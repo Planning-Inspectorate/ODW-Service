@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8b04bd91-d5de-401d-a82f-09ace5c230c2"
+				"spark.autotune.trackingId": "c8da97c6-55c8-4a65-8212-40e279daf7c9"
 			}
 		},
 		"metadata": {
@@ -81,7 +81,28 @@
 				"source": [
 					"import pandas as pd"
 				],
-				"execution_count": 9
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"account_name = 'pinsstodwdevuks9h80mb'\r\n",
+					"container_name = 'odw-config'\r\n",
+					"relative_path = \"/outputs/curated/\"\r\n",
+					"jobId = mssparkutils.env.getJobId()"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -128,16 +149,16 @@
 					"        errors = list(validator.iter_errors(row))\r\n",
 					"        if errors:\r\n",
 					"            success = False\r\n",
-					"            print(f\"Validation failed for object at index {index}:\")\r\n",
+					"            print(f\"{len(errors)} error(s) found in row {index}\")\r\n",
 					"            for error in errors:\r\n",
 					"                print(error)\r\n",
 					"                print(\"-\"*100)\r\n",
-					"        print(\"#\"*100)\r\n",
-					"        print(\"#\"*100)\r\n",
+					"            print(\"#\"*100)\r\n",
+					"            print(\"#\"*100)\r\n",
 					"\r\n",
 					"    return success"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -194,7 +215,7 @@
 					"\r\n",
 					"    return final_dict"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -268,7 +289,7 @@
 					"\r\n",
 					"    return data_to_compare"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -344,6 +365,90 @@
 					"    data_to_compare = list(final_dict.values())\r\n",
 					"\r\n",
 					"    return data_to_compare"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_adls_path(account_name: str, container_name: str, relative_path: str):\r\n",
+					"    '''\r\n",
+					"    Function to create the path to Azure Data Lake Storage\r\n",
+					"    '''\r\n",
+					"    file_path = f'abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}'\r\n",
+					"    return file_path"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def mount_storage(relative_path: str, jobId):\r\n",
+					"    '''\r\n",
+					"    Function to mount the storage path\r\n",
+					"    '''\r\n",
+					"    path = create_adls_path(account_name, container_name, relative_path)\r\n",
+					"\r\n",
+					"    # unmount path first\r\n",
+					"    mssparkutils.fs.unmount(f\"/{relative_path}\")\r\n",
+					"\r\n",
+					"    # mount file path\r\n",
+					"    mssparkutils.fs.mount( \r\n",
+					"        f\"abfss://{container_name}@{account_name}.dfs.core.windows.net/{relative_path}\",\r\n",
+					"        f\"/{relative_path}\", \r\n",
+					"        {\"linkedService\":\"ls_storage\"} \r\n",
+					"    )\r\n",
+					"\r\n",
+					"    spark_fs_path = f\"synfs:/{jobId}/{relative_path}\"\r\n",
+					"    local_fs_path = f\"/synfs/{jobId}/{relative_path}\"\r\n",
+					"\r\n",
+					"mount_storage(relative_path, jobId)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def write_file_to_storage(path: str, filename: str, data):\r\n",
+					"    '''\r\n",
+					"    Function to write a file to storage using mssparkutils.fs.put.\r\n",
+					"    Requires a path, filename and data / content.\r\n",
+					"    '''\r\n",
+					"    mssparkutils.fs.put(f'{path}/{filename}', data, overwrite=True)\r\n",
+					"    return print(f'File - {filename} - written to storage - path - {path}')"
 				],
 				"execution_count": null
 			}
