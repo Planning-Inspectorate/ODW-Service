@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "863d33f8-dfdb-4c29-b00b-61a18e1ddfe7"
+				"spark.autotune.trackingId": "e2b5eca2-7099-4f75-b033-0e6cf3b35aed"
 			}
 		},
 		"metadata": {
@@ -185,9 +185,11 @@
 				"source": [
 					"SCHEMAS = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
 					"SCHEMA = SCHEMAS[\"s51-advice.schema.json\"]\r\n",
+					"PRIMARY_KEY = \"adviceId\"\r\n",
 					"DATABASE = \"odw_curated_db\"\r\n",
 					"TABLE = \"nsip_s51_advice\"\r\n",
-					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\""
+					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
+					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
 				"execution_count": null
 			},
@@ -232,8 +234,8 @@
 					"    data[column].fillna('', inplace=True)\r\n",
 					"\r\n",
 					"# check if any rows contain values classed as NULL, i.e. NaN, NaT, None. There should be 0 rows.\r\n",
-					"natrows = data[data.isna().any(axis=1)]\r\n",
-					"natrows"
+					"nullrows = data[data.isna().any(axis=1)]\r\n",
+					"nullrows"
 				],
 				"execution_count": null
 			},
@@ -267,7 +269,9 @@
 				"source": [
 					"#### Validate against the schema\r\n",
 					"\r\n",
-					"The validate variable can then be returned as the exit value of the notebook"
+					"%%capture magic command is used to capture the cell output and assign it to the variable \"output\". This can then be used later as the data to be written to file.\r\n",
+					"\r\n",
+					"The validate variable can be used and returned as the exit value of the notebook."
 				]
 			},
 			{
@@ -284,11 +288,49 @@
 					}
 				},
 				"source": [
-					"validate = validate_data(create_json_from_table_with_arrays(data, \r\n",
-					"                                                            primary_key=\"adviceId\",\r\n",
+					"%%capture output\r\n",
+					"\r\n",
+					"validate = validate_data(data=create_json_from_table_with_arrays(data, \r\n",
+					"                                                            primary_key=PRIMARY_KEY,\r\n",
 					"                                                            array=\"attachmentIds\", \r\n",
 					"                                                            array_field=\"attachmentId\"), \r\n",
-					"                                                            SCHEMA)"
+					"                        schema=SCHEMA,\r\n",
+					"                        primary_key = PRIMARY_KEY)\r\n",
+					"\r\n",
+					"result = output.stdout"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Print the validation output\r\n",
+					"\r\n",
+					"Output is sent to storage so commented out but can be printed here if need be"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"print(result)"
 				],
 				"execution_count": null
 			},
@@ -319,7 +361,7 @@
 					}
 				},
 				"source": [
-					""
+					"write_file_to_storage(path, OUTPUT_FILE, result)"
 				],
 				"execution_count": null
 			},
@@ -335,8 +377,8 @@
 				"source": [
 					"#### Set notebook exit value to the validate variable above\r\n",
 					"\r\n",
-					"True for successful validation\r\n",
-					"False for faield validation"
+					"Success for successful validation\r\n",
+					"Failed for faield validation"
 				]
 			},
 			{
