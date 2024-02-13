@@ -12,6 +12,8 @@ parameters:
     default: Dev
     values:
     - Dev
+    - Test
+    - Prod
 
 # Create variables to be used in further pipeline jobs / tasks.
 variables:
@@ -122,3 +124,105 @@ jobs:
       scriptLocation: 'inlineScript'
       inlineScript: |
         az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)
+
+# Add stage for Test deployment
+  - stage: TestDeployment
+    displayName: 'Deploy to Test'
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/main') # Ensure deployment only happens from main branch
+    jobs:
+      - job: AzureLogin
+        displayName: 'Azure login'
+        steps:
+          - template: steps/azure-login.yaml
+
+      - job: BuildAndPackage
+        displayName: 'Build and Package'
+        steps:
+          - checkout: self
+            displayName: 'Checkout repo'
+
+          - script: |
+              cd $(Build.SourcesDirectory)/functions
+              find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+            displayName: 'Creating top level files list'
+
+          - script: |
+              cd $(Build.SourcesDirectory)/functions
+              cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
+            displayName: 'Archive top level files'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish build artifact'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'FunctionCode'
+
+      - job: DeployToAzureFunctions
+        displayName: 'Deploy to Test'
+        steps:
+          - task: DownloadBuildArtifacts@1
+            displayName: 'Download build artifact'
+            inputs:
+              buildType: 'current'
+              artifactName: 'FunctionCode'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: AzureCLI@2
+            displayName: 'Deploy to function app'
+            inputs:
+              azureSubscription: '$(armServiceConnectionName)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)'
+
+# Add stage for Prod deployment
+  - stage: ProdDeployment
+    displayName: 'Deploy to Prod'
+    condition: eq(variables['Build.SourceBranch'], 'refs/heads/main') # Ensure deployment only happens from main branch
+    jobs:
+      - job: AzureLogin
+        displayName: 'Azure login'
+        steps:
+          - template: steps/azure-login.yaml
+
+      - job: BuildAndPackage
+        displayName: 'Build and Package'
+        steps:
+          - checkout: self
+            displayName: 'Checkout repo'
+
+          - script: |
+              cd $(Build.SourcesDirectory)/functions
+              find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+            displayName: 'Creating top level files list'
+
+          - script: |
+              cd $(Build.SourcesDirectory)/functions
+              cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
+            displayName: 'Archive top level files'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish build artifact'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'FunctionCode'
+
+      - job: DeployToAzureFunctions
+        displayName: 'Deploy to Prod'
+        steps:
+          - task: DownloadBuildArtifacts@1
+            displayName: 'Download build artifact'
+            inputs:
+              buildType: 'current'
+              artifactName: 'FunctionCode'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: AzureCLI@2
+            displayName: 'Deploy to function app'
+            inputs:
+              azureSubscription: '$(armServiceConnectionName)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)'
