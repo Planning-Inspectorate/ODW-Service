@@ -19,6 +19,10 @@ locals {
     for function_app in module.function_app : function_app.name => function_app.identity[0].principal_id
   }
 
+  function_app_ids = {
+    for function_app in module.function_app : function_app.name => function_app.id
+  }
+
   function_app_subscriptions = flatten([
     for function_app in var.function_app : [
       for subscriptions in [for v in one(module.odt_backoffice_sb).subscription_ids : v] : {
