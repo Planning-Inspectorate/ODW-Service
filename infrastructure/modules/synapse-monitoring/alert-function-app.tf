@@ -4,7 +4,7 @@ resource "azurerm_monitor_metric_alert" "function_app_http_5xx" {
   name                = "Http 5xx - ${each.key}"
   resource_group_name = var.resource_group_name
   enabled             = var.alert_group_platform_enabled
-  scopes              = toset(each.value)
+  scopes              = [each.value]
   description         = "Sends an alert when the Function App returns excess 5xx respones"
   window_size         = "PT5M"
   frequency           = "PT1M"
@@ -32,7 +32,7 @@ resource "azurerm_monitor_metric_alert" "function_app_response_time" {
   name                = "Response Time - ${each.key}"
   resource_group_name = var.resource_group_name
   enabled             = var.alert_group_platform_enabled
-  scopes              = toset(each.value)
+  scopes              = [each.value]
   description         = "Sends an alert when the Function App response exceeds 1 minute"
   window_size         = "PT5M"
   frequency           = "PT1M"
@@ -60,7 +60,7 @@ resource "azurerm_monitor_activity_log_alert" "function_app_stop" {
   name                = "Function App Stopped - ${each.key}"
   resource_group_name = var.resource_group_name
   enabled             = var.alert_group_platform_enabled
-  scopes              = toset(each.value)
+  scopes              = [each.value]
   description         = "Sends an alert when the Function App is stopped"
 
   criteria {
@@ -83,7 +83,7 @@ resource "azurerm_monitor_activity_log_alert" "function_app_delete" {
   name                = "Function App Deleted - ${each.key}"
   resource_group_name = var.resource_group_name
   enabled             = var.alert_group_platform_enabled
-  scopes              = toset(each.value)
+  scopes              = [each.value]
   description         = "Sends an alert when the Function App is deleted"
 
   criteria {
