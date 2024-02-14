@@ -24,6 +24,9 @@ locals {
 
   site_config = merge(
     var.site_config_defaults,
+    {
+      "application_insights_key" = var.application_insights_key ? var.application_insights_key : null
+    },
     var.site_config
   )
 }

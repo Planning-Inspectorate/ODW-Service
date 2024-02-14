@@ -1,6 +1,11 @@
 /*
     Terraform configuration file defining variables
 */
+variable "application_insights_key" {
+  type        = string
+  description = "The instrumentation key of the application insights instance"
+}
+
 variable "environment" {
   type        = string
   description = "The environment name. Used as a tag and in naming the resource group"
@@ -160,6 +165,7 @@ variable "site_config_defaults" {
       service_tags = []
       subnet_ids   = []
     }
+    application_insights_key = ""
   }
 }
 

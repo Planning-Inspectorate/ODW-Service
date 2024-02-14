@@ -123,5 +123,7 @@ No requirements.
 
 ## Outputs
 
-No outputs.
+| Name | Description |
+|------|-------------|
+| <a name="output_instrumentation_key"></a> [instrumentation\_key](#output\_instrumentation\_key) | Instrumentation key of the application insights |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

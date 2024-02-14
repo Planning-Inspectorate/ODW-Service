@@ -92,6 +92,7 @@ module "function_app" {
   source = "./modules/function-app"
 
   resource_group_name        = azurerm_resource_group.function_app[0].name
+  application_insights_key   = module.synapse_monitoring[each.key].instrumentation_key
   function_app_name          = each.key
   service_name               = local.service_name
   service_plan_id            = module.service_plan[0].id
@@ -115,6 +116,7 @@ module "function_app_failover" {
   source = "./modules/function-app"
 
   resource_group_name        = azurerm_resource_group.function_app_failover[0].name
+  application_insights_key   = module.synapse_monitoring_failover[each.key].instrumentation_key
   function_app_name          = each.key
   service_name               = local.service_name
   service_plan_id            = module.service_plan_failover[0].id
