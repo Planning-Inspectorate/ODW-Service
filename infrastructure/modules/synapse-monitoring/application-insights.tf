@@ -10,7 +10,7 @@ resource "azurerm_application_insights" "synapse" {
 }
 
 resource "azurerm_application_insights" "function_app_insights" {
-  for_each = var.function_app_ids
+  for_each = var.function_app 
 
   name                = "${each.key}-app-insights"
   location            = var.location

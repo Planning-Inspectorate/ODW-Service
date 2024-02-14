@@ -43,6 +43,12 @@ variable "environment" {
   type        = string
 }
 
+variable "function_app" {
+  default     = null
+  description = "A map of Function App names to their respective IDs"
+  type        = map(string)
+}
+
 variable "function_app_ids" {
   description = "A map of Function App names to their respective IDs"
   type        = map(string)
