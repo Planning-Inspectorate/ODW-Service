@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "457e3ef7-0efa-44af-a739-516ef5d83ba8"
+				"spark.autotune.trackingId": "db07aef8-4c30-4015-8bcb-3b7f0b61e9d3"
 			}
 		},
 		"metadata": {
@@ -116,7 +116,11 @@
 					"    THEN RR.AgentContactID\r\n",
 					"    ELSE ''\r\n",
 					"END                                                                    AS representativeId,\r\n",
-					"RR.RelRepOrganisation                                                  AS representationType,\r\n",
+					"CASE\r\n",
+					"    WHEN RR.RelRepOrganisation = 'Other Statutory Consultees'\r\n",
+					"        THEN 'Statutory Consultees'\r\n",
+					"        ELSE RR.RelRepOrganisation\r\n",
+					"END                                                  AS representationType,\r\n",
 					"RR.DateReceived                                                        AS dateReceived,\r\n",
 					"RR.AttachmentID                                                        AS attachmentIds\r\n",
 					"\r\n",
@@ -150,23 +154,73 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"SELECT * FROM odw_curated_db.vw_relevant_representation WHERE caseRef = 'TR020002';\n",
+					"SELECT * FROM odw_curated_db.vw_relevant_representation WHERE representationId ='30225';\n",
+					"SELECT DISTINCT(representationType) FROM odw_curated_db.vw_relevant_representation;\n",
 					"\n",
-					"SELECT count(*) FROM odw_curated_db.vw_relevant_representation WHERE caseRef = 'TR020002'; --- it should be 2210\n",
+					"-- SELECT * FROM odw_curated_db.vw_relevant_representation WHERE caseRef = 'TR020002' AND representativeID = '33307';\n",
 					"\n",
-					"SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
-					"WHERE caseRef = 'TR020002'\n",
-					"AND status = 'Published'; --- it should be 2052\n",
+					"-- SELECT DISTINCT(status) FROM odw_curated_db.vw_relevant_representation;\n",
 					"\n",
-					"SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
-					"WHERE caseRef = 'TR020002' AND (representativeId is not null OR representativeId != ''); --- should be 53\n",
+					"-- SELECT count(*) FROM odw_curated_db.nsip_service_user WHERE caseReference = 'TR020002';\n",
 					"\n",
-					"SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
-					"WHERE caseRef = 'TR020002'\n",
-					"AND representationFrom = 'AGENT'; --- should be 53\n",
+					"-- SELECT count(*) FROM odw_harmonised_db.casework_nsip_relevant_representation_dim WHERE CaseReference = 'TR020002';\n",
+					"\n",
+					"-- SELECT count(*) FROM odw_curated_db.vw_relevant_representation WHERE caseRef = 'TR020002'; --- it should be 2210\n",
+					"\n",
+					"-- SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
+					"-- WHERE caseRef = 'TR020002'\n",
+					"-- AND status = 'Published'; --- it should be 2052\n",
+					"\n",
+					"-- SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
+					"-- WHERE caseRef = 'TR020002' AND (representativeId is not null OR representativeId != ''); --- should be 53\n",
+					"\n",
+					"-- SELECT count(*) FROM odw_curated_db.vw_relevant_representation\n",
+					"-- WHERE caseRef = 'TR020002'\n",
+					"-- AND representationFrom = 'AGENT'; --- should be 53\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT count(*) \n",
+					"FROM odw_curated_db.nsip_service_user \n",
+					"WHERE caseReference = 'TR020002' \n",
+					"    AND ID NOT IN (\n",
+					"        SELECT ContactID \n",
+					"        FROM odw_harmonised_db.casework_nsip_relevant_representation_dim \n",
+					"        WHERE CaseReference = 'TR020002');\n",
+					"\n",
+					"\n",
+					"SELECT * \n",
+					"FROM odw_curated_db.nsip_service_user \n",
+					"WHERE caseReference = 'TR020002' \n",
+					"    AND ID NOT IN (\n",
+					"        SELECT ContactID \n",
+					"        FROM odw_harmonised_db.casework_nsip_relevant_representation_dim \n",
+					"        WHERE CaseReference = 'TR020002');\n",
+					"\n",
+					""
+				],
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
