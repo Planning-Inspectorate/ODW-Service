@@ -24,9 +24,9 @@ module "service_plan" {
   resource_group_name = azurerm_resource_group.function_app[0].name
   service_name        = local.service_name
   environment         = var.environment
-  location            = module.azure_region.location_cli
+  location            = 
   tags                = local.tags
-}
+}module.azure_region.location_cli
 
 module "service_plan_failover" {
   count = var.function_app_enabled && var.failover_deployment ? 1 : 0
@@ -148,7 +148,7 @@ resource "azurerm_application_insights" "function_app_insights" {
   }
 
   name                = "${each.key}-app-insights"
-  location            = var.location
+  location            = module.azure_region.location_cli
   resource_group_name = azurerm_resource_group.monitoring.name
   application_type    = "web"
   retention_in_days   = 30
