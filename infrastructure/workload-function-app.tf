@@ -24,7 +24,7 @@ module "service_plan" {
   resource_group_name = azurerm_resource_group.function_app[0].name
   service_name        = local.service_name
   environment         = var.environment
-  location            = 
+  location            = module.azure_region.location_cli
   tags                = local.tags
 }module.azure_region.location_cli
 
