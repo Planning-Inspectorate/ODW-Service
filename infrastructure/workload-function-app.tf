@@ -139,3 +139,18 @@ resource "azurerm_role_assignment" "servicebus_receiver" {
   role_definition_name = "Azure Service Bus Data Receiver"
   principal_id         = module.function_app[each.value.name].identity[0].principal_id
 }
+
+resource "azurerm_application_insights" "function_app_insights" {
+  for_each = {
+    for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
+  }
+
+  name                = "${each.key}-app-insights"
+  location            = var.location
+  resource_group_name = azurerm_resource_group.monitoring.name
+  application_type    = "web"
+  retention_in_days   = 30
+  workspace_id        = module.synapse_monitoring.log_analytics_workspace.id
+
+  tags = local.tags
+}
