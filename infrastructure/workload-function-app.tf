@@ -26,7 +26,7 @@ module "service_plan" {
   environment         = var.environment
   location            = module.azure_region.location_cli
   tags                = local.tags
-}module.azure_region.location_cli
+}
 
 module "service_plan_failover" {
   count = var.function_app_enabled && var.failover_deployment ? 1 : 0
