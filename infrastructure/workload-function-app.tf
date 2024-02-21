@@ -152,7 +152,7 @@ resource "azurerm_application_insights" "function_app_insights" {
   resource_group_name = azurerm_resource_group.monitoring.name
   application_type    = "web"
   retention_in_days   = 30
-  workspace_id        = module.synapse_monitoring.log_analytics_workspace.id
+  workspace_id        = module.synapse_monitoring.log_analytics_workspace_id
 
   tags = local.tags
 }
