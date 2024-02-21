@@ -45,7 +45,7 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-dev-ukw"
 
 environment = "dev"
 
-function_app_enabled = false
+function_app_enabled = true
 function_app = [
   {
     name = "fnapp01"
