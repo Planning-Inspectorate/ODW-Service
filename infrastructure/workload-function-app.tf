@@ -100,6 +100,7 @@ module "function_app" {
   environment                = var.environment
   location                   = module.azure_region.location_cli
   tags                       = local.tags
+  application_insights_key   = azurerm_application_insights.function_app_insights[each.key].instrumentation_key
   synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
   app_settings               = try(each.value.app_settings, null)
   site_config                = each.value.site_config
@@ -123,6 +124,7 @@ module "function_app_failover" {
   environment                = var.environment
   location                   = module.azure_region.paired_location.location_cli
   tags                       = local.tags
+  application_insights_key   = azurerm_application_insights.function_app_insights[each.key].instrumentation_key
   synapse_vnet_subnet_names  = module.synapse_network_failover.vnet_subnets
   app_settings               = try(each.value.app_settings, null)
   site_config                = each.value.site_config
