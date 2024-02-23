@@ -147,7 +147,7 @@ resource "azurerm_application_insights" "function_app_insights" {
     for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
   }
 
-  name                = "${each.key}-app-insights"
+  name                = "pins-${each.key}-${local.resource_suffix}-app-insights"
   location            = module.azure_region.location_cli
   resource_group_name = azurerm_resource_group.monitoring.name
   application_type    = "web"
