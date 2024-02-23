@@ -1,0 +1,90 @@
+###
+# Pipeline to copy Synapse data lake config files from the repo main branch 
+# to the Azure Storage account
+###
+
+---
+
+# Create parameters
+parameters:
+- name: environment
+  displayName: Environment
+  type: string
+  default: Dev
+  values:
+  - Dev
+
+# Create variables
+variables:
+- group: Terraform ${{ parameters.environment }}
+
+- name: environment
+  value: ${{ lower(parameters.environment) }}
+
+# Set service connection for the environment to deploy to, e.g. ODW Dev, ODW Test, ODW Prod
+- name: armServiceConnectionName
+  value: ${{ replace(format('ODW {0}', parameters.environment), 'Test', 'PreProd') }}
+
+- name: source_file_path
+  value: 'data_lake_config'
+
+- name: target_file_path
+  value: 'test_table_definitions'
+
+- name: storage_account_name
+  value: 'pinsstodwdevuks9h80mb'
+
+- name: storage_container
+  value: 'odw-config'
+
+# Github branch to trigger the running of this pipeline.
+# Any code change in this branch will trigger this pipeline.
+trigger:
+  branches:
+    include:
+      - 'main'
+
+# Only code in the below paths will trigger the pipeline.
+# All files in the functions folder but not files in subfolders.
+  paths:
+    include:
+      - $(config_files_path)
+
+# Disable pull request triggers, i.e. it will not be triggered by any pull requests.
+pr: none
+
+# Specify the Microsoft hosted image we want to use.
+pool:
+  vmImage: ubuntu-22.04
+
+jobs:
+
+- job: BuildAndPackage
+  displayName: 'Build and Package'
+
+  steps:
+
+  # Checkout the Github repo, in this case ODW-Service.
+  - checkout: self
+    displayName: 'Checkout repo'
+
+  - task: CopyFiles@2
+    displayName: 'Copy files to staging directory'
+    inputs:
+      SourceFolder: '$(source_file_path)'
+      Contents: '**'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+  - task: AzureCLI@2
+    displayName: 'Send to Azure storage'
+    inputs:
+      azureSubscription: '$(armServiceConnectionName)'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az storage blob upload-batch \
+        --account-name $(storage_account_name) \
+        --destination $(storage_container) \
+        --source $(Build.ArtifactStagingDirectory) \
+        --pattern '*' \
+        --overwrite true
