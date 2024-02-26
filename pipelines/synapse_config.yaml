@@ -25,11 +25,14 @@ variables:
 - name: armServiceConnectionName
   value: ${{ replace(format('ODW {0}', parameters.environment), 'Test', 'PreProd') }}
 
-- name: source_file_path
-  value: 'data_lake_config'
+- name: source_folder
+  value: '$(System.DefaultWorkingDirectory)/infrastructure/configuration/data-lake'
 
-- name: target_file_path
-  value: 'test_table_definitions'
+- name: target_folder
+  value: '$(Build.ArtifactStagingDirectory)'
+
+- name: config_files_path
+  value: '**/infrastructure/configuration/data-lake/*'
 
 - name: storage_account_name
   value: 'pinsstodwdevuks9h80mb'
@@ -48,7 +51,7 @@ trigger:
 # All files in the functions folder but not files in subfolders.
   paths:
     include:
-      - $(config_files_path)
+      - '$(config_files_path)'
 
 # Disable pull request triggers, i.e. it will not be triggered by any pull requests.
 pr: none
@@ -68,23 +71,38 @@ jobs:
   - checkout: self
     displayName: 'Checkout repo'
 
-  - task: CopyFiles@2
-    displayName: 'Copy files to staging directory'
-    inputs:
-      SourceFolder: '$(source_file_path)'
-      Contents: '**'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - script: |
 
-  - task: AzureCLI@2
-    displayName: 'Send to Azure storage'
-    inputs:
-      azureSubscription: '$(armServiceConnectionName)'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        az storage blob upload-batch \
-        --account-name $(storage_account_name) \
-        --destination $(storage_container) \
-        --source $(Build.ArtifactStagingDirectory) \
-        --pattern '*' \
-        --overwrite true
+      sourceFolder="$(source_folder)"
+      targetFolder="$(target_folder)"
+      changedFiles=$(git diff --name-only ${{Build.SourceVersion}} {{Build.SourceVersionPrevious}})
+      for file in $changedFiles; do
+        mkdir -p "$(dirname $targetFolder/$file)"
+        cp "$sourceFolder/$file" "$tergetFolder/$file"
+      done
+
+      echo "Listing target folder files"
+      ls -R "$targetFolder"
+
+    displayName: 'Copy amended files to staging directory'
+
+  # - task: CopyFiles@2
+  #   displayName: 'Copy files to staging directory'
+  #   inputs:
+  #     SourceFolder: '$(source_file_path)'
+  #     Contents: '**'
+  #     TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+  # - task: AzureCLI@2
+  #   displayName: 'Send to Azure storage'
+  #   inputs:
+  #     azureSubscription: '$(armServiceConnectionName)'
+  #     scriptType: 'bash'
+  #     scriptLocation: 'inlineScript'
+  #     inlineScript: |
+  #       az storage blob upload-batch \
+  #       --account-name $(storage_account_name) \
+  #       --destination $(storage_container) \
+  #       --source $(Build.ArtifactStagingDirectory) \
+  #       --pattern '*' \
+  #       --overwrite true
