@@ -49,6 +49,7 @@ function_app_enabled = true
 function_app = [
   {
     name = "fnapp01"
+    private_endpoint_enabled = false
     site_config = {
       application_stack = {
         python_version = "3.11"
@@ -56,7 +57,7 @@ function_app = [
     }
   },
   {
-    name                     = "fnapp02"
+    name = "fnapp02"
     private_endpoint_enabled = true
     site_config = {
       application_stack = {
