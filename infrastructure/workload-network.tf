@@ -58,6 +58,13 @@ resource "azurerm_private_dns_zone" "data_lake" {
   tags = local.tags
 }
 
+resource "azurerm_private_dns_zone" "function_app" {
+  name                = "privatelink.azurewebsites.net"
+  resource_group_name = azurerm_resource_group.network_global.name
+
+  tags = local.tags
+}
+
 resource "azurerm_private_dns_zone" "key_vault" {
   name                = "privatelink.vaultcore.azure.net"
   resource_group_name = azurerm_resource_group.network_global.name
@@ -85,6 +92,24 @@ resource "azurerm_private_dns_zone_virtual_network_link" "data_lake_failover" {
   name                  = "dfs-${module.synapse_network_failover.vnet_name}"
   resource_group_name   = azurerm_resource_group.network_global.name
   private_dns_zone_name = azurerm_private_dns_zone.data_lake.name
+  virtual_network_id    = module.synapse_network_failover.vnet_id
+
+  tags = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "function_app" {
+  name                  = "app-${module.synapse_network.vnet_name}"
+  resource_group_name   = azurerm_resource_group.network_global.name
+  private_dns_zone_name = azurerm_private_dns_zone.function_app.name
+  virtual_network_id    = module.synapse_network.vnet_id
+
+  tags = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "function_app_failover" {
+  name                  = "app-${module.synapse_network_failover.vnet_name}"
+  resource_group_name   = azurerm_resource_group.network_global.name
+  private_dns_zone_name = azurerm_private_dns_zone.function_app.name
   virtual_network_id    = module.synapse_network_failover.vnet_id
 
   tags = local.tags

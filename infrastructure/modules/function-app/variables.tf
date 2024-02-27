@@ -72,10 +72,22 @@ variable "storage_account_access_key" {
   sensitive   = true
 }
 
+variable "private_endpoint_enabled" {
+  type        = bool
+  description = "Whether to enable private endpoint for the function app"
+  default     = false
+}
+
 variable "functions_extension_version" {
   type        = string
   description = "The version of the Azure Functions runtime to use"
   default     = "~4"
+}
+
+variable "function_app_private_endpoint_dns_zone_id" {
+  type        = string
+  description = "The ID of the private DNS zone to link the function app private endpoint to"
+  default     = null
 }
 
 variable "app_settings" {
@@ -175,12 +187,11 @@ variable "site_config" {
   default     = {}
 }
 
-
-variable "synapse_function_app_subnet_name" {
-  default     = "FunctionAppSubnet"
-  description = "The name of the subnet into which the function App's should be deployed"
-  type        = string
-}
+# variable "synapse_function_app_subnet_name" {
+#   default     = "FunctionAppSubnet"
+#   description = "The name of the subnet into which the function App's should be deployed"
+#   type        = string
+# }
 
 # variable "synapse_vnet_security_groups" {
 #   description = "A map of subnet names to network security group IDs"
