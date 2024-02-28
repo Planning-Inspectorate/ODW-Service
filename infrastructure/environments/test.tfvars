@@ -28,7 +28,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
     "7c906e1b-ffbb-44d3-89a1-6772b9c9c148", # pins-odw-preprod-dataengineers
-    "51432f9e-c5a2-468f-8421-5984d097d1f9"  # planninginspectorate-operational-data-warehouse-6b18ba9d-2399-48b5-a834-e0f267be122d
+    "26045dd6-f0bf-42ab-9459-6f52afcd7b45"  # ODW-TEST-Infrastructure-26045dd6-f0bf-42ab-9459-6f52afcd7b45
   ]
 }
 data_lake_storage_containers = [
@@ -237,7 +237,7 @@ synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
     "be52cb0c-858f-4698-8c40-3a5ec793a2e3", # pins-odw-data-preprod-syn-ws-administrators
-    "51432f9e-c5a2-468f-8421-5984d097d1f9"  # planninginspectorate-operational-data-warehouse-6b18ba9d-2399-48b5-a834-e0f267be122d
+    "26045dd6-f0bf-42ab-9459-6f52afcd7b45"  # ODW-TEST-Infrastructure-26045dd6-f0bf-42ab-9459-6f52afcd7b45
   ],
   "Synapse Contributor" = [
     "d59a3e85-58db-4b70-8f88-3f4a4a82ee27" # pins-odw-data-preprod-syn-ws-contributors
