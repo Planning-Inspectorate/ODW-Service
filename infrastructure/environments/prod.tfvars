@@ -28,7 +28,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "1fa42635-5dc3-43bc-b5da-77578f3dabb7", # pins-odw-prod-administrators
     "5c56c7a0-6845-43e7-877c-c8dd527107a3", # pins-odw-prod-dataengineers
-    "75af1e29-416e-4d49-bb18-f904d83fe6fa"  # ODW-PROD-Infrastructure-75af1e29-416e-4d49-bb18-f904d83fe6fa
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # ODW-PROD-Infrastructure-0cad1989-27de-4242-a06b-7cad373497e7
   ]
 }
 data_lake_storage_containers = [
@@ -59,7 +59,8 @@ logic_app_enabled = false
 
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
-    "1fa42635-5dc3-43bc-b5da-77578f3dabb7" # pins-odw-prod-administrators
+    "1fa42635-5dc3-43bc-b5da-77578f3dabb7", # pins-odw-prod-administrators
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # ODW-PROD-Infrastructure-0cad1989-27de-4242-a06b-7cad373497e7
   ],
   "Key Vault Secrets Officer" = [
     "5c56c7a0-6845-43e7-877c-c8dd527107a3" # pins-odw-prod-dataengineers
@@ -236,7 +237,7 @@ synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
     "a2568721-f55c-4cbe-8cef-3d4fa2e1cee7", # pins-odw-data-prod-syn-ws-administrators
-    "75af1e29-416e-4d49-bb18-f904d83fe6fa"  # ODW-PROD-Infrastructure-75af1e29-416e-4d49-bb18-f904d83fe6fa
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # ODW-PROD-Infrastructure-0cad1989-27de-4242-a06b-7cad373497e7
   ],
   "Synapse Contributor" = [
     "76259388-176a-4db7-a5b7-db2861ef7220" # pins-odw-data-prod-syn-ws-contributors
