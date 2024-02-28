@@ -27,7 +27,7 @@ data_lake_retention_days        = 7
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543", # pins-odw-dev-administrators
-    "48bd5755-6d7d-4a17-b044-7522c54e9c7d", # pins-odw-dev-dataengineers
+    "48bd5755-6d7d-4a17-b044-7522c54e9c7d"  # pins-odw-dev-dataengineers
   ]
 }
 data_lake_storage_containers = [
