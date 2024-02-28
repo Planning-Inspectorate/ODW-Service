@@ -70,8 +70,7 @@ logic_app_enabled = false
 
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
-    "ebcc4498-4abe-4457-8970-7fa08bf87543", # pins-odw-dev-administrators
-    "875e931a-ee45-425e-acde-1ec24a8a290d"  # Azure DevOps Pipelines - ODW DEV - Infrastructure
+    "ebcc4498-4abe-4457-8970-7fa08bf87543" # pins-odw-dev-administrators
   ],
   "Key Vault Secrets Officer" = [
     "48bd5755-6d7d-4a17-b044-7522c54e9c7d" # pins-odw-dev-dataengineers
