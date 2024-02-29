@@ -27,7 +27,12 @@ data_lake_retention_days        = 28
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "1fa42635-5dc3-43bc-b5da-77578f3dabb7", # pins-odw-prod-administrators
+<<<<<<< Updated upstream
     "5c56c7a0-6845-43e7-877c-c8dd527107a3"  # pins-odw-prod-dataengineers
+=======
+    "5c56c7a0-6845-43e7-877c-c8dd527107a3", # pins-odw-prod-dataengineers
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # Azure DevOps Pipelines - ODW Prod - Infrastructure
+>>>>>>> Stashed changes
   ]
 }
 data_lake_storage_containers = [
@@ -234,7 +239,8 @@ synapse_data_exfiltration_enabled  = false
 synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
-    "a2568721-f55c-4cbe-8cef-3d4fa2e1cee7" # pins-odw-data-prod-syn-ws-administrators
+    "a2568721-f55c-4cbe-8cef-3d4fa2e1cee7", # pins-odw-data-prod-syn-ws-administrators
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # Azure DevOps Pipelines - ODW Prod - Infrastructure
   ],
   "Synapse Contributor" = [
     "76259388-176a-4db7-a5b7-db2861ef7220" # pins-odw-data-prod-syn-ws-contributors
