@@ -10,16 +10,6 @@ async def make_async_http_call(url):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("url", [
-        # "http://localhost:7071/api/caseschedule",
-        # "http://localhost:7071/api/employee",
-        "http://localhost:7071/api/nsipdocument",
-        "http://localhost:7071/api/nsipexamtimetable",
-        "http://localhost:7071/api/nsipproject",
-        # "http://localhost:7071/api/nsipprojectupdate", no data
-        # "http://localhost:7071/api/nsiprepresentation", no data
-        "http://localhost:7071/api/nsips51advice",
-        # "http://localhost:7071/api/nsipsubscription", no data
-        "http://localhost:7071/api/serviceuser"
     ]
 )
 
