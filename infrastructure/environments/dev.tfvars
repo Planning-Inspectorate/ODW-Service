@@ -54,14 +54,6 @@ function_app = [
         python_version = "3.11"
       }
     }
-  },
-  {
-    name = "fnapp02"
-    site_config = {
-      application_stack = {
-        python_version = "3.11"
-      }
-    }
   }
 ]
 
