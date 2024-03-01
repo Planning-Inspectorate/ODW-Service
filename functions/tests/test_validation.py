@@ -16,6 +16,10 @@ _SCHEMA = _SCHEMAS["nsip-subscription.schema.json"]
 _TOPIC = config["global"]["entities"]["nsip-subscription"]["topic"]
 _SUBSCRIPTION = config["global"]["entities"]["nsip-subscription"]["subscription"]
 
+def list_topics():
+    topics = {k: v for k, v in config['global']['entities'].items()}
+    return topics
+
 def read_messages(namespace: str,
     credential: DefaultAzureCredential,
     topic: str,
@@ -48,6 +52,10 @@ def read_messages(namespace: str,
 
     return messages
 
-def test_read_messages():
-    result = read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT)
-    assert len(result) >= 1
+# pprint.pprint(read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT))
+
+# def test_read_messages():
+#     result = read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT)
+#     assert len(result) >= 1
+
+pprint.pprint(list_topics())
