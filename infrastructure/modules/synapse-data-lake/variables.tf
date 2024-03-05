@@ -74,6 +74,17 @@ variable "firewall_allowed_ip_addresses" {
   type        = list(string)
 }
 
+variable "function_app_principal_ids" {
+  description = "The principal ID's of the function app identity"
+  type        = any
+}
+
+variable "function_app_subnet_name" {
+  default     = "FunctionAppSubnet"
+  description = "The name of the subnet into which the function apps will be deployed"
+  type        = string
+}
+
 variable "key_vault_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for Key Vault"
@@ -103,11 +114,6 @@ variable "service_name" {
 variable "synapse_private_endpoint_subnet_name" {
   default     = "SynapseEndpointSubnet"
   description = "The name of the subnet into which Synapse private endpoints should be deployed"
-  type        = string
-}
-
-variable "synapse_workspace_id" {
-  description = "The ID of the Synapse Workspace"
   type        = string
 }
 

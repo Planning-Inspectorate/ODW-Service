@@ -165,28 +165,36 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 
 | Name | Version |
 |------|---------|
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.1.6, < 3.56.0 |
-| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 3.56.0 |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.1.6, < 3.74.0 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 3.74.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.56.0 |
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.74.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_api_management"></a> [api\_management](#module\_api\_management) | ./modules/api-management | n/a |
+| <a name="module_api_management_failover"></a> [api\_management\_failover](#module\_api\_management\_failover) | ./modules/api-management | n/a |
 | <a name="module_azure_region"></a> [azure\_region](#module\_azure\_region) | claranet/regions/azurerm | 5.1.0 |
 | <a name="module_bastion_host"></a> [bastion\_host](#module\_bastion\_host) | ./modules/bastion-host | n/a |
 | <a name="module_bastion_host_failover"></a> [bastion\_host\_failover](#module\_bastion\_host\_failover) | ./modules/bastion-host | n/a |
 | <a name="module_devops_agent_pool"></a> [devops\_agent\_pool](#module\_devops\_agent\_pool) | ./modules/devops-agent-pool | n/a |
 | <a name="module_devops_agent_pool_failover"></a> [devops\_agent\_pool\_failover](#module\_devops\_agent\_pool\_failover) | ./modules/devops-agent-pool | n/a |
+| <a name="module_function_app"></a> [function\_app](#module\_function\_app) | ./modules/function-app | n/a |
+| <a name="module_function_app_failover"></a> [function\_app\_failover](#module\_function\_app\_failover) | ./modules/function-app | n/a |
 | <a name="module_logic_app"></a> [logic\_app](#module\_logic\_app) | ./modules/logic-app | n/a |
 | <a name="module_logic_app_failover"></a> [logic\_app\_failover](#module\_logic\_app\_failover) | ./modules/logic-app | n/a |
-| <a name="module_odt_pe_backoffice_sb"></a> [odt\_pe\_backoffice\_sb](#module\_odt\_pe\_backoffice\_sb) | ./modules/odt-pe-backoffice-sb | n/a |
-| <a name="module_odt_pe_backoffice_sb_failover"></a> [odt\_pe\_backoffice\_sb\_failover](#module\_odt\_pe\_backoffice\_sb\_failover) | ./modules/odt-pe-backoffice-sb | n/a |
+| <a name="module_odt_backoffice_sb"></a> [odt\_backoffice\_sb](#module\_odt\_backoffice\_sb) | ./modules/odt-backoffice-sb | n/a |
+| <a name="module_odt_backoffice_sb_failover"></a> [odt\_backoffice\_sb\_failover](#module\_odt\_backoffice\_sb\_failover) | ./modules/odt-backoffice-sb | n/a |
+| <a name="module_service_plan"></a> [service\_plan](#module\_service\_plan) | ./modules/service-plan | n/a |
+| <a name="module_service_plan_failover"></a> [service\_plan\_failover](#module\_service\_plan\_failover) | ./modules/service-plan | n/a |
+| <a name="module_storage_account"></a> [storage\_account](#module\_storage\_account) | ./modules/storage-account | n/a |
+| <a name="module_storage_account_failover"></a> [storage\_account\_failover](#module\_storage\_account\_failover) | ./modules/storage-account | n/a |
 | <a name="module_synapse_data_lake"></a> [synapse\_data\_lake](#module\_synapse\_data\_lake) | ./modules/synapse-data-lake | n/a |
 | <a name="module_synapse_data_lake_failover"></a> [synapse\_data\_lake\_failover](#module\_synapse\_data\_lake\_failover) | ./modules/synapse-data-lake | n/a |
 | <a name="module_synapse_ingestion"></a> [synapse\_ingestion](#module\_synapse\_ingestion) | ./modules/synapse-ingestion | n/a |
@@ -208,6 +216,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 
 | Name | Type |
 |------|------|
+| [azurerm_application_insights.function_app_insights](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/application_insights) | resource |
 | [azurerm_private_dns_zone.back_office_private_dns_zone](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone) | resource |
 | [azurerm_private_dns_zone.data_lake](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone) | resource |
 | [azurerm_private_dns_zone.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone) | resource |
@@ -219,10 +228,14 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | [azurerm_private_dns_zone_virtual_network_link.key_vault_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link) | resource |
 | [azurerm_private_dns_zone_virtual_network_link.synapse](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link) | resource |
 | [azurerm_private_dns_zone_virtual_network_link.synapse_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link) | resource |
+| [azurerm_resource_group.api_management](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.api_management_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.data](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.data_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.data_management](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.data_management_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.function_app](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.function_app_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.ingestion](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.ingestion_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.logic_app](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
@@ -232,13 +245,14 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | [azurerm_resource_group.network](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.network_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.network_global](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
-| [azurerm_resource_group.odt_pe_backoffice_sb](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
-| [azurerm_resource_group.odt_pe_backoffice_sb_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
-| [azurerm_resource_group.odt_pe_backoffice_sb_global](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.odt_backoffice_sb](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.odt_backoffice_sb_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_resource_group.odt_backoffice_sb_global](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.shir](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.shir_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.sql_server](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
 | [azurerm_resource_group.sql_server_failover](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_role_assignment.servicebus_receiver](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/role_assignment) | resource |
 | [azurerm_virtual_network_peering.pri_sec](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) | resource |
 | [azurerm_virtual_network_peering.sec_pri](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) | resource |
 
@@ -252,6 +266,11 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_alert_group_synapse_recipients"></a> [alert\_group\_synapse\_recipients](#input\_alert\_group\_synapse\_recipients) | A list of email recipients to recieve Synapse alerts | `list(string)` | `[]` | no |
 | <a name="input_alert_scope_service_health"></a> [alert\_scope\_service\_health](#input\_alert\_scope\_service\_health) | The resource scope at which to alert on service health events | `string` | n/a | yes |
 | <a name="input_alert_threshold_data_lake_capacity_bytes"></a> [alert\_threshold\_data\_lake\_capacity\_bytes](#input\_alert\_threshold\_data\_lake\_capacity\_bytes) | The threshold at which to trigger an alert for exceeding Data Lake capacity in bytes | `number` | `1099511627776` | no |
+| <a name="input_api_management_failover_enabled"></a> [api\_management\_failover\_enabled](#input\_api\_management\_failover\_enabled) | Determines whether the API Management instance should be deployed in a failover region | `bool` | `false` | no |
+| <a name="input_apim_enabled"></a> [apim\_enabled](#input\_apim\_enabled) | Determines whether the API Management instance should be deployed | `bool` | `false` | no |
+| <a name="input_apim_publisher_email"></a> [apim\_publisher\_email](#input\_apim\_publisher\_email) | The email address of the publisher of the API Management instance | `string` | n/a | yes |
+| <a name="input_apim_publisher_name"></a> [apim\_publisher\_name](#input\_apim\_publisher\_name) | The name of the publisher of the API Management instance | `string` | n/a | yes |
+| <a name="input_apim_sku_name"></a> [apim\_sku\_name](#input\_apim\_sku\_name) | The SKU name of the API Management instance | `string` | n/a | yes |
 | <a name="input_bastion_host_enabled"></a> [bastion\_host\_enabled](#input\_bastion\_host\_enabled) | Determines if a Bastion Host should be provisioned for management purposes | `bool` | `false` | no |
 | <a name="input_bastion_vm_image"></a> [bastion\_vm\_image](#input\_bastion\_vm\_image) | An object describing the image specification to use for the Bastion jumpbox VM | `map(string)` | <pre>{<br>  "offer": "windows-11",<br>  "publisher": "MicrosoftWindowsDesktop",<br>  "sku": "win11-21h2-ent",<br>  "version": "latest"<br>}</pre> | no |
 | <a name="input_bastion_vm_size"></a> [bastion\_vm\_size](#input\_bastion\_vm\_size) | The size of the Bastion jumpbox VM to be deployed | `string` | `"Standard_F2s_v2"` | no |
@@ -270,6 +289,8 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_devops_agent_vm_sku"></a> [devops\_agent\_vm\_sku](#input\_devops\_agent\_vm\_sku) | The size of the devops agent VMs to be deployed | `string` | `"Standard_F2s_v2"` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | The name of the environment in which resources will be deployed | `string` | n/a | yes |
 | <a name="input_failover_deployment"></a> [failover\_deployment](#input\_failover\_deployment) | Determines if this is a failover deployment such that resources will deployed to the failover region | `bool` | `false` | no |
+| <a name="input_function_app"></a> [function\_app](#input\_function\_app) | A map containing the configuration for the Function App to be created | `any` | n/a | yes |
+| <a name="input_function_app_enabled"></a> [function\_app\_enabled](#input\_function\_app\_enabled) | Determines whether the resources for the Function App should be deployed | `bool` | `false` | no |
 | <a name="input_key_vault_role_assignments"></a> [key\_vault\_role\_assignments](#input\_key\_vault\_role\_assignments) | An object mapping RBAC roles to principal IDs for Key Vault | `map(list(string))` | `{}` | no |
 | <a name="input_location"></a> [location](#input\_location) | The short-format Azure region into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_logic_app_enabled"></a> [logic\_app\_enabled](#input\_logic\_app\_enabled) | Determines whether the resources for the App Service Plan, Storage Account and Logic App Standard should be deployed | `bool` | `false` | no |
@@ -280,6 +301,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_odt_back_office_service_bus_name_failover"></a> [odt\_back\_office\_service\_bus\_name\_failover](#input\_odt\_back\_office\_service\_bus\_name\_failover) | The name of the Service Bus namespace into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_odt_back_office_service_bus_resource_group_name"></a> [odt\_back\_office\_service\_bus\_resource\_group\_name](#input\_odt\_back\_office\_service\_bus\_resource\_group\_name) | The name of the resource group into which resources will be deployed | `string` | n/a | yes |
 | <a name="input_odt_back_office_service_bus_resource_group_name_failover"></a> [odt\_back\_office\_service\_bus\_resource\_group\_name\_failover](#input\_odt\_back\_office\_service\_bus\_resource\_group\_name\_failover) | The name of the resource group into which resources will be deployed | `string` | n/a | yes |
+| <a name="input_odt_backoffice_sb_topic_subscriptions"></a> [odt\_backoffice\_sb\_topic\_subscriptions](#input\_odt\_backoffice\_sb\_topic\_subscriptions) | "A map containing the configuration for Service Bus Subscriptions to be created in the ODT Service Bus Namespace.<br>{<br>subscription\_name                         = "subscription\_name"<br>topic\_name                                = "topic\_name"<br>status                                    = "Active"<br>max\_delivery\_count                        = 1<br>auto\_delete\_on\_idle                       = "PT5M"<br>default\_message\_ttl                       = "P14D"<br>lock\_duration                             = "P0DT0H1M0S"<br>dead\_lettering\_on\_message\_expiration      = false<br>dead\_lettering\_on\_filter\_evaluation\_error = true<br>enable\_batched\_operations                 = false<br>requires\_session                          = false<br>forward\_to                                = ""<br>role\_assignments                          = {<br>  "role\_name" = {<br>    users = []<br>    groups = []<br>    service\_principals = []<br>  }<br>}" | `any` | `{}` | no |
 | <a name="input_odt_subscription_id"></a> [odt\_subscription\_id](#input\_odt\_subscription\_id) | The subscription ID of the ODT subscription | `string` | n/a | yes |
 | <a name="input_service_bus_failover_enabled"></a> [service\_bus\_failover\_enabled](#input\_service\_bus\_failover\_enabled) | Determines whether the Service Bus Namespace will be provisioned with the Premium SKU for failover | `bool` | `false` | no |
 | <a name="input_service_bus_role_assignments"></a> [service\_bus\_role\_assignments](#input\_service\_bus\_role\_assignments) | "A map of maps containing the role assignments to be created in the Service Bus Namespace.<br>{<br>  "role\_assignment\_name" = {<br>    users = [<br>      "user\_principal\_name"<br>    ]<br>    groups = [<br>      "group\_principal\_name"<br>    ]<br>    service\_principals = [<br>      "service\_principal\_name"<br>    ]<br>  }<br>} | `any` | `{}` | no |
@@ -305,7 +327,7 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="input_tenant_id"></a> [tenant\_id](#input\_tenant\_id) | The ID of the Azure AD tenant containing the identities used for RBAC assignments | `string` | n/a | yes |
 | <a name="input_vnet_base_cidr_block"></a> [vnet\_base\_cidr\_block](#input\_vnet\_base\_cidr\_block) | The base IPv4 range for the Virtual Network in CIDR notation | `string` | `"10.90.0.0/24"` | no |
 | <a name="input_vnet_base_cidr_block_failover"></a> [vnet\_base\_cidr\_block\_failover](#input\_vnet\_base\_cidr\_block\_failover) | The base IPv4 range for the failover Virtual Network in CIDR notation | `string` | `"10.90.1.0/24"` | no |
-| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | `list(map(string))` | <pre>[<br>  {<br>    "name": "ManagementSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": "SynapseEndpointSubnet",<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  },<br>  {<br>    "name": null,<br>    "new_bits": 2<br>  }<br>]</pre> | no |
+| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | <pre>list(object({<br>    name              = string<br>    new_bits          = number<br>    service_endpoints = list(string)<br>    service_delegation = list(object({<br>      delegation_name = string<br>      actions         = list(string)<br>    }))<br>  }))</pre> | n/a | yes |
 
 ## Outputs
 
@@ -324,5 +346,6 @@ The below tables outline the steps in each stage of the `Terraform CD` pipeline:
 | <a name="output_synapse_dev_endpoint"></a> [synapse\_dev\_endpoint](#output\_synapse\_dev\_endpoint) | The development connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_dsql_endpoint"></a> [synapse\_dsql\_endpoint](#output\_synapse\_dsql\_endpoint) | The dedicated SQL pool connectivity endpoint for the Synapse Workspace |
 | <a name="output_synapse_ssql_endpoint"></a> [synapse\_ssql\_endpoint](#output\_synapse\_ssql\_endpoint) | The serverless SQL pool connectivity endpoint for the Synapse Workspace |
+| <a name="output_synapse_workspace_id"></a> [synapse\_workspace\_id](#output\_synapse\_workspace\_id) | The ARM ID of the Synapse Workspace |
 | <a name="output_synapse_workspace_name"></a> [synapse\_workspace\_name](#output\_synapse\_workspace\_name) | The name of the Synapse Workspace |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->

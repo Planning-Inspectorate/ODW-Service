@@ -143,6 +143,17 @@ variable "failover_deployment" {
   type        = bool
 }
 
+variable "function_app_enabled" {
+  default     = false
+  description = "Determines whether the resources for the Function App should be deployed"
+  type        = bool
+}
+
+variable "function_app" {
+  description = "A map containing the configuration for the Function App to be created"
+  type        = any
+}
+
 variable "key_vault_role_assignments" {
   default     = {}
   description = "An object mapping RBAC roles to principal IDs for Key Vault"
@@ -199,8 +210,62 @@ variable "odt_back_office_service_bus_resource_group_name_failover" {
   type        = string
 }
 
+variable "odt_backoffice_sb_topic_subscriptions" {
+  default     = {}
+  type        = any
+  description = <<-EOT
+    "A map containing the configuration for Service Bus Subscriptions to be created in the ODT Service Bus Namespace.
+    {
+    subscription_name                         = "subscription_name"
+    topic_name                                = "topic_name"
+    status                                    = "Active"
+    max_delivery_count                        = 1
+    auto_delete_on_idle                       = "PT5M"
+    default_message_ttl                       = "P14D"
+    lock_duration                             = "P0DT0H1M0S"
+    dead_lettering_on_message_expiration      = false
+    dead_lettering_on_filter_evaluation_error = true
+    enable_batched_operations                 = false
+    requires_session                          = false
+    forward_to                                = ""
+    role_assignments                          = {
+      "role_name" = {
+        users = []
+        groups = []
+        service_principals = []
+      }
+    }"
+  EOT
+}
+
 variable "odt_subscription_id" {
   description = "The subscription ID of the ODT subscription"
+  type        = string
+}
+
+variable "apim_enabled" {
+  default     = false
+  description = "Determines whether the API Management instance should be deployed"
+  type        = bool
+}
+
+variable "api_management_failover_enabled" {
+  default     = false
+  description = "Determines whether the API Management instance should be deployed in a failover region"
+  type        = bool
+}
+variable "apim_publisher_email" {
+  description = "The email address of the publisher of the API Management instance"
+  type        = string
+}
+
+variable "apim_publisher_name" {
+  description = "The name of the publisher of the API Management instance"
+  type        = string
+}
+
+variable "apim_sku_name" {
+  description = "The SKU name of the API Management instance"
   type        = string
 }
 
@@ -398,24 +463,14 @@ variable "vnet_base_cidr_block_failover" {
 }
 
 variable "vnet_subnets" {
-  default = [
-    {
-      name     = "ManagementSubnet"
-      new_bits = 2
-    },
-    {
-      name     = "SynapseEndpointSubnet"
-      new_bits = 2
-    },
-    {
-      name     = null
-      new_bits = 2
-    },
-    {
-      name     = null
-      new_bits = 2
-    }
-  ]
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
-  type        = list(map(string))
+  type = list(object({
+    name              = string
+    new_bits          = number
+    service_endpoints = list(string)
+    service_delegation = list(object({
+      delegation_name = string
+      actions         = list(string)
+    }))
+  }))
 }

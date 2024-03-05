@@ -5,6 +5,11 @@ alert_group_synapse_recipients           = ["odw_support@planninginspectorate.go
 alert_scope_service_health               = "/subscriptions/a82fd28d-5989-4e06-a0bb-1a5d859f9e0c"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
+apim_enabled         = false
+apim_publisher_email = "alex.delany@planninginspectorate.gov.uk"
+apim_publisher_name  = "Alex Delany"
+apim_sku_name        = "Developer_1"
+
 bastion_host_enabled = false
 bastion_vm_username  = "basadmin"
 bastion_vm_size      = "Standard_F2s_v2"
@@ -23,7 +28,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "1fa42635-5dc3-43bc-b5da-77578f3dabb7", # pins-odw-prod-administrators
     "5c56c7a0-6845-43e7-877c-c8dd527107a3", # pins-odw-prod-dataengineers
-    "d1761ac5-c65f-4b48-bee9-a2179b989adc"  # planninginspectorate-operational-data-warehouse-a82fd28d-5989-4e06-a0bb-1a5d859f9e0c
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # Azure DevOps Pipelines - ODW Prod - Infrastructure
   ]
 }
 data_lake_storage_containers = [
@@ -39,7 +44,20 @@ devops_agent_pool_resource_group_name          = "pins-rg-devops-odw-prod-uks"
 devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-prod-ukw"
 
 environment = "prod"
-location    = "uk-south"
+
+function_app_enabled = true
+function_app = [
+  {
+    name = "fnapp01"
+    site_config = {
+      application_stack = {
+        python_version = "3.11"
+      }
+    }
+  }
+]
+
+location = "uk-south"
 
 logic_app_enabled = false
 
@@ -60,6 +78,80 @@ odt_back_office_service_bus_name                         = "pins-sb-back-office-
 odt_back_office_service_bus_name_failover                = "pins-sb-back-office-prod-uks-001"
 odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-prod-ukw-001"
 odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-prod-uks-001"
+odt_backoffice_sb_topic_subscriptions = [
+  {
+    subscription_name = "service-user"
+    topic_name        = "service-user"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-project"
+    topic_name        = "nsip-project"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-exam-timetable"
+    topic_name        = "nsip-exam-timetable"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-document"
+    topic_name        = "nsip-document"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-representation"
+    topic_name        = "nsip-representation"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-s51-advice"
+    topic_name        = "nsip-s51-advice"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-project-update"
+    topic_name        = "nsip-project-update"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  },
+  {
+    subscription_name = "nsip-subscription"
+    topic_name        = "nsip-subscription"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-prod-uks"]
+      }
+    }
+  }
+]
 
 service_bus_failover_enabled = false
 service_bus_role_assignments = {
@@ -82,7 +174,43 @@ service_bus_topics_and_subscriptions = [
       "zendesk"        = {},
       "zendesk-verify" = {}
     }
-  }
+  },
+  {
+    name = "service-user"
+    subscriptions = {
+      "service-user" = {},
+    }
+  },
+  {
+    name = "nsip-project"
+    subscriptions = {
+      "nsip-project" = {},
+    }
+  },
+  {
+    name = "nsip-exam-timetable"
+    subscriptions = {
+      "nsip-exam-timetable" = {},
+    }
+  },
+  {
+    name = "nsip-document"
+    subscriptions = {
+      "nsip-document" = {},
+    }
+  },
+  {
+    name = "nsip-representation"
+    subscriptions = {
+      "nsip-representation" = {},
+    }
+  },
+  {
+    name = "nsip-s51-advice"
+    subscriptions = {
+      "nsip-s51-advice" = {},
+    }
+  },
 ]
 
 spark_pool_enabled         = true
@@ -112,7 +240,7 @@ synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
     "a2568721-f55c-4cbe-8cef-3d4fa2e1cee7", # pins-odw-data-prod-syn-ws-administrators
-    "d1761ac5-c65f-4b48-bee9-a2179b989adc"  # planninginspectorate-operational-data-warehouse-a82fd28d-5989-4e06-a0bb-1a5d859f9e0c
+    "0cad1989-27de-4242-a06b-7cad373497e7"  # Azure DevOps Pipelines - ODW Prod - Infrastructure
   ],
   "Synapse Contributor" = [
     "76259388-176a-4db7-a5b7-db2861ef7220" # pins-odw-data-prod-syn-ws-contributors
@@ -131,18 +259,37 @@ vnet_base_cidr_block_failover = "10.90.1.0/24"
 vnet_subnets = [
   {
     "name" : "AzureBastionSubnet",
-    "new_bits" : 2 # /26
+    "new_bits" : 4 # /28
+    service_endpoints  = []
+    service_delegation = []
+  },
+  {
+    "name" : "FunctionAppSubnet",
+    "new_bits" : 4 # /28
+    service_endpoints = ["Microsoft.Storage", "Microsoft.KeyVault"]
+    service_delegation = [
+      {
+        delegation_name = "Microsoft.Web/serverFarms"
+        actions         = ["Microsoft.Network/virtualNetworks/subnets/action"]
+      }
+    ]
   },
   {
     "name" : "SynapseEndpointSubnet",
     "new_bits" : 2 # /26
+    service_endpoints  = []
+    service_delegation = []
   },
   {
     "name" : "ComputeSubnet"
     "new_bits" : 2 # /26
+    service_endpoints  = ["Microsoft.Storage", "Microsoft.KeyVault"]
+    service_delegation = []
   },
   {
-    "name" : null, # Reserved
+    "name" : "ApimSubnet",
     "new_bits" : 2 # /26
-  }
+    service_endpoints  = []
+    service_delegation = []
+  },
 ]
