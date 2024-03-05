@@ -5,7 +5,7 @@ alert_group_synapse_recipients           = ["chris.topping@planninginspectorate.
 alert_scope_service_health               = "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
-apim_enabled         = true
+apim_enabled         = false
 apim_publisher_email = "alex.delany@planninginspectorate.gov.uk"
 apim_publisher_name  = "Alex Delany"
 apim_sku_name        = "Developer_1"
@@ -28,7 +28,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "ebcc4498-4abe-4457-8970-7fa08bf87543", # pins-odw-dev-administrators
     "48bd5755-6d7d-4a17-b044-7522c54e9c7d", # pins-odw-dev-dataengineers
-    "b4dbfba4-b78b-4163-9b39-87ea03e2d5ed"  # planninginspectorate-operational-data-warehouse-ff442a29-fc06-4a13-8e3e-65fd5da513b3
+    "875e931a-ee45-425e-acde-1ec24a8a290d"  # Azure DevOps Pipelines - ODW Dev - Infrastructure"
   ]
 }
 data_lake_storage_containers = [
@@ -54,19 +54,11 @@ function_app = [
         python_version = "3.11"
       }
     }
-  },
-  {
-    name = "fnapp02"
-    site_config = {
-      application_stack = {
-        python_version = "3.11"
-      }
-    }
   }
 ]
 
 location          = "uk-south"
-logic_app_enabled = true
+logic_app_enabled = false
 
 key_vault_role_assignments = {
   "Key Vault Administrator" = [
@@ -247,7 +239,7 @@ synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
     "6a38f212-3834-4e2e-93fb-f81bb3a3fe49", # pins-odw-data-dev-syn-ws-administrators
-    "b4dbfba4-b78b-4163-9b39-87ea03e2d5ed"  # planninginspectorate-operational-data-warehouse-ff442a29-fc06-4a13-8e3e-65fd5da513b3
+    "875e931a-ee45-425e-acde-1ec24a8a290d"  # Azure DevOps Pipelines - ODW DEV - Infrastructure
   ],
   "Synapse Contributor" = [
     "0a5073e3-b8e9-4786-8e1f-39f2c277aeb2" # pins-odw-data-dev-syn-ws-contributors
