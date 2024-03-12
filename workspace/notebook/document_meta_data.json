@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e764f477-9540-47cd-a224-e348e5890b42"
+				"spark.autotune.trackingId": "8d201cd4-a36c-46ad-af6e-596a0a160031"
 			}
 		},
 		"metadata": {
@@ -158,11 +158,14 @@
 					"        T2.IsActive = 'Y'\r\n",
 					"FULL JOIN odw_harmonised_db.document_meta_data T3 \r\n",
 					"    ON T1.DataID = T3.DataID AND \r\n",
+					"        T1.Version = T3.Version AND\r\n",
 					"        T3.IsActive = 'Y'\r\n",
 					"WHERE\r\n",
 					"    -- flags new data        \r\n",
 					"    (CASE\r\n",
-					"        WHEN T1.DataID = T3.DataID AND md5(\r\n",
+					"        WHEN T1.DataID = T3.DataID AND\r\n",
+					"        T1.Version = T3.Version AND\r\n",
+					"        md5(\r\n",
 					"            concat(\r\n",
 					"                IFNULL(T1.dataid,'.'),\r\n",
 					"                IFNULL(T1.casenodeid,'.'),\r\n",
@@ -196,7 +199,7 @@
 					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.document_meta_data)\r\n",
 					";"
 				],
-				"execution_count": 24
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -228,9 +231,11 @@
 					"SELECT * FROM document_meta_data_new WHERE DataID = '15238939';\n",
 					"SELECT * FROM odw_harmonised_db.document_meta_data WHERE DataID = '15238939';\n",
 					"\n",
-					"SELECT DISTINCT(IngestionDate) FROM odw_harmonised_db.document_meta_data;"
+					"-- SELECT DISTINCT(IngestionDate) FROM document_meta_data_new;\n",
+					"\n",
+					"-- SELECT DISTINCT(IngestionDate) FROM odw_harmonised_db.document_meta_data;"
 				],
-				"execution_count": 25
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -345,7 +350,15 @@
 					"    IsActive\r\n",
 					"    \r\n",
 					"FROM odw_harmonised_db.document_meta_data\r\n",
-					"WHERE DataID IN (SELECT DataID FROM document_meta_data_new WHERE DocumentMetaDataID IS NULL) AND IsActive = 'Y'; "
+					"WHERE DataID IN (\r\n",
+					"    SELECT DataID \r\n",
+					"    FROM document_meta_data_new \r\n",
+					"    WHERE DocumentMetaDataID IS NULL) \r\n",
+					"AND Version IN (\r\n",
+					"    SELECT Version \r\n",
+					"    FROM document_meta_data_new \r\n",
+					"    WHERE DocumentMetaDataID IS NULL) \r\n",
+					"AND IsActive = 'Y'; "
 				],
 				"execution_count": 11
 			},
@@ -474,7 +487,7 @@
 					"MERGE INTO odw_harmonised_db.document_meta_data AS Target\r\n",
 					"USING document_meta_data_changed_rows_final AS Source\r\n",
 					"\r\n",
-					"ON Source.DataID = Target.DataID\r\n",
+					"ON Source.DataID = Target.DataID AND Source.Version = Target.Version AND Target.IsActive = 'Y'  \r\n",
 					"\r\n",
 					"-- For Updates existing rows\r\n",
 					"\r\n",
