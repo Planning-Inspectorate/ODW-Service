@@ -12,8 +12,8 @@ _CREDENTIAL = CREDENTIAL
 _NAMESPACE = config['dev']["servicebus_namespace_odt"]
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
 _SCHEMAS = load_schemas.load_all_schemas()["schemas"]
-_ENTITY = "nsip-s51-advice"
-_SCHEMA = _SCHEMAS["s51-advice.schema.json"]
+_ENTITY = "nsip-project"
+_SCHEMA = _SCHEMAS["nsip-project.schema.json"]
 _TOPIC = config["global"]["entities"][_ENTITY]["topic"]
 _SUBSCRIPTION = config["global"]["entities"][_ENTITY]["subscription"]
 
