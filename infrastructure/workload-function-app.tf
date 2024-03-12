@@ -147,7 +147,7 @@ resource "azurerm_role_assignment" "servicebus_namespace" {
     for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
   }
 
-  scope                = module.odt_backoffice_sb.namespace_id
+  scope                = module.odt_backoffice_sb[0].namespace_id
   role_definition_name = "Azure Service Bus Data receiver"
   principal_id         = module.function_app[each.key].identity[0].principal_id
 }
