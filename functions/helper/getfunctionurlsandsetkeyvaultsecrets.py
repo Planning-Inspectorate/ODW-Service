@@ -3,18 +3,18 @@ from azure.mgmt.web import WebSiteManagementClient
 from azure.keyvault.secrets import SecretClient
 
 # Dev
-subscription_id = "ff442a29-fc06-4a13-8e3e-65fd5da513b3"
-resource_group_name = "pins-rg-function-app-odw-dev-uks"
-function_app_name = "pins-fnapp01-odw-dev-uks"
-keyvault_name = "pinskvsynwodwdevuks"
-vault_uri = "https://pinskvsynwodwdevuks.vault.azure.net/"
+# subscription_id = "ff442a29-fc06-4a13-8e3e-65fd5da513b3"
+# resource_group_name = "pins-rg-function-app-odw-dev-uks"
+# function_app_name = "pins-fnapp01-odw-dev-uks"
+# keyvault_name = "pinskvsynwodwdevuks"
+# vault_uri = "https://pinskvsynwodwdevuks.vault.azure.net/"
 
 # Pre-Prod
-# subscription_id = "6b18ba9d-2399-48b5-a834-e0f267be122d"
-# resource_group_name = "pins-rg-function-app-odw-test-uks"
-# function_app_name = "pins-fnapp01-odw-test-uks"
-# keyvault_name = "pinskvsynwodwtestuks"
-# vault_uri = "https://pinskvsynwodwtestuks.vault.azure.net/"
+subscription_id = "6b18ba9d-2399-48b5-a834-e0f267be122d"
+resource_group_name = "pins-rg-function-app-odw-test-uks"
+function_app_name = "pins-fnapp01-odw-test-uks"
+keyvault_name = "pinskvsynwodwtestuks"
+vault_uri = "https://pinskvsynwodwtestuks.vault.azure.net/"
 
 # Prod
 # subscription_id = "a82fd28d-5989-4e06-a0bb-1a5d859f9e0c"
@@ -75,4 +75,4 @@ def setkeyvaultsecrets():
 
 # select the function you want to call or both
 listfunctionurls()
-setkeyvaultsecrets()
+# setkeyvaultsecrets()
