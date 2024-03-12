@@ -20,15 +20,14 @@ bastion_vm_image = {
   version   = "latest"
 }
 
-data_lake_account_tier          = "Standard"
-data_lake_config_container_name = "odw-config"
-data_lake_replication_type      = "GRS"
-data_lake_retention_days        = 7
+data_lake_account_tier     = "Standard"
+data_lake_replication_type = "GRS"
+data_lake_retention_days   = 7
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
     "7c906e1b-ffbb-44d3-89a1-6772b9c9c148", # pins-odw-preprod-dataengineers
-    "51432f9e-c5a2-468f-8421-5984d097d1f9"  # planninginspectorate-operational-data-warehouse-6b18ba9d-2399-48b5-a834-e0f267be122d
+    "9d4c68d1-c43d-4502-b35f-74f31c497757"  # Azure DevOps Pipelines - ODW Test - Infrastructure
   ]
 }
 data_lake_storage_containers = [
@@ -46,12 +45,16 @@ devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-test-ukw"
 environment = "test"
 
 function_app_enabled = true
-function_app_name    = "fnapp01"
-function_app_site_config = {
-  application_stack = {
-    python_version = "3.11"
+function_app = [
+  {
+    name = "fnapp01"
+    site_config = {
+      application_stack = {
+        python_version = "3.11"
+      }
+    }
   }
-}
+]
 
 location = "uk-south"
 
@@ -214,11 +217,11 @@ spark_pool_enabled         = true
 spark_pool_max_node_count  = 12
 spark_pool_min_node_count  = 3
 spark_pool_node_size       = "Small"
-spark_pool_timeout_minutes = 15
+spark_pool_timeout_minutes = 60
 spark_pool_version         = "3.3"
 
 spark_pool_preview_enabled = true
-spark_pool_preview_version = "3.3"
+spark_pool_preview_version = "3.2"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false
@@ -237,7 +240,7 @@ synapse_sql_administrator_username = "synadmin"
 synapse_role_assignments = {
   "Synapse Administrator" = [
     "be52cb0c-858f-4698-8c40-3a5ec793a2e3", # pins-odw-data-preprod-syn-ws-administrators
-    "51432f9e-c5a2-468f-8421-5984d097d1f9"  # planninginspectorate-operational-data-warehouse-6b18ba9d-2399-48b5-a834-e0f267be122d
+    "9d4c68d1-c43d-4502-b35f-74f31c497757"  # Azure DevOps Pipelines - ODW Test - Infrastructure
   ],
   "Synapse Contributor" = [
     "d59a3e85-58db-4b70-8f88-3f4a4a82ee27" # pins-odw-data-preprod-syn-ws-contributors
