@@ -9,7 +9,7 @@ from pins_data_model import load_schemas
 from validate_messages import validate_data
 
 _CREDENTIAL = CREDENTIAL
-_NAMESPACE = config['dev']["servicebus_namespace_odt"]
+_NAMESPACE = config['preprod']["servicebus_namespace_odt"]
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
 _SCHEMAS = load_schemas.load_all_schemas()["schemas"]
 _ENTITY = "nsip-project"
@@ -60,8 +60,8 @@ def read_messages(namespace: str,
                     message_type = message_type.decode("utf-8")
                 message_body = json.loads(str(latest_message))
                 messages.append(message_body)
-                # return f"ID: {message_id} \n ENQUEUED TIME:{enqueued_time} \n TYPE: {message_type}"
-                return messages
+                return f"ID: {message_id} \n ENQUEUED TIME:{enqueued_time} \n TYPE: {message_type}"
+                # return messages
             else:
                 return []
 
@@ -69,17 +69,17 @@ def read_messages(namespace: str,
 #     result = read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT)
 #     assert len(result) >= 1
             
-def main():
-    # pprint.pprint(_SCHEMA)
-    validate_data(data = read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT), 
-                      schema = _SCHEMA)
-
 # def main():
-#     for k, v in topics_dict().items():
-#         topic = v['topic']
-#         subscription = v['subscription']
-#         message_data = read_messages(_NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT)
-#         print(f"{topic}: \n {message_data}")
+#     # pprint.pprint(_SCHEMA)
+#     validate_data(data = read_messages(_NAMESPACE, _CREDENTIAL, _TOPIC, _SUBSCRIPTION, _MAX_MESSAGE_COUNT), 
+#                       schema = _SCHEMA)
+
+def main():
+    for k, v in topics_dict().items():
+        topic = v['topic']
+        subscription = v['subscription']
+        message_data = read_messages(_NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT)
+        print(f"{topic}: \n {message_data}")
 
 if __name__ == "__main__":
     main()
