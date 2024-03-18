@@ -21,7 +21,7 @@ def get_messages_and_validate(
     max_message_count: int,
     max_wait_time: int,
     schema,
-) -> list | str:
+) -> list:
     """
     Retrieve messages from a Service Bus topic subscription.
 
@@ -40,7 +40,10 @@ def get_messages_and_validate(
 
     print("Creating Servicebus client...")
 
+    message_type_mapping = {"Create": [], "Update": [], "Delete": []}
+    other_message_types = []
     messages = []
+    valid_with_message_type = []
 
     servicebus_client = ServiceBusClient(
         fully_qualified_namespace=namespace, credential=credential
@@ -62,22 +65,34 @@ def get_messages_and_validate(
             )
             for message in received_msgs:
                 message_body = json.loads(str(message))
+                properties = message.application_properties
+                message_type = properties.get(b"type", None)
+                if message_type is not None:
+                    message_type = message_type.decode("utf-8")
+
                 messages.append(message_body)
+
+                if message_type in message_type_mapping:
+                    message_type_mapping[message_type].append(message)
+                else:
+                    other_message_types.append(message)
 
             try:
                 if messages:
                     print("Validating message data...")
-                    validate_data(messages, schema)
-                    for message in received_msgs:
+                    valid, invalid = validate_data(messages, schema)
+                    for message in valid:
+                        message["message_type"] = message_type
+                        valid_with_message_type.append(message)
                         subscription_receiver.complete_message(message)
-                    print("Messages validated and completed")
+                    print(f"{len(valid)} messages validated and completed")
                 else:
                     print("No messages to validate")
-                return messages
+                return valid_with_message_type
             except Exception as e:
-                for message in received_msgs:
+                for message in invalid:
                     subscription_receiver.abandon_message(message)
-                print("Error - abandoning messages - sending to dead letter queue")
+                print(f"Error - abandoning {len(invalid)} messages - sending to dead letter queue")
                 raise e
 
 
