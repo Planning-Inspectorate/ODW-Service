@@ -40,12 +40,12 @@ def get_messages_and_validate(
 
     print("Creating Servicebus client...")
 
-    message_type_mapping = {"Create": [], "Update": [], "Delete": []}
-    other_message_types = []
-    messages = []
-    valid_with_message_type = []
+    message_type_mapping: dict = {"Create": [], "Update": [], "Delete": []}
+    other_message_types: list = []
+    messages: list = []
+    valid_with_message_type: list = []
 
-    servicebus_client = ServiceBusClient(
+    servicebus_client: ServiceBusClient = ServiceBusClient(
         fully_qualified_namespace=namespace, credential=credential
     )
 
@@ -68,7 +68,7 @@ def get_messages_and_validate(
                 properties = message.application_properties
                 message_type = properties.get(b"type", None)
                 if message_type is not None:
-                    message_type = message_type.decode("utf-8")
+                    message_type: str = message_type.decode("utf-8")
 
                 messages.append(message_body)
 
@@ -80,19 +80,27 @@ def get_messages_and_validate(
             try:
                 if messages:
                     print("Validating message data...")
+                    print(f"{len(messages)} messages to validate...")
                     valid, invalid = validate_data(messages, schema)
-                    for message in valid:
-                        message["message_type"] = message_type
-                        valid_with_message_type.append(message)
-                        subscription_receiver.complete_message(message)
-                    print(f"{len(valid)} messages validated and completed")
+                    print(f"{len(valid)} valid messages...")
+                    print(f"{len(invalid)} invalid messages...")
+                    if valid:
+                        for message in valid:
+                            message["message_type"] = message_type
+                            valid_with_message_type.append(message)
+                            subscription_receiver.complete_message(message)
+                        print(f"{len(valid)} messages validated and completed")
+                    else:
+                        print("No valid messages")
+                    if invalid:
+                        for message in invalid:
+                            subscription_receiver.abandon_message(message)
+                        print(f"Error - abandoning {len(invalid)} messages - sending to dead letter queue")
                 else:
                     print("No messages to validate")
                 return valid_with_message_type
             except Exception as e:
-                for message in invalid:
-                    subscription_receiver.abandon_message(message)
-                print(f"Error - abandoning {len(invalid)} messages - sending to dead letter queue")
+                print("Error processing messages", e)
                 raise e
 
 
@@ -136,6 +144,6 @@ def send_to_storage(
         print(f"JSON file '{_FILENAME}' uploaded to Azure Blob Storage.")
 
     else:
-        print("No messages to process")
+        print("No messages to send to storage")
 
     return len(data)

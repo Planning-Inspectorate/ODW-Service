@@ -104,15 +104,16 @@ def main():
         topic = v["topic"]
         subscription = v["subscription"]
         schema = _SCHEMAS[v["schema"]]
+        # pprint.pprint(schema)
 
-        if topic == "nsip-s51-advice":
-
-            valid, invalid = validate_data(data=read_messages(_NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT), schema=schema)
-            print(f"Topic: {topic}\nSubscription: {subscription}\nSchema: {v['schema']}")
-            print(f"Valid: {len(valid)}\nInvalid: {len(invalid)}\n\n")
-            pprint.pprint(valid[0])
-            valid[0]["message_type"] = "Created"
-            pprint.pprint(valid[0])
+        # if topic == "nsip-s51-advice":
+        create, update, delete, other, messages = read_messages(_NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT)
+        valid, invalid = validate_data(data = messages, schema=schema)
+        print(f"Namespace: {_NAMESPACE}\nTopic: {topic}\nSubscription: {subscription}\nSchema: {v['schema']}")
+        print(f"Valid: {len(valid)}\nInvalid: {len(invalid)}\n\n")
+        # pprint.pprint(valid[0])
+        # valid[0]["message_type"] = "Created"
+        # pprint.pprint(valid[0])
     # print(
     #     f"Topic: {_TOPIC} \n Created: {len(created)} \n Updated: {len(updated)} \n Deleted: {len(deleted)} \n Other: {len(other)}"
     # )

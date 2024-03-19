@@ -28,11 +28,11 @@ def validate_data(data: list, schema: dict) -> tuple:
     Validation includes a format check against ISO-8601.
     """
 
-    valid = []
-    invalid = []
-
     format_checker = FormatChecker()
     format_checker.checks("date-time")(is_iso8601_date_time)
+
+    valid: list = []
+    invalid: list = []
 
     for message in data:
         try:
@@ -41,5 +41,4 @@ def validate_data(data: list, schema: dict) -> tuple:
         except ValidationError as e:
             invalid.append(message)
             print(e)
-            raise e
     return (valid, invalid)
