@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ee506bab-0212-4050-8b6b-bbaa0c0b4d1b"
+				"spark.autotune.trackingId": "46e9c28a-79b0-4ca6-bd16-875420b182e8"
 			}
 		},
 		"metadata": {
@@ -92,18 +92,41 @@
 					"\n",
 					"SELECT DISTINCT\n",
 					"\n",
-					"    CAST(LFD.HorizonFolderID as INT)    AS horizonFolderId,\n",
-					"    CAST(LFD.ID as INT)                 AS id,\n",
+					"    CAST(LFD.HorizonFolderID AS INT)    AS horizonFolderId,\n",
+					"    CAST(LFD.ID AS INT)                 AS id,\n",
 					"    LFD.CaseReference                   AS caseReference,\n",
 					"    LFD.DisplayNameEnglish              AS displayNameEnglish,\n",
 					"    LFD.DisplayNameWelsh                AS displayNameWelsh,\n",
-					"    CAST(LFD.ParentFolderID as INT)     AS parentFolderId,\n",
-					"    CAST(LFD.CaseNodeId as INT)         AS caseNodeId\n",
+					"    CASE\n",
+					"        WHEN ParentFolderID = CaseNodeId\n",
+					"        THEN NULL\n",
+					"        ELSE CAST(LFD.ParentFolderID AS INT)     \n",
+					"        END                             AS parentFolderId,\n",
+					"    CAST(LFD.CaseNodeId AS INT)         AS caseNodeId,\n",
+					"    CASE\n",
+					"        WHEN LFD.caseStage = 'Pre-application'\n",
+					"        THEN 'pre-application'\n",
+					"        WHEN LFD.caseStage = 'Acceptance'\n",
+					"        THEN 'acceptance'\n",
+					"        WHEN LFD.caseStage = 'Pre-examination'\n",
+					"        THEN 'pre-examination'\n",
+					"        WHEN LFD.caseStage = 'Examination'\n",
+					"        THEN 'examination'\n",
+					"        WHEN LFD.caseStage = 'Recommendation'\n",
+					"        THEN 'recommendation'\n",
+					"        WHEN LFD.caseStage = 'Decision'\n",
+					"        THEN 'decision'\n",
+					"        WHEN LFD.caseStage = 'Post decision'\n",
+					"        THEN 'post_decision'\n",
+					"        WHEN LFD.caseStage = 'Withdrawn'\n",
+					"        THEN 'withdrawn'\n",
+					"        ELSE LFD.caseStage\n",
+					"        END                            AS caseStage\n",
 					"\n",
 					"FROM odw_harmonised_db.horizon_folder   AS LFD\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -137,7 +160,7 @@
 					"view_df = spark.sql('SELECT * FROM odw_curated_db.vw_legacy_folder_data')\n",
 					"view_df.write.mode(\"overwrite\").saveAsTable('odw_curated_db.legacy_folder_data')"
 				],
-				"execution_count": 3
+				"execution_count": 7
 			}
 		]
 	}
