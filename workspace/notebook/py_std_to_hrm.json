@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9e830e1d-91ce-4168-9f08-796fe8e69c8c"
+				"spark.autotune.trackingId": "fea845c3-3fbe-4405-b58c-fb403e702cb9"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 				"source": [
 					"entity_name = 'nsip-s51-advice'"
 				],
-				"execution_count": 527
+				"execution_count": 183
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +106,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 528
+				"execution_count": 184
 			},
 			{
 				"cell_type": "code",
@@ -121,7 +121,7 @@
 					"\n",
 					"mapping = definition['Std_To_Hrm_Mapping']"
 				],
-				"execution_count": 529
+				"execution_count": 185
 			},
 			{
 				"cell_type": "markdown",
@@ -162,7 +162,20 @@
 					"\n",
 					"target_df = spark.sql(f\"SELECT * FROM {hrm_db}.{hrm_table}\").toPandas()"
 				],
-				"execution_count": 530
+				"execution_count": 186
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Utility functions"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -188,6 +201,8 @@
 					"def apply_mapping(df):\n",
 					"    target_df = pd.DataFrame()\n",
 					"    for target_col, source_col in mapping.items():\n",
+					"        target_df['IngestionDate'] = df['expected_from']\n",
+					"        target_df['MessageEnqueue'] = df['message_enqueued_time_utc']\n",
 					"        if source_col in df.columns:\n",
 					"            if 'Date' in target_col:\n",
 					"                target_df[target_col] = pd.to_datetime(df[source_col])\n",
@@ -216,20 +231,9 @@
 					"        max_id += 1\n",
 					"        source_df.loc[index, incremental_key] = str(max_id)\n",
 					"        \n",
-					"    return pd.concat([target_df, source_df], ignore_index=True)\n",
-					"\n",
-					"def soft_delete_rows_from_df(source_df, target_df, pk, deletion_time):\n",
-					"    # Create a boolean mask to identify rows present in source_df\n",
-					"    mask = target_df[pk].isin(source_df[pk])\n",
-					"\n",
-					"    # Update ValidTo column only for the rows present in source_df\n",
-					"    target_df.loc[mask, 'IsActive'] = 'N'\n",
-					"    target_df.loc[mask, 'ValidTo'] = deletion_time\n",
-					"\n",
-					"    return target_df\n",
-					""
+					"    return pd.concat([target_df, source_df], ignore_index=True)"
 				],
-				"execution_count": 531
+				"execution_count": 187
 			},
 			{
 				"cell_type": "markdown",
@@ -258,10 +262,10 @@
 					}
 				},
 				"source": [
-					"source_df = apply_mapping(create_df)\n",
+					"source_df = apply_mapping(create_df).drop_duplicates()\n",
 					"target_df = insert_rows_in_df(source_df, target_df, hrm_incremental_key)"
 				],
-				"execution_count": 532
+				"execution_count": 188
 			},
 			{
 				"cell_type": "markdown",
@@ -291,17 +295,19 @@
 				},
 				"source": [
 					"source_df = apply_mapping(update_df)\n",
-					"source_df = source_df.sort_values(by='message_enqueued_time_utc')\n",
-					"\n",
+					"source_df = source_df.drop_duplicates().sort_values(by='MessageEnqueue')\n",
 					"row_closing_time = datetime.now()\n",
 					"\n",
 					"for index, row in source_df.iterrows():\n",
-					"    # row_closing_time = row.message_enque_time\n",
-					"    existing_row = target_df[(target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])]\n",
-					"    target_df = soft_delete_rows_from_df(existing_row, target_df, entity_primary_key, current_timestamp)\n",
-					"    target_df = insert_rows_in_df(pd.DataFrame([row]), target_df, hrm_incremental_key)"
+					"    row_closing_time = row['MessageEnqueue']\n",
+					"    mask = (target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])\n",
+					"    target_df.loc[mask, 'IsActive'] = 'N'\n",
+					"    target_df.loc[mask, 'ValidTo'] = datetime.strptime(row['MessageEnqueue'], \"%Y-%m-%dT%H:%M:%S.%f%z\")\n",
+					"    target_df = insert_rows_in_df(pd.DataFrame([row]), target_df, hrm_incremental_key)\n",
+					"\n",
+					"target_df.drop(columns=['MessageEnqueue'], inplace=True)"
 				],
-				"execution_count": 533
+				"execution_count": 189
 			},
 			{
 				"cell_type": "markdown",
@@ -331,9 +337,24 @@
 				},
 				"source": [
 					"source_df = apply_mapping(delete_df)\n",
-					"target_df = soft_delete_rows_from_df(source_df, target_df, entity_primary_key, datetime.now())"
+					"mask = (target_df['IsActive'] == 'Y') & target_df[entity_primary_key].isin(source_df[entity_primary_key])\n",
+					"target_df.loc[mask, 'IsActive'] = 'N'\n",
+					"target_df.loc[mask, 'ValidTo'] = datetime.now()"
 				],
-				"execution_count": 534
+				"execution_count": 190
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Writing the dataframe to the harmonised table"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +374,7 @@
 					"df_to_update = spark.createDataFrame(target_df)\n",
 					"df_to_update.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 535
+				"execution_count": 191
 			},
 			{
 				"cell_type": "code",
@@ -374,32 +395,11 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_standardised_db.nsip_s51_advice"
+					"\n",
+					"-- delete from odw_harmonised_db.casework_nsip_advice_dim where casereference = 'TR0310022';\n",
+					"select * from odw_harmonised_db.casework_nsip_advice_dim where casereference = 'TR0310022'"
 				],
-				"execution_count": 536
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select * from odw_harmonised_db.casework_nsip_advice_dim order by cast(NSIPAdviceID as int)"
-				],
-				"execution_count": 537
+				"execution_count": 192
 			}
 		]
 	}
