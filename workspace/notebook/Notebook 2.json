@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2c511b8b-e3ac-4d17-8329-436a927cd1ce"
+				"spark.autotune.trackingId": "cc942828-84ed-460d-96e2-8b26bf67823f"
 			}
 		},
 		"metadata": {
@@ -57,9 +57,53 @@
 					"std_db = 'odw_standardised_db'\n",
 					"hrm_db = 'odw_harmonised_db'\n",
 					"std_table = 'nsip_s51_advice'\n",
-					"hrm_table = 'casework_nsip_advice_dim'"
+					"hrm_table = 'casework_nsip_advice_dim_temp'\n",
+					"\n",
+					"hrm_pk = 'NSIPAdviceID'"
 				],
-				"execution_count": 2
+				"execution_count": 90
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"mapping = {\n",
+					"    'AdviceNodeID': 'caseid',\n",
+					"    'AdviceTitle': 'title',\n",
+					"    'CaseReference': 'casereference',\n",
+					"    'AdviceReference': 'advicereference',\n",
+					"    'AdviceStatus': 'status',\n",
+					"    'Section51Advice': 'Yes',\n",
+					"    'Enquirer': 'from',\n",
+					"    'EnquirerOrganisation': 'agent',\n",
+					"    'EnquiryDate': 'enquirydate',\n",
+					"    'EnquiryMethod': 'method',\n",
+					"    'Enquiry': 'enquirydetails',\n",
+					"    'AdviceFrom': 'advicegivenby',\n",
+					"    'AdviceDate': 'advicedate',\n",
+					"    'Advice': 'advicedetails',\n",
+					"    'AdviceLastModified': None,\n",
+					"    'AttachmentCount': None,\n",
+					"    'AttachmentID': 'attachmentids',\n",
+					"    'AttachmentLastModified': None,\n",
+					"    'LastPublishedDate': None,\n",
+					"    'CaseNodeID': 'adviceid',\n",
+					"    'WelshLanguage': None,\n",
+					"    'CaseWorkType': None,\n",
+					"    'IngestionDate': 'expected_from'\n",
+					"}"
+				],
+				"execution_count": 119
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +162,7 @@
 				},
 				"source": [
 					"# order by message_datetime ascending the below query\n",
-					"latest_ingestion = spark.sql(f\"SELECT DISTINCT * FROM {std_db}.{std_table} WHERE expected_from = (SELECT MAX(expected_from) FROM {std_db}.{std_table})\")\n",
+					"latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE expected_from = (SELECT MAX(expected_from) FROM {std_db}.{std_table})\")\n",
 					"\n",
 					"# remove the column ingested_datetime and then removing duplicates\n",
 					"latest_ingestion = latest_ingestion.toPandas()\n",
@@ -128,7 +172,175 @@
 					"update_df = latest_ingestion[latest_ingestion['message_type'] == 'Updated']\n",
 					"delete_df = latest_ingestion[latest_ingestion['message_type'] == 'Deleted']"
 				],
-				"execution_count": 16
+				"execution_count": 88
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def calculate_md5(row):\n",
+					"    row_str = ''.join(map(str, row))\n",
+					"    md5_hash = hashlib.md5(row_str.encode()).hexdigest()\n",
+					"    return md5_hash"
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import hashlib\n",
+					"\n",
+					"target_df = pd.DataFrame()\n",
+					"for target_col, source_col in mapping.items():\n",
+					"    if source_col in create_df.columns:\n",
+					"        if 'Date' in target_col:\n",
+					"            target_df[target_col] = pd.to_datetime(create_df[source_col])\n",
+					"        else:\n",
+					"            target_df[target_col] = create_df[source_col]\n",
+					"    else:\n",
+					"        target_df[target_col] = source_col\n",
+					"\n",
+					"target_df['RowID'] = target_df.apply(calculate_md5, axis=1)\n",
+					"\n",
+					"source_system_df = spark.sql(\"SELECT * FROM odw_harmonised_db.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
+					"target_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
+					"\n",
+					"target_df['Migrated'] = '1'\n",
+					"target_df['ODTSourceSystem'] = 'ODT'\n",
+					"target_df['ValidTo'] = None\n",
+					"target_df['IsActive'] = 'Y'\n",
+					"target_df['HistoricIsActive'] = None\n",
+					"\n",
+					"# appending Primary Key incremental value\n",
+					"pk_df = spark.sql(f\"SELECT Max({hrm_pk}) AS {hrm_pk} FROM {hrm_db}.{hrm_table}\")\n",
+					"max_id = int(pk_df.toPandas().at[0, hrm_pk])\n",
+					"incremental_ids = range(max_id + 1, max_id + 1 + len(target_df))\n",
+					"target_df[hrm_pk] = pd.Series(incremental_ids)"
+				],
+				"execution_count": 120
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.sql('Drop table odw_harmonised_db.casework_nsip_advice_dim_temp')\n",
+					"df = spark.sql(f\"SELECT * FROM {hrm_db}.casework_nsip_advice_dim WHERE IsActive = 'Y' LIMIT 6\")\n",
+					"df.write.mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					""
+				],
+				"execution_count": 121
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.createDataFrame(target_df).schema"
+				],
+				"execution_count": 82
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_to_append = spark.createDataFrame(target_df)\n",
+					"df_to_append.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					"# "
+				],
+				"execution_count": 122
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_harmonised_db.casework_nsip_advice_dim_temp"
+				],
+				"execution_count": 123
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark_df = spark.createDataFrame(pandas_df)\n",
+					"df_to_append.write.mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -154,12 +366,118 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
 				},
 				"source": [
-					"create_df"
+					"%%sql\n",
+					"-- Build casework_nsip_advice_dim_new table\n",
+					"-- Gets modified or deleted from source rows\n",
+					"\n",
+					"\n",
+					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\n",
+					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    CASE\n",
+					"        WHEN T1.caseId IS NULL\n",
+					"        THEN T3.NSIPAdviceID\n",
+					"        ELSE NULL\n",
+					"    END                             AS NSIPAdviceID,\n",
+					"    T1.caseId                       AS AdviceNodeID,\n",
+					"    T1.title                        AS AdviceTitle,\n",
+					"    T1.caseReference                AS CaseReference,\n",
+					"    T1.adviceReference              AS AdviceReference,\n",
+					"    T1.status                       AS AdviceStatus,\n",
+					"    \"Yes\"                           AS Section51Advice,\n",
+					"    T1.from                         AS Enquirer,\n",
+					"    T1.agent                        AS EnquirerOrganisation,\n",
+					"    T1.enquiryDate                  AS EnquiryDate,\n",
+					"    T1.method                       AS EnquiryMethod,\n",
+					"    T1.enquiryDetails               AS Enquiry,\n",
+					"    T1.adviceGivenBy                AS AdviceFrom,\n",
+					"    T1.adviceDate                   AS AdviceDate,\n",
+					"    T1.adviceDetails                AS Advice,\n",
+					"    NULL                            AS AdviceLastModified,\n",
+					"    NULL                            AS AttachmentCount,\n",
+					"    T1.attachmentids                AS AttachmentID,\n",
+					"    NULL                            AS AttachmentLastModified,\n",
+					"    NULL                            AS LastPublishedDate,\n",
+					"    T1.adviceId                     AS CaseNodeID, -- NEED TO BE CHECKED\n",
+					"    NULL                            AS WelshLanguage,\n",
+					"    NULL                            AS CaseWorkType,\n",
+					"    \"1\"                             AS Migrated,\n",
+					"    \"ODT\"                           AS ODTSourceSystem,\n",
+					"    T2.SourceSystemID               AS SourceSystemID,\n",
+					"    to_timestamp(T1.expected_from)  AS IngestionDate,\n",
+					"    NULL                            AS ValidTo,\n",
+					"    md5(concat(IFNULL(T1.caseId,'.'),\n",
+					"                    IFNULL(T1.title,'.'),\n",
+					"                    IFNULL(T1.caseReference,'.'),\n",
+					"                    IFNULL(T1.adviceReference,'.'),\n",
+					"                    IFNULL(T1.status,'.'),\n",
+					"                    IFNULL(T1.from,'.'),\n",
+					"                    IFNULL(T1.agent,'.'),\n",
+					"                    IFNULL(T1.enquiryDate,'.'),\n",
+					"                    IFNULL(T1.method,'.'),\n",
+					"                    IFNULL(T1.enquiryDetails,'.'),\n",
+					"                    IFNULL(T1.adviceGivenBy,'.'),\n",
+					"                    IFNULL(T1.adviceDate,'.'),\n",
+					"                    IFNULL(T1.adviceDetails,'.'),\n",
+					"                    IFNULL(T1.attachmentids,'.'),\n",
+					"                    IFNULL(T1.adviceId,'.'))\n",
+					"        )                           AS RowID, -- this hash should contain all the defining fields\n",
+					"    'Y'                             AS IsActive,\n",
+					"    T3.IsActive                     AS HistoricIsActive\n",
+					"\n",
+					"FROM odw_standardised_db.nsip_s51_advice T1\n",
+					"\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2   \n",
+					"    ON \"Casework\" = T2.Description      \n",
+					"        AND T2.IsActive = 'Y'\n",
+					"\n",
+					"FULL JOIN odw_harmonised_db.casework_nsip_advice_dim T3 \n",
+					"    ON T1.caseId = T3.AdviceNodeID AND \n",
+					"        IFNULL(T1.attachmentids,'None') = T3.AttachmentID\n",
+					"        AND T3.IsActive = 'Y'\n",
+					"\n",
+					"            Where T1.caseId IS NOT NULL\n",
+					"            AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.nsip_s51_advice)\n",
+					"\n",
+					"-- WHERE\n",
+					"--         -- flags new data        \n",
+					"--         (   CASE\n",
+					"--                 WHEN T1.caseId = T3.AdviceNodeID AND IFNULL(T1.attachmentids,'None') = T3.AttachmentID\n",
+					"--                 AND  \n",
+					"--                 md5(concat(\n",
+					"--                     IFNULL(T1.caseId,'.'),\n",
+					"--                     IFNULL(T1.title,'.'),\n",
+					"--                     IFNULL(T1.caseReference,'.'),\n",
+					"--                     IFNULL(T1.adviceReference,'.'),\n",
+					"--                     IFNULL(T1.status,'.'),\n",
+					"--                     IFNULL(T1.from,'.'),\n",
+					"--                     IFNULL(T1.agent,'.'),\n",
+					"--                     IFNULL(T1.enquiryDate,'.'),\n",
+					"--                     IFNULL(T1.method,'.'),\n",
+					"--                     IFNULL(T1.enquiryDetails,'.'),\n",
+					"--                     IFNULL(T1.adviceGivenBy,'.'),\n",
+					"--                     IFNULL(T1.adviceDate,'.'),\n",
+					"--                     IFNULL(T1.adviceDetails,'.'),\n",
+					"--                     IFNULL(T1.attachmentids,'.'),\n",
+					"--                     IFNULL(T1.adviceId,'.')))\n",
+					"--                 <> T3.RowID  -- same row, changed data\n",
+					"--                 THEN 'Y'\n",
+					"--                 WHEN T3.AdviceNodeID IS NULL -- new AdviceNodeID\n",
+					"--                 THEN 'Y'\n",
+					"--             ELSE 'N'\n",
+					"--             END  = 'Y' ) \n",
+					"--     AND T1.caseId IS NOT NULL\n",
+					"--     "
 				],
-				"execution_count": 17
+				"execution_count": 24
 			}
 		]
 	}
