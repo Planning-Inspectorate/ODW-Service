@@ -62,12 +62,12 @@ def read_messages(
                 else:
                     other_message_types.append(message)
 
-    return(
+    return (
         message_type_mapping["Create"],
         message_type_mapping["Update"],
         message_type_mapping["Delete"],
         other_message_types,
-        messages
+        messages,
     )
 
     # sorted_messages = sorted(
@@ -107,9 +107,13 @@ def main():
         # pprint.pprint(schema)
 
         # if topic == "nsip-s51-advice":
-        create, update, delete, other, messages = read_messages(_NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT)
-        valid, invalid = validate_data(data = messages, schema=schema)
-        print(f"Namespace: {_NAMESPACE}\nTopic: {topic}\nSubscription: {subscription}\nSchema: {v['schema']}")
+        _, _, _, _, messages = read_messages(
+            _NAMESPACE, _CREDENTIAL, topic, subscription, _MAX_MESSAGE_COUNT
+        )
+        valid, invalid = validate_data(data=messages, schema=schema)
+        print(
+            f"Namespace: {_NAMESPACE}\nTopic: {topic}\nSubscription: {subscription}\nSchema: {v['schema']}"
+        )
         print(f"Valid: {len(valid)}\nInvalid: {len(invalid)}\n\n")
         # pprint.pprint(valid[0])
         # valid[0]["message_type"] = "Created"

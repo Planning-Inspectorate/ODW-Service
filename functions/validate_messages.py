@@ -22,7 +22,7 @@ def is_iso8601_date_time(instance) -> bool:
         return False
 
 
-def validate_data(data: list, schema: dict) -> tuple:
+def validate_data(message, schema: dict) -> bool:
     """
     Function to validate a list of servicebus messages.
     Validation includes a format check against ISO-8601.
@@ -31,14 +31,10 @@ def validate_data(data: list, schema: dict) -> tuple:
     format_checker = FormatChecker()
     format_checker.checks("date-time")(is_iso8601_date_time)
 
-    valid: list = []
-    invalid: list = []
-
-    for message in data:
-        try:
-            validate(instance=message, schema=schema, format_checker=format_checker)
-            valid.append(message)
-        except ValidationError as e:
-            invalid.append(message)
-            print(e)
-    return (valid, invalid)
+    try:
+        validate(instance=message, schema=schema, format_checker=format_checker)
+        is_valid = True
+    except ValidationError as e:
+        is_valid = False
+        print(e)
+    return is_valid

@@ -41,9 +41,9 @@ def validate_data(data: list, schema: dict):
             invalid.append(message)
 
     return (valid, invalid)
-            # print(e)
-            # success = False
-            # raise e
+    # print(e)
+    # success = False
+    # raise e
     # if success:
     #     return f"All {len(data)} messages validated!"
     # else:
