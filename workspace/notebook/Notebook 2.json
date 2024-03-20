@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1fd4a6f8-26c5-4298-a63b-d3ed5961d2db"
+				"spark.autotune.trackingId": "e0d81c42-2940-412e-a635-98b8233f1cf8"
 			}
 		},
 		"metadata": {
@@ -62,69 +62,15 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"spark.sql('Drop table odw_harmonised_db.casework_nsip_advice_dim_temp')\n",
-					"df = spark.sql(f\"SELECT * FROM {hrm_db}.casework_nsip_advice_dim WHERE IsActive = 'Y' LIMIT 6\")\n",
-					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
-				],
-				"execution_count": 449
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"std_db = 'odw_standardised_db'\n",
-					"hrm_db = 'odw_harmonised_db'\n",
-					"std_table = 'nsip_s51_advice'\n",
-					"hrm_table = 'casework_nsip_advice_dim_temp'\n",
-					"\n",
-					"hrm_incremental_key = 'NSIPAdviceID'\n",
-					"hrm_primary_key = 'AdviceNodeID'"
-				],
-				"execution_count": 450
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
 					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
+					"tags": [
+						"parameters"
+					]
 				},
 				"source": [
-					"mapping = {\n",
-					"    'AdviceNodeID': 'caseid',\n",
-					"    'AdviceTitle': 'title',\n",
-					"    'CaseReference': 'casereference',\n",
-					"    'AdviceReference': 'advicereference',\n",
-					"    'AdviceStatus': 'status',\n",
-					"    'Section51Advice': 'Yes',\n",
-					"    'Enquirer': 'from',\n",
-					"    'EnquirerOrganisation': 'agent',\n",
-					"    'EnquiryDate': 'enquirydate',\n",
-					"    'EnquiryMethod': 'method',\n",
-					"    'Enquiry': 'enquirydetails',\n",
-					"    'AdviceFrom': 'advicegivenby',\n",
-					"    'AdviceDate': 'advicedate',\n",
-					"    'Advice': 'advicedetails',\n",
-					"    'AdviceLastModified': None,\n",
-					"    'AttachmentCount': None,\n",
-					"    'AttachmentID': 'attachmentids',\n",
-					"    'AttachmentLastModified': None,\n",
-					"    'LastPublishedDate': None,\n",
-					"    'CaseNodeID': 'adviceid',\n",
-					"    'WelshLanguage': None,\n",
-					"    'CaseWorkType': None,\n",
-					"    'IngestionDate': 'expected_from'\n",
-					"}"
+					"entity_name = 'nsip-s51-advice'"
 				],
-				"execution_count": 451
+				"execution_count": 527
 			},
 			{
 				"cell_type": "code",
@@ -143,18 +89,39 @@
 					"from pyspark.sql import SparkSession\n",
 					"from notebookutils import mssparkutils\n",
 					"import json\n",
-					"import calendar\n",
-					"from datetime import datetime, timedelta, date\n",
+					"from datetime import datetime, date\n",
 					"import pandas as pd\n",
-					"import os\n",
 					"from IPython.display import display\n",
 					"\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
 					"\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"raw_container = \"abfss://odw-raw@\" + storage_account"
+					"\n",
+					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"definition = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
+					"\n",
+					"if not definition:\n",
+					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 452
+				"execution_count": 528
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"std_db = 'odw_standardised_db'\n",
+					"hrm_db = 'odw_harmonised_db'\n",
+					"\n",
+					"std_table = definition['Standardised_Table_Name']\n",
+					"hrm_table = definition['Harmonised_Table_Name']\n",
+					"hrm_incremental_key = definition['Harmonised_Incremental_Key']\n",
+					"entity_primary_key = definition['Entity_Primary_Key']\n",
+					"\n",
+					"mapping = definition['Std_To_Hrm_Mapping']"
+				],
+				"execution_count": 529
 			},
 			{
 				"cell_type": "markdown",
@@ -196,7 +163,7 @@
 					"\n",
 					"target_df = spark.sql(f\"SELECT * FROM {hrm_db}.{hrm_table}\").toPandas()"
 				],
-				"execution_count": 453
+				"execution_count": 530
 			},
 			{
 				"cell_type": "code",
@@ -245,7 +212,7 @@
 					"\n",
 					"def insert_rows_in_df(source_df, target_df, incremental_key):\n",
 					"    # appending the incremental key\n",
-					"    max_id = int(target_df[incremental_key].max())\n",
+					"    max_id = int(target_df[incremental_key].astype(int).max())\n",
 					"    for index, rows in source_df.iterrows():\n",
 					"        max_id += 1\n",
 					"        source_df.loc[index, incremental_key] = str(max_id)\n",
@@ -263,7 +230,7 @@
 					"    return target_df\n",
 					""
 				],
-				"execution_count": 454
+				"execution_count": 531
 			},
 			{
 				"cell_type": "markdown",
@@ -295,7 +262,7 @@
 					"source_df = apply_mapping(create_df)\n",
 					"target_df = insert_rows_in_df(source_df, target_df, hrm_incremental_key)"
 				],
-				"execution_count": 455
+				"execution_count": 532
 			},
 			{
 				"cell_type": "markdown",
@@ -331,11 +298,11 @@
 					"\n",
 					"for index, row in source_df.iterrows():\n",
 					"    # row_closing_time = row.message_enque_time\n",
-					"    existing_row = target_df[(target_df['IsActive'] == 'Y') & (target_df[hrm_primary_key] == row[hrm_primary_key])]\n",
-					"    target_df = soft_delete_rows_from_df(existing_row, target_df, hrm_primary_key, current_timestamp)\n",
+					"    existing_row = target_df[(target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])]\n",
+					"    target_df = soft_delete_rows_from_df(existing_row, target_df, entity_primary_key, current_timestamp)\n",
 					"    target_df = insert_rows_in_df(pd.DataFrame([row]), target_df, hrm_incremental_key)"
 				],
-				"execution_count": 456
+				"execution_count": 533
 			},
 			{
 				"cell_type": "markdown",
@@ -365,9 +332,9 @@
 				},
 				"source": [
 					"source_df = apply_mapping(delete_df)\n",
-					"target_df = soft_delete_rows_from_df(source_df, target_df, hrm_primary_key, datetime.now())"
+					"target_df = soft_delete_rows_from_df(source_df, target_df, entity_primary_key, datetime.now())"
 				],
-				"execution_count": 457
+				"execution_count": 534
 			},
 			{
 				"cell_type": "code",
@@ -387,29 +354,7 @@
 					"df_to_update = spark.createDataFrame(target_df)\n",
 					"df_to_update.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 458
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"select * from odw_standardised_db.casework_nsip_advice_dim_temp order by NSIPAdviceID"
-				],
-				"execution_count": null
+				"execution_count": 535
 			},
 			{
 				"cell_type": "code",
@@ -430,9 +375,32 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_harmonised_db.casework_nsip_advice_dim_temp order by NSIPAdviceID"
+					"select * from odw_standardised_db.nsip_s51_advice"
 				],
-				"execution_count": 459
+				"execution_count": 536
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_harmonised_db.casework_nsip_advice_dim order by cast(NSIPAdviceID as int)"
+				],
+				"execution_count": 537
 			}
 		]
 	}
