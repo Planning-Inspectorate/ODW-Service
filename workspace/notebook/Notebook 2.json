@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "30fa1b6e-0210-4b1a-8388-a0646834c5dd"
+				"spark.autotune.trackingId": "0930e7ba-67b1-4d59-bb66-512ea9bb0472"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"df = spark.sql(f\"SELECT * FROM {hrm_db}.casework_nsip_advice_dim WHERE IsActive = 'Y' LIMIT 6\")\n",
 					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 221
+				"execution_count": 238
 			},
 			{
 				"cell_type": "code",
@@ -79,10 +79,10 @@
 					"std_table = 'nsip_s51_advice'\n",
 					"hrm_table = 'casework_nsip_advice_dim_temp'\n",
 					"\n",
-					"hrm_primary_key = 'NSIPAdviceID'\n",
-					"hrm_incremental_key = 'AdviceNodeID'"
+					"hrm_incremental_key = 'NSIPAdviceID'\n",
+					"hrm_primary_key = 'AdviceNodeID'"
 				],
-				"execution_count": 222
+				"execution_count": 239
 			},
 			{
 				"cell_type": "code",
@@ -124,7 +124,7 @@
 					"    'IngestionDate': 'expected_from'\n",
 					"}"
 				],
-				"execution_count": 223
+				"execution_count": 240
 			},
 			{
 				"cell_type": "code",
@@ -153,7 +153,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": 224
+				"execution_count": 241
 			},
 			{
 				"cell_type": "markdown",
@@ -193,7 +193,7 @@
 					"update_df = latest_ingestion[latest_ingestion['message_type'] == 'Updated']\n",
 					"delete_df = latest_ingestion[latest_ingestion['message_type'] == 'Deleted']"
 				],
-				"execution_count": 225
+				"execution_count": 242
 			},
 			{
 				"cell_type": "code",
@@ -236,11 +236,11 @@
 					"    target_df['ODTSourceSystem'] = 'ODT'\n",
 					"    target_df['ValidTo'] = None\n",
 					"    target_df['IsActive'] = 'Y'\n",
-					"    target_df[hrm_primary_key] = ''\n",
+					"    target_df[hrm_incremental_key] = ''\n",
 					"\n",
 					"    return target_df"
 				],
-				"execution_count": 226
+				"execution_count": 243
 			},
 			{
 				"cell_type": "markdown",
@@ -269,20 +269,20 @@
 					}
 				},
 				"source": [
-					"# convert the dataframe into harmonised schema\n",
+					"# converting the dataframe into harmonised schema\n",
 					"target_df = apply_mapping(create_df)\n",
 					"\n",
-					"# appending Primary Key incremental value\n",
-					"pk_df = spark.sql(f\"SELECT Max({hrm_primary_key}) AS {hrm_primary_key} FROM {hrm_db}.{hrm_table}\")\n",
-					"max_id = int(pk_df.toPandas().at[0, hrm_primary_key])\n",
+					"# appending the incremental key\n",
+					"incremental_key_df = spark.sql(f\"SELECT Max({hrm_incremental_key}) AS {hrm_incremental_key} FROM {hrm_db}.{hrm_table}\")\n",
+					"max_id = int(incremental_key_df.toPandas().at[0, hrm_incremental_key])\n",
 					"incremental_ids = range(max_id + 1, max_id + 1 + len(target_df))\n",
-					"target_df[hrm_primary_key] = pd.Series(incremental_ids)\n",
-					"target_df[hrm_primary_key] = target_df[hrm_primary_key].astype(str)\n",
+					"target_df[hrm_incremental_key] = pd.Series(incremental_ids)\n",
+					"target_df[hrm_incremental_key] = target_df[hrm_incremental_key].astype(str)\n",
 					"\n",
 					"df_to_append = spark.createDataFrame(target_df)\n",
 					"df_to_append.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 227
+				"execution_count": 244
 			},
 			{
 				"cell_type": "markdown",
@@ -311,19 +311,22 @@
 					}
 				},
 				"source": [
+					"# converting the dataframe into harmonised schema\n",
 					"source_df = apply_mapping(delete_df)\n",
 					"\n",
-					"comma_separated_ids = ','.join([f\"'{str(value)}'\" for value in source_df[hrm_incremental_key]])\n",
+					"# extracting the deleted primary keys as a comma seperated string\n",
+					"comma_separated_ids = ','.join([f\"'{str(value)}'\" for value in source_df[hrm_primary_key]])\n",
 					"\n",
 					"current_timestamp = datetime.now()\n",
 					"\n",
+					"# updating the deleted rows\n",
 					"spark.sql(f\"\"\"\n",
 					"    UPDATE {hrm_db}.{hrm_table}\n",
 					"    SET IsActive = 'N', ValidTo = '{current_timestamp}'\n",
-					"    WHERE {hrm_incremental_key} IN ({comma_separated_ids})\n",
+					"    WHERE {hrm_primary_key} IN ({comma_separated_ids})\n",
 					"\"\"\")"
 				],
-				"execution_count": 228
+				"execution_count": 245
 			},
 			{
 				"cell_type": "code",
@@ -346,7 +349,7 @@
 					"%%sql\n",
 					"select * from odw_harmonised_db.casework_nsip_advice_dim_temp"
 				],
-				"execution_count": 229
+				"execution_count": 246
 			}
 		]
 	}
