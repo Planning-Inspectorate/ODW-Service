@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cc942828-84ed-460d-96e2-8b26bf67823f"
+				"spark.autotune.trackingId": "07185d65-f05f-4f93-a912-88b5755dc24c"
 			}
 		},
 		"metadata": {
@@ -59,9 +59,10 @@
 					"std_table = 'nsip_s51_advice'\n",
 					"hrm_table = 'casework_nsip_advice_dim_temp'\n",
 					"\n",
-					"hrm_pk = 'NSIPAdviceID'"
+					"hrm_pk = 'NSIPAdviceID'\n",
+					"hrm_pk_original = 'AdviceNodeID'"
 				],
-				"execution_count": 90
+				"execution_count": 182
 			},
 			{
 				"cell_type": "code",
@@ -172,28 +173,7 @@
 					"update_df = latest_ingestion[latest_ingestion['message_type'] == 'Updated']\n",
 					"delete_df = latest_ingestion[latest_ingestion['message_type'] == 'Deleted']"
 				],
-				"execution_count": 88
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def calculate_md5(row):\n",
-					"    row_str = ''.join(map(str, row))\n",
-					"    md5_hash = hashlib.md5(row_str.encode()).hexdigest()\n",
-					"    return md5_hash"
-				],
-				"execution_count": 44
+				"execution_count": 174
 			},
 			{
 				"cell_type": "code",
@@ -211,34 +191,119 @@
 				"source": [
 					"import hashlib\n",
 					"\n",
-					"target_df = pd.DataFrame()\n",
-					"for target_col, source_col in mapping.items():\n",
-					"    if source_col in create_df.columns:\n",
-					"        if 'Date' in target_col:\n",
-					"            target_df[target_col] = pd.to_datetime(create_df[source_col])\n",
+					"def calculate_md5(row):\n",
+					"    row_str = ''.join(map(str, row))\n",
+					"    md5_hash = hashlib.md5(row_str.encode()).hexdigest()\n",
+					"    return md5_hash\n",
+					"\n",
+					"def apply_mapping(df):\n",
+					"    target_df = pd.DataFrame()\n",
+					"    for target_col, source_col in mapping.items():\n",
+					"        if source_col in df.columns:\n",
+					"            if 'Date' in target_col:\n",
+					"                target_df[target_col] = pd.to_datetime(df[source_col])\n",
+					"            else:\n",
+					"                target_df[target_col] = df[source_col]\n",
 					"        else:\n",
-					"            target_df[target_col] = create_df[source_col]\n",
-					"    else:\n",
-					"        target_df[target_col] = source_col\n",
+					"            target_df[target_col] = source_col\n",
 					"\n",
-					"target_df['RowID'] = target_df.apply(calculate_md5, axis=1)\n",
+					"    target_df['RowID'] = target_df.apply(calculate_md5, axis=1)\n",
 					"\n",
-					"source_system_df = spark.sql(\"SELECT * FROM odw_harmonised_db.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
-					"target_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
+					"    source_system_df = spark.sql(\"SELECT * FROM odw_harmonised_db.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
+					"    target_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
 					"\n",
-					"target_df['Migrated'] = '1'\n",
-					"target_df['ODTSourceSystem'] = 'ODT'\n",
-					"target_df['ValidTo'] = None\n",
-					"target_df['IsActive'] = 'Y'\n",
-					"target_df['HistoricIsActive'] = None\n",
+					"    target_df['Migrated'] = '1'\n",
+					"    target_df['ODTSourceSystem'] = 'ODT'\n",
+					"    target_df['ValidTo'] = None\n",
+					"    target_df['IsActive'] = 'Y'\n",
+					"    target_df[hrm_pk] = ''\n",
+					"\n",
+					"    return target_df"
+				],
+				"execution_count": 161
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Handling new rows"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# convert the dataframe into harmonised schema\n",
+					"target_df = apply_mapping(create_df)\n",
 					"\n",
 					"# appending Primary Key incremental value\n",
 					"pk_df = spark.sql(f\"SELECT Max({hrm_pk}) AS {hrm_pk} FROM {hrm_db}.{hrm_table}\")\n",
 					"max_id = int(pk_df.toPandas().at[0, hrm_pk])\n",
 					"incremental_ids = range(max_id + 1, max_id + 1 + len(target_df))\n",
-					"target_df[hrm_pk] = pd.Series(incremental_ids)"
+					"target_df[hrm_pk] = pd.Series(incremental_ids)\n",
+					"target_df[hrm_pk] = target_df[hrm_pk].astype(str)\n",
+					"\n",
+					"df_to_append = spark.createDataFrame(target_df)\n",
+					"df_to_append.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 120
+				"execution_count": 207
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Handling deleted rows"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"source_df = apply_mapping(delete_df)\n",
+					"\n",
+					"comma_separated_ids = ','.join([f\"'{str(value)}'\" for value in source_df[hrm_pk_original]])\n",
+					"\n",
+					"current_timestamp = datetime.now()\n",
+					"\n",
+					"spark.sql(f\"\"\"\n",
+					"    UPDATE {hrm_db}.{hrm_table}\n",
+					"    SET IsActive = 'N', ValidTo = '{current_timestamp}'\n",
+					"    WHERE {hrm_pk_original} IN ({comma_separated_ids})\n",
+					"\"\"\")"
+				],
+				"execution_count": 210
 			},
 			{
 				"cell_type": "code",
@@ -256,48 +321,10 @@
 				"source": [
 					"spark.sql('Drop table odw_harmonised_db.casework_nsip_advice_dim_temp')\n",
 					"df = spark.sql(f\"SELECT * FROM {hrm_db}.casework_nsip_advice_dim WHERE IsActive = 'Y' LIMIT 6\")\n",
-					"df.write.mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
 					""
 				],
-				"execution_count": 121
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark.createDataFrame(target_df).schema"
-				],
-				"execution_count": 82
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df_to_append = spark.createDataFrame(target_df)\n",
-					"df_to_append.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
-					"# "
-				],
-				"execution_count": 122
+				"execution_count": 206
 			},
 			{
 				"cell_type": "code",
@@ -320,40 +347,7 @@
 					"%%sql\n",
 					"select * from odw_harmonised_db.casework_nsip_advice_dim_temp"
 				],
-				"execution_count": 123
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark_df = spark.createDataFrame(pandas_df)\n",
-					"df_to_append.write.mode(\"append\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## Handles Creation"
-				]
+				"execution_count": 211
 			},
 			{
 				"cell_type": "code",
