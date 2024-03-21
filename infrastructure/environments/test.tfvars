@@ -151,7 +151,7 @@ odt_backoffice_sb_topic_subscriptions = [
     }
   },
   {
-    subscription_name = "odw_folder"
+    subscription_name = "folder"
     topic_name        = "folder"
     role_assignments = {
       "Azure Service Bus Data Receiver" = {
