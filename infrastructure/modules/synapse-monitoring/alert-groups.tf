@@ -2,7 +2,7 @@ resource "azurerm_monitor_action_group" "platform_alerts" {
   name                = "pins-ag-platform-${local.resource_suffix}"
   resource_group_name = var.resource_group_name
   short_name          = "ODW Platform"
-  
+
   # we set emails in the action groups in Azure Portal - to avoid needing to manage
   # emails in terraform
   lifecycle {
