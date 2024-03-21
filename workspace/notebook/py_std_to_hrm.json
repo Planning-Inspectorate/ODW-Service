@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "28db8017-a7a2-4484-9b39-6ad670d3a9c6"
+				"spark.autotune.trackingId": "1912940b-d494-4f60-b150-68f718315513"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 				"source": [
 					"entity_name = 'nsip-s51-advice'"
 				],
-				"execution_count": 154
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +106,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 155
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -121,7 +121,7 @@
 					"\n",
 					"mapping = definition['Std_To_Hrm_Mapping']"
 				],
-				"execution_count": 156
+				"execution_count": 87
 			},
 			{
 				"cell_type": "markdown",
@@ -162,7 +162,7 @@
 					"\n",
 					"target_df = spark.sql(f\"SELECT * FROM {hrm_db}.{hrm_table}\").toPandas()"
 				],
-				"execution_count": 157
+				"execution_count": 146
 			},
 			{
 				"cell_type": "markdown",
@@ -199,43 +199,45 @@
 					"    return md5_hash\n",
 					"\n",
 					"def apply_mapping(df):\n",
-					"    target_df = pd.DataFrame()\n",
+					"    output_df = pd.DataFrame()\n",
 					"    for target_col, source_col in mapping.items():\n",
-					"        target_df['IngestionDate'] = df['message_enqueued_time_utc'].apply(fix_date_format)\n",
+					"        output_df['IngestionDate'] = df['message_enqueued_time_utc'].apply(fix_date_format)\n",
 					"        if source_col in df.columns:\n",
 					"            if 'Date' in target_col:\n",
-					"                target_df[target_col] = pd.to_datetime(df[source_col])\n",
+					"                output_df[target_col] = pd.to_datetime(df[source_col])\n",
 					"            else:\n",
-					"                target_df[target_col] = df[source_col]\n",
+					"                output_df[target_col] = df[source_col].astype(str)\n",
 					"        else:\n",
-					"            target_df[target_col] = source_col\n",
+					"            output_df[target_col] = source_col\n",
 					"\n",
-					"    target_df['RowID'] = target_df.apply(calculate_md5, axis=1)\n",
+					"    output_df['RowID'] = output_df.apply(calculate_md5, axis=1)\n",
 					"\n",
 					"    source_system_df = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
-					"    target_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
+					"    output_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
 					"\n",
-					"    target_df['Migrated'] = '1'\n",
-					"    target_df['ODTSourceSystem'] = 'ODT'\n",
-					"    target_df['ValidTo'] = None\n",
-					"    target_df['IsActive'] = 'Y'\n",
-					"    target_df[hrm_incremental_key] = ''\n",
+					"    output_df['Migrated'] = '1'\n",
+					"    output_df['ODTSourceSystem'] = 'ODT'\n",
+					"    output_df['ValidTo'] = None\n",
+					"    output_df['IsActive'] = 'Y'\n",
+					"    output_df[hrm_incremental_key] = ''\n",
 					"\n",
-					"    return target_df\n",
+					"    return output_df\n",
 					"\n",
 					"def insert_rows_in_df(source_df, target_df, incremental_key):\n",
 					"    # appending the incremental key\n",
 					"    max_id = int(target_df[incremental_key].astype(int).max())\n",
-					"    for index, rows in source_df.iterrows():\n",
+					"    for index, row in source_df.iterrows():\n",
 					"        max_id += 1\n",
 					"        source_df.loc[index, incremental_key] = str(max_id)\n",
-					"        \n",
-					"    return pd.concat([target_df, source_df], ignore_index=True)\n",
+					"\n",
+					"    merged_df = pd.concat([target_df, source_df], ignore_index=True)\n",
+					"    return merged_df.drop_duplicates(subset=merged_df.columns.difference([incremental_key]))\n",
 					"\n",
 					"def fix_date_format(date_str):\n",
-					"    return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f%z').strftime('%Y-%m-%d %H:%M:%S')"
+					"    return datetime.strptime(date_str, '%Y-%m-%dT%H:%M:%S.%f%z')\n",
+					"    # .strftime('%Y-%m-%d %H:%M:%S')"
 				],
-				"execution_count": 158
+				"execution_count": 135
 			},
 			{
 				"cell_type": "markdown",
@@ -267,7 +269,7 @@
 					"source_df = apply_mapping(create_df).drop_duplicates()\n",
 					"target_df = insert_rows_in_df(source_df, target_df, hrm_incremental_key)"
 				],
-				"execution_count": 159
+				"execution_count": 167
 			},
 			{
 				"cell_type": "markdown",
@@ -305,7 +307,7 @@
 					"    target_df.loc[mask, 'ValidTo'] = row['IngestionDate']\n",
 					"    target_df = insert_rows_in_df(pd.DataFrame([row]), target_df, hrm_incremental_key)"
 				],
-				"execution_count": 160
+				"execution_count": 168
 			},
 			{
 				"cell_type": "markdown",
@@ -335,11 +337,12 @@
 				},
 				"source": [
 					"source_df = apply_mapping(delete_df)\n",
-					"mask = (target_df['IsActive'] == 'Y') & target_df[entity_primary_key].isin(source_df[entity_primary_key])\n",
-					"target_df.loc[mask, 'IsActive'] = 'N'\n",
-					"target_df.loc[mask, 'ValidTo'] = datetime.now()"
+					"for index, row in source_df.iterrows():\n",
+					"    mask = (target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])\n",
+					"    target_df.loc[mask, 'IsActive'] = 'N'\n",
+					"    target_df.loc[mask, 'ValidTo'] = row['IngestionDate']"
 				],
-				"execution_count": 161
+				"execution_count": 102
 			},
 			{
 				"cell_type": "markdown",
@@ -368,12 +371,12 @@
 					}
 				},
 				"source": [
-					"# display(target_df)\n",
-					"target_df.fillna(value=pd.NA, inplace=True)\n",
+					"target_df.replace({pd.NA: None}, inplace=True)\n",
 					"df_to_update = spark.createDataFrame(target_df)\n",
-					"# df_to_update.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")"
+					"df_to_update.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					"# .option(\"overwriteSchema\", \"true\")"
 				],
-				"execution_count": 170
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -398,26 +401,7 @@
 					"-- delete from odw_harmonised_db.casework_nsip_advice_dim where casereference = 'TR0310022';\n",
 					"select * from odw_harmonised_db.casework_nsip_advice_dim where casereference = 'TR0310022'"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"for index, row in target_df.tail(10).iterrows():\n",
-					"    print(row)"
-				],
-				"execution_count": null
+				"execution_count": 106
 			}
 		]
 	}
