@@ -156,9 +156,9 @@ odt_backoffice_sb_topic_subscriptions = [
     role_assignments = {
       "Azure Service Bus Data Receiver" = {
         service_principals = ["pins-synw-odw-prod-uks"]
+      }
     }
   }
-}
 ]
 
 service_bus_failover_enabled = false
