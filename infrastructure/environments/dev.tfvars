@@ -148,7 +148,16 @@ odt_backoffice_sb_topic_subscriptions = [
         service_principals = ["pins-synw-odw-dev-uks"]
       }
     }
+  },
+  {
+    subscription_name = "odw_folder"
+    topic_name        = "folder"
+    role_assignments = {
+      "Azure Service Bus Data Receiver" = {
+        service_principals = ["pins-synw-odw-dev-uks"]
+    }
   }
+}
 ]
 
 service_bus_failover_enabled = false
