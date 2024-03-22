@@ -107,7 +107,7 @@ module "function_app" {
   file_share_name            = "pins-${each.key}-${local.resource_suffix}"
   servicebus_namespace       = var.odt_back_office_service_bus_name
   message_storage_account    = var.message_storage_account
-  message_storage_container  = var.message_storage_container  
+  message_storage_container  = var.message_storage_container
 }
 
 module "function_app_failover" {
