@@ -132,19 +132,19 @@ module "function_app_failover" {
   servicebus_namespace       = var.odt_back_office_service_bus_name
 }
 
-resource "azurerm_role_assignment" "odt_servicebus_receiver" {
-  for_each = {
-    for function in local.function_app_subscriptions : "${function.name}.${function.subscription_ids}" => function if var.function_app_enabled == true
-  }
+# resource "azurerm_role_assignment" "odt_servicebus_receiver" {
+#   for_each = {
+#     for function in local.function_app_subscriptions : "${function.name}.${function.subscription_ids}" => function if var.function_app_enabled == true
+#   }
 
-  scope                = each.value.subscription_ids
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = module.function_app[each.value.name].identity[0].principal_id
+#   scope                = each.value.subscription_ids
+#   role_definition_name = "Azure Service Bus Data Receiver"
+#   principal_id         = module.function_app[each.value.name].identity[0].principal_id
 
-  depends_on = [
-    module.odt_backoffice_sb
-  ]
-}
+#   depends_on = [
+#     module.odt_backoffice_sb
+#   ]
+# }
 
 resource "azurerm_role_assignment" "odt_servicebus_namespace" {
   for_each = {
