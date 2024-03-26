@@ -4,22 +4,10 @@ variable "alert_group_platform_enabled" {
   type        = bool
 }
 
-variable "alert_group_platform_recipients" {
-  default     = []
-  description = "A list of email recipients to recieve platform alerts"
-  type        = list(string)
-}
-
 variable "alert_group_synapse_enabled" {
   default     = false
   description = "Determines whether the alert group for Synapse alerts is enabled"
   type        = bool
-}
-
-variable "alert_group_synapse_recipients" {
-  default     = []
-  description = "A list of email recipients to recieve Synapse alerts"
-  type        = list(string)
 }
 
 variable "alert_scope_service_health" {
@@ -165,6 +153,18 @@ variable "logic_app_enabled" {
   type        = bool
 }
 
+variable "message_storage_account" {
+  type        = string
+  description = "Name of the storage account for service bus messages"
+  default     = null
+}
+
+variable "message_storage_container" {
+  type        = string
+  description = "Name of the storage account container for service bus messages"
+  default     = null
+}
+
 variable "network_watcher_enabled" {
   default     = false
   description = "Determines whether a Network Watcher resource will be deployed"
@@ -182,7 +182,6 @@ variable "odt_back_office_service_bus_failover_enabled" {
   description = "Whether or not to enable failover for the Service Bus namespace"
   type        = bool
 }
-
 
 variable "odt_back_office_service_bus_name" {
   description = "The name of the Service Bus namespace into which resources will be deployed"

@@ -91,23 +91,23 @@ module "function_app" {
 
   source = "./modules/function-app"
 
-  resource_group_name                       = azurerm_resource_group.function_app[0].name
-  function_app_name                         = each.key
-  service_name                              = local.service_name
-  service_plan_id                           = module.service_plan[0].id
-  storage_account_name                      = module.storage_account[each.key].storage_name
-  storage_account_access_key                = module.storage_account[each.key].primary_access_key
-  environment                               = var.environment
-  function_app_private_endpoint_dns_zone_id = azurerm_private_dns_zone.function_app.id
-  location                                  = module.azure_region.location_cli
-  tags                                      = local.tags
-  application_insights_key                  = azurerm_application_insights.function_app_insights[each.key].instrumentation_key
-  synapse_vnet_subnet_names                 = module.synapse_network.vnet_subnets
-  app_settings                              = try(each.value.app_settings, null)
-  private_endpoint_enabled                  = each.value.private_endpoint_enabled
-  site_config                               = each.value.site_config
-  file_share_name                           = "pins-${each.key}-${local.resource_suffix}"
-  servicebus_namespace                      = var.odt_back_office_service_bus_name
+  resource_group_name        = azurerm_resource_group.function_app[0].name
+  function_app_name          = each.key
+  service_name               = local.service_name
+  service_plan_id            = module.service_plan[0].id
+  storage_account_name       = module.storage_account[each.key].storage_name
+  storage_account_access_key = module.storage_account[each.key].primary_access_key
+  environment                = var.environment
+  location                   = module.azure_region.location_cli
+  tags                       = local.tags
+  application_insights_key   = azurerm_application_insights.function_app_insights[each.key].instrumentation_key
+  synapse_vnet_subnet_names  = module.synapse_network.vnet_subnets
+  app_settings               = try(each.value.app_settings, null)
+  site_config                = each.value.site_config
+  file_share_name            = "pins-${each.key}-${local.resource_suffix}"
+  servicebus_namespace       = var.odt_back_office_service_bus_name
+  message_storage_account    = var.message_storage_account
+  message_storage_container  = var.message_storage_container
 }
 
 module "function_app_failover" {
@@ -136,17 +136,7 @@ module "function_app_failover" {
   servicebus_namespace                      = var.odt_back_office_service_bus_name
 }
 
-resource "azurerm_role_assignment" "servicebus_receiver" {
-  for_each = {
-    for function in local.function_app_subscriptions : "${function.name}.${function.subscription_ids}" => function if var.function_app_enabled == true
-  }
-
-  scope                = each.value.subscription_ids
-  role_definition_name = "Azure Service Bus Data Receiver"
-  principal_id         = module.function_app[each.value.name].identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "servicebus_namespace" {
+resource "azurerm_role_assignment" "odt_servicebus_namespace" {
   for_each = {
     for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
   }
