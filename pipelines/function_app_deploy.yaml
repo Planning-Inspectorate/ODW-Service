@@ -20,7 +20,6 @@ parameters:
     default: fnapp01
     values:
     - fnapp01
-    - fnapp02
 
 # Create variables to be used in further pipeline jobs / tasks.
 variables:
@@ -62,71 +61,108 @@ trigger:
 # Disable pull request triggers, i.e. it will not be triggered by any pull requests.
 pr: none
 
-# Specify the Microsoft hosted image we want to use.
+# Specify the agent pool
 pool:
-  '$(poolName)'
+    '$(poolName)'
 
-jobs:
+stages:
 
-# Build and package the code.
-- job: BuildAndPackage
-  displayName: 'Build and Package'
-  # dependsOn: AzureLogin
+- stage: BuildStage
 
-  steps:
+  jobs:
 
-# Checkout the Github repo, in this case ODW-Service.
-  - checkout: self
-    displayName: 'Checkout repo'
+  # Build and package the code.
+  - job: BuildAndPackage
+    displayName: 'Build and Package'
 
-# Switch to functions directory and create a file containing a list of all files in the top level folder.
-  - script: |
+    steps:
 
-      cd $(Build.SourcesDirectory)/functions
-      find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+  # Checkout the Github repo, in this case ODW-Service.
+    - checkout: self
+      displayName: 'Checkout repo'
 
-    displayName: 'Creating top level files list'
-
-# Create a zip file of all the files in the filelist.
-  - script: |
+  # Switch to functions directory and create a file containing a list of all files in the top level folder.
+    - script: |
 
         cd $(Build.SourcesDirectory)/functions
-        cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
+        find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
 
-    displayName: 'Archive top level files'
+      displayName: 'Creating top level files list'
 
-# Publish the zip file as an artifact to be used further in the pipeline.
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish build artifact'
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'FunctionCode'
+  # Create a zip file of all the files in the filelist.
+    - script: |
 
-# Job to deploy the zip file to an existing Azure Function App.
-- job: DeployToAzureFunctions
-  displayName: 'Deploy to Azure Functions'
-  dependsOn: BuildAndPackage
-  
-  steps:
+          cd $(Build.SourcesDirectory)/functions
+          cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
 
-# Download the artifact first - the zip file.
-  - task: DownloadBuildArtifacts@1
-    displayName: 'Download build artifact'
-    inputs:
-      buildType: 'current'
-      artifactName: 'FunctionCode'
-      downloadPath: '$(System.ArtifactsDirectory)'
+      displayName: 'Archive top level files'
 
-# Use the Azure CLI to deploy the zip file to the Function App in Azure.
-  - task: AzureCLI@2
-    displayName: 'Deploy to function app'
-    inputs:
-      azureSubscription: '$(armServiceConnectionName)'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        az functionapp deployment source config-zip \
-        --resource-group $(resourceGroup) \
-        --name $(functionApp) \
-        --src $(zipFile) \
-        --build-remote true
+  # Publish the zip file as an artifact to be used further in the pipeline.
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish build artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'FunctionCode'
+
+- stage: DeployToDev
+  dependsOn: BuildStage
+  displayName: Deploy to Dev
+
+  jobs:
+
+  # Job to deploy the zip file to an existing Azure Function App.
+  - job: DeployToAzureFunctions
+    displayName: 'Deploy to Azure Functions'
+    dependsOn: BuildAndPackage
+    
+    steps:
+
+    # Download the artifact first - the zip file.
+
+    - template: steps/download_function_code.yaml
+
+    # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+
+    - template: steps/deploy_to_function_app.yaml
+
+- stage: DeployToTest
+  dependsOn: DeployToDev
+  displayName: Deploy to Test
+
+  jobs:
+
+  # Job to deploy the zip file to an existing Azure Function App.
+  - job: DeployToAzureFunctions
+    displayName: 'Deploy to Azure Functions'
+    dependsOn: BuildAndPackage
+    
+    steps:
+
+    # Download the artifact first - the zip file.
+
+    - template: steps/download_function_code.yaml
+
+    # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+
+    - template: steps/deploy_to_function_app.yaml
+
+- stage: DeployToProd
+  dependsOn: DeployToTest
+  displayName: Deploy to Prod
+
+  jobs:
+
+  # Job to deploy the zip file to an existing Azure Function App.
+  - job: DeployToAzureFunctions
+    displayName: 'Deploy to Azure Functions'
+    dependsOn: BuildAndPackage
+    
+    steps:
+
+    # Download the artifact first - the zip file.
+
+    - template: steps/download_function_code.yaml
+
+    # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+
+    - template: steps/deploy_to_function_app.yaml
