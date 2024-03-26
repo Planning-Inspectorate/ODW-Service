@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6b0db711-7872-4993-9604-d7fc235fcf0b"
+				"spark.autotune.trackingId": "6906767b-c640-45b9-9c6e-d7997edd1bf4"
 			}
 		},
 		"metadata": {
@@ -62,9 +62,10 @@
 					}
 				},
 				"source": [
-					"entity_name=''"
+					"entity_name='nsip-project-update'\n",
+					"db_name='odw_standardised_db'"
 				],
-				"execution_count": 147
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -91,9 +92,89 @@
 					"            'type': 'string' if isinstance(schema['properties'][key]['type'], list) else schema['properties'][key]['type'],\n",
 					"            'nullable': key not in schema['required']\n",
 					"        })\n",
+					"    \n",
+					"    if db_name == 'odw_standardised_db':\n",
+					"        data_model['fields'].extend([\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'ingested_datetime',\n",
+					"                'type': 'timestamp',\n",
+					"                'nullable': False\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'expected_from',\n",
+					"                'type': 'timestamp',\n",
+					"                'nullable': False\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'expected_to',\n",
+					"                'type': 'timestamp',\n",
+					"                'nullable': False\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'message_type',\n",
+					"                'type': 'string',\n",
+					"                'nullable': False\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'message_enqueued_time_utc',\n",
+					"                'type': 'string',\n",
+					"                'nullable': False\n",
+					"            }\n",
+					"        ])\n",
+					"\n",
+					"    elif db_name == 'odw_hamonised_db':\n",
+					"        data_model['fields'].extend([\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'Migrated',\n",
+					"                'type': 'string',\n",
+					"                'nullable': False\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'ODTSourceSystem',\n",
+					"                'type': 'string',\n",
+					"                'nullable': True\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'SourceSystemID',\n",
+					"                'type': 'string',\n",
+					"                'nullable': True\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'IngestionDate',\n",
+					"                'type': 'timestamp',\n",
+					"                'nullable': True\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'ValidTo',\n",
+					"                'type': 'timestamp',\n",
+					"                'nullable': True\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'RowID',\n",
+					"                'type': 'string',\n",
+					"                'nullable': True\n",
+					"            },\n",
+					"            {\n",
+					"                'metadata': {},\n",
+					"                'name': 'IsActive',\n",
+					"                'type': 'string',\n",
+					"                'nullable': True\n",
+					"            }\n",
+					"        ])\n",
 					"    return data_model"
 				],
-				"execution_count": 148
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -113,134 +194,11 @@
 					"schema = get_schema_from_url(url)\n",
 					"\n",
 					"if not schema:\n",
-					"    mssparkutils.notebook.exit(f\"Schema for {entity_name} not found.\")"
+					"    mssparkutils.notebook.exit(f\"Schema for {entity_name} not found.\")\n",
+					"\n",
+					"mssparkutils.notebook.exit(convert_to_datalake_schema(schema))"
 				],
-				"execution_count": 152
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### Generate Standardised Schema"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"std_schema = convert_to_datalake_schema(schema)\n",
-					"std_schema['fields'].extend([\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'ingested_datetime',\n",
-					"        'type': 'timestamp',\n",
-					"        'nullable': False\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'expected_from',\n",
-					"        'type': 'timestamp',\n",
-					"        'nullable': False\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'expected_to',\n",
-					"        'type': 'timestamp',\n",
-					"        'nullable': False\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'message_type',\n",
-					"        'type': 'string',\n",
-					"        'nullable': False\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'message_enqueued_time_utc',\n",
-					"        'type': 'string',\n",
-					"        'nullable': False\n",
-					"    }\n",
-					"])"
-				],
-				"execution_count": 150
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"hrm_schema = convert_to_datalake_schema(schema)\n",
-					"hrm_schema['fields'].extend([\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'Migrated',\n",
-					"        'type': 'string',\n",
-					"        'nullable': False\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'ODTSourceSystem',\n",
-					"        'type': 'string',\n",
-					"        'nullable': True\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'SourceSystemID',\n",
-					"        'type': 'string',\n",
-					"        'nullable': True\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'IngestionDate',\n",
-					"        'type': 'timestamp',\n",
-					"        'nullable': True\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'ValidTo',\n",
-					"        'type': 'timestamp',\n",
-					"        'nullable': True\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'RowID',\n",
-					"        'type': 'string',\n",
-					"        'nullable': True\n",
-					"    },\n",
-					"    {\n",
-					"        'metadata': {},\n",
-					"        'name': 'IsActive',\n",
-					"        'type': 'string',\n",
-					"        'nullable': True\n",
-					"    }\n",
-					"])"
-				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -281,6 +239,9 @@
 					"\n",
 					"std_container = \"abfss://odw-standardised@\"+storage_account\n",
 					"hrm_container = \"abfss://odw-harmonised@\"+storage_account\n",
+					"\n",
+					"std_schema = convert_to_datalake_schema(schema, 'odw_standardised_db')\n",
+					"hrm_schema = convert_to_datalake_schema(schema, 'odw_harmonised_db')\n",
 					"\n",
 					"create_table_from_schema(json.dumps(std_schema), \"odw_standardised_db\", table_name, std_container, table_name)   \n",
 					"create_table_from_schema(json.dumps(hrm_schema), \"odw_harmonised_db\", table_name, hrm_container, table_name)   "
