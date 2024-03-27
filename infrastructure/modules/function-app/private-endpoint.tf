@@ -4,7 +4,7 @@ resource "azurerm_private_endpoint" "function" {
   name                = "pins-pe-${var.function_app_name}-${local.resource_suffix}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = var.synapse_vnet_subnet_names["FunctionAppSubnet"]
+  subnet_id           = var.synapse_vnet_subnet_names["SynapseEndpointSubnet"]
 
   private_dns_zone_group {
     name                 = "FunctionAppDnsZone"
