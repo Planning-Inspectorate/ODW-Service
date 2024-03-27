@@ -30,18 +30,18 @@ variables:
 # Set service connection for the environment to deploy to.
 # - name: armServiceConnectionName
 #   value: ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure', upper(environment)) }}
-# Set the resource group where the function app resides, adding the environment as a parameter.
-- name: resourceGroup
-  value: 'pins-rg-function-app-odw-$(environment)-uks'
+# # Set the resource group where the function app resides, adding the environment as a parameter.
+# - name: resourceGroup
+#   value: 'pins-rg-function-app-odw-$(environment)-uks'
 # Set the agent pool name
 - name: poolName
   value: 'pins-agent-pool-odw-$(environment)-uks'
 # Set the name of the function app, adding the environment as a parameter.
-- name: functionApp
-  value: 'pins-${{ parameters.appname }}-odw-$(environment)-uks'
-# Set the name of the zip file containing the funciton app code to deploy.
-- name: zipFile
-  value: '$(System.ArtifactsDirectory)/FunctionCode/functions.zip'
+# - name: functionApp
+#   value: 'pins-${{ parameters.appname }}-odw-$(environment)-uks'
+# # Set the name of the zip file containing the funciton app code to deploy.
+# - name: zipFile
+#   value: '$(System.ArtifactsDirectory)/FunctionCode/functions.zip'
 
 # Github branch to trigger the running of this pipeline.
 # Any code change in this branch will trigger this pipeline.
@@ -108,6 +108,25 @@ stages:
   dependsOn: BuildStage
   displayName: Deploy to Dev
 
+  variables:
+  - name: environment
+    value: dev
+    # Set service connection for the environment to deploy to.
+  - name: armServiceConnectionName
+    value: ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure', upper($(environment))) }}
+    # Set the resource group where the function app resides, adding the environment as a parameter.
+  - name: resourceGroup
+    value: 'pins-rg-function-app-odw-$(environment)-uks'
+    # Set the name of the function app, adding the environment as a parameter.
+  - name: functionApp
+    value: 'pins-${{ parameters.appname }}-odw-$(environment)-uks'
+    # Set the name of the zip file containing the funciton app code to deploy.
+  - name: zipFile
+    value: '$(System.ArtifactsDirectory)/FunctionCode/functions.zip'
+    # Set the agent pool
+  - name: poolName
+    value: 'pins-agent-pool-odw-$(environment)-uks'
+
   jobs:
 
   # Job to deploy the zip file to an existing Azure Function App.
@@ -122,8 +141,8 @@ stages:
     # Use the Azure CLI to deploy the zip file to the Function App in Azure.
     - template: steps/deploy_to_function_app.yaml
       parameters:
-        environment: "dev"
-        armServiceConnectionName: Azure DevOps Pipelines - ODW DEV - Infrastructure
+        environment: $(environment)
+        armServiceConnectionName: $(armServiceConnectionName)
         resourceGroup: $(resourceGroup)
         functionApp: $(functionApp)
         zipFile: $(zipFile)
