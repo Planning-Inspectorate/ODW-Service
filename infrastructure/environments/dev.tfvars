@@ -46,7 +46,7 @@ function_app_enabled = true
 function_app = [
   {
     name                     = "fnapp01"
-    private_endpoint_enabled = true
+    private_endpoint_enabled = false
     site_config = {
       application_stack = {
         python_version = "3.11"
