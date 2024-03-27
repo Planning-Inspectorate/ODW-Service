@@ -48,15 +48,15 @@ variables:
 trigger:
   branches:
     include:
-      - 'main'
+      - 'feat/ODW-1046-Add-stages-to-function-app-deploy-pipeline-to-deploy-to-test-and-prod'
 
-# Only code in the below paths will trigger the pipeline.
-# All files in the functions folder but not files in subfolders.
-  paths:
-    include:
-      - 'functions/*'
-    exclude:
-      - 'functions/*/*'
+  # Only code in the below paths will trigger the pipeline.
+  # All files in the functions folder but not files in subfolders.
+  # paths:
+  #   include:
+  #     - 'functions/*'
+  #   exclude:
+  #     - 'functions/*/*'
 
 # Disable pull request triggers, i.e. it will not be triggered by any pull requests.
 pr: none
@@ -77,11 +77,11 @@ stages:
 
     steps:
 
-  # Checkout the Github repo, in this case ODW-Service.
+    # Checkout the Github repo, in this case ODW-Service.
     - checkout: self
       displayName: 'Checkout repo'
 
-  # Switch to functions directory and create a file containing a list of all files in the top level folder.
+    # Switch to functions directory and create a file containing a list of all files in the top level folder.
     - script: |
 
         cd $(Build.SourcesDirectory)/functions
@@ -89,7 +89,7 @@ stages:
 
       displayName: 'Creating top level files list'
 
-  # Create a zip file of all the files in the filelist.
+    # Create a zip file of all the files in the filelist.
     - script: |
 
           cd $(Build.SourcesDirectory)/functions
@@ -97,7 +97,7 @@ stages:
 
       displayName: 'Archive top level files'
 
-  # Publish the zip file as an artifact to be used further in the pipeline.
+    # Publish the zip file as an artifact to be used further in the pipeline.
     - task: PublishBuildArtifacts@1
       displayName: 'Publish build artifact'
       inputs:
@@ -118,51 +118,55 @@ stages:
     steps:
 
     # Download the artifact first - the zip file.
-
     - template: steps/download_function_code.yaml
 
     # Use the Azure CLI to deploy the zip file to the Function App in Azure.
-
     - template: steps/deploy_to_function_app.yaml
+      parameters:
+        environment: "dev"
+        armServiceConnectionName: ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure', upper(parameters.environment)) }}
+        resourceGroup: $(resourceGroup)
+        functionApp: $(functionApp)
+        zipFile: $(zipFile)
 
-- stage: DeployToTest
-  dependsOn: DeployToDev
-  displayName: Deploy to Test
+# - stage: DeployToTest
+#   dependsOn: DeployToDev
+#   displayName: Deploy to Test
 
-  jobs:
+#   jobs:
 
-  # Job to deploy the zip file to an existing Azure Function App.
-  - job: DeployToAzureFunctions
-    displayName: 'Deploy to Azure Functions'
-    dependsOn: BuildAndPackage
+#   # Job to deploy the zip file to an existing Azure Function App.
+#   - job: DeployToAzureFunctions
+#     displayName: 'Deploy to Azure Functions'
+#     dependsOn: BuildAndPackage
     
-    steps:
+#     steps:
 
-    # Download the artifact first - the zip file.
+#     # Download the artifact first - the zip file.
 
-    - template: steps/download_function_code.yaml
+#     - template: steps/download_function_code.yaml
 
-    # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+#     # Use the Azure CLI to deploy the zip file to the Function App in Azure.
 
-    - template: steps/deploy_to_function_app.yaml
+#     - template: steps/deploy_to_function_app.yaml
 
-- stage: DeployToProd
-  dependsOn: DeployToTest
-  displayName: Deploy to Prod
+# - stage: DeployToProd
+#   dependsOn: DeployToTest
+#   displayName: Deploy to Prod
 
-  jobs:
+#   jobs:
 
-  # Job to deploy the zip file to an existing Azure Function App.
-  - job: DeployToAzureFunctions
-    displayName: 'Deploy to Azure Functions'
-    dependsOn: BuildAndPackage
+#   # Job to deploy the zip file to an existing Azure Function App.
+#   - job: DeployToAzureFunctions
+#     displayName: 'Deploy to Azure Functions'
+#     dependsOn: BuildAndPackage
     
-    steps:
+#     steps:
 
-    # Download the artifact first - the zip file.
+#     # Download the artifact first - the zip file.
 
-    - template: steps/download_function_code.yaml
+#     - template: steps/download_function_code.yaml
 
-    # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+#     # Use the Azure CLI to deploy the zip file to the Function App in Azure.
 
-    - template: steps/deploy_to_function_app.yaml
+#     - template: steps/deploy_to_function_app.yaml
