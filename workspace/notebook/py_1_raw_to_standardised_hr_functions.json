@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f23d09d0-32b9-481c-b203-4f998ee56a8d"
+				"spark.autotune.trackingId": "f0f1bb6a-b2ee-4087-89b8-83ab5573cdf0"
 			}
 		},
 		"metadata": {
@@ -344,8 +344,6 @@
 					"    else:\n",
 					"        standardised_table_def_json = mssparkutils.notebook.run('/py_get_schema_from_url', 30, {'db_name': 'odw_standardised_db', 'entity_name': definition['Source_Frequency_Folder']})\n",
 					"\n",
-					"    schema = StructType.fromJson(json.loads(standardised_table_def_json))\n",
-					"\n",
 					"    if not any([table.name == standardised_table_name for table in spark.catalog.listTables('odw_standardised_db')]):\n",
 					"        create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)   \n",
 					"                        \n",
@@ -385,6 +383,14 @@
 					"    sparkDF = sparkDF.withColumn(\"expected_from\",lit(expected_from))\n",
 					"    sparkDF = sparkDF.withColumn(\"expected_to\",lit(expected_to))\n",
 					"    \n",
+					"    ### change any array field to string\n",
+					"\tschema = json.loads(standardised_table_def_json)\n",
+					"\tfor field in schema['fields']:\n",
+					"\t\tif field['type'] == 'array':\n",
+					"\t\t\tfield['type'] = 'string'\n",
+					"\n",
+					"    schema = StructType.fromJson(schema)\n",
+					"\n",
 					"    ### remove characters that Delta can't allow in headers and add numbers to repeated column headers\n",
 					"    cols_orig = sparkDF.schema.names\n",
 					"    cols=[re.sub('[^0-9a-zA-Z]+', '_', i).lower() for i in cols_orig]\n",
