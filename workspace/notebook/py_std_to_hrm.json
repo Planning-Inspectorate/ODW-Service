@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "494b4d5c-ca14-4a96-a12c-8d184bc72387"
+				"spark.autotune.trackingId": "569b7f88-1e69-4759-b960-2846942419d6"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,26 @@
 				"source": [
 					"entity_name = 'nsip-project-update'"
 				],
-				"execution_count": 173
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pprint\r\n",
+					"from pyspark.sql.types import *"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +125,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 174
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -131,7 +150,7 @@
 					"hrm_incremental_key = definition['Harmonised_Incremental_Key']\n",
 					"entity_primary_key = definition['Entity_Primary_Key']"
 				],
-				"execution_count": 175
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -448,6 +467,67 @@
 					}
 				},
 				"source": [
+					"#### Either use a schema like below or point to an external schema"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark_schema = StructType([\r\n",
+					"    StructField(name, StringType(), nullable=True) if dtype == \"object\" else\r\n",
+					"    StructField(name, IntegerType(), nullable=True) if dtype == \"int32\" else\r\n",
+					"    StructField(name, LongType(), nullable=True) if dtype == \"int64\" else\r\n",
+					"    StructField(name, DoubleType(), nullable=True) if dtype == \"float64\" else\r\n",
+					"    StructField(name, FloatType(), nullable=True) if dtype == \"float32\" else\r\n",
+					"    StructField(name, BooleanType(), nullable=True) if dtype == \"bool\" else\r\n",
+					"    StructField(name, StringType(), nullable=True) if dtype == \"datetime64[ns]\" else # convert dates to strings\r\n",
+					"    StructField(name, StringType(), nullable=True)  # Default to StringType\r\n",
+					"    for name, dtype in target_df.dtypes.items()\r\n",
+					"])"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_spark = spark.createDataFrame(target_df, schema = spark_schema)\r\n",
+					"\r\n",
+					"df_spark.printSchema()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"## Writing the dataframe to the harmonised table"
 				]
 			},
@@ -472,8 +552,11 @@
 					"target_df = target_df.drop_duplicates(subset=target_df.columns.difference([hrm_incremental_key]))\n",
 					"\n",
 					"# overwrite onto existing harmonised table\n",
-					"df_to_update = spark.createDataFrame(target_df)\n",
+					"df_to_update = spark.createDataFrame(target_df, schema = spark_schema)\n",
+					"\n",
 					"df_to_update.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
+					"\n",
+					"print(\"Table updated\")\n",
 					"\n",
 					"\n",
 					"# for column in target_df.columns:\n",
@@ -485,6 +568,39 @@
 					"#         target_df[column] = target_df[column].astype(str)\n",
 					"\n",
 					"# .option(\"overwriteSchema\", \"true\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Example of sorting a list of dates which are strings"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"dates =['2024-04-08 14:48:29', '2024-04-08 14:48:30', '2024-04-08 14:48:31']\r\n",
+					"sorted_dates = sorted(dates, key=lambda x: datetime.strptime(x, \"%Y-%m-%d %H:%M:%S\"), reverse=True)\r\n",
+					"pprint.pprint(sorted_dates)"
 				],
 				"execution_count": null
 			}
