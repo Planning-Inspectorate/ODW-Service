@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "297bb356-d500-4bd0-bf86-3b2bd2dffcf8"
+				"spark.autotune.trackingId": "7a417567-306b-4c83-affd-d780547aa020"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,21 @@
 					"    AD.AdviceFrom                                           AS adviceGivenBy,\n",
 					"    AD.AdviceDate                                           AS adviceDate,\n",
 					"    AD.Advice                                               AS adviceDetails,\n",
-					"    LOWER(AD.AdviceStatus)                                  AS status,\n",
+					"    CASE\n",
+					"        WHEN AD.AdviceStatus = 'Published'\n",
+					"        THEN 'published'\n",
+					"        WHEN AD.AdviceStatus = 'Not Checked' \n",
+					"            OR AD.AdviceStatus = 'unchecked'\n",
+					"            OR AD.AdviceStatus = 'Depublished'\n",
+					"        THEN \"unchecked\"\n",
+					"        WHEN AD.AdviceStatus = 'Do Not Publish'\n",
+					"        THEN 'donotpublish'\n",
+					"        WHEN AD.AdviceStatus = 'checked'\n",
+					"        THEN 'checked'\n",
+					"        WHEN AD.AdviceStatus = 'readytopublish'\n",
+					"        THEN 'readytopublish'\n",
+					"        ELSE NULL\n",
+					"    END                                                     AS status,\n",
 					"    \"unredacted\"                                            AS redactionStatus,\n",
 					"    CASE\n",
 					"        WHEN AD.AttachmentID = 'None'\n",
@@ -151,6 +165,34 @@
 					"view_df.write.mode(\"overwrite\").saveAsTable('odw_curated_db.nsip_s51_advice')"
 				],
 				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"-- SELECT * FROM odw_harmonised_db.casework_nsip_advice_dim ORDER BY IngestionDate DESC;\n",
+					"\n",
+					"SELECT DISTINCT AdviceStatus FROM odw_harmonised_db.casework_nsip_advice_dim;\n",
+					"\n",
+					"SELECT count(*) FROM odw_harmonised_db.casework_nsip_advice_dim WHERE AdviceStatus = 'readytopublish';"
+				],
+				"execution_count": 8
 			}
 		]
 	}
