@@ -1,0 +1,289 @@
+{
+	"name": "pln_application_run_stage",
+	"properties": {
+		"description": "Used to execute specific parts of pipelines for applications. In order to execute, you need to set the following variables:\n\n- Stage. Set to one of the following {Source, Raw, }\n- Pipeline. Set to the pipeline that you are wanting to run a specific stage for. For example, pln_service_bus_nsip_subscription.\n\nThe rest of the required variables will be set programmatically.\n\nNote: Variables are case sensitive. ",
+		"activities": [
+			{
+				"name": "Process source to raw for service bus pipelines",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set properties needed for execution",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Source'), equals(variables('Is_service_bus'), 'True'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Src to raw",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_trigger_function_app",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"function_name": {
+										"value": "@variables('entity_name')",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set properties needed for execution",
+				"description": "We need to know which parts of the pipeline to run. Based on the configuration we will set variables accordingly",
+				"type": "Switch",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@variables('Pipeline')",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "pln_service_bus_nsip_subscription",
+							"activities": [
+								{
+									"name": "set entity name",
+									"description": "Set entity name to nsip-subscription",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "entity_name",
+										"value": "nsip-subscription"
+									}
+								},
+								{
+									"name": "Set service bus to true",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "set entity name",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "Is_service_bus",
+										"value": "True"
+									}
+								},
+								{
+									"name": "Set source folder",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set service bus to true",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "source_folder",
+										"value": "ServiceBus"
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "No associate pipeline",
+							"description": "Set to error to ensure that nothing happens",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "entity_name",
+								"value": "error"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Convert json to csv if we downloaded messages",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Process source to raw for service bus pipelines",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Source'), greater(activity('Src to Raw').output.pipelineReturnValue.Messages, 0))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Json to csv",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_service_bus_json_to_csv",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"source_folder": {
+										"value": {
+											"value": "@variables('source_folder')",
+											"type": "Expression"
+										},
+										"type": "string"
+									},
+									"source_frequency_folder": {
+										"value": {
+											"value": "@variables('entity_name')",
+											"type": "Expression"
+										},
+										"type": "string"
+									}
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Run raw to standard",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Convert json to csv if we downloaded messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('Stage'), 'Raw')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Raw to standard",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_raw_to_std",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"source_folder": {
+										"value": {
+											"value": "@variables('source_folder')",
+											"type": "Expression"
+										},
+										"type": "string"
+									},
+									"source_frequency_folder": {
+										"value": {
+											"value": "@variables('entity_name')",
+											"type": "Expression"
+										},
+										"type": "string"
+									},
+									"specific_file": {
+										"value": {
+											"value": "@variables('entity_name')",
+											"type": "Expression"
+										},
+										"type": "string"
+									}
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"Stage": {
+				"type": "String",
+				"defaultValue": "Raw"
+			},
+			"entity_name": {
+				"type": "String",
+				"defaultValue": "Not set"
+			},
+			"Pipeline": {
+				"type": "String",
+				"defaultValue": "pln_service_bus_nsip_subscription"
+			},
+			"Is_service_bus": {
+				"type": "String",
+				"defaultValue": "False"
+			},
+			"source_folder": {
+				"type": "String",
+				"defaultValue": "Not set"
+			}
+		},
+		"folder": {
+			"name": "utils"
+		},
+		"annotations": []
+	}
+}
