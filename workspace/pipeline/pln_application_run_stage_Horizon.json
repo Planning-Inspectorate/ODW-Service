@@ -1,0 +1,308 @@
+{
+	"name": "pln_application_run_stage_Horizon",
+	"properties": {
+		"description": "Used to execute specific parts of pipelines for applications. In order to execute, you need to set the following variables:\n\n- Stage. Set to one of the following {Src to Raw, Raw to Std, Std to Hrm, Hrm to Cur}\n- Pipeline. Set to the pipeline that you are wanting to run a specific stage for. For example, pln_service_bus_nsip_subscription.\n\nThe rest of the required variables will be set programmatically.\n\nNote: Variables are case sensitive. ",
+		"activities": [
+			{
+				"name": "Set properties needed for execution",
+				"description": "We need to know which parts of the pipeline to run. Based on the configuration we will set variables accordingly",
+				"type": "Switch",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@variables('Pipeline')",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "pln_horizon_nsip_s51_advice",
+							"activities": [
+								{
+									"name": "Set source_folder 3",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "source_folder",
+										"value": "Horizon"
+									}
+								},
+								{
+									"name": "Set specific_file 3",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set source_folder 3",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "specific_file",
+										"value": "NSIPAdvice"
+									}
+								},
+								{
+									"name": "Set custom std to Hrm 3",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set specific_file 3",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "custom_std_to_Hrm",
+										"value": "True"
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "No associate pipeline",
+							"description": "Set to error to ensure that nothing happens",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "entity_name",
+								"value": "error"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Run raw to standard",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Load Horizon NSIP advice",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('Stage'), 'Raw to Std')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Raw to std",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_raw_to_std",
+									"type": "NotebookReference"
+								},
+								"parameters": {
+									"source_folder": {
+										"value": {
+											"value": "@variables('source_folder')",
+											"type": "Expression"
+										},
+										"type": "string"
+									},
+									"specific_file": {
+										"value": {
+											"value": "@variables('specific_file')",
+											"type": "Expression"
+										},
+										"type": "string"
+									}
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Load Horizon NSIP advice",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set properties needed for execution",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'), 'pln_horizon_nsip_s51_advice'), equals(variables('Stage'), 'Src to Raw'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute Pipeline1",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_Raw_Horizon_NSIP_Advice",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Horizon NSP std to Harm",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Run raw to standard",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'),'pln_horizon_nsip_s51_advice'),equals(variables('Stage'), 'Std to Hrm'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Hrz NSP Std to Hrm",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "casework_nsip_advice_dim_legacy",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "nsip_s51_advice - harm to cur",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Horizon NSP std to Harm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Hrm to Cur'), equals(variables('Pipeline'), 'pln_horizon_nsip_s51_advice'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "nsip_s51_advice",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "nsip_s51_advice",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"Stage": {
+				"type": "String",
+				"defaultValue": "Hrm to Cur"
+			},
+			"entity_name": {
+				"type": "String"
+			},
+			"Pipeline": {
+				"type": "String",
+				"defaultValue": "pln_horizon_nsip_s51_advice"
+			},
+			"Is_service_bus": {
+				"type": "String",
+				"defaultValue": "False"
+			},
+			"source_folder": {
+				"type": "String"
+			},
+			"source_frequency_folder": {
+				"type": "String"
+			},
+			"specific_file": {
+				"type": "String"
+			},
+			"custom_std_to_Hrm": {
+				"type": "String",
+				"defaultValue": "False"
+			}
+		},
+		"folder": {
+			"name": "utils/application"
+		},
+		"annotations": []
+	}
+}
