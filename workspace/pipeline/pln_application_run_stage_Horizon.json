@@ -19,7 +19,7 @@
 							"value": "pln_horizon_nsip_s51_advice",
 							"activities": [
 								{
-									"name": "Set source_folder 3",
+									"name": "Set source_folder 1",
 									"type": "SetVariable",
 									"dependsOn": [],
 									"policy": {
@@ -33,11 +33,11 @@
 									}
 								},
 								{
-									"name": "Set specific_file 3",
+									"name": "Set specific_file 1",
 									"type": "SetVariable",
 									"dependsOn": [
 										{
-											"activity": "Set source_folder 3",
+											"activity": "Set source_folder 1",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -54,11 +54,72 @@
 									}
 								},
 								{
-									"name": "Set custom std to Hrm 3",
+									"name": "Set custom std to Hrm 1",
 									"type": "SetVariable",
 									"dependsOn": [
 										{
-											"activity": "Set specific_file 3",
+											"activity": "Set specific_file 1",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "custom_std_to_Hrm",
+										"value": "True"
+									}
+								}
+							]
+						},
+						{
+							"value": "pln_horizon_nsip_exam_timetable",
+							"activities": [
+								{
+									"name": "Set source_folder 2",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "source_folder",
+										"value": "Horizon"
+									}
+								},
+								{
+									"name": "Set specific_file 2",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set source_folder 2",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "specific_file",
+										"value": "ExaminationTimetable"
+									}
+								},
+								{
+									"name": "Set custom std to Hrm 2",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "Set specific_file 2",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -105,6 +166,12 @@
 						"dependencyConditions": [
 							"Succeeded"
 						]
+					},
+					{
+						"activity": "Load Horizon Exam Timetable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
 					}
 				],
 				"userProperties": [],
@@ -147,7 +214,13 @@
 										"type": "string"
 									}
 								},
-								"snapshot": true
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
 							}
 						}
 					]
@@ -222,7 +295,13 @@
 									"referenceName": "casework_nsip_advice_dim_legacy",
 									"type": "NotebookReference"
 								},
-								"snapshot": true
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
 							}
 						}
 					]
@@ -263,6 +342,128 @@
 									"referenceName": "nsip_s51_advice",
 									"type": "NotebookReference"
 								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Load Horizon Exam Timetable",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set properties needed for execution",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'), 'pln_horizon_nsip_exam_timetable'), equals(variables('Stage'), 'Src to Raw'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute Pipeline2",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_Raw_Horizon_NSIP_Exam_Timetable",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Exam Timetable - std to Harm",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Run raw to standard",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'),'pln_horizon_nsip_exam_timetable'),equals(variables('Stage'), 'Std to Hrm'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "std to hrm",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "casework_nsip_examination_timetable_dim_legacy",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Exam - Hrm to Cur",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Exam Timetable - std to Harm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Hrm to Cur'), equals(variables('Pipeline'), 'pln_horizon_nsip_exam_timetable'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "hrm to cur",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "examination_timetable",
+									"type": "NotebookReference"
+								},
 								"snapshot": true
 							}
 						}
@@ -280,7 +481,7 @@
 			},
 			"Pipeline": {
 				"type": "String",
-				"defaultValue": "pln_horizon_nsip_s51_advice"
+				"defaultValue": "pln_horizon_nsip_exam_timetable"
 			},
 			"Is_service_bus": {
 				"type": "String",
