@@ -78,6 +78,25 @@
 									}
 								}
 							]
+						},
+						{
+							"value": "pln_nsip_relevant_reps_main",
+							"activities": [
+								{
+									"name": "Set specific_file 4",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "specific_file",
+										"value": "NSIPReleventRepresentation"
+									}
+								}
+							]
 						}
 					],
 					"defaultActivities": [
@@ -117,6 +136,12 @@
 					},
 					{
 						"activity": "application - Src to Raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "relevant reps - Source to main",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -559,6 +584,122 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "relevant reps - Source to main",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set properties needed for execution",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'), 'pln_nsip_relevant_reps_main'), equals(variables('Stage'), 'Src to Raw'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "0_Raw_Horizon_NSIP_Relevant_Reps",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_Raw_Horizon_NSIP_Relevant_Reps",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Relevant reps - std to hrm",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Run raw to standard",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'),'pln_nsip_relevant_reps_main'),equals(variables('Stage'), 'Std to Hrm'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "casework_nsip_relevant_representation_dim",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "casework_nsip_relevant_representation_dim",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Relevant reps - hrm to cur",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Relevant reps - std to hrm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Hrm to Cur'), equals(variables('Pipeline'), 'pln_nsip_relevant_reps_main'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "relevant_representation",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "relevant_representation",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
 			}
 		],
 		"variables": {
@@ -568,7 +709,7 @@
 			},
 			"Pipeline": {
 				"type": "String",
-				"defaultValue": "pln_application_run_stage_Horizon"
+				"defaultValue": "pln_nsip_relevant_reps_main"
 			},
 			"entity_name": {
 				"type": "String"
