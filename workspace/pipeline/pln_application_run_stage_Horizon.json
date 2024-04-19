@@ -7,7 +7,14 @@
 				"name": "Set properties needed for execution",
 				"description": "We need to know which parts of the pipeline to run. Based on the configuration we will set variables accordingly",
 				"type": "Switch",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set source folder",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"userProperties": [],
 				"typeProperties": {
 					"on": {
@@ -19,30 +26,9 @@
 							"value": "pln_horizon_nsip_s51_advice",
 							"activities": [
 								{
-									"name": "Set source_folder 1",
-									"type": "SetVariable",
-									"dependsOn": [],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "source_folder",
-										"value": "Horizon"
-									}
-								},
-								{
 									"name": "Set specific_file 1",
 									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "Set source_folder 1",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
+									"dependsOn": [],
 									"policy": {
 										"secureOutput": false,
 										"secureInput": false
@@ -52,27 +38,6 @@
 										"variableName": "specific_file",
 										"value": "NSIPAdvice"
 									}
-								},
-								{
-									"name": "Set custom std to Hrm 1",
-									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "Set specific_file 1",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "custom_std_to_Hrm",
-										"value": "True"
-									}
 								}
 							]
 						},
@@ -80,30 +45,9 @@
 							"value": "pln_horizon_nsip_exam_timetable",
 							"activities": [
 								{
-									"name": "Set source_folder 2",
-									"type": "SetVariable",
-									"dependsOn": [],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "source_folder",
-										"value": "Horizon"
-									}
-								},
-								{
 									"name": "Set specific_file 2",
 									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "Set source_folder 2",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
+									"dependsOn": [],
 									"policy": {
 										"secureOutput": false,
 										"secureInput": false
@@ -113,26 +57,24 @@
 										"variableName": "specific_file",
 										"value": "ExaminationTimetable"
 									}
-								},
+								}
+							]
+						},
+						{
+							"value": "pln_application_run_stage_Horizon",
+							"activities": [
 								{
-									"name": "Set custom std to Hrm 2",
+									"name": "Set specific_file 3",
 									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "Set specific_file 2",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
+									"dependsOn": [],
 									"policy": {
 										"secureOutput": false,
 										"secureInput": false
 									},
 									"userProperties": [],
 									"typeProperties": {
-										"variableName": "custom_std_to_Hrm",
-										"value": "True"
+										"variableName": "specific_file",
+										"value": "NSIPData"
 									}
 								}
 							]
@@ -150,7 +92,7 @@
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"variableName": "entity_name",
+								"variableName": "Pipeline",
 								"value": "error"
 							}
 						}
@@ -169,6 +111,12 @@
 					},
 					{
 						"activity": "Load Horizon Exam Timetable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "application - Src to Raw",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -423,7 +371,13 @@
 									"referenceName": "casework_nsip_examination_timetable_dim_legacy",
 									"type": "NotebookReference"
 								},
-								"snapshot": true
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
 							}
 						}
 					]
@@ -464,6 +418,142 @@
 									"referenceName": "examination_timetable",
 									"type": "NotebookReference"
 								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set source folder",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "source_folder",
+					"value": "Horizon"
+				}
+			},
+			{
+				"name": "application - Src to Raw",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set properties needed for execution",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'), 'pln_application_run_stage_Horizon'), equals(variables('Stage'), 'Src to Raw'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Execute Pipeline3",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_Raw_Horizon_NSIP_Data",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "application - std to hrm",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Run raw to standard",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Pipeline'),'pln_application_run_stage_Horizon'),equals(variables('Stage'), 'Std to Hrm'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "casework_nsip_data_dim_legacy",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "casework_nsip_data_dim_legacy",
+									"type": "NotebookReference"
+								},
+								"snapshot": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "application - hrm to cur",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "application - std to hrm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('Stage'), 'Hrm to Cur'), equals(variables('Pipeline'), 'pln_application_run_stage_Horizon'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "nsip_data",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "nsip_data",
+									"type": "NotebookReference"
+								},
 								"snapshot": true
 							}
 						}
@@ -476,16 +566,12 @@
 				"type": "String",
 				"defaultValue": "Hrm to Cur"
 			},
-			"entity_name": {
-				"type": "String"
-			},
 			"Pipeline": {
 				"type": "String",
-				"defaultValue": "pln_horizon_nsip_exam_timetable"
+				"defaultValue": "pln_application_run_stage_Horizon"
 			},
-			"Is_service_bus": {
-				"type": "String",
-				"defaultValue": "False"
+			"entity_name": {
+				"type": "String"
 			},
 			"source_folder": {
 				"type": "String"
@@ -495,10 +581,6 @@
 			},
 			"specific_file": {
 				"type": "String"
-			},
-			"custom_std_to_Hrm": {
-				"type": "String",
-				"defaultValue": "False"
 			}
 		},
 		"folder": {
