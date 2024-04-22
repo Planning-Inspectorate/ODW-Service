@@ -1,5 +1,5 @@
 {
-	"name": "py_utils_curated_validate_nsip_representation",
+	"name": "py_utils_curated_validate_nsip_project_update",
 	"properties": {
 		"description": "Validation notebook for validating curated layer tables against the json schema.",
 		"folder": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "95ea68b1-488a-469d-8bd1-a7040e81d8d5"
+				"spark.autotune.trackingId": "095cc4f8-db01-4737-86ad-13e11fef2b37"
 			}
 		},
 		"metadata": {
@@ -136,7 +136,7 @@
 					}
 				},
 				"source": [
-					"#### Import validation funcitons notebook"
+					"#### Import validation functions notebook"
 				]
 			},
 			{
@@ -185,12 +185,35 @@
 				},
 				"source": [
 					"SCHEMAS = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
-					"SCHEMA = SCHEMAS[\"nsip-representation.schema.json\"]\r\n",
-					"PRIMARY_KEY = \"caseRef\" \r\n",
+					"SCHEMA = SCHEMAS[\"nsip-project-update.schema.json\"]\r\n",
+					"PRIMARY_KEY = \"id\"\r\n",
 					"DATABASE = \"odw_curated_db\"\r\n",
-					"TABLE = \"relevant_representation\"\r\n",
-					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
+					"TABLE = \"nsip_project_update\"\r\n",
+					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}` limit 1000\"\r\n",
 					"OUTPUT_FILE = f\"{TABLE}.txt\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from odw_curated_db.nsip_project_update limit 1000"
 				],
 				"execution_count": null
 			},
@@ -206,11 +229,7 @@
 				"source": [
 					"#### Create dataframe of the data from the table\r\n",
 					"\r\n",
-					"For certain tables it may be necessary to rename a column or two in order to create the array and avoid duplicate field names.\r\n",
-					"\r\n",
-					"It's also necessary to convert None and NaT values to empty strings. A NULL value in SQL is shown as None for strings or NaT for timestamps in pandas so converting to an empty string will match the expected schema as we're validating using a pandas dataframe.\r\n",
-					"\r\n",
-					"The replace() function is used to convert NaT values to None and then these are converted to empty strings using fillna()."
+					"For certain tables it may be necessary to rename a column or two in order to create the array and avoid duplicate field names"
 				]
 			},
 			{
@@ -229,7 +248,6 @@
 				"source": [
 					"df = spark.sql(QUERY)\r\n",
 					"data = df.toPandas()\r\n",
-					"data.rename(columns={\"attachmentIds\": \"attachmentId\"}, inplace=True)\r\n",
 					"for column in data:\r\n",
 					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)"
 				],
@@ -286,12 +304,9 @@
 				"source": [
 					"%%capture output\r\n",
 					"\r\n",
-					"validate = validate_data(data=create_json_from_table_with_arrays(data, \r\n",
-					"                                                            primary_key=PRIMARY_KEY,\r\n",
-					"                                                            array=\"attachmentIds\",\r\n",
-					"                                                            array_field=\"attachmentId\"), \r\n",
-					"                        schema=SCHEMA,\r\n",
-					"                        primary_key= PRIMARY_KEY)"
+					"validate = validate_data(data=create_json_from_table_flat(data),\r\n",
+					"                        schema = SCHEMA,\r\n",
+					"                        primary_key = PRIMARY_KEY)"
 				],
 				"execution_count": null
 			},
