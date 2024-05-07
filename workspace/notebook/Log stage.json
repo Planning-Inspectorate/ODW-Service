@@ -1,6 +1,7 @@
 {
-	"name": "Log results",
+	"name": "Log stage",
 	"properties": {
+		"description": "Generic notebook for logging a step",
 		"folder": {
 			"name": "utils/main"
 		},
@@ -20,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "846a80e5-2c25-4c45-b3f0-1e17f1481cee"
+				"spark.autotune.trackingId": "32028e21-4a62-42ae-8767-a75c6127f1fe"
 			}
 		},
 		"metadata": {
@@ -59,11 +60,25 @@
 					]
 				},
 				"source": [
+					"Stage=\"Start\"\r\n",
 					"PipelineName = \"master_pipeline\"\r\n",
-					"PipelineRunID = \"20240507\"\r\n",
-					"Stage=\"Start\""
+					"PipelineRunID = \"xxxx-xxxxx-xxxxx-xxxx\"\r\n",
+					"Inserts = 0\r\n",
+					"Updates = 0\r\n",
+					"Deletes = 0\r\n",
+					"ErrorMessage = ''\r\n",
+					"StatusMessage = ''\r\n",
+					"PipelineTriggerID = ''\r\n",
+					"PipelineTriggerName = ''\r\n",
+					"PipelineTriggerType = ''\r\n",
+					"PipelineTriggeredbyPipelineName = ''\r\n",
+					"PipelineTriggeredbyPipelineRunID = ''\r\n",
+					"PipelineExecutionTimeInSec = ''\r\n",
+					"StartTime1 = ''\r\n",
+					"EndTime1 = ''\r\n",
+					"ActivityType = 'Pipeline'"
 				],
-				"execution_count": null
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -76,12 +91,62 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					""
+					"if f'{Stage}' == \"Start\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,'{PipelineName}' AS PipelineName                \r\n",
+					"                ,'{PipelineRunID}' AS PipelineRunID\r\n",
+					"                ,current_timestamp() AS StartTime\r\n",
+					"                ,NULL AS EndTime\r\n",
+					"                ,NULL AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,'{ErrorMessage}' AS ErrorMessage\r\n",
+					"                ,'Starting process' AS StatusMessage\r\n",
+					"                ,'{PipelineTriggerID}' AS PipelineTriggerID\r\n",
+					"                ,'{PipelineTriggerName}' AS PipelineTriggerName\r\n",
+					"                ,'{PipelineTriggerType}' AS PipelineTriggerType\r\n",
+					"                ,'{PipelineTriggeredbyPipelineName}' AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,'{PipelineTriggeredbyPipelineRunID}' AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,'{PipelineExecutionTimeInSec}' AS PipelineExecutionTimeInSec\r\n",
+					"                ,'{StartTime1}' AS StartTime1\r\n",
+					"                ,'{EndTime1}' AS EndTime1\r\n",
+					"                ,'{ActivityType}' AS ActivityType\r\n",
+					"            \"\"\"\r\n",
+					"    df = spark.sql(sql)\r\n",
+					"\r\n",
+					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
 				],
-				"execution_count": null
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"TRUNCATE TABLE logging.pipeline_logs"
+				],
+				"execution_count": 49
 			}
 		]
 	}
