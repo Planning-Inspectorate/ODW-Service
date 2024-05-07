@@ -1,6 +1,125 @@
 {
 	"name": "pln_horizon_data",
 	"properties": {
+		"activities": [
+			{
+				"name": "Relevant reps",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Get Relevant Reps config",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('Get Relevant Reps config').output.pipelineReturnValue, '[True]')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Record step skipped",
+							"type": "SynapseNotebook",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"snapshot": true
+							}
+						},
+						{
+							"name": "Warn step skipped",
+							"type": "WebHook",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [
+								{
+									"activity": "Record step skipped",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"timeout": "00:10:00"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Load relevant reps",
+							"type": "ExecutePipeline",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_nsip_relevant_reps_main",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get Relevant Reps config",
+				"description": "Run the notebook to get the status of relevant reps",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "Get pipeline config",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"system_name": {
+							"value": "Horizon",
+							"type": "string"
+						},
+						"Object": {
+							"value": "Relevant Reps",
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					}
+				}
+			}
+		],
 		"folder": {
 			"name": "utils/Master"
 		},
