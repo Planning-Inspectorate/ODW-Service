@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3c530125-64ac-4581-9e84-b1d24cfb020d"
+				"spark.autotune.trackingId": "f8ff98a0-e8db-452f-bcac-6b6a4dda1119"
 			}
 		},
 		"metadata": {
@@ -46,7 +46,8 @@
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 28
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -72,14 +73,14 @@
 					]
 				},
 				"source": [
-					"Stage=\"Start\" #Valid values are Start, OnProgress, Fail, Warning, and Completion\r\n",
-					"PipelineName = \"master_pipeline\"\r\n",
-					"PipelineRunID = \"xxxx-xxxxx-xxxxx-xxxx\"\r\n",
+					"Stage=\"Completion\" #Valid values are Start, OnProgress, Fail, Warning, and Completion\r\n",
+					"PipelineName = \"pln_horizon\"\r\n",
+					"PipelineRunID = \"5a550e61-0382-4ac8-b8eb-af731741b756\"\r\n",
 					"Inserts = 0\r\n",
 					"Updates = 0\r\n",
 					"Deletes = 0\r\n",
 					"ErrorMessage = ''\r\n",
-					"StatusMessage = ''\r\n",
+					"StatusMessage = 'Loading relevant reps'\r\n",
 					"PipelineTriggerID = ''\r\n",
 					"PipelineTriggerName = ''\r\n",
 					"PipelineTriggerType = ''\r\n",
@@ -90,7 +91,7 @@
 					"EndTime1 = ''\r\n",
 					"ActivityType = 'Pipeline'"
 				],
-				"execution_count": 46
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -354,6 +355,57 @@
 						"transient": {
 							"deleting": false
 						}
+					}
+				},
+				"source": [
+					"#If we're dealing with a warning we'll set the start and end time to be the same as nothing has executed\r\n",
+					"if f'{Stage}' == \"Completion\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,PipelineName                \r\n",
+					"                ,PipelineRunID\r\n",
+					"                ,StartTime\r\n",
+					"                ,current_timestamp() AS EndTime\r\n",
+					"                ,cast(current_timestamp()-StartTime AS Bigint) AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,'{ErrorMessage}' AS ErrorMessage\r\n",
+					"                ,'{StatusMessage}' AS StatusMessage\r\n",
+					"                ,'{PipelineTriggerID}' AS PipelineTriggerID\r\n",
+					"                ,'{PipelineTriggerName}' AS PipelineTriggerName\r\n",
+					"                ,'{PipelineTriggerType}' AS PipelineTriggerType\r\n",
+					"                ,'{PipelineTriggeredbyPipelineName}' AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,'{PipelineTriggeredbyPipelineRunID}' AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,'{PipelineExecutionTimeInSec}' AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,'' AS EndTime1\r\n",
+					"                ,'{ActivityType}' AS ActivityType\r\n",
+					"            FROM\r\n",
+					"                logging.pipeline_logs\r\n",
+					"            WHERE\r\n",
+					"                PipelineRunID = '{PipelineRunID}'\r\n",
+					"                AND ActivityType = 'Pipeline'\r\n",
+					"                AND StatusMessage = '{StatusMessage}'\r\n",
+					"            \"\"\"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"\r\n",
+					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					},
 					"microsoft": {
 						"language": "sparksql"
@@ -362,9 +414,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM logging.pipeline_logs order by logid desc"
+					"select * from logging.pipeline_logs order by 1 desc"
 				],
-				"execution_count": 70
+				"execution_count": 8
 			}
 		]
 	}
