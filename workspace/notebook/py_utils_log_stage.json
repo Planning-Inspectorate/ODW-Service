@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "94877861-8f50-4de0-b8bf-69efc34616ae"
+				"spark.autotune.trackingId": "8bd1aed8-bb6c-4e1a-8f72-c69210d7bec3"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					]
 				},
 				"source": [
-					"Stage=\"Completion\" #Valid values are Start, OnProgress, Fail, Warning, and Completion\r\n",
+					"Stage=\"Start\" #Valid values are Start, OnProgress, Fail, Warning, and Completion\r\n",
 					"PipelineName = \"pln_horizon\"\r\n",
 					"PipelineRunID = \"5a550e61-0382-4ac8-b8eb-af731741b756\"\r\n",
 					"Inserts = 0\r\n",
@@ -91,7 +91,7 @@
 					"EndTime1 = ''\r\n",
 					"ActivityType = 'Pipeline'"
 				],
-				"execution_count": 9
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -109,9 +109,11 @@
 				"source": [
 					"# Import necessary libraries\r\n",
 					"from pyspark.sql import SparkSession\r\n",
-					"import pyspark.sql.functions"
+					"import pyspark.sql.functions\r\n",
+					"import time\r\n",
+					"from random import randint"
 				],
-				"execution_count": 39
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +129,40 @@
 					}
 				},
 				"source": [
-					"\r\n",
+					"def save_to_delta_with_retry(df, table_name, max_retries):\r\n",
+					"    retries = 0\r\n",
+					"    while retries < max_retries:\r\n",
+					"        try:\r\n",
+					"            # Attempt to save the DataFrame to the Delta table\r\n",
+					"            df.write.mode(\"append\").format(\"delta\").saveAsTable(table_name)\r\n",
+					"            print(f\"Data saved successfully to {table_name}\")\r\n",
+					"            break  # Exit the loop if successful\r\n",
+					"        except Exception as e:\r\n",
+					"            print(f\"Error saving data to {table_name}: {str(e)}\")\r\n",
+					"            retries += 1\r\n",
+					"            if retries < max_retries:\r\n",
+					"                duration = randint(0, 100)/49.000\r\n",
+					"                time.sleep(duration)\r\n",
+					"            else:\r\n",
+					"                print(f\"Max retries reached. Unable to save data to {table_name}.\")\r\n",
+					"                break"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"# Create a SparkSession\r\n",
 					"session = SparkSession.builder.appName(\"Execute_Load\").getOrCreate()\r\n",
 					"\r\n",
@@ -147,7 +182,7 @@
 					"if PipelineTriggeredbyPipelineName is not None: \r\n",
 					"    PipelineTriggeredbyPipelineName = PipelineTriggeredbyPipelineName.replace('\"', '')"
 				],
-				"execution_count": 50
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -204,10 +239,9 @@
 					"            \"\"\"\r\n",
 					"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"\r\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
-				"execution_count": 49
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -249,8 +283,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"\r\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -294,8 +327,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"\r\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -339,8 +371,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"\r\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -390,33 +421,9 @@
 					"                AND StatusMessage = \"{StatusMessage}\"\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"\r\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(\"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"select * from logging.pipeline_logs order by 1 desc"
-				],
-				"execution_count": 14
 			}
 		]
 	}
