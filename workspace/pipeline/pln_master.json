@@ -5,7 +5,14 @@
 			{
 				"name": "Record pipeline starting",
 				"type": "SynapseNotebook",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set start time",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -240,7 +247,7 @@
 				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
-						"activity": "Record moving on to loading Horizon data",
+						"activity": "Send progressing to Horizon data",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1340,7 +1347,14 @@
 			{
 				"name": "Send starting teams notification",
 				"type": "ExecutePipeline",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set start time",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureInput": false
 				},
@@ -1372,10 +1386,85 @@
 							"value": "@pipeline().Pipeline",
 							"type": "Expression"
 						},
-						"activityMessage": "Starting",
+						"activityMessage": "Starting master pipeline run",
 						"activityDuration": "0",
 						"activityStatus": "Starting",
-						"Colour": "27AEB7"
+						"Colour": {
+							"value": "@variables('starting_colour')",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Send progressing to Horizon data",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Record moving on to loading Horizon data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Loading Horizon data",
+						"activityDuration": {
+							"value": "@div(sub(ticks(formatDateTime(utcnow())), ticks(formatDateTime(variables('start_time')))), 1000)",
+							"type": "Expression"
+						},
+						"activityStatus": "On Progress",
+						"Colour": {
+							"value": "@variables('on_progress_colour')",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set start time",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "start_time",
+					"value": {
+						"value": "@utcnow()",
+						"type": "Expression"
 					}
 				}
 			}
@@ -1395,6 +1484,21 @@
 			"resource_group": {
 				"type": "String",
 				"defaultValue": "pins-rg-data-odw-dev-uks"
+			},
+			"starting_colour": {
+				"type": "String",
+				"defaultValue": "27AEB7"
+			},
+			"on_progress_colour": {
+				"type": "String",
+				"defaultValue": "D9D9D9"
+			},
+			"failed_colour": {
+				"type": "String",
+				"defaultValue": "FF0303"
+			},
+			"start_time": {
+				"type": "String"
 			}
 		},
 		"folder": {
