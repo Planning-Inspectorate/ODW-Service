@@ -721,8 +721,6 @@
 			{
 				"name": "Record horizon failure",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Load Horizon data",
@@ -1444,7 +1442,7 @@
 						},
 						"activityMessage": "Loading Horizon data",
 						"activityDuration": {
-							"value": "@div(div(div(sub(ticks(formatDateTime(utcnow())), ticks(formatDateTime(variables('start_time')))), 1000), 1000), 60)",
+							"value": "@mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60))",
 							"type": "Expression"
 						},
 						"activityStatus": "On Progress",
@@ -1475,6 +1473,67 @@
 					"value": {
 						"value": "@utcnow()",
 						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Send Horizon failed",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Load Horizon data",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Horizon data failed",
+						"activityDuration": {
+							"value": "@div(div(div(sub(ticks(formatDateTime(utcnow())), ticks(formatDateTime(variables('start_time')))), 1000), 1000), 60)",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@variables('failed_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('failed_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline progressing",
+						"Message_subtitle": "ODW is starting to load data from Horizon"
 					}
 				}
 			}
