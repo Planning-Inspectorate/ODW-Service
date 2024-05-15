@@ -1,5 +1,5 @@
 {
-	"name": "zendesk_get_created_tickets",
+	"name": "zendesk_get_tickets",
 	"properties": {
 		"description": "zendesk_insert_new_data_into_standerdised_from_raw",
 		"folder": {
@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e35b4761-cf4c-4b0b-b7bd-a85214030554"
+				"spark.autotune.trackingId": "876bef05-9ef8-4e0c-8454-b8ab2718fcd4"
 			}
 		},
 		"metadata": {
@@ -64,6 +64,27 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"action='created'"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					}
 				},
 				"source": [
@@ -88,7 +109,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"import pprint"
 				],
-				"execution_count": 73
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -104,41 +125,13 @@
 					}
 				},
 				"source": [
-					"today = date.today()\r\n",
-					"todaysdate = today.strftime(\"%Y-%m-%d\")\r\n",
-					"yesterday = \"2024-04-24\"\r\n",
-					"print(todaysdate)"
-				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### mount the data lake storage in Synapse to the Synapse File Mount API\r\n",
-					"jobId = mssparkutils.env.getJobId()\r\n",
+					"today = date.today().strftime(\"%Y-%m-%d\")\r\n",
+					"\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"mssparkutils.fs.unmount(\"/zendesk_created\") \r\n",
-					"mssparkutils.fs.mount( \r\n",
-					"\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/ZenDesk/created/\",\r\n",
-					"\"/zendesk_created\",\r\n",
-					"{\"linkedService\":\"ls_storage\"}\r\n",
-					")\r\n",
-					"file_name = f\"created_24hours_{yesterday}.json\"\r\n",
-					"file_path = f\"/synfs/{jobId}/zendesk_created/{file_name}\"\r\n",
-					"print(f\"JobId: {jobId}\\nStorage: {storage_acc_name}\\nFile path: {file_path}\\nFile name: {file_name}\")   "
+					"file_name = f\"created_24hours_{today}.json\"\r\n",
+					"file_path = f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/ZenDesk/{action}/{file_name}\""
 				],
-				"execution_count": 6
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -154,34 +147,24 @@
 					}
 				},
 				"source": [
-					"path = mssparkutils.fs.getMountPath(\"/zendesk_created\")\r\n",
-					"print(path)"
-				],
-				"execution_count": 7
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"file_rdd = spark.read.text(\"synfs:/16547/zendesk_created/created_24hours_2024-04-24.json\", wholetext=True).rdd\r\n",
+					"file_rdd = spark.read.text(file_path_new, wholetext=True).rdd\r\n",
 					"data = file_rdd.take(1)[0]['value']\r\n",
 					"if data.startswith('\\ufeff'):\r\n",
 					"    data = data[1:]\r\n",
 					"json_data = json.loads(data)\r\n",
 					"results = json_data[0][\"results\"]\r\n",
-					"# pprint.pprint(results)"
+					"\r\n",
+					"pddf=pd.DataFrame(results)\r\n",
+					"\r\n",
+					"pddf=pddf.applymap(str)\r\n",
+					"pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
+					"\r\n",
+					"df = spark.createDataFrame(pddf)\r\n",
+					"\r\n",
+					"partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))"
 				],
-				"execution_count": 92
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -197,90 +180,11 @@
 					}
 				},
 				"source": [
-					"def created_tickets():\r\n",
-					"\r\n",
-					"    with open(file_path, 'r', encoding=\"utf-8-sig\") as json_file:\r\n",
-					"        print(\"File exists\")\r\n",
-					"        # zendesk_list = json.load(json_file)\r\n",
-					"        # zendesk_dict=zendesk_list[0]\r\n",
-					"        # result = zendesk_dict[\"results\"]\r\n",
-					"        # # pddf = pd.DataFrame(data=result)\r\n",
-					"        # # print(pddf.dtypes)\r\n",
-					"        # #clear int 64 data types\r\n",
-					"        # pddf=pd.DataFrame(result)\r\n",
-					"        # pddf=pddf.applymap(str)\r\n",
-					"        # pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
-					"        # print(pddf.dtypes)\r\n",
-					"        # df = spark.createDataFrame(pddf)\r\n",
-					"\r\n",
-					"        \r\n",
-					"\r\n",
-					"        # partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
-					"        # df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
-					"\r\n",
-					"        # # Insert created data into the table\r\n",
-					"        # return df"
-				],
-				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"created_tickets()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Insert created data into the table\r\n",
-					"# table_name = \"odw_standardised_db.zendesk_system_extract\"\r\n",
-					"# created_tickets().write.insertInto(table_name, overwrite=False)\r\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Create table\r\n",
+					"# Drop and Create table\r\n",
 					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_new_tickets;\")\r\n",
-					"created_tickets().write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_new_tickets\")"
+					"df.write.format('delta').saveAsTable(\"odw_standardised_db.zendesk_new_tickets\")"
 				],
-				"execution_count": null
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -296,9 +200,9 @@
 					}
 				},
 				"source": [
-					"created_tickets().createOrReplaceTempView(\"zendesk_new_tickets\")"
+					"df.createOrReplaceTempView(\"zendesk_new_tickets\")"
 				],
-				"execution_count": null
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -424,7 +328,7 @@
 					"        IFNULL(Source.RowID, \"NO INFO\")\r\n",
 					"    )"
 				],
-				"execution_count": null
+				"execution_count": 51
 			}
 		]
 	}
