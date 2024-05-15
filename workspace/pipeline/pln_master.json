@@ -249,6 +249,12 @@
 						"dependencyConditions": [
 							"Succeeded"
 						]
+					},
+					{
+						"activity": "Record moving on to loading Horizon data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
 					}
 				],
 				"policy": {
@@ -316,8 +322,6 @@
 			{
 				"name": "Record moving on to loading service bus data",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Load Horizon data",
@@ -434,11 +438,15 @@
 			{
 				"name": "Get service bus feeds",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Record moving on to loading service bus data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Send progressing to service bus data",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -470,8 +478,6 @@
 			{
 				"name": "Service bus loads",
 				"type": "ForEach",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Get service bus feeds",
@@ -556,7 +562,14 @@
 									{
 										"name": "Record relevant reps warning",
 										"type": "SynapseNotebook",
-										"dependsOn": [],
+										"dependsOn": [
+											{
+												"activity": "Send service bus warning",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
 										"policy": {
 											"timeout": "0.12:00:00",
 											"retry": 0,
@@ -663,6 +676,66 @@
 												"spark.dynamicAllocation.maxExecutors": null
 											},
 											"numExecutors": null
+										}
+									},
+									{
+										"name": "Send service bus warning",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "pln_utl_Send_Teams_Message",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"dataFactorySubscription": {
+													"value": "@variables('subscription_id')",
+													"type": "Expression"
+												},
+												"dataFactoryResourceGroup": {
+													"value": "@variables('resource_group')",
+													"type": "Expression"
+												},
+												"pipelineRunId": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"teamsWebhookUrl": {
+													"value": "@variables('webhook_url')",
+													"type": "Expression"
+												},
+												"activityName": {
+													"value": "@pipeline().Pipeline",
+													"type": "Expression"
+												},
+												"activityMessage": {
+													"value": "@concat('Service bus ',item() ,': Data load disabled')",
+													"type": "Expression"
+												},
+												"activityDuration": {
+													"value": "@mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)",
+													"type": "Expression"
+												},
+												"activityStatus": "Warning",
+												"Colour": {
+													"value": "@variables('warning_colour')",
+													"type": "Expression"
+												},
+												"Image": {
+													"value": "@variables('warning_image')",
+													"type": "Expression"
+												},
+												"Message_title": "ODW - Master pipeline Warning",
+												"Message_subtitle": {
+													"value": "@concat('Loading ',item() ,' from the service bus is disabled. Any messages in the subscription have not been loaded.')",
+													"type": "Expression"
+												}
+											}
 										}
 									}
 								],
@@ -890,8 +963,6 @@
 			{
 				"name": "Record service bus failure",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Service bus loads",
@@ -1011,8 +1082,6 @@
 			{
 				"name": "Record moving on to loading curated",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Service bus loads",
@@ -1129,11 +1198,15 @@
 			{
 				"name": "Load curated data",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Record moving on to loading curated",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Send progressing to load curated",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1154,8 +1227,6 @@
 			{
 				"name": "Record pipeline completed",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Load curated data",
@@ -1272,8 +1343,6 @@
 			{
 				"name": "Record curated failure",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Load curated data",
@@ -1453,7 +1522,13 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Record moving on to loading Horizon data",
+						"activity": "Record pipeline starting",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Send starting teams notification",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1586,6 +1661,311 @@
 						"Message_subtitle": "ODW failed to load data from Horizon"
 					}
 				}
+			},
+			{
+				"name": "Send progressing to service bus data",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Load Horizon data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Loading service bus data",
+						"activityDuration": {
+							"value": "@mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)",
+							"type": "Expression"
+						},
+						"activityStatus": "On Progress",
+						"Colour": {
+							"value": "@variables('on_progress_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('progress_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline progressing",
+						"Message_subtitle": "ODW is starting to load data from the service bus"
+					}
+				}
+			},
+			{
+				"name": "Send service bus failed",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Service bus loads",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Service bus data failed",
+						"activityDuration": {
+							"value": "@div(div(div(sub(ticks(formatDateTime(utcnow())), ticks(formatDateTime(variables('start_time')))), 1000), 1000), 60)",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@variables('failed_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('failed_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline failed",
+						"Message_subtitle": "ODW failed to load data from service bus"
+					}
+				}
+			},
+			{
+				"name": "Send progressing to load curated",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Service bus loads",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Loading curated layer",
+						"activityDuration": {
+							"value": "@mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)",
+							"type": "Expression"
+						},
+						"activityStatus": "On Progress",
+						"Colour": {
+							"value": "@variables('on_progress_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('progress_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline progressing",
+						"Message_subtitle": "ODW is starting to load data to the curated layer"
+					}
+				}
+			},
+			{
+				"name": "Send curated failed",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Load curated data",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Curated layer build failed",
+						"activityDuration": {
+							"value": "@div(div(div(sub(ticks(formatDateTime(utcnow())), ticks(formatDateTime(variables('start_time')))), 1000), 1000), 60)",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@variables('failed_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('failed_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline failed",
+						"Message_subtitle": "ODW failed to load data to curated layer"
+					}
+				}
+			},
+			{
+				"name": "Send completion notification",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Load curated data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Master pipeline run complete",
+						"activityDuration": {
+							"value": "@mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)",
+							"type": "Expression"
+						},
+						"activityStatus": "Completed",
+						"Colour": {
+							"value": "@variables('completed_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('completed_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline completed",
+						"Message_subtitle": "The master pipeline for loading data to ODW completed successfully."
+					}
+				}
 			}
 		],
 		"variables": {
@@ -1638,6 +2018,14 @@
 			"warning_colour": {
 				"type": "String",
 				"defaultValue": "FE9000"
+			},
+			"completed_colour": {
+				"type": "String",
+				"defaultValue": "0AFCA8"
+			},
+			"completed_image": {
+				"type": "String",
+				"defaultValue": "https://tse3.mm.bing.net/th/id/OIP.YbfIXY-IWYnBkzHvhrXiXAHaHa?w=177&h=180&c=7&r=0&o=5&dpr=1.5&pid=1.7"
 			}
 		},
 		"folder": {
