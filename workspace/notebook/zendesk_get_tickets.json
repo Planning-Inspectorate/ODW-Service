@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0f126619-9c09-45a4-b0d6-db2926d6a7b7"
+				"spark.autotune.trackingId": "17ff07ae-4ce3-4de0-9dd3-409c0480ed3e"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					]
 				},
 				"source": [
-					"action='created'"
+					"action=''"
 				],
 				"execution_count": 81
 			},
@@ -96,11 +96,10 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"from datetime import date\r\n",
-					"from pyspark.sql.functions import lit\r\n",
-					"from pyspark.sql.functions import row_number\r\n",
 					"from pyspark.sql.functions import *\r\n",
 					"from pyspark.sql.window import Window\r\n",
 					"import pprint\r\n",
+					"from pyspark.sql import DataFrame\r\n",
 					"\r\n",
 					"from pyspark.sql import SparkSession\r\n",
 					"spark = SparkSession.builder.getOrCreate()\r\n",
@@ -138,7 +137,8 @@
 					}
 				},
 				"source": [
-					"spark.sql(f\"SET TABLE_NAME = odw_standardised_db.zendesk_{action}_tickets\")\r\n",
+					"table_name = f\"odw_standardised_db.zendesk_{action}_tickets\"\r\n",
+					"spark.sql(f\"SET TABLE_NAME = {table_name}}\")\r\n",
 					"\r\n",
 					"today = date.today().strftime(\"%Y-%m-%d\")\r\n",
 					"\r\n",
@@ -175,24 +175,52 @@
 					}
 				},
 				"source": [
-					"file_rdd = spark.read.text(file_path, wholetext=True).rdd\r\n",
-					"data = file_rdd.take(1)[0]['value']\r\n",
-					"if data.startswith('\\ufeff'):\r\n",
-					"    data = data[1:]\r\n",
-					"json_data = json.loads(data)\r\n",
-					"results = json_data[0][\"results\"]\r\n",
+					"def get_zendesk_data(file_path: str) -> DataFrame:\r\n",
+					"    \"\"\"\r\n",
+					"    Reads Zendesk json files into a DataFrame\r\n",
 					"\r\n",
-					"pddf=pd.DataFrame(results)\r\n",
+					"    Returns:\r\n",
+					"        Spark DataFrame\r\n",
+					"    \"\"\"\r\n",
 					"\r\n",
-					"pddf=pddf.applymap(str)\r\n",
-					"pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
+					"    file_rdd = spark.read.text(file_path, wholetext=True).rdd\r\n",
+					"    data = file_rdd.take(1)[0]['value']\r\n",
+					"    if data.startswith('\\ufeff'):\r\n",
+					"        data = data[1:]\r\n",
+					"    json_data = json.loads(data)\r\n",
+					"    results = json_data[0][\"results\"]\r\n",
 					"\r\n",
-					"df = spark.createDataFrame(pddf)\r\n",
+					"    pddf=pd.DataFrame(results)\r\n",
 					"\r\n",
-					"partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
-					"df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))"
+					"    pddf=pddf.applymap(str)\r\n",
+					"    pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\r\n",
+					"\r\n",
+					"    df = spark.createDataFrame(pddf)\r\n",
+					"\r\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
+					"    df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\r\n",
+					"\r\n",
+					"    return df"
 				],
 				"execution_count": 84
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df = get_zendesk_data(file_path)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -222,8 +250,8 @@
 					}
 				},
 				"source": [
-					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_{action}_tickets;\")\r\n",
-					"df.write.format('delta').saveAsTable(f\"odw_standardised_db.zendesk_{action}_tickets\")"
+					"spark.sql(f\"drop table if exists {table_name};\")\r\n",
+					"df.write.format('delta').saveAsTable(f\"{table_name}}\")"
 				],
 				"execution_count": 85
 			},
