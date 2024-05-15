@@ -572,7 +572,7 @@
 										"type": "SynapseNotebook",
 										"dependsOn": [
 											{
-												"activity": "Send service bus warning",
+												"activity": "Get entity_name_1",
 												"dependencyConditions": [
 													"Succeeded"
 												]
@@ -598,7 +598,7 @@
 												},
 												"PipelineName": {
 													"value": {
-														"value": "@concat(replace(replace(string(item()), '{\\\"Object\\\":\\\"', ''), '\\\"}', ''), ' ', pipeline().Pipeline)",
+														"value": "@concat(replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''), ' ', pipeline().Pipeline)",
 														"type": "Expression"
 													},
 													"type": "string"
@@ -624,7 +624,7 @@
 												},
 												"ErrorMessage": {
 													"value": {
-														"value": "@concat('Service bus item disabled: ', replace(replace(string(item()), '{\\\"Object\\\":\\\"', ''), '\\\"}', ''))",
+														"value": "@concat('Service bus item disabled: ', replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''))",
 														"type": "Expression"
 													},
 													"type": "string"
@@ -689,7 +689,14 @@
 									{
 										"name": "Send service bus warning",
 										"type": "ExecutePipeline",
-										"dependsOn": [],
+										"dependsOn": [
+											{
+												"activity": "Get entity_name_1",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
 										"policy": {
 											"secureInput": false
 										},
@@ -722,7 +729,7 @@
 													"type": "Expression"
 												},
 												"activityMessage": {
-													"value": "@concat('Service bus ',replace(replace(string(item()), '{\\\"Object\\\":\\\"', ''), '\\\"}', '') ,': Data load disabled')",
+													"value": "@concat('Service bus ',replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', '') ,': Data load disabled')",
 													"type": "Expression"
 												},
 												"activityDuration": {
@@ -740,9 +747,49 @@
 												},
 												"Message_title": "ODW - Master pipeline Warning",
 												"Message_subtitle": {
-													"value": "@concat('Loading ',replace(replace(string(item()), '{\\\"Object\\\":\\\"', ''), '\\\"}', ''),' from the service bus is disabled. Any messages in the subscription have not been loaded.')",
+													"value": "@concat('Loading ',replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''),' from the service bus is disabled. Any messages in the subscription have not been loaded.')",
 													"type": "Expression"
 												}
+											}
+										}
+									},
+									{
+										"name": "Get entity_name_1",
+										"type": "SynapseNotebook",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"notebook": {
+												"referenceName": "py_utils_get_service_bus_config",
+												"type": "NotebookReference"
+											},
+											"parameters": {
+												"system_name": {
+													"value": "Service bus",
+													"type": "string"
+												},
+												"Object": {
+													"value": {
+														"value": "@string(item())",
+														"type": "Expression"
+													},
+													"type": "string"
+												}
+											},
+											"snapshot": true,
+											"sparkPool": {
+												"referenceName": "pinssynspodw",
+												"type": "BigDataPoolReference"
+											},
+											"conf": {
+												"spark.dynamicAllocation.enabled": true
 											}
 										}
 									}
@@ -823,6 +870,8 @@
 						{
 							"name": "Random wait to allow parallelism",
 							"type": "SynapseNotebook",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -1599,8 +1648,6 @@
 			{
 				"name": "Set start time",
 				"type": "SetVariable",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"secureOutput": false,
