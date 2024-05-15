@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c6ea348f-4e42-432f-83f4-785ff59fe039"
+				"spark.autotune.trackingId": "daa73c7f-e2e4-466e-bcbe-fab50f13da41"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 				"source": [
 					"action='created'"
 				],
-				"execution_count": 45
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -109,7 +109,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"import pprint"
 				],
-				"execution_count": 46
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -125,13 +125,15 @@
 					}
 				},
 				"source": [
+					"spark.sql(f\"SET TABLE_NAME = odw_standardised_db.zendesk_{action}_tickets\")\r\n",
+					"\r\n",
 					"today = date.today().strftime(\"%Y-%m-%d\")\r\n",
 					"\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"file_name = f\"created_24hours_{today}.json\"\r\n",
+					"file_name = f\"{action}_24hours_{today}.json\"\r\n",
 					"file_path = f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/ZenDesk/{action}/{file_name}\""
 				],
-				"execution_count": 47
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -164,7 +166,7 @@
 					"partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\r\n",
 					"df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))"
 				],
-				"execution_count": 48
+				"execution_count": 84
 			},
 			{
 				"cell_type": "code",
@@ -184,25 +186,7 @@
 					"spark.sql(f\"drop table if exists odw_standardised_db.zendesk_{action}_tickets;\")\r\n",
 					"df.write.format('delta').saveAsTable(f\"odw_standardised_db.zendesk_{action}_tickets\")"
 				],
-				"execution_count": 49
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df.createOrReplaceTempView(\"vw_zendesk_tickets\")"
-				],
-				"execution_count": 50
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +208,7 @@
 				"source": [
 					"%%sql\r\n",
 					"MERGE INTO odw_standardised_db.zendesk_system_extract AS Target\r\n",
-					"USING odw_standardised_db.vw_zendesk_tickets AS Source\r\n",
+					"USING ${TABLE_NAME} AS Source\r\n",
 					"ON Source.id = Target.id\r\n",
 					"    \r\n",
 					"    -- For Inserts\r\n",
@@ -328,7 +312,7 @@
 					"        IFNULL(Source.RowID, \"NO INFO\")\r\n",
 					"    )"
 				],
-				"execution_count": 51
+				"execution_count": 86
 			}
 		]
 	}
