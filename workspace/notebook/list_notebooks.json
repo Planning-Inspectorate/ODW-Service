@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d64b1696-5955-4e11-ac94-14ca1bc47a9b"
+				"spark.autotune.trackingId": "976c520a-89d4-4648-8672-266d3f781a14"
 			}
 		},
 		"metadata": {
@@ -62,10 +62,9 @@
 					}
 				},
 				"source": [
-					"pip install azure-identity azure-mgmt-synapse\n",
-					""
+					"# pip install azure-identity azure-mgmt-synapse"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -81,10 +80,9 @@
 					}
 				},
 				"source": [
-					"pip install azure-identity azure-synapse\n",
-					""
+					"# pip install azure-identity azure-synapse"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -100,10 +98,30 @@
 					}
 				},
 				"source": [
-					"pip install requests msal\n",
+					"\n",
+					"import pandas as pd\n",
+					"print(pd.__version__)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"pip install requests msal"
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -139,7 +157,7 @@
 					"kv_linked_service = \"ls_kv\"\n",
 					"secret = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)"
 				],
-				"execution_count": 12
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -199,7 +217,7 @@
 					"if not access_token:\n",
 					"    raise Exception('Failed to acquire access token')"
 				],
-				"execution_count": 13
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -215,41 +233,68 @@
 					}
 				},
 				"source": [
-					"from azure.identity import DefaultAzureCredential\n",
+					"def fetch_all_notebooks():\n",
+					"    notebooks = []\n",
 					"\n",
-					"# Replace these variables with your actual values\n",
-					"subscription_id = 'ff442a29-fc06-4a13-8e3e-65fd5da513b3'\n",
-					"resource_group_name = 'pins-rg-data-odw-dev-uks'\n",
 					"\n",
-					"# Authenticate using DefaultAzureCredential\n",
-					"credential = DefaultAzureCredential()\n",
+					"    base_url = \"https://pins-synw-odw-dev-uks.dev.azuresynapse.net\"\n",
+					"    api_version = \"2020-12-01\"\n",
 					"\n",
-					"# Set the URL for listing notebooks\n",
-					"base_url = \"https://pins-synw-odw-dev-uks.dev.azuresynapse.net\"\n",
-					"api_version = \"2020-12-01\"\n",
+					"    url = f'{base_url}/notebooks?api-version={api_version}'\n",
 					"\n",
-					"url = f'{base_url}/notebooks?api-version={api_version}'\n",
+					"    # Set the headers with the access token\n",
+					"    headers = {\n",
+					"        'Authorization': f'Bearer {access_token}'\n",
+					"    }\n",
+					"    \n",
+					"    while url:\n",
+					"        response = requests.get(url, headers=headers)\n",
+					"        if response.status_code == 200:\n",
+					"            data = response.json()\n",
+					"            notebooks.extend(data['value'])  # Add current page of notebooks\n",
+					"            url = data.get('nextLink')  # Get the next page URL, if any\n",
+					"        else:\n",
+					"            print(f\"Failed to list notebooks: {response.status_code}\")\n",
+					"            print(response.text)\n",
+					"            break\n",
 					"\n",
-					"# Set the headers with the access token\n",
-					"headers = {\n",
-					"    'Authorization': f'Bearer {access_token}'\n",
-					"}\n",
-					"\n",
-					"# Make the HTTP GET request to list notebooks\n",
-					"response = requests.get(url, headers=headers)\n",
-					"\n",
-					"notebooks_with_ = []\n",
-					"if response.status_code == 200:\n",
-					"    data = response.json()['value']\n",
-					"\n",
-					"    for notebook in data:\n",
-					"        try:\n",
-					"\n",
-					"        print(notebook)\n",
-					"else:\n",
-					"    pprint.pprint(response.text)"
+					"    return notebooks\n",
+					""
 				],
-				"execution_count": 14
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pprint\n",
+					"\n",
+					"SPARK_POOL = 'pinssynspodwpr'\n",
+					"\n",
+					"all_notebooks = fetch_all_notebooks()\n",
+					"notebooks_with_no_spark_pool = []\n",
+					"notebooks_with_target_spark_pool = []\n",
+					"\n",
+					"for notebook in all_notebooks:\n",
+					"    if notebook['properties']['bigDataPool'] is None:\n",
+					"        notebooks_with_no_spark_pool.append(notebook['name'])\n",
+					"    elif notebook['properties']['bigDataPool']['referenceName'] == SPARK_POOL:\n",
+					"        notebooks_with_target_spark_pool.append(notebook['name'])\n",
+					"\n",
+					"\n",
+					"pprint.pprint(notebooks_with_target_spark_pool)"
+				],
+				"execution_count": 16
 			}
 		]
 	}
