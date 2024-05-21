@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "13778c13-58ad-4f50-9170-6bd35616c052"
+				"spark.autotune.trackingId": "0c43a010-cfb8-46d3-a2d4-dbe7e7017431"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"%%sql\r\n",
 					"describe table extended odw_harmonised_db.document_meta_data"
 				],
-				"execution_count": 30
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -89,14 +89,14 @@
 				},
 				"source": [
 					"from pyspark.sql import SparkSession\r\n",
-					"from pyspark.sql.functions import year\r\n",
+					"from pyspark.sql.functions import year, month\r\n",
 					"\r\n",
 					"# Create a Spark session\r\n",
 					"spark = SparkSession.builder \\\r\n",
 					"    .appName(\"SynapsePartitioning\") \\\r\n",
 					"    .getOrCreate()"
 				],
-				"execution_count": 1
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -105,17 +105,17 @@
 				},
 				"source": [
 					"existing_df = spark.sql(\"SELECT * FROM odw_harmonised_db.document_meta_data\")\r\n",
-					"updated_df = existing_df.withColumn(\"year\", year(existing_df[\"CreateDate\"]))\r\n",
+					"updated_df = existing_df.withColumn(\"year\", year(existing_df[\"CreateDate\"])).withColumn(\"month\", month(existing_df[\"CreateDate\"]))\r\n",
 					"\r\n",
 					"table = 'odw_harmonised_db.document_meta_data_partitioned'\r\n",
 					"\r\n",
 					"updated_df.write \\\r\n",
 					"    .format(\"delta\") \\\r\n",
 					"    .mode(\"overwrite\") \\\r\n",
-					"    .partitionBy(\"year\", \"IsActive\") \\\r\n",
+					"    .partitionBy(\"year\",\"month\", \"IsActive\") \\\r\n",
 					"    .saveAsTable(table)"
 				],
-				"execution_count": 5
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -137,7 +137,7 @@
 					"print(f\"Row count in existing table: {existing_count}\")\r\n",
 					"print(f\"Row count in new partitioned table: {new_count}\")"
 				],
-				"execution_count": 6
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +160,7 @@
 					"%%sql\r\n",
 					"ALTER TABLE odw_harmonised_db.document_meta_data RENAME TO document_meta_data_Backup;"
 				],
-				"execution_count": 20
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -183,7 +183,7 @@
 					"%%sql\r\n",
 					"ALTER TABLE odw_harmonised_db.document_meta_data_partitioned RENAME TO document_meta_data"
 				],
-				"execution_count": 21
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -206,7 +206,57 @@
 					"%%sql\r\n",
 					"describe table extended odw_harmonised_db.document_meta_data"
 				],
-				"execution_count": 29
+				"execution_count": 56
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"\r\n",
+					"%%sql\r\n",
+					"SELECT YEAR(CreateDate), IsActive, COUNT(*) FROM odw_harmonised_db.document_meta_data GROUP BY YEAR(CreateDate), IsActive order by 1, 2\r\n",
+					""
+				],
+				"execution_count": 57
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"\r\n",
+					"%%sql\r\n",
+					"SELECT YEAR(CreateDate), MONTH(CreateDate), IsActive, COUNT(*) FROM odw_harmonised_db.document_meta_data GROUP BY YEAR(CreateDate), MONTH(CreateDate), IsActive order by 1, 2, 3\r\n",
+					""
+				],
+				"execution_count": 58
 			}
 		]
 	}
