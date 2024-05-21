@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "761259f8-3e2e-4041-bcee-fc91facefaf3"
+				"spark.autotune.trackingId": "7bccac9b-ed3a-433d-9435-05253e45ad21"
 			}
 		},
 		"metadata": {
@@ -100,11 +100,71 @@
 					}
 				},
 				"source": [
+					"table_name = \"appeal_document\"\r\n",
+					"full_table_name = f\"{db_name}.{entity_name}\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"import pprint\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"import json\r\n",
 					"from pyspark.sql.functions import col\r\n",
 					"from pyspark.sql import DataFrame"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_table_exists(table_name: str) -> bool:\r\n",
+					"    if table_name in [table.name for table in spark.catalog.listTables(db_name)]:\r\n",
+					"        exists = True\r\n",
+					"    else:\r\n",
+					"        exists = False\r\n",
+					"    return exists"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"test_table_exists(table_name)"
 				],
 				"execution_count": null
 			},
@@ -143,6 +203,24 @@
 					}
 				},
 				"source": [
+					"create_spark_schema(db_name, entity_name)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"def create_spark_dataframe() -> DataFrame:\r\n",
 					"    spark_dataframe = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
@@ -163,9 +241,27 @@
 					}
 				},
 				"source": [
-					"def create_spark_table(db_name: str, entity_name:str, spark_dataframe: DataFrame) -> None:\r\n",
-					"    spark.sql(f\"drop table if exists {db_name}.{entity_name}\")\r\n",
-					"    spark_dataframe.saveAsTable(f\"{db_name}.{entity_name}\")\r\n",
+					"create_spark_dataframe()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame) -> None:\r\n",
+					"    spark.sql(f\"drop table if exists `{db_name}`.`{table_name}`\")\r\n",
+					"    spark_dataframe.write.saveAsTable(f\"{db_name}.{table_name}\")\r\n",
 					"    print(\"Table created\")"
 				],
 				"execution_count": null
@@ -173,7 +269,8 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"create_spark_schema(db_name, entity_name)"
+					"spark_dataframe = create_spark_dataframe()\r\n",
+					"create_spark_table(db_name, table_name, spark_dataframe)"
 				],
 				"execution_count": null
 			},
@@ -191,26 +288,7 @@
 					}
 				},
 				"source": [
-					"table = create_spark_dataframe()\r\n",
-					"table.printSchema()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"create_spark_table(db_name, entity_name, spark_dataframe=create_spark_dataframe())"
+					"test_table_exists(table_name)"
 				],
 				"execution_count": null
 			}
