@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bae7517a-70bb-454e-8a79-3f30a36868de"
+				"spark.autotune.trackingId": "54e9316d-ea1e-4ef4-bb5a-68d8b14444e4"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 					"\n",
 					"# delete_table('odw_standardised_db','appeal_document')"
 				],
-				"execution_count": 1
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 				"source": [
 					"entity_name='appeal-document'"
 				],
-				"execution_count": 2
+				"execution_count": 49
 			},
 			{
 				"cell_type": "markdown",
@@ -136,7 +136,7 @@
 					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"table_name = f\"odw_standardised_db.{entity_name.replace('-', '_')}\""
 				],
-				"execution_count": 3
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -163,13 +163,13 @@
 					"    df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
 					"    df = df.withColumn(\"ingested_datetime\", to_timestamp(df['message_enqueued_time_utc'], \"yyyy-MM-dd HH:mm:ss\"))\n",
 					"\n",
-					"    # df = df.withColumn(\"extra_column\", current_timestamp())\n",
+					"    df = df.withColumn(\"extra_column\", df['caseStage'])\n",
 					"\n",
 					"except Exception as e:\n",
 					"    print('Raw data not found at ', source_path, e)\n",
 					"    mssparkutils.notebook.exit({'new_rows': 0})"
 				],
-				"execution_count": 4
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -194,7 +194,7 @@
 					"    \n",
 					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
 				],
-				"execution_count": 5
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -213,7 +213,7 @@
 					"def add_column_to_table(df, table_name ):\n",
 					"\n",
 					"    # Write the DataFrame with the new column to a new temporary table\n",
-					"    temp_table_name = \"temp_table\"\n",
+					"    temp_table_name = \"odw_standardised_db.temp_table\"\n",
 					"    df.write.mode(\"overwrite\").saveAsTable(temp_table_name)\n",
 					"\n",
 					"    # Drop the original table\n",
@@ -223,7 +223,7 @@
 					"    spark.sql(f\"ALTER TABLE {temp_table_name} RENAME TO {table_name}\")\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
@@ -257,7 +257,7 @@
 					"else:\n",
 					"    print(\"Schemas match.\")"
 				],
-				"execution_count": 16
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -273,11 +273,11 @@
 					}
 				},
 				"source": [
-					"# print(f\"Ingesting {df.count()} rows\")\n",
-					"# df.write.option.mode(\"append\").saveAsTable(table_name)\n",
-					"# mssparkutils.notebook.exit({'new_rows': df.count()})"
+					"print(f\"Ingesting {df.count()} rows\")\n",
+					"df.write.mode(\"append\").saveAsTable(table_name)\n",
+					"mssparkutils.notebook.exit({'new_rows': df.count()})"
 				],
-				"execution_count": null
+				"execution_count": 55
 			}
 		]
 	}
