@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "54e9316d-ea1e-4ef4-bb5a-68d8b14444e4"
+				"spark.autotune.trackingId": "243e6dd7-b726-452e-bcfa-11ffb282c9e9"
 			}
 		},
 		"metadata": {
@@ -62,41 +62,6 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"def delete_table(db_name, table_name):\n",
-					"    import logging\n",
-					"    logger = logging.getLogger(__name__)\n",
-					"    from pyspark.sql import SparkSession\n",
-					"    from notebookutils import mssparkutils\n",
-					"    spark = SparkSession.builder.getOrCreate()\n",
-					"    if spark._jsparkSession.catalog().tableExists(db_name, table_name):\n",
-					"        table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\n",
-					"        if len(table_details) > 1:\n",
-					"            raise RuntimeError(\"too many locations associated with the table!\")\n",
-					"        else:\n",
-					"            loc = table_details['location'][0]\n",
-					"            mssparkutils.fs.rm(loc, True)\n",
-					"            spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")\n",
-					"    else:\n",
-					"        logger.info(\"Table does not exist\")\n",
-					"\n",
-					"# delete_table('odw_standardised_db','appeal_document')"
-				],
-				"execution_count": 48
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
 					},
 					"tags": [
 						"parameters"
@@ -105,7 +70,7 @@
 				"source": [
 					"entity_name='appeal-document'"
 				],
-				"execution_count": 49
+				"execution_count": 104
 			},
 			{
 				"cell_type": "markdown",
@@ -136,7 +101,7 @@
 					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"table_name = f\"odw_standardised_db.{entity_name.replace('-', '_')}\""
 				],
-				"execution_count": 50
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -162,14 +127,12 @@
 					"    df = df.withColumn(\"expected_from\", current_timestamp())\n",
 					"    df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
 					"    df = df.withColumn(\"ingested_datetime\", to_timestamp(df['message_enqueued_time_utc'], \"yyyy-MM-dd HH:mm:ss\"))\n",
-					"\n",
-					"    df = df.withColumn(\"extra_column\", df['caseStage'])\n",
-					"\n",
+					"    \n",
 					"except Exception as e:\n",
 					"    print('Raw data not found at ', source_path, e)\n",
 					"    mssparkutils.notebook.exit({'new_rows': 0})"
 				],
-				"execution_count": 51
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -194,7 +157,7 @@
 					"    \n",
 					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
 				],
-				"execution_count": 52
+				"execution_count": 107
 			},
 			{
 				"cell_type": "code",
@@ -210,7 +173,7 @@
 					}
 				},
 				"source": [
-					"def add_column_to_table(df, table_name ):\n",
+					"def apply_df_to_table(df, table_name ):\n",
 					"\n",
 					"    # Write the DataFrame with the new column to a new temporary table\n",
 					"    temp_table_name = \"odw_standardised_db.temp_table\"\n",
@@ -223,7 +186,7 @@
 					"    spark.sql(f\"ALTER TABLE {temp_table_name} RENAME TO {table_name}\")\n",
 					""
 				],
-				"execution_count": 53
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -251,13 +214,18 @@
 					"    for item in in_current_schema_not_in_existing_schema:\n",
 					"        print(f\"Adding new column '{item[0]}' of type '{item[1]}' in {table_name} since it's not in the table's schema\")\n",
 					"        table_df = table_df.withColumn(item[0], lit(None).cast(item[1]))\n",
+					"\n",
+					"    # removing columns from the existing table that are not in the new df\n",
+					"    for item in in_existing_schema_not_in_current_schema:\n",
+					"        print(f\"Removing column '{item[0]}' from {table_name} since it's not in the table's schema\")\n",
+					"        table_df = table_df.drop(item[0])\n",
 					"    \n",
-					"    add_column_to_table(table_df, table_name)\n",
+					"    apply_df_to_table(table_df, table_name)\n",
 					"\n",
 					"else:\n",
 					"    print(\"Schemas match.\")"
 				],
-				"execution_count": 54
+				"execution_count": 109
 			},
 			{
 				"cell_type": "code",
@@ -277,7 +245,7 @@
 					"df.write.mode(\"append\").saveAsTable(table_name)\n",
 					"mssparkutils.notebook.exit({'new_rows': df.count()})"
 				],
-				"execution_count": 55
+				"execution_count": 110
 			}
 		]
 	}
