@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "21752483-c661-4580-b197-20402efd27ae"
+				"spark.autotune.trackingId": "ba670a8d-64de-4b56-959d-391744037a6c"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,7 @@
 				"source": [
 					"entity_name = 'appeal-document'"
 				],
-				"execution_count": 1
+				"execution_count": 128
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +103,7 @@
 				"source": [
 					"%run \"utils/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": null
+				"execution_count": 187
 			},
 			{
 				"cell_type": "code",
@@ -126,9 +126,10 @@
 					"from IPython.display import display\r\n",
 					"import pprint\r\n",
 					"from pyspark.sql.types import *\r\n",
-					"from pyspark.sql.functions import col, when, lit, monotonically_increasing_id"
+					"from pyspark.sql.functions import col, when, lit, row_number\r\n",
+					"from pyspark.sql.window import Window"
 				],
-				"execution_count": 53
+				"execution_count": 130
 			},
 			{
 				"cell_type": "markdown",
@@ -171,7 +172,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 6
+				"execution_count": 131
 			},
 			{
 				"cell_type": "code",
@@ -189,7 +190,7 @@
 				"source": [
 					"pprint.pprint(definition)"
 				],
-				"execution_count": 7
+				"execution_count": 132
 			},
 			{
 				"cell_type": "markdown",
@@ -227,7 +228,7 @@
 					"hrm_incremental_key = definition['Harmonised_Incremental_Key']\n",
 					"entity_primary_key = definition['Entity_Primary_Key']"
 				],
-				"execution_count": 9
+				"execution_count": 133
 			},
 			{
 				"cell_type": "markdown",
@@ -297,7 +298,7 @@
 					"    \n",
 					"    return df"
 				],
-				"execution_count": 64
+				"execution_count": 134
 			},
 			{
 				"cell_type": "code",
@@ -319,6 +320,8 @@
 					"if latest_ingestion.count() == 0:\n",
 					"    mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\n",
 					"\n",
+					"target_df = spark.table(f\"{hrm_db}.{hrm_table}\")\n",
+					"\n",
 					"# remove the column ingested_datetime and then removing duplicates\n",
 					"latest_ingestion = latest_ingestion.drop('ingested_datetime').dropDuplicates()\n",
 					"latest_ingestion = set_harmonised_master_columns(latest_ingestion)\n",
@@ -327,9 +330,11 @@
 					"update_df = latest_ingestion[latest_ingestion['message_type'].isin(['Update', 'Publish', 'Unpublish'])]\n",
 					"delete_df = latest_ingestion[latest_ingestion['message_type'] == 'Delete']\n",
 					"\n",
-					"target_df = spark.table(f\"{hrm_db}.{hrm_table}\")"
+					"create_df = create_df.drop(\"message_type\").select(target_df.columns)\n",
+					"update_df = update_df.drop(\"message_type\").select(target_df.columns)\n",
+					"delete_df = delete_df.drop(\"message_type\").select(target_df.columns)"
 				],
-				"execution_count": 44
+				"execution_count": 170
 			},
 			{
 				"cell_type": "markdown",
@@ -364,7 +369,7 @@
 					"print(f\"Delete: {delete_df.count()}\")\r\n",
 					"print(f\"Target: {target_df.count()}\")"
 				],
-				"execution_count": 13
+				"execution_count": 136
 			},
 			{
 				"cell_type": "markdown",
@@ -411,43 +416,16 @@
 				},
 				"source": [
 					"\n",
-					"    # Compare schemas\n",
-					"in_current_schema_not_in_existing_schema, in_existing_schema_not_in_current_schema = compare_schemas(create_df.schema, target_df.schema)\n",
-					"print('in_current_schema_not_in_existing_schema', in_current_schema_not_in_existing_schema)\n",
-					"print('in_existing_schema_not_in_current_schema', in_existing_schema_not_in_current_schema)"
-				],
-				"execution_count": 37
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"\n",
 					"def insert_rows_in_df(source_df, target_df, incremental_key):\n",
 					"    # appending the incremental key\n",
-					"    max_id = int(target_df[incremental_key].astype(int).max()) if target_df.count() > 0 else 0\n",
+					"    max_id = target_df.count()\n",
 					"\n",
-					"    source_df = source_df.withColumn(incremental_key, monotonically_increasing_id() + max_id)\n",
-					"    display(source_df.toPandas())\n",
+					"    w = Window.orderBy(lit(1))\n",
+					"    source_df = source_df.withColumn(incremental_key, (max_id + row_number().over(w)).cast(\"string\"))\n",
 					"\n",
-					"    # for index, row in source_df.iterrows():\n",
-					"    #     max_id += 1\n",
-					"    #     source_df.loc[index, incremental_key] = str(max_id)\n",
-					"             \n",
-					"    # cast_dtypes(source_df, target_df)\n",
-					"    # return pd.concat([target_df, source_df], ignore_index=True)"
+					"    return target_df.union(source_df)"
 				],
-				"execution_count": 60
+				"execution_count": 169
 			},
 			{
 				"cell_type": "markdown",
@@ -476,48 +454,12 @@
 					}
 				},
 				"source": [
-					"if create_df.count() > 0:\n",
-					"    target_df1 = insert_rows_in_df(latest_ingestion, target_df, hrm_incremental_key)\n",
+					"if create_df.count() > 0 and match_schemas(create_df.schema, target_df.schema):\n",
+					"    target_df = insert_rows_in_df(create_df, target_df, hrm_incremental_key)\n",
 					"\n",
 					"print(f\"New rows: {create_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 63
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"target_df1.toPandas()"
-				],
-				"execution_count": 57
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"target_df.info()"
-				],
-				"execution_count": 14
+				"execution_count": 171
 			},
 			{
 				"cell_type": "markdown",
@@ -546,37 +488,23 @@
 					}
 				},
 				"source": [
-					"updated_rows_df = apply_mapping(update_df, target_df)\n",
-					"if len(updated_rows_df) > 0:\n",
-					"    updated_rows_df = updated_rows_df.drop_duplicates().sort_values(by='IngestionDate')\n",
+					"if update_df.count() > 0 and match_schemas(update_df.schema, target_df.schema):\n",
+					"    update_df = update_df.dropDuplicates().orderBy('IngestionDate')\n",
 					"\n",
-					"    for index, row in updated_rows_df.iterrows():\n",
+					"    for row in update_df.collect():\n",
 					"        mask = (target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])\n",
-					"        target_df.loc[mask, 'IsActive'] = 'N'\n",
-					"        target_df.loc[mask, 'ValidTo'] = row['IngestionDate']\n",
-					"        target_df = insert_rows_in_df(pd.DataFrame([row]), target_df, hrm_incremental_key)\n",
 					"\n",
-					"print(f\"Updated rows: {len(updated_rows_df)}\\nTarget dataframe: {len(target_df)}\")"
+					"        target_df = target_df.withColumn('ValidTo', when(mask, row['IngestionDate']).otherwise(target_df['ValidTo']))\n",
+					"        target_df = target_df.withColumn('IsActive', when(mask, 'N').otherwise(target_df['IsActive']))\n",
+					"\n",
+					"        # Filter rows to insert\n",
+					"        rows_to_insert = spark.createDataFrame([row], target_df.schema)\n",
+					"        target_df = insert_rows_in_df(rows_to_insert, target_df, hrm_incremental_key)\n",
+					"\n",
+					"\n",
+					"print(f\"Updated rows: {update_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"updated_rows_df.info()"
-				],
-				"execution_count": 16
+				"execution_count": 173
 			},
 			{
 				"cell_type": "markdown",
@@ -605,17 +533,39 @@
 					}
 				},
 				"source": [
-					"deleted_rows_df = apply_mapping(delete_df, target_df)\n",
+					"if delete_df.count() > 0 and match_schemas(delete_df.schema, target_df.schema):\n",
 					"\n",
-					"if len(deleted_rows_df) > 0:\n",
-					"    for index, row in deleted_rows_df.iterrows():\n",
+					"    for row in delete_df.collect():\n",
 					"        mask = (target_df['IsActive'] == 'Y') & (target_df[entity_primary_key] == row[entity_primary_key])\n",
-					"        target_df.loc[mask, 'IsActive'] = 'N'\n",
-					"        target_df.loc[mask, 'ValidTo'] = row['IngestionDate']\n",
+					"        target_df = target_df.withColumn('ValidTo', when(mask, row['IngestionDate']).otherwise(target_df['ValidTo']))\n",
+					"        target_df = target_df.withColumn('IsActive', when(mask, 'N').otherwise(target_df['IsActive']))\n",
 					"\n",
-					"print(f\"Deleted rows: {len(deleted_rows_df)}\\nTarget dataframe: {len(target_df)}\")"
+					"print(f\"Deleted rows: {delete_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 17
+				"execution_count": 177
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"drop table if exists odw_harmonised_db.appeal_document"
+				],
+				"execution_count": 185
 			},
 			{
 				"cell_type": "code",
@@ -631,121 +581,9 @@
 					}
 				},
 				"source": [
-					"deleted_rows_df.info()"
+					"apply_df_to_table(target_df, hrm_db, hrm_table)"
 				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Cast all columns as string data type to convert easily to spark dataframe"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"for column in target_df.columns:\r\n",
-					"    target_df[column] = target_df[column].astype(str)"
-				],
-				"execution_count": 19
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"target_df.info()"
-				],
-				"execution_count": 20
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Writing the dataframe to the harmonised table"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# replace NaN with None\n",
-					"target_df.replace({pd.NA: None}, inplace=True)\n",
-					"\n",
-					"# remove duplicates\n",
-					"target_df = target_df.drop_duplicates(subset=target_df.columns.difference([hrm_incremental_key]))\n",
-					"\n",
-					"print(f\"target_df - de-duped: {len(target_df)} rows\")\n",
-					"\n",
-					"# overwrite onto existing harmonised table\n",
-					"new_df = spark.createDataFrame(target_df)\n",
-					"existing_df = spark.read.format('delta').load(f\"{harmonised_container}{hrm_table}\")\n",
-					"\n",
-					"print(f\"Spark dataframe created with {new_df.count()} rows\")\n",
-					"\n",
-					"print(f\"Row count matches: {new_df.count() == len(target_df)}\")\n",
-					"\n",
-					"print(f\"Schemas match: {existing_df.schema == new_df.schema}\")\n",
-					"\n",
-					"# use the existing harmonised table dataframe to cast the data types of the columns in the spark dataframe so they match\n",
-					"for field in existing_df.schema.fields:\n",
-					"    column_name = field.name\n",
-					"    delta_data_type = field.dataType\n",
-					"    \n",
-					"    if column_name in new_df.columns:\n",
-					"        pandas_data_type = str(new_df.schema[column_name].dataType)\n",
-					"        if pandas_data_type != delta_data_type.simpleString():\n",
-					"            new_df = new_df.withColumn(column_name, new_df[column_name].cast(delta_data_type))\n",
-					"\n",
-					"# load data to harmonised table\n",
-					"new_df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"{hrm_db}.{hrm_table}\")\n",
-					"\n",
-					"print(\"Harmonised table updated\")"
-				],
-				"execution_count": 21
+				"execution_count": 189
 			}
 		]
 	}
