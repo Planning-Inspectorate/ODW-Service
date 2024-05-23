@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9e52292b-e583-4da8-b1d8-af53676ec1b5"
+				"spark.autotune.trackingId": "a8ae3d2b-cd84-4504-b236-c76e2604fc60"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,11 @@
 					"    in_schema1_not_in_schema2 = fields1 - fields2\n",
 					"    in_schema2_not_in_schema1 = fields2 - fields1\n",
 					"    \n",
-					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
+					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1\n",
+					"\n",
+					"def matche_schema(scehma1, schema2):\n",
+					"    in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(schema1, schema2)\n",
+					"    return not in_schema1_not_in_schema2 and not in_schema2_not_in_schema1"
 				],
 				"execution_count": null
 			},
@@ -90,6 +94,47 @@
 					"\n",
 					"    # Rename the temporary table to replace the original table\n",
 					"    spark.sql(f\"ALTER TABLE {temp_table_name} RENAME TO {table_name}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def merge_schema(df, table_name):\n",
+					"\n",
+					"    table_df = spark.table(table_name)\n",
+					"\n",
+					"    # Compare schemas\n",
+					"    in_current_schema_not_in_existing_schema, in_existing_schema_not_in_current_schema = compare_schemas(df.schema, table_df.schema)\n",
+					"\n",
+					"    if in_current_schema_not_in_existing_schema or in_existing_schema_not_in_current_schema:\n",
+					"        print(\"Schemas do not match.\")\n",
+					"\n",
+					"        # adding new columns in the existing table\n",
+					"        for item in in_current_schema_not_in_existing_schema:\n",
+					"            print(f\"Adding new column '{item[0]}' of type '{item[1]}' in {table_name} since it's not in the table's schema\")\n",
+					"            table_df = table_df.withColumn(item[0], lit(None).cast(item[1]))\n",
+					"\n",
+					"        # removing columns from the existing table that are not in the new df\n",
+					"        for item in in_existing_schema_not_in_current_schema:\n",
+					"            print(f\"Removing column '{item[0]}' from {table_name} since it's not in the table's schema\")\n",
+					"            table_df = table_df.drop(item[0])\n",
+					"        \n",
+					"        apply_df_to_table(table_df, table_name)\n",
+					"\n",
+					"    else:\n",
+					"        print(\"Schemas match.\")"
 				],
 				"execution_count": null
 			}
