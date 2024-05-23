@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ed2b119a-7177-45c4-921b-22013c0f6aed"
+				"spark.autotune.trackingId": "2bbd5e65-eaea-4edd-88ae-4a2911781646"
 			}
 		},
 		"metadata": {
@@ -83,7 +83,7 @@
 					]
 				},
 				"source": [
-					"entity_name = ''"
+					"entity_name = 'appeal-document'"
 				],
 				"execution_count": 1
 			},
@@ -105,13 +105,12 @@
 					"from notebookutils import mssparkutils\r\n",
 					"import json\r\n",
 					"from datetime import datetime, date\r\n",
-					"import pandas as pd\r\n",
 					"from IPython.display import display\r\n",
 					"import pprint\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"pd.DataFrame.iteritems = pd.DataFrame.items"
 				],
-				"execution_count": 2
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -154,7 +153,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 3
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -172,7 +171,7 @@
 				"source": [
 					"pprint.pprint(definition)"
 				],
-				"execution_count": 4
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -205,94 +204,13 @@
 					"hrm_db = 'odw_harmonised_db'\n",
 					"\n",
 					"std_table = definition['Standardised_Table_Name']\n",
-					"hrm_table = definition['Harmonised_Table_Name']\n",
-					"\n",
+					"hrm_table = 'appeal_document'\n",
+					"# hrm_table = definition['Harmonised_Table_Name']\n",
+					"#\n",
 					"hrm_incremental_key = definition['Harmonised_Incremental_Key']\n",
 					"entity_primary_key = definition['Entity_Primary_Key']"
 				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Create Harmonised table if doesn't already exists"
-				]
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"Import useful functions from another notebook"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
-				],
-				"execution_count": 6
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"If the table doesn't exist it gets created based on the schema in the data model repo"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"if not any([table.name == definition['Harmonised_Table_Name'] for table in spark.catalog.listTables(hrm_db)]):\n",
-					"    schema = mssparkutils.notebook.run('/py_get_schema_from_url', 30, {'db_name': hrm_db, 'entity_name': entity_name, 'incremental_key': hrm_incremental_key})\n",
-					"    if schema:\n",
-					"        create_table_from_schema(schema, hrm_db, definition['Harmonised_Table_Name'], harmonised_container, definition['Harmonised_Table_Name'])   \n",
-					"    else:\n",
-					"        raise ValueError(f\"Cannot create table {definition['Harmonised_Table_Name']} since the Schema for {entity_name} not found.\")\n",
-					"else:\n",
-					"    print(f\"Table {definition['Harmonised_Table_Name']} already exists.\")"
-				],
-				"execution_count": 7
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -344,27 +262,19 @@
 					"latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE expected_from = (SELECT MAX(expected_from) FROM {std_db}.{std_table}) ORDER BY message_enqueued_time_utc\")\n",
 					"\n",
 					"# remove the column ingested_datetime and then removing duplicates\n",
-					"latest_ingestion = latest_ingestion.toPandas()\n",
 					"\n",
-					"if len(latest_ingestion) == 0:\n",
+					"if latest_ingestion.count() == 0:\n",
 					"    mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\n",
 					"\n",
-					"latest_ingestion = latest_ingestion.drop(columns=['ingested_datetime']).drop_duplicates()\n",
+					"latest_ingestion = latest_ingestion.drop('ingested_datetime').dropDuplicates()\n",
 					"\n",
 					"create_df = latest_ingestion[latest_ingestion['message_type'] == 'Create']\n",
 					"update_df = latest_ingestion[latest_ingestion['message_type'].isin(['Update', 'Publish', 'Unpublish'])]\n",
 					"delete_df = latest_ingestion[latest_ingestion['message_type'] == 'Delete']\n",
 					"\n",
-					"target_df = spark.sql(f\"SELECT * FROM {hrm_db}.{hrm_table}\").toPandas()\n",
-					"\n",
-					"if 'Std_To_Hrm_Mapping' in definition:\n",
-					"    mapping = definition['Std_To_Hrm_Mapping']\n",
-					"else:\n",
-					"    schema = mssparkutils.notebook.run('/py_get_schema_from_url', 30, {'entity_name': entity_name})\n",
-					"    schema = json.loads(schema)\n",
-					"    mapping = {field[\"name\"]: field[\"name\"] for field in schema[\"fields\"]}"
+					"target_df = spark.table(f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 8
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -380,9 +290,10 @@
 					}
 				},
 				"source": [
-					"target_df.info()"
+					"target_df.printSchema()\n",
+					""
 				],
-				"execution_count": 9
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -411,13 +322,31 @@
 					}
 				},
 				"source": [
-					"print(f\"Latest ingestion: {len(latest_ingestion)}\")\r\n",
-					"print(f\"Create: {len(create_df)}\")\r\n",
-					"print(f\"Update: {len(update_df)}\")\r\n",
-					"print(f\"Delete: {len(delete_df)}\")\r\n",
-					"print(f\"Target: {len(target_df)}\")"
+					"print(f\"Latest ingestion: {latest_ingestion.count()}\")\r\n",
+					"print(f\"Create: {create_df.count()}\")\r\n",
+					"print(f\"Update: {update_df.count()}\")\r\n",
+					"print(f\"Delete: {delete_df.count()}\")\r\n",
+					"print(f\"Target: {target_df.count()}\")"
 				],
-				"execution_count": 10
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"type(target_df)"
+				],
+				"execution_count": 23
 			},
 			{
 				"cell_type": "markdown",
@@ -470,27 +399,20 @@
 					"    md5_hash = hashlib.md5(row_str.encode()).hexdigest()\n",
 					"    return md5_hash\n",
 					"\n",
-					"def cast_dtypes(source_df: pd.DataFrame, target_df: pd.DataFrame):\n",
+					"def cast_dtypes(source_df: DataFrame, target_df: DataFrame):\n",
 					"    for source_column, source_dtype in source_df.dtypes.items():\n",
 					"        for target_column, target_dtype in target_df.dtypes.items():\n",
 					"            if source_column.lower() == target_column.lower() and source_dtype != target_dtype:\n",
 					"                source_df[source_column] = source_df[source_column].replace(['None'], '')\n",
 					"                source_df[source_column] = source_df[source_column].astype(target_dtype)\n",
 					"\n",
-					"def apply_mapping(df: pd.DataFrame, target_df: pd.DataFrame) -> pd.DataFrame:\n",
+					"def apply_mapping(df: DataFrame, target_df: DataFrame) -> DataFrame:\n",
 					"    output_df = pd.DataFrame()\n",
-					"\n",
-					"    for target_col, source_col in mapping.items():\n",
-					"        output_df['IngestionDate'] = df['message_enqueued_time_utc']\n",
-					"        if source_col in df.columns:\n",
-					"            output_df[target_col] = df[source_col].astype(str)\n",
-					"        else:\n",
-					"            output_df[target_col] = None\n",
 					"\n",
 					"    output_df['RowID'] = output_df.apply(calculate_md5, axis=1)\n",
 					"\n",
 					"    source_system_df = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
-					"    output_df['SourceSystemID'] = source_system_df.toPandas().at[0, 'SourceSystemID']\n",
+					"    output_df['SourceSystemID'] = source_system_df.at[0, 'SourceSystemID']\n",
 					"\n",
 					"    output_df['Migrated'] = '1'\n",
 					"    output_df['ODTSourceSystem'] = 'ODT'\n",
@@ -511,7 +433,7 @@
 					"    cast_dtypes(source_df, target_df)\n",
 					"    return pd.concat([target_df, source_df], ignore_index=True)"
 				],
-				"execution_count": 11
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
