@@ -1,0 +1,537 @@
+{
+	"name": "nsip_data_new",
+	"properties": {
+		"description": "please refer to the NSIP Entity Message Topic Requirements  documentation",
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "eb943c13-3e58-4b27-b0b0-fd9407b1f7ee"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Checking the Environment\n",
+					"#### If dev or test, limiting the number of output rows and anonymisation of the sensitive fields is required."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# from notebookutils import mssparkutils\n",
+					"# storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"# is_dev_or_test_env = 'dev' in storage_account or 'test' in storage_account\n",
+					"\n",
+					"# # limiting the number of output to 20 rows for dev environment\n",
+					"# max_limit = 20 if 'dev' in storage_account else 100000000\n",
+					"\n",
+					"# spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## View odw_curated_db.vw_nsip_data is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_data\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"\tCAST(CASE WHEN T1.Migrated = '0' \n",
+					"\t\t THEN T1.CaseNodeID\n",
+					"\t\t ELSE T1.CaseID\n",
+					"\tEND\tAS INT)\t\t\t\t\t\t\t\t\t\t\t\tAS caseId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.CaseReference = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.CaseReference\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS caseReference,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.CaseNodeID = 'nan'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.CaseNodeID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS caseNodeId,\t\n",
+					"\tT1.projectName\t\t\t \t\t\t\t\t\t\t\tAS projectName,\t\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.Summary = 'nan'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Summary\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS projectDescription,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Decision = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE LOWER(T1.Decision) \n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS decision,\n",
+					"\tCASE WHEN LOWER(T1.ProjectStatus) = 'published' \n",
+					"\t\t THEN 'published'\n",
+					"\t\t ELSE 'unpublished'\n",
+					"\tEND\t\t\t\t\t\t\t\t\t\t\t\t\t\tAS publishStatus,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ExamTimetablePublishStatus = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ExamTimetablePublishStatus\n",
+					"\tEND \t\t\t\t\t\t \t\t\t\t\t\t\tAS examTimetablePublishStatus,\n",
+					"\tT1.Sector \t\t\t\t\t\t\t\t\t\t\t\tAS sector,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ProjectType = 'WW01 - Waste Water treatment Plants'\n",
+					"\t\tTHEN 'WW01 - Waste Water Treatment Plants'\n",
+					"\t\tELSE T1.ProjectType\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS projectType,\n",
+					"\tLOWER(T1.ODTSourceSystem)\t\t\t\t\t\t\t\tAS sourceSystem,\n",
+					"\tLOWER(REPLACE(REPLACE(T1.Stage,'-', '_'),' ', '_'))\t\tAS stage,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ProjectLocation = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ProjectLocation\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS projectLocation,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ProjectEmailAddress = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ProjectEmailAddress\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS projectEmailAddress,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Region = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE LOWER(\n",
+					"\t\tREPLACE(\n",
+					"\t\t\tREPLACE(\n",
+					"\t\t\t\tREPLACE(T1.Region,' ', '_'),\n",
+					"\t\t\t'[', ''),\n",
+					"\t\t']', ''))\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS regions,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Transboundary = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Transboundary\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS transboundary,\n",
+					"\tCAST(T1.Easting AS INT)\t\t\t\t\t\t\t\t\tAS easting,\n",
+					"\tCAST(T1.Northing AS INT)\t\t\t\t\t\t\t\tAS northing,\n",
+					"\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DatePINSFirstNotifiedOfProject = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DatePINSFirstNotifiedOfProject\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS datePINSFirstNotifiedOfProject,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateProjectAppearsOnWebsite = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateProjectAppearsOnWebsite\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateProjectAppearsOnWebsite,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.AnticipatedSubmissionDateNonSpecific = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.AnticipatedSubmissionDateNonSpecific\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS anticipatedSubmissionDateNonSpecific,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.AnticipatedDateOfSubmission = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.AnticipatedDateOfSubmission\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS anticipatedDateOfSubmission,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.ScreeningOpinionSought = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ScreeningOpinionSought\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS screeningOpinionSought,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.ScreeningOpinionIssued = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ScreeningOpinionIssued\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS screeningOpinionIssued,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.ScopingOpinionSought = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ScopingOpinionSought\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS scopingOpinionSought,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.ScopingOpinionIssued = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ScopingOpinionIssued\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS scopingOpinionIssued,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.Section46Notification = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Section46Notification\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS section46Notification,\n",
+					"\t\tCASE\n",
+					"\t\tWHEN T1.DateOfDCOSubmission = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfDCOSubmission\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfDCOSubmission,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DeadlineForAcceptanceDecision = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DeadlineForAcceptanceDecision\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS deadlineForAcceptanceDecision,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfDCOAcceptance = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfDCOAcceptance\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfDCOAcceptance,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfNonAcceptance = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfNonAcceptance\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfNonAcceptance,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfRepresentationPeriodOpen = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfRepresentationPeriodOpen\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfRepresentationPeriodOpen,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfRelevantRepresentationClose = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfRelevantRepresentationClose\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfRelevantRepresentationClose,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ExtensionToDateRelevantRepresentationsClose = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ExtensionToDateRelevantRepresentationsClose\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS extensionToDateRelevantRepresentationsClose,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateRRepAppearOnWebsite = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateRRepAppearOnWebsite\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateRRepAppearOnWebsite,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateIAPIDue = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateIAPIDue\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS  dateIAPIDue, ---NEW\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Rule6LetterPublishDate = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Rule6LetterPublishDate\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS rule6LetterPublishDate,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.PreliminaryMeetingStartDate = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.PreliminaryMeetingStartDate\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS preliminaryMeetingStartDate,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.NotificationDateForPMAndEventsDirectlyFollowingPM = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.NotificationDateForPMAndEventsDirectlyFollowingPM\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS notificationDateForPMAndEventsDirectlyFollowingPM,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.NotificationDateForEventsDeveloper = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.NotificationDateForEventsDeveloper\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS notificationDateForEventsDeveloper,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateSection58NoticeReceived = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateSection58NoticeReceived\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateSection58NoticeReceived,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ConfirmedStartOfExamination = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ConfirmedStartOfExamination\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS confirmedStartOfExamination,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Rule8LetterPublishDate = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Rule8LetterPublishDate\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS rule8LetterPublishDate,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DeadlineForCloseOfExamination = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DeadlineForCloseOfExamination\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS deadlineForCloseOfExamination,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateTimeExaminationEnds = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateTimeExaminationEnds\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateTimeExaminationEnds,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Stage4ExtensionToExamCloseDate = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Stage4ExtensionToExamCloseDate\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS stage4ExtensionToExamCloseDate,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DeadlineForSubmissionOfRecommendation = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DeadlineForSubmissionOfRecommendation\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS deadlineForSubmissionOfRecommendation,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfRecommendations = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfRecommendations\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfRecommendations,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Stage5ExtensionToDecisionDeadline = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Stage5ExtensionToDecisionDeadline\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS stage5ExtensionToDecisionDeadline,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DeadlineForDecision = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DeadlineForDecision\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS deadlineForDecision,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ConfirmedDateOfDecision = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ConfirmedDateOfDecision\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS confirmedDateOfDecision,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Stage5ExtensionToRecommendationDeadline = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.Stage5ExtensionToRecommendationDeadline\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS stage5ExtensionToRecommendationDeadline,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.JRPeriodEndDate = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.JRPeriodEndDate\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS jRPeriodEndDate,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateProjectWithdrawn = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateProjectWithdrawn\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateProjectWithdrawn,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.OperationsLeadID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.OperationsLeadID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS operationsLeadId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.OperationsManagerID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.OperationsManagerID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS operationsManagerId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.CaseManagerID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.CaseManagerID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS caseManagerId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.NsipOfficerID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.NsipOfficerID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS nsipOfficerIds,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.NsipAdministrationOfficerID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.NsipAdministrationOfficerID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS nsipAdministrationOfficerIds,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.LeadInspectorID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.LeadInspectorID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS leadInspectorId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.InspectorID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.InspectorID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS inspectorIds,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.EnvironmentalServicesOfficerId = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.EnvironmentalServicesOfficerId\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS environmentalServicesOfficerId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.LegalOfficerID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.LegalOfficerID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS legalOfficerId,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.ApplicantID = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.ApplicantID\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS applicantId,\n",
+					"\tCASE WHEN T1.WelshLanguage = 'YES' \n",
+					"\t\t THEN TRUE\n",
+					"\t\t ELSE FALSE\n",
+					"\tEND\t\t\t\t\t\t\t\t\t\t\t\t\t\tAS welshLanguage,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.MapZoomLevel = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE LOWER(T1.MapZoomLevel)\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS mapZoomLevel,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.SoS = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.SoS\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS secretaryOfState,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.Migrated = 'O'\n",
+					"\t\tTHEN FALSE\n",
+					"\t\tELSE TRUE\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS migrationStatus,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfReOpenRelevantRepresentationStart = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfReOpenRelevantRepresentationStart\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfReOpenRelevantRepresentationStart,\n",
+					"\tCASE\n",
+					"\t\tWHEN T1.DateOfReOpenRelevantRepresentationClose = 'None'\n",
+					"\t\tTHEN NULL\n",
+					"\t\tELSE T1.DateOfReOpenRelevantRepresentationClose\n",
+					"\tEND \t\t\t\t\t\t\t\t\t\t\t\t\tAS dateOfReOpenRelevantRepresentationClose\n",
+					"\n",
+					"FROM odw_harmonised_db.casework_nsip_data_dim T1\n",
+					"LEFT JOIN odw_harmonised_db.casework_inspector_cases_dim T2 \n",
+					"\tON T1.CaseReference=T2.CaseReference \n",
+					"\t\tAND T2.IsActive='Y'\n",
+					"LEFT JOIN odw_harmonised_db.casework_contact_information_dim T3\n",
+					"\tON  T1.ApplicantEmailAddress = T3.Email  \n",
+					"\t\tAND CAST(T1.CaseCreatedDate AS date) = CAST(T3.CaseCreatedDate AS date)\n",
+					"\t\tAND T3.IsActive='Y'\n",
+					"\n",
+					"-- LIMIT ${MAX_LIMIT}"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Table odw_curated_db.nsip_data_new spark table is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"view_df = spark.sql('SELECT * FROM odw_curated_db.vw_nsip_data')\n",
+					"view_df.write.mode(\"overwrite\").saveAsTable('odw_curated_db.nsip_data_new')"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"-- SELECT distinct projectType FROM odw_curated_db.nsip_data order by 1;\n",
+					"SELECT distinct caseReference FROM odw_curated_db.nsip_data_new ORDER BY caseReference;"
+				],
+				"execution_count": 4
+			}
+		]
+	}
+}
