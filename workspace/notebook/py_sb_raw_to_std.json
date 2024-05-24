@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c1ec2bbd-2c87-4c1d-9ce7-cbb2a45de57e"
+				"spark.autotune.trackingId": "37a00f80-8168-4a2d-bc7f-2e0bcf04cfa6"
 			}
 		},
 		"metadata": {
@@ -68,9 +68,9 @@
 					]
 				},
 				"source": [
-					"entity_name=''"
+					"entity_name='appeal-document'"
 				],
-				"execution_count": 49
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +103,7 @@
 					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"table_name = f\"odw_standardised_db.{entity_name.replace('-', '_')}\""
 				],
-				"execution_count": 51
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -130,12 +130,13 @@
 					"    df = df.withColumn(\"expected_from\", current_timestamp())\n",
 					"    df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
 					"    df = df.withColumn(\"ingested_datetime\", to_timestamp(df['message_enqueued_time_utc'], \"yyyy-MM-dd HH:mm:ss\"))\n",
+					"    df = df.withColumn(\"expected_from1\", current_timestamp())\n",
 					"\n",
 					"except Exception as e:\n",
 					"    print('Raw data not found at ', source_path, e)\n",
-					"    mssparkutils.notebook.exit({'new_rows': 0})"
+					"    mssparkutils.notebook.exit()"
 				],
-				"execution_count": 52
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -151,14 +152,66 @@
 					}
 				},
 				"source": [
-					"# merging schema if there is any schema mismatch\n",
-					"merge_schema(df, table_name)\n",
+					"# get the existing table's df\n",
+					"table_df = spark.table(table_name)\n",
 					"\n",
-					"# ingesting new rows\n",
-					"print(f\"Ingesting {df.count()} rows\")\n",
-					"df.write.mode(\"append\").saveAsTable(table_name)"
+					"# compare the schemas\n",
+					"in_current_not_in_existing, in_existing_not_in_current = compare_schemas(df.schema, table_df.schema)\n",
+					"\n",
+					"if in_current_not_in_existing or in_existing_not_in_current:\n",
+					"    print('Schemas do not match')\n",
+					"    print('Columns in new data not in existing table', in_current_not_in_existing)\n",
+					"    print('Columns in existing table not in data', in_existing_not_in_current)\n",
+					"    \n",
+					"    # merging schema if there is any schema mismatch\n",
+					"    merge_schema(table_name, table_df, in_current_not_in_existing, in_existing_not_in_current)\n",
+					"    \n",
+					"else:\n",
+					"    print('Schemas match.')"
 				],
-				"execution_count": 53
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df = df.select(table_df.columns)\n",
+					"table_df = table_df.union(df)\n",
+					"\n",
+					"# removing duplicates while ignoring the ingestion dates columns\n",
+					"columns_to_ignore = ['expected_to', 'expected_from', 'ingested_datetime']\n",
+					"columns_to_consider = [c for c in table_df.columns if c not in columns_to_ignore]\n",
+					"table_df = table_df.dropDuplicates(subset=columns_to_consider)"
+				],
+				"execution_count": 40
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
+				],
+				"execution_count": 51
 			}
 		]
 	}
