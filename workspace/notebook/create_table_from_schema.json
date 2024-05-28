@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f6ad53ff-2265-4930-b185-d3dc5ea7dec9"
+				"spark.autotune.trackingId": "818c0b31-17b9-4f64-a017-642663d03347"
 			}
 		},
 		"metadata": {
@@ -65,25 +65,6 @@
 				]
 			},
 			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Notes\r\n",
-					"\r\n",
-					"Json fields described as Integer may need converting to LongType  \r\n",
-					"\r\n",
-					"Initial creation of an empty table will result in all fields being nullable. Therefore the schema will not exactly match the data model in this respect. Do we need to worry about this?  \r\n",
-					"\r\n",
-					"Rather than use py_get_schema_from_url notebook to define additional fields, we should add the additional fields from the config directly, i.e. create schema from the data model then get additional fields from config as needed, depending on database. Curated will match the data model exactly without additional fields."
-				]
-			},
-			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -100,10 +81,10 @@
 					]
 				},
 				"source": [
-					"db_name = ''\r\n",
-					"entity_name = ''"
+					"db_name: str = ''\r\n",
+					"entity_name: str = ''"
 				],
-				"execution_count": 105
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -119,10 +100,14 @@
 					}
 				},
 				"source": [
-					"table_name = entity_name.replace(\"-\", \"_\")\r\n",
-					"full_table_name = f\"{db_name}.{table_name}\""
+					"table_name_replace: str = entity_name.replace(\"-\", \"_\")\r\n",
+					"table_name: str = f\"sb_{table_name_replace}\"\r\n",
+					"full_table_name: str = f\"{db_name}.{table_name}\"\r\n",
+					"\r\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 106
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -145,7 +130,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"from notebookutils import mssparkutils"
 				],
-				"execution_count": 107
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -163,11 +148,11 @@
 				"source": [
 					"def test_table_exists(db_name: str, table_name: str) -> bool:\r\n",
 					"    spark.sql(f\"USE {db_name}\")\r\n",
-					"    tables_df = spark.sql(\"SHOW TABLES\")\r\n",
-					"    table_names = [row['tableName'] for row in tables_df.collect()]\r\n",
+					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\r\n",
+					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\r\n",
 					"    return table_name in table_names"
 				],
-				"execution_count": 108
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -186,7 +171,7 @@
 					"if test_table_exists(db_name, table_name):\n",
 					"    mssparkutils.notebook.exit('')"
 				],
-				"execution_count": 109
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -202,17 +187,14 @@
 					}
 				},
 				"source": [
-					"def get_incremental_key():\n",
+					"def get_incremental_key(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\n",
 					"    # getting the incremental key from the odw-config/orchestration\n",
-					"    storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"    path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
-					"    df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
-					"    definitions = json.loads(df.toJSON().first())['definitions']\n",
-					"\n",
-					"    definition = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
+					"    df: DataFrame = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 110
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -229,12 +211,12 @@
 				},
 				"source": [
 					"def create_spark_schema(db_name: str, entity_name: str) -> StructType:\r\n",
-					"    incremental_key = get_incremental_key() if db_name == 'odw_harmonised_db' else None\r\n",
-					"    json_schema = mssparkutils.notebook.run(\"/py_get_schema_from_url\", 30, {\"db_name\": db_name, \"entity_name\": entity_name, \"incremental_key\": incremental_key})\r\n",
-					"    spark_schema = StructType.fromJson(json.loads(json_schema))\r\n",
+					"    incremental_key: str = get_incremental_key(entity_name, storage_account, path_to_orchestration_file) if db_name == 'odw_harmonised_db' else None\r\n",
+					"    json_schema: str = mssparkutils.notebook.run(\"/py_get_schema_from_url\", 30, {\"db_name\": db_name, \"entity_name\": entity_name, \"incremental_key\": incremental_key})\r\n",
+					"    spark_schema: StructType = StructType.fromJson(json.loads(json_schema))\r\n",
 					"    return spark_schema"
 				],
-				"execution_count": 111
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -251,10 +233,10 @@
 				},
 				"source": [
 					"def create_spark_dataframe() -> DataFrame:\r\n",
-					"    spark_dataframe = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
+					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 112
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -271,11 +253,10 @@
 				},
 				"source": [
 					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame) -> None:\r\n",
-					"    spark.sql(f\"drop table if exists `{db_name}`.`{table_name}`\")\r\n",
 					"    spark_dataframe.write.saveAsTable(f\"{db_name}.{table_name}\")\r\n",
 					"    print(\"Table created\")"
 				],
-				"execution_count": 113
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +264,7 @@
 					"spark_dataframe = create_spark_dataframe()\r\n",
 					"create_spark_table(db_name, table_name, spark_dataframe)"
 				],
-				"execution_count": 114
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -301,7 +282,7 @@
 				"source": [
 					"test_table_exists(db_name, table_name)"
 				],
-				"execution_count": 115
+				"execution_count": null
 			}
 		]
 	}
