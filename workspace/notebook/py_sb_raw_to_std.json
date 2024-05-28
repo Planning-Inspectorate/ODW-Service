@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b314bb4e-8d66-47b9-a6d0-f3a4a334ccb7"
+				"spark.autotune.trackingId": "c7e5446f-d9ff-4922-8bbd-4ca42faed375"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 				"source": [
 					"entity_name=''"
 				],
-				"execution_count": 101
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +88,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 102
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -98,12 +98,31 @@
 					"import json\n",
 					"from datetime import datetime, date\n",
 					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\n",
-					"\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"table_name = f\"odw_standardised_db.{entity_name.replace('-', '_')}\""
+					"from pyspark.sql import DataFrame"
 				],
-				"execution_count": 103
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\r\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"table_name: str = f\"odw_standardised_db.sb_{entity_name.replace('-', '_')}\"\r\n",
+					"today: str = datetime.now().date().strftime('%Y-%m-%d')\r\n",
+					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -132,23 +151,41 @@
 					}
 				},
 				"source": [
-					"today = datetime.now().date().strftime('%Y-%m-%d')\n",
-					"source_path = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\"\n",
+					"def read_raw_messages(source_path: str) -> DataFrame:\n",
+					"    try: \n",
+					"        df: DataFrame = spark.read.json(source_path)\n",
+					"        print(f\"Found {df.count()} new rows.\")\n",
 					"\n",
-					"try: \n",
-					"    df = spark.read.json(source_path)\n",
-					"    print(f\"Found {df.count()} new rows.\")\n",
+					"        # adding the standardised columns\n",
+					"        df: DataFrame = df.withColumn(\"expected_from\", current_timestamp())\n",
+					"        df: DataFrame = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
+					"        df: DataFrame = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
 					"\n",
-					"    # adding the standardised columns\n",
-					"    df = df.withColumn(\"expected_from\", current_timestamp())\n",
-					"    df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
-					"    df = df.withColumn(\"ingested_datetime\", to_timestamp(df['message_enqueued_time_utc'], \"yyyy-MM-dd HH:mm:ss\"))\n",
+					"    except Exception as e:\n",
+					"        print('Raw data not found at ', source_path, e)\n",
+					"        mssparkutils.notebook.exit('')\n",
 					"\n",
-					"except Exception as e:\n",
-					"    print('Raw data not found at ', source_path, e)\n",
-					"    mssparkutils.notebook.exit()"
+					"    return df"
 				],
-				"execution_count": 104
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df: DataFrame = read_raw_messages(source_path)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -179,7 +216,7 @@
 				"source": [
 					"compare_and_merge_schema(df, table_name)"
 				],
-				"execution_count": 105
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -208,16 +245,19 @@
 					}
 				},
 				"source": [
-					"table_df = spark.table(table_name)\n",
-					"df = df.select(table_df.columns)\n",
-					"table_df = table_df.union(df)\n",
+					"def create_dataframe_to_load(table_name: str) -> DataFrame:\n",
+					"    table_df: DataFrame = spark.table(table_name)\n",
+					"    df: DataFrame = df.select(table_df.columns)\n",
+					"    table_df: DataFrame = table_df.union(df)\n",
 					"\n",
-					"# removing duplicates while ignoring the ingestion dates columns\n",
-					"columns_to_ignore = ['expected_to', 'expected_from', 'ingested_datetime']\n",
-					"columns_to_consider = [c for c in table_df.columns if c not in columns_to_ignore]\n",
-					"table_df = table_df.dropDuplicates(subset=columns_to_consider)"
+					"    # removing duplicates while ignoring the ingestion dates columns\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\n",
+					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\n",
+					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\n",
+					"\n",
+					"    return table_df"
 				],
-				"execution_count": 106
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -233,9 +273,10 @@
 					}
 				},
 				"source": [
+					"create_dataframe_to_load(table_name)\r\n",
 					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
-				"execution_count": 107
+				"execution_count": null
 			}
 		]
 	}
