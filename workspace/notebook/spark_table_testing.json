@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9e2510d6-521d-4654-8715-09f20c6d8388"
+				"spark.autotune.trackingId": "75cd44bf-758f-4ac7-8f48-0dcc2003ced5"
 			}
 		},
 		"metadata": {
@@ -55,7 +55,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 40
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -75,7 +75,7 @@
 					"horizon_table = \"odw_standardised_db.spark_table_horizon\"\r\n",
 					"spark_table_final = \"odw_standardised_db.spark_table_final\""
 				],
-				"execution_count": 57
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,7 @@
 					"    StructField(\"attachmentIds\", ArrayType(IntegerType()), nullable=True)\r\n",
 					"])"
 				],
-				"execution_count": 58
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +118,7 @@
 					"    Row(caseId=3, attachmentIds=[301])\r\n",
 					"]"
 				],
-				"execution_count": 59
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +138,7 @@
 					"spark.sql(f\"drop table if exists {horizon_table}\")\r\n",
 					"spark.sql(f\"drop table if exists {spark_table_final}\")"
 				],
-				"execution_count": 60
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -155,9 +155,9 @@
 				},
 				"source": [
 					"service_bus_df = spark.createDataFrame(service_bus_data, schema=service_bus_schema)\r\n",
-					"spark_df.write.saveAsTable(f\"{service_bus_table}\")"
+					"service_bus_df.write.saveAsTable(f\"{service_bus_table}\")"
 				],
-				"execution_count": 61
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -178,7 +178,7 @@
 					"    StructField(\"attachmentId\", IntegerType(), nullable=False)\r\n",
 					"])"
 				],
-				"execution_count": 62
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -203,7 +203,7 @@
 					"    Row(caseId=3, attachmentId=3010)\r\n",
 					"]"
 				],
-				"execution_count": 63
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -220,9 +220,9 @@
 				},
 				"source": [
 					"horizon_df = spark.createDataFrame(horizon_data, schema=horizon_schema)\r\n",
-					"spark_df.write.saveAsTable(f\"{horizon_table}\")"
+					"horizon_df.write.saveAsTable(f\"{horizon_table}\")"
 				],
-				"execution_count": 64
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -242,7 +242,7 @@
 					"service_bus_df = spark.sql(f\"select * from {service_bus_table}\")\r\n",
 					"display(service_bus_df)"
 				],
-				"execution_count": 65
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -262,7 +262,7 @@
 					"horizon_df = spark.sql(f\"select * from {horizon_table}\")\r\n",
 					"display(horizon_df)"
 				],
-				"execution_count": 66
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -279,30 +279,66 @@
 					"collapsed": false
 				},
 				"source": [
-					"horizon_df_explode = horizon_df.select(\"caseId\", explode(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
-					"display(horizon_df_explode)"
-				],
-				"execution_count": 68
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"service_bus_df_explode = service_bus_df.select(\"caseId\", explode(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
+					"service_bus_df_explode = service_bus_df.select(\"caseId\", explode(\"attachmentIds\").alias(\"attachmentId\"))\r\n",
 					"display(service_bus_df_explode)"
 				],
-				"execution_count": 69
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"final_df = service_bus_df_explode.union(horizon_df).groupBy(\"caseId\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
+					"display(final_df)"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.printSchema()"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.write.saveAsTable(f\"{spark_table_final}\")"
+				],
+				"execution_count": 25
 			}
 		]
 	}
