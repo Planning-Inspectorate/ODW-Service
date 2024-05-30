@@ -1,6 +1,10 @@
 {
-	"name": "spark_table_testing",
+	"name": "servicebus_horizon_merge_arrays_example",
 	"properties": {
+		"description": "Sample notebook showing how to join a flat table with a spark table with arrays.",
+		"folder": {
+			"name": "utils"
+		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
@@ -17,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "75cd44bf-758f-4ac7-8f48-0dcc2003ced5"
+				"spark.autotune.trackingId": "84ff81d6-f0c9-4edc-9dcc-b74f4f0bd4ca"
 			}
 		},
 		"metadata": {
@@ -49,13 +53,40 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Sample notebook showing how to join a flat table with a spark table with arrays\r\n",
+					"\r\n",
+					"The example below shows the following:  \r\n",
+					"\r\n",
+					"You have a table from Service Bus which has an array field for attachmentIds.  \r\n",
+					"You have a similar table from Horizon with attachmentIds in a flat schema - 1 row per attachmentId.  \r\n",
+					"You want to merge them together into a final table, e.g. curated layer, joining on the primary key, in this case \"caseId\".  \r\n",
+					"\r\n",
+					"1. Create spark dataframes for each table.  \r\n",
+					"2. Explode the service bus array field \"attachmentIds\" so you have 1 attachmentId per row.  \r\n",
+					"3. Union the 2 dataframes as they have the same column names.  \r\n",
+					"4. Group all the attachmentIds into an array using the collect_list function, grouping by the primary key, \"caseId\".  \r\n",
+					"5. Use this final dataframe to load / create the final table.  \r\n",
+					"\r\n",
+					"**NB: this is just an example of how this can be achieved. Each use case should be examined to see if this approach is appropriate for that particular entity**"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from pyspark.sql.types import IntegerType, ArrayType, StructType, StructField\r\n",
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -75,7 +106,7 @@
 					"horizon_table = \"odw_standardised_db.spark_table_horizon\"\r\n",
 					"spark_table_final = \"odw_standardised_db.spark_table_final\""
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +127,7 @@
 					"    StructField(\"attachmentIds\", ArrayType(IntegerType()), nullable=True)\r\n",
 					"])"
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +149,7 @@
 					"    Row(caseId=3, attachmentIds=[301])\r\n",
 					"]"
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +169,7 @@
 					"spark.sql(f\"drop table if exists {horizon_table}\")\r\n",
 					"spark.sql(f\"drop table if exists {spark_table_final}\")"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -157,7 +188,7 @@
 					"service_bus_df = spark.createDataFrame(service_bus_data, schema=service_bus_schema)\r\n",
 					"service_bus_df.write.saveAsTable(f\"{service_bus_table}\")"
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -178,7 +209,7 @@
 					"    StructField(\"attachmentId\", IntegerType(), nullable=False)\r\n",
 					"])"
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -203,7 +234,7 @@
 					"    Row(caseId=3, attachmentId=3010)\r\n",
 					"]"
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -222,7 +253,7 @@
 					"horizon_df = spark.createDataFrame(horizon_data, schema=horizon_schema)\r\n",
 					"horizon_df.write.saveAsTable(f\"{horizon_table}\")"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -242,7 +273,7 @@
 					"service_bus_df = spark.sql(f\"select * from {service_bus_table}\")\r\n",
 					"display(service_bus_df)"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -262,7 +293,7 @@
 					"horizon_df = spark.sql(f\"select * from {horizon_table}\")\r\n",
 					"display(horizon_df)"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -282,7 +313,7 @@
 					"service_bus_df_explode = service_bus_df.select(\"caseId\", explode(\"attachmentIds\").alias(\"attachmentId\"))\r\n",
 					"display(service_bus_df_explode)"
 				],
-				"execution_count": 16
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -302,7 +333,7 @@
 					"final_df = service_bus_df_explode.union(horizon_df).groupBy(\"caseId\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
 					"display(final_df)"
 				],
-				"execution_count": 23
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -320,7 +351,7 @@
 				"source": [
 					"final_df.printSchema()"
 				],
-				"execution_count": 24
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -338,7 +369,7 @@
 				"source": [
 					"final_df.write.saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 25
+				"execution_count": null
 			}
 		]
 	}
