@@ -1,6 +1,8 @@
 #### ODW Data Model
 
-##### appeal-document
+##### entity: appeal-document
+
+Data model for appeal-document entity showing data flow from source to curated.
 
 ```mermaid
 
@@ -8,6 +10,26 @@ classDiagram
 
     direction LR
 
+    namespace Sources {
+
+        class sb_appeal_document_src {
+            documentId: int
+        }
+
+        class Horizon_ODW_vw_DocumentMetadataAppeals_src {
+            DocumentId: int
+        }
+
+        class AIE_Extracts_std_src {
+            documentId: int
+        }
+
+        class Horizon_ODW_vw_FolderEntity_std_src {
+            id: int
+        }
+
+    }
+    
     namespace Standardised {
 
         class sb_appeal_document {
@@ -50,6 +72,10 @@ classDiagram
         }
     }
 
+`sb_appeal_document_src` --> `sb_appeal_document`
+`Horizon_ODW_vw_DocumentMetadataAppeals_src` --> `Horizon_ODW_vw_DocumentMetadataAppeals`
+`AIE_Extracts_std_src` --> `AIE_Extracts_std`
+`Horizon_ODW_vw_FolderEntity_std_src` --> `Horizon_ODW_vw_FolderEntity_std`
 `sb_appeal_document` --> `document_metadata`
 `Horizon_ODW_vw_DocumentMetadataAppeals` --> `document_metadata`
 `AIE_Extracts_std` --> `AIE_Extracts_hrm`
