@@ -530,3 +530,101 @@ def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
             if f"{_VALIDATION_ERROR}" in str(e)
             else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
+
+@_app.function_name("appeal")
+@_app.route(route="appeal", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Azure Function endpoint for handling HTTP requests.
+
+    Args:
+        req: An instance of `func.HttpRequest` representing the HTTP request.
+
+    Returns:
+        An instance of `func.HttpResponse` representing the HTTP response.
+    """
+
+    _SCHEMA = _SCHEMAS["appeal.schema.json"]
+    _TOPIC = config["global"]["entities"]["appeal"]["topic"]
+    _SUBSCRIPTION = config["global"]["entities"]["appeal-odw-sub"]["subscription"]
+
+    try:
+        _data = get_messages_and_validate(
+            namespace=_NAMESPACE_APPEALS,
+            credential=_CREDENTIAL,
+            topic=_TOPIC,
+            subscription=_SUBSCRIPTION,
+            max_message_count=_MAX_MESSAGE_COUNT,
+            max_wait_time=_MAX_WAIT_TIME,
+            schema=_SCHEMA,
+        )
+        _message_count = send_to_storage(
+            account_url=_STORAGE,
+            credential=_CREDENTIAL,
+            container=_CONTAINER,
+            entity=_TOPIC,
+            data=_data,
+        )
+        
+        response = json.dumps({"message" : f"{_SUCCESS_RESPONSE} - {_message_count} messages sent to storage", "count": _message_count})
+
+        return func.HttpResponse(
+            response,
+            status_code=200
+        )
+
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if f"{_VALIDATION_ERROR}" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+
+@_app.function_name("appealevent")
+@_app.route(route="appealevent", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def serviceuser(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Azure Function endpoint for handling HTTP requests.
+
+    Args:
+        req: An instance of `func.HttpRequest` representing the HTTP request.
+
+    Returns:
+        An instance of `func.HttpResponse` representing the HTTP response.
+    """
+
+    _SCHEMA = _SCHEMAS["appeal-event.schema.json"]
+    _TOPIC = config["global"]["entities"]["appeal-document"]["topic"]
+    _SUBSCRIPTION = config["global"]["entities"]["appeal-event-odw-sub"]["subscription"]
+
+    try:
+        _data = get_messages_and_validate(
+            namespace=_NAMESPACE_APPEALS,
+            credential=_CREDENTIAL,
+            topic=_TOPIC,
+            subscription=_SUBSCRIPTION,
+            max_message_count=_MAX_MESSAGE_COUNT,
+            max_wait_time=_MAX_WAIT_TIME,
+            schema=_SCHEMA,
+        )
+        _message_count = send_to_storage(
+            account_url=_STORAGE,
+            credential=_CREDENTIAL,
+            container=_CONTAINER,
+            entity=_TOPIC,
+            data=_data,
+        )
+        
+        response = json.dumps({"message" : f"{_SUCCESS_RESPONSE} - {_message_count} messages sent to storage", "count": _message_count})
+
+        return func.HttpResponse(
+            response,
+            status_code=200
+        )
+
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if f"{_VALIDATION_ERROR}" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
