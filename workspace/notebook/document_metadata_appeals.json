@@ -1,0 +1,195 @@
+{
+	"name": "document_metadata_appeals",
+	"properties": {
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "a18aeaef-3341-4304-96a5-0bd1b8402458"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_document_metadata\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT DISTINCT \n",
+					"MD.DataId\t                            AS documentId,\n",
+					"CAST(MD.CaseNodeId AS INT)\t            AS caseId,\n",
+					"MD.caseReference\t                    AS caseRef,\n",
+					"MD.documentReference\t                AS documentReference,\n",
+					"CAST(MD.Version AS INT)                 AS version,\n",
+					"AMD.examinationRefNo\t                AS examinationRefNo,\n",
+					"MD.Name\t                                AS filename,\n",
+					"MD.Name\t                                AS originalFilename,\n",
+					"CAST(MD.DataSize AS INT)\t            AS size,\n",
+					"AMD.mime\t                            AS mime,\n",
+					"AMD.DocumentURI\t                        AS documentURI,\n",
+					"AMD.DocumentURI\t\t                    AS publishedDocumentURI,\n",
+					"AMD.Path                                AS path,\n",
+					"MD.virusCheckStatus\t                    AS virusCheckStatus,\n",
+					"AMD.fileMd5\t                            AS fileMD5,\n",
+					"CAST(MD.CreateDate AS TIMESTAMP)\t    AS dateCreated,\n",
+					"CAST(MD.ModifyDate AS TIMESTAMP)\t    AS lastModified,\n",
+					"LOWER(MD.CaseworkType)\t                AS caseType,\n",
+					"CASE\n",
+					"    WHEN AMD.redactedStatus = ' '   \n",
+					"    THEN NULL\n",
+					"    ELSE AMD.redactedStatus                \n",
+					"END                                     AS redactedStatus,\n",
+					"CASE\n",
+					"    WHEN MD.PublishedStatus = 'Depublished'\n",
+					"    THEN 'unpublished'\n",
+					"    ELSE REPLACE(\n",
+					"        LOWER(MD.PublishedStatus),\n",
+					"        ' ',\n",
+					"        '_')\n",
+					"END                  \t                AS publishedStatus,\n",
+					"CAST(MD.DatePublished AS TIMESTAMP)\t    AS datePublished,\n",
+					"MD.DocumentType\t                        AS documentType,\n",
+					"CASE\n",
+					"    WHEN AMD.securityClassification = ' '\n",
+					"    THEN NULL\n",
+					"    ELSE AMD.securityClassification\n",
+					"END\t                                    AS securityClassification,\n",
+					"MD.SourceSystem\t                        AS sourceSystem,\n",
+					"CASE\n",
+					"    WHEN AMD.origin  = ' '\n",
+					"    THEN NULL\n",
+					"    ELSE AMD.origin\n",
+					"END\t                                    AS origin,\n",
+					"AMD.owner                               AS owner,\n",
+					"MD.Author\t                            AS author,\n",
+					"MD.Representative\t                    AS representative,\n",
+					"MD.DocumentDescription\t                AS description,\n",
+					"CASE\n",
+					"    WHEN MD.DocumentCaseStage = \"Developer's Application\"\n",
+					"    THEN 'developers_application'\n",
+					"    WHEN MD.DocumentCaseStage = 'Post decision'\n",
+					"    THEN 'post_decision'\n",
+					"    ELSE LOWER(MD.DocumentCaseStage)\t            \n",
+					"END                                     AS documentCaseStage,\n",
+					"MD.Filter1\t                            AS filter1,\n",
+					"MD.Filter2\t                            AS filter2,\n",
+					"MD.ParentID\t                            AS horizonFolderId,\n",
+					"NULL\t                                AS transcriptId\t\n",
+					"\n",
+					"FROM odw_harmonised_db.document_meta_data   AS MD\n",
+					"JOIN odw_harmonised_db.aie_document_data    AS AMD\n",
+					"    ON MD.DataID = AMD.DocumentID\n",
+					"WHERE AMD.IsActive = 'Y' \n",
+					"    AND MD.IsActive = 'Y'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.sql(f\"drop table if exists odw_curated_db.document_meta_data;\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"This table has a column \"transcriptId\" which is set to NULL. The column is in the json schema but is not in any of the source data sets (yet). The spark data type is set to \"void\" as there is no data in the column and this prevents the table being created using SQL create table as delta command. Setting this column to StringType and creating the table using spark instead avoids this issue."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"from pyspark.sql.types import StringType\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_document_metadata\")\r\n",
+					"view_df2 = view_df.withColumn(\"transcriptId\", view_df[\"transcriptId\"].cast(StringType()))\r\n",
+					"view_df2.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.document_meta_data\")\r\n",
+					"print(\"Table created\")"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
