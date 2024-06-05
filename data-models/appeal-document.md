@@ -12,7 +12,7 @@ classDiagram
 
     namespace Sources {
 
-        class sb_appeal_document_src {
+        class appeal_document_sb_src {
             documentId: int
         }
 
@@ -24,44 +24,32 @@ classDiagram
             documentId: int
         }
 
-        class Horizon_ODW_vw_FolderEntity_std_src {
-            id: int
-        }
-
     }
     
     namespace Standardised {
 
-        class sb_appeal_document {
+        class appeal_document_sb {
             documentId: int
         }
 
-        class Horizon_ODW_vw_DocumentMetadataAppeals {
+        class horizon_appeals_document_metadata {
             DocumentId: int
         }
 
-        class AIE_Extracts_std {
+        class aie_document_data_std {
             documentId: int
-        }
-
-        class Horizon_ODW_vw_FolderEntity_std {
-            id: int
         }
     }
 
     namespace Harmonised {
 
-        class AIE_Extracts_hrm {
+        class aie_document_data_hrm {
             documentId: int
         }
 
-        class document_metadata {
-            sb_appeal_document
-            Horizon_ODW_vw_DocumentMetadataAppeals
-        }
-
-        class Horizon_ODW_vw_FolderEntity_hrm {
-            id: int
+        class appeals_document_metadata {
+            appeal_document_sb
+            appeals_document_metadata
         }
     }
 
@@ -72,17 +60,14 @@ classDiagram
         }
     }
 
-`sb_appeal_document_src` --> `sb_appeal_document`
-`Horizon_ODW_vw_DocumentMetadataAppeals_src` --> `Horizon_ODW_vw_DocumentMetadataAppeals`
-`AIE_Extracts_std_src` --> `AIE_Extracts_std`
-`Horizon_ODW_vw_FolderEntity_std_src` --> `Horizon_ODW_vw_FolderEntity_std`
-`sb_appeal_document` --> `document_metadata`
-`Horizon_ODW_vw_DocumentMetadataAppeals` --> `document_metadata`
-`AIE_Extracts_std` --> `AIE_Extracts_hrm`
-`Horizon_ODW_vw_FolderEntity_std` --> `Horizon_ODW_vw_FolderEntity_hrm`
-`AIE_Extracts_hrm` --> `appeal_document`
-`document_metadata` --> `appeal_document`
-`Horizon_ODW_vw_FolderEntity_hrm` --> `appeal_document`
+`appeal_document_sb_src` --> `appeal_document_sb`
+`Horizon_ODW_vw_DocumentMetadataAppeals_src` --> `horizon_appeals_document_metadata`
+`AIE_Extracts_std_src` --> `aie_document_data_std`
+`appeal_document_sb` --> `appeals_document_metadata`
+`horizon_appeals_document_metadata` --> `appeals_document_metadata`
+`aie_document_data_std` --> `aie_document_data_hrm`
+`aie_document_data_hrm` --> `appeals_document_metadata`
+`appeals_document_metadata` --> `appeal_document`
 
 
 ```
