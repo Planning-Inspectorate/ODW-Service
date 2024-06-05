@@ -24,6 +24,9 @@ classDiagram
             documentId: int
         }
 
+        class Horizon_ODW_vw_FolderEntity_std_src {
+            id: int
+        }
     }
     
     namespace Standardised {
@@ -39,6 +42,10 @@ classDiagram
         class aie_document_data_std {
             documentId: int
         }
+
+        class horizon_appeals_folder {
+            id: int
+        }
     }
 
     namespace Harmonised {
@@ -51,12 +58,20 @@ classDiagram
             appeal_document_sb
             appeals_document_metadata
         }
+
+        class appeals_folder_hrm {
+            id: int
+        }
     }
 
     namespace Curated {
 
         class appeal_document {
             documentId: int
+        }
+
+        class appeals_folder {
+            id: int
         }
     }
 
@@ -68,6 +83,10 @@ classDiagram
 `aie_document_data_std` --> `aie_document_data_hrm`
 `aie_document_data_hrm` --> `appeals_document_metadata`
 `appeals_document_metadata` --> `appeal_document`
+
+`Horizon_ODW_vw_FolderEntity_std_src` --> `horizon_appeals_folder`
+`horizon_appeals_folder` --> `appeals_folder_hrm`
+`appeals_folder_hrm` --> `appeals_folder`
 
 
 ```
