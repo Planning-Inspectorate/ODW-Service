@@ -44,6 +44,7 @@ classDiagram
         class odw_harmonised_db_appeals_event  {
             eventId: int
         }
+    }
 
     namespace Curated {
 
