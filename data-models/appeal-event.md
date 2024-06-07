@@ -16,6 +16,10 @@ classDiagram
             caseNumber: varchar
             ,eventId: int
         }
+
+        class Service bus: appeal-event  {
+            eventId: int
+        }
     }
 
 
