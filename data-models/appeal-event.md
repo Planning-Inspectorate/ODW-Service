@@ -22,5 +22,19 @@ classDiagram
         }
     }
 
+    namespace Standardised {
+
+        class Horizon_appeals_event {
+            caseNumber: varchar
+            ,eventId: int
+        }
+
+        class appeals_event  {
+            eventId: int
+        }
+    }
+
+`Horizon_ODW_vw_Event` --> `Horizon_appeals_event`
+`Service_bus_appeal` --> `appeals_event`
 
 ```
