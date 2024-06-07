@@ -17,7 +17,7 @@ classDiagram
             ,eventId: int
         }
 
-        class Service_bus_appeal-event  {
+        class Service_bus_appeal_event  {
             eventId: int
         }
     }
@@ -35,6 +35,6 @@ classDiagram
     }
 
 `Horizon_ODW_vw_Event` --> `Horizon_appeals_event`
-`Service_bus_appeal` --> `appeals_event`
+`Service_bus_appeal_event` --> `appeals_event`
 
 ```
