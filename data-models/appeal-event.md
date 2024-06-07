@@ -17,7 +17,7 @@ classDiagram
             ,eventId: int
         }
 
-        class Service bus: appeal-event  {
+        class Service_bus_appeal-event  {
             eventId: int
         }
     }
