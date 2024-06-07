@@ -52,7 +52,7 @@ classDiagram
 
     namespace Curated {
 
-        class odw_harmonised_vw_Appeals_Event_Unified {
+        class odw_curated_db_appeals_event {
             eventId: int
         }
     }
@@ -67,6 +67,6 @@ classDiagram
 
 `odw_harmonised_db_Horizon_appeals_event_hrm` --> `odw_harmonised_vw_Appeals_Event_Unified`
 `odw_harmonised_db_appeals_event` --> `odw_harmonised_vw_Appeals_Event_Unified`
-`odw_harmonised_vw_Appeals_Event_Unified` --> `odw_harmonised_vw_Appeals_Event_Unified`
+`odw_harmonised_vw_Appeals_Event_Unified` --> `odw_curated_db_appeals_event`
 
 ```
