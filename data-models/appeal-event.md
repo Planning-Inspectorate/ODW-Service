@@ -24,7 +24,19 @@ classDiagram
 
     namespace Standardised {
 
-        class Horizon_appeals_event {
+        class odw_standardised_db.Horizon_appeals_event {
+            caseNumber: varchar
+            ,eventId: int
+        }
+
+        class appeals_event  {
+            eventId: int
+        }
+    }
+
+    namespace Harmonised {
+
+        class Horizon_appeals_event_hrm {
             caseNumber: varchar
             ,eventId: int
         }
