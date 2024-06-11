@@ -13,11 +13,11 @@ classDiagram
     namespace Sources {
 
         class HZN_NSIP_Data_Copy {
-            documentId: CaseID
+            CaseID:int
         }
 
         class nsip-project {
-            DocumentId: CaseID
+            CaseID
         }
 
 
@@ -26,11 +26,11 @@ classDiagram
     namespace Standardised {
 
         class horizon_nsip_data {
-            documentId: int
+             casenodeid:int
         }
 
         class nsip_project {
-            DocumentId: int
+            CaseID
         }
 
     }
@@ -48,7 +48,7 @@ classDiagram
     namespace Curated {
 
         class nsip_data {
-            documentId: int
+            CaseID: int
         }
     }
 
