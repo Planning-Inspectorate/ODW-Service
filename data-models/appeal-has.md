@@ -1,6 +1,6 @@
 #### ODW Data Model
 
-##### entity: appeal-document
+##### entity: appeal-has
 
 Data model for appeal-document entity showing data flow from source to curated.
 
