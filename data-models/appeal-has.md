@@ -2,7 +2,7 @@
 
 ##### entity: appeal-has
 
-Data model for appeal-document entity showing data flow from source to curated.
+Data model for appeal-has entity showing Service Bus data flow from source to curated.
 
 ```mermaid
 
@@ -44,9 +44,6 @@ classDiagram
 `ServiceBus_pins-sb-appeals-bo-dev/appeal-has` --> `appeal_has`
 `appeal_has` --> `appeal_has`
 `appeal_has` --> `appeal_has`
-
-
-```
 
 
 ```
