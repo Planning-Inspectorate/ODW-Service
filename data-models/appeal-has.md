@@ -12,7 +12,7 @@ classDiagram
 
     namespace Sources {
 
-        class ServiceBus_pins-sb-appeals-bo-dev/appeal-has {
+        class ServiceBus_pins-sb-appeals-bo-dev-appeal-has {
             caseId: int
         }
 
