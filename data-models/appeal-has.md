@@ -20,7 +20,7 @@ classDiagram
     
     namespace Standardised {
 
-        class appeal_has_st {
+        class appeals_has_st {
             caseId: int
         }
     }
@@ -35,16 +35,15 @@ classDiagram
 
     namespace Curated {
 
-        class appeal_has_cr {
+        class appeals_has_cr {
             caseId: int
         }
 
     }
 
-`ServiceBus_pins-sb-appeals-bo-dev-appeal-has` --> `appeal_has_st`
-`appeal_has_st` --> `appeal_has_hm`
-`appeal_has_hm` --> `appeal_has_cr`
+`ServiceBus_pins-sb-appeals-bo-dev-appeal-has` --> `appeals_has_st`
+`appeals_has_st` --> `appeals_has_hm`
+`appeals_has_hm` --> `appeals_has_cr`
 
 
 ```
-
