@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a4038a4a-96c7-45cd-861e-aaa1f5642c38"
+				"spark.autotune.trackingId": "6bd721b2-954c-4fb2-97f6-1f39d5d36e92"
 			}
 		},
 		"metadata": {
@@ -128,12 +128,18 @@
 					"NULL\t                                AS transcriptId\t\n",
 					"\n",
 					"FROM odw_harmonised_db.document_meta_data   AS MD\n",
-					"JOIN odw_harmonised_db.aie_document_data    AS AMD\n",
-					"    ON MD.DataID = AMD.DocumentID\n",
+					"FULL JOIN odw_harmonised_db.aie_document_data    AS AMD\n",
+					"    ON MD.DataID = AMD.DocumentID AND left(AMD.Path,8) = MD.caseReference\n",
 					"WHERE AMD.IsActive = 'Y' \n",
-					"    AND MD.IsActive = 'Y'"
+					"    AND MD.IsActive = 'Y'\n",
+					";\n",
+					"\n",
+					"SELECT count(*) FROM odw_curated_db.vw_document_metadata WHERE caseRef = 'TR010010' AND sourceSystem = 'horizon';\n",
+					"\n",
+					"SELECT * FROM odw_curated_db.vw_document_metadata WHERE caseRef = 'TR010010' AND sourceSystem = 'horizon';\n",
+					""
 				],
-				"execution_count": 1
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +157,7 @@
 				"source": [
 					"spark.sql(f\"drop table if exists odw_curated_db.document_meta_data;\")"
 				],
-				"execution_count": 2
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -188,7 +194,7 @@
 					"view_df2.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.document_meta_data\")\r\n",
 					"print(\"Table created\")"
 				],
-				"execution_count": 3
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -209,27 +215,27 @@
 				},
 				"source": [
 					"%%sql \n",
-					"-- Test #1: Check aie_document_data - \n",
+					"-- -- Test #1: Check aie_document_data - \n",
 					"\n",
-					"SELECT COUNT(*) FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
-					"SELECT * FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
-					"SELECT DISTINCT DocumentID FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
-					"SELECT COUNT(DISTINCT (DocumentID)) FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
+					"-- SELECT COUNT(*) FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
+					"SELECT * FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%' AND DocumentID = '33820255';\n",
+					"-- SELECT DISTINCT DocumentID FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
+					"-- SELECT COUNT(DISTINCT (DocumentID)) FROM odw_harmonised_db.aie_document_data WHERE Path LIKE '%TR010010%';\n",
 					"\n",
-					"-- Returns 1058 in both dev & test, as expected.\n",
+					"-- -- Returns 1058 in both dev & test, as expected.\n",
 					"\n",
-					"-- Test #2: Check doc metadata in Harmonized - \n",
+					"-- -- Test #2: Check doc metadata in Harmonized - \n",
 					"\n",
-					"SELECT COUNT(*) FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
+					"-- SELECT COUNT(*) FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
 					"\n",
-					"SELECT DISTINCT DataID FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
-					"SELECT COUNT(DISTINCT (DataID))  FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
+					"-- SELECT DISTINCT DataID FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
+					"-- SELECT COUNT(DISTINCT (DataID))  FROM odw_harmonised_db.document_meta_data WHERE CaseReference = 'TR010010' AND SourceSystem = 'horizon';\n",
 					"\n",
-					"-- Returns 4196 in test (big discrepancy)\n",
+					"-- -- Returns 4196 in test (big discrepancy)\n",
 					"\n",
-					"-- Returns 1057 in dev (off by one)\n",
+					"-- -- Returns 1057 in dev (off by one)\n",
 					"\n",
-					"-- Test #3: Check doc metadata in Curated -\n",
+					"-- -- Test #3: Check doc metadata in Curated -\n",
 					"\n",
 					"SELECT COUNT(*) FROM odw_curated_db.document_meta_data WHERE caseRef = 'TR010010' AND sourceSystem = 'horizon';\n",
 					"\n",
@@ -239,7 +245,7 @@
 					"\n",
 					"-- Should be 1058, so there is some duplication occurring."
 				],
-				"execution_count": 15
+				"execution_count": 31
 			}
 		]
 	}
