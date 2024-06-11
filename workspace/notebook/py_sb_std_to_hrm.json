@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "42a77425-564c-4cbe-9ee2-d94075aa6c5a"
+				"spark.autotune.trackingId": "6a0358f7-aefa-44a7-9ae7-316d35205bf7"
 			}
 		},
 		"metadata": {
@@ -83,9 +83,9 @@
 					]
 				},
 				"source": [
-					"entity_name = ''"
+					"entity_name = 'appeal-document'"
 				],
-				"execution_count": 399
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +103,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 400
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -124,11 +124,12 @@
 					"import json\r\n",
 					"from datetime import datetime, date\r\n",
 					"import pprint\r\n",
+					"from pyspark.sql import DataFrame\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"from pyspark.sql.functions import col, when, lit, row_number, desc\r\n",
 					"from pyspark.sql.window import Window"
 				],
-				"execution_count": 401
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -157,21 +158,17 @@
 					}
 				},
 				"source": [
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"harmonised_container = f\"abfss://odw-harmonised@{storage_account}lib/\"\n",
-					"\n",
-					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
-					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
-					"definitions = json.loads(df.toJSON().first())['definitions']\n",
-					"\n",
-					"definition = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
-					"\n",
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"harmonised_container: str = f\"abfss://odw-harmonised@{storage_account}lib/\"\n",
+					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df: DataFrame = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 402
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -189,7 +186,7 @@
 				"source": [
 					"pprint.pprint(definition)"
 				],
-				"execution_count": 403
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -218,16 +215,16 @@
 					}
 				},
 				"source": [
-					"std_db = 'odw_standardised_db'\n",
-					"hrm_db = 'odw_harmonised_db'\n",
+					"std_db: str = \"odw_standardised_db\"\n",
+					"hrm_db: str = \"odw_harmonised_db\"\n",
 					"\n",
-					"std_table = 'sb_appeal_document'\n",
-					"hrm_table = 'sb_appeal_document'\n",
+					"std_table: str = \"sb_appeal_document\"\n",
+					"hrm_table: str = \"sb_appeal_document\"\n",
 					"\n",
-					"hrm_incremental_key = definition['Harmonised_Incremental_Key']\n",
-					"entity_primary_key = definition['Entity_Primary_Key']"
+					"hrm_incremental_key: str = definition[\"Harmonised_Incremental_Key\"]\n",
+					"entity_primary_key: str = definition[\"Entity_Primary_Key\"]"
 				],
-				"execution_count": 404
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -260,38 +257,52 @@
 					}
 				},
 				"source": [
-					"def set_harmonised_master_columns(df):\n",
-					"    source_system_df = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\").toPandas()\n",
-					"    df = df.withColumn(\"SourceSystemID\", lit(source_system_df.at[0, 'SourceSystemID']))\n",
-					"\n",
-					"    df = df.withColumn(\"RowID\", lit(''))\n",
-					"    df = df.withColumn(\"Migrated\", lit('1'))\n",
-					"    df = df.withColumn(\"ODTSourceSystem\", lit('ODT'))\n",
-					"    df = df.withColumn(\"ValidTo\", lit(''))\n",
-					"    df = df.withColumn(\"IsActive\", lit('Y'))\n",
-					"    df = df.withColumn(hrm_incremental_key, lit(''))\n",
-					"\n",
-					"\n",
-					"    df = df.withColumn(\"IngestionDate\", col(\"message_enqueued_time_utc\"))\n",
-					"\n",
-					"    df = df.drop(\"message_enqueued_time_utc\")\n",
-					"    df = df.drop(\"message_id\")\n",
-					"    df = df.drop(\"expected_from\")\n",
-					"    df = df.drop(\"expected_to\")\n",
+					"def set_harmonised_master_columns(df: DataFrame) -> DataFrame:\n",
+					"    source_system_df: DataFrame = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\n",
+					"    # Set source system ID\n",
+					"    df: DataFrame = df.withColumn(\"SourceSystemID\", lit(source_system_df.select('SourceSystemID').collect()[0][0]))\n",
+					"    # Set master column values\n",
+					"    df: DataFrame = df.withColumn(\"RowID\", lit(''))\n",
+					"    df: DataFrame = df.withColumn(\"Migrated\", lit('1'))\n",
+					"    df: DataFrame = df.withColumn(\"ODTSourceSystem\", lit('ODT'))\n",
+					"    df: DataFrame = df.withColumn(\"ValidTo\", lit(''))\n",
+					"    df: DataFrame = df.withColumn(\"IsActive\", lit('Y'))\n",
+					"    df: DataFrame = df.withColumn(hrm_incremental_key, lit(''))\n",
+					"    df: DataFrame = df.withColumn(\"IngestionDate\", col(\"message_enqueued_time_utc\"))\n",
+					"    # drop standardised columns from DataFrame\n",
+					"    df: DataFrame = df.drop(\"message_enqueued_time_utc\")\n",
+					"    df: DataFrame = df.drop(\"message_id\")\n",
+					"    df: DataFrame = df.drop(\"expected_from\")\n",
+					"    df: DataFrame = df.drop(\"expected_to\")\n",
 					"    \n",
-					"    return df\n",
-					"\n",
-					"\n",
-					"def insert_rows_in_df(source_df, target_df, incremental_key):\n",
-					"    # appending the incremental key\n",
-					"    max_id = target_df.count()\n",
-					"\n",
-					"    w = Window.orderBy(lit(1))\n",
-					"    source_df = source_df.withColumn(incremental_key, (max_id + row_number().over(w)).cast(\"string\"))\n",
-					"\n",
+					"    return df"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def insert_rows_in_df(source_df: DataFrame, target_df: DataFrame, incremental_key: str) -> DataFrame:\r\n",
+					"    # appending the incremental key\r\n",
+					"    max_id: int = target_df.count()\r\n",
+					"\r\n",
+					"    w: Window = Window.orderBy(lit(1))\r\n",
+					"    source_df: DataFrame = source_df.withColumn(incremental_key, (max_id + row_number().over(w)).cast(\"string\"))\r\n",
+					"\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": 405
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
