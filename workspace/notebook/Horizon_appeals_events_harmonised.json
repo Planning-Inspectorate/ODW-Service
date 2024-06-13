@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6a60957b-77e1-4c94-b069-875396a26e1a"
+				"spark.autotune.trackingId": "2ee6ce4d-b174-4de2-a8e0-e7120c4f3ab8"
 			}
 		},
 		"metadata": {
@@ -70,60 +70,28 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_Appeals_Event_Latest_Standardised\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_appeals_event\r\n",
 					"AS\r\n",
-					"SELECT DISTINCT\r\n",
-					"    casenumber -- PK\r\n",
-					"    ,eventId -- PK\r\n",
-					"    ,caseReference\r\n",
-					"    ,eventtype\r\n",
-					"    ,eventname\r\n",
-					"    ,eventstatus\r\n",
-					"    ,isurgent\r\n",
-					"    ,eventpublished\r\n",
-					"    ,eventstartdatetime\r\n",
-					"    ,eventenddatetime\r\n",
-					"    ,notificationofsitevisit\r\n",
-					"    ,dateeventrequested\r\n",
-					"    ,actualduration\r\n",
-					"    ,eventaddressline1\r\n",
-					"    ,eventaddressline2\r\n",
-					"    ,eventaddresstown\r\n",
-					"    ,eventaddresscounty\r\n",
-					"    ,eventaddresspostcode\r\n",
-					"    ,\"0\" AS Migrated\r\n",
-					"    ,\"Horizon\" AS ODTSourceSystem\r\n",
-					"    ,Source.SourceSystemID AS SourceSystemID\r\n",
-					"    ,to_timestamp(Appeals_event.expected_from) AS ingestionDate\r\n",
-					"    ,to_timestamp(NULL) AS ValidTo\r\n",
-					"    ,md5(\r\n",
-					"        concat(\r\n",
-					"            CONCAT(IFNULL(casenumber,'.'), '-',IFNULL(eventId,'.'))\r\n",
-					"            ,IFNULL(caseReference,'.')\r\n",
-					"            ,IFNULL(eventtype,'.')\r\n",
-					"            ,IFNULL(eventname,'.')\r\n",
-					"            ,IFNULL(eventstatus,'.')\r\n",
-					"            ,IFNULL(CAST(isurgent AS String),'.')\r\n",
-					"            ,IFNULL(CAST(eventpublished AS String),'.')\r\n",
-					"            ,IFNULL(eventstartdatetime,'.')\r\n",
-					"            ,IFNULL(eventenddatetime,'.')\r\n",
-					"            ,IFNULL(notificationofsitevisit,'.')\r\n",
-					"            ,IFNULL(eventaddressline1,'.')\r\n",
-					"            ,IFNULL(eventaddressline2,'.')\r\n",
-					"            ,IFNULL(eventaddresstown,'.')\r\n",
-					"            ,IFNULL(eventaddresscounty,'.')\r\n",
-					"            ,IFNULL(eventaddresspostcode,'.')\r\n",
-					"        )) AS RowID -- this hash should contain all the defining fields\r\n",
-					"    ,'Y' AS IsActive\r\n",
-					"FROM  \r\n",
-					"    odw_standardised_db.horizon_appeals_event AS Appeals_event\r\n",
-					"    INNER JOIN odw_harmonised_db.main_sourcesystem_fact AS Source\r\n",
-					"        ON Source.Description = 'Casework'\r\n",
-					"        AND Source.IsActive = 'Y'\r\n",
-					"WHERE\r\n",
-					"    Appeals_event.Expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_appeals_event)"
+					"SELECT\r\n",
+					"    raw.*\r\n",
+					"FROM \r\n",
+					"    odw_standardised_db.horizon_appeals_event AS raw\r\n",
+					"    INNER JOIN (\r\n",
+					"                SELECT -- Get only the latest data for cases that haven't been migrated\r\n",
+					"                    Horizon.casenumber\r\n",
+					"                    ,Horizon.eventId\r\n",
+					"                    ,MAX(Horizon.ingested_datetime) AS Last_update\r\n",
+					"                FROM\r\n",
+					"                    odw_standardised_db.horizon_appeals_event AS Horizon\r\n",
+					"                GROUP BY\r\n",
+					"                    Horizon.casenumber\r\n",
+					"                    ,Horizon.eventId) AS Dedupe\r\n",
+					"        ON raw.casenumber = Dedupe.casenumber\r\n",
+					"        AND raw.casenumber = Dedupe.casenumber\r\n",
+					"        AND raw.ingested_datetime = Dedupe.Last_update\r\n",
+					""
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -137,14 +105,39 @@
 							"deleting": false
 						}
 					},
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
-					"df = spark.sql(\"SELECT * FROM vw_Horizon_Appeals_Event_Latest_Standardised\")\r\n",
-					"\r\n",
-					"df.write.mode('overwrite').format('delta').saveAsTable('odw_harmonised_db.horizon_appeals_event')"
+					"%%sql\r\n",
+					"SELECT \r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    vw_Horizon_appeals_event AS raw\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.appeal_event AS target\r\n",
+					"        ON CONCAT(raw.casenumber, '-',raw.eventId) = target.eventID"
 				],
-				"execution_count": 7
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
