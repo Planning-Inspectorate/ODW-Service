@@ -1,5 +1,5 @@
 {
-	"name": "create_table_from_schema",
+	"name": "py_sb_raw_to_std",
 	"properties": {
 		"folder": {
 			"name": "service-bus"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ed342c47-d3a0-4562-8c06-2003bfad4733"
+				"spark.autotune.trackingId": "e30a4b3e-3f8c-4378-a793-24c697613f24"
 			}
 		},
 		"metadata": {
@@ -52,19 +52,6 @@
 		},
 		"cells": [
 			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Example of creating a table from a json schema in the data-model repo"
-				]
-			},
-			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -81,8 +68,7 @@
 					]
 				},
 				"source": [
-					"db_name: str = ''\r\n",
-					"entity_name: str = ''"
+					"entity_name=''"
 				],
 				"execution_count": null
 			},
@@ -100,11 +86,86 @@
 					}
 				},
 				"source": [
-					"table_name_replace: str = entity_name.replace(\"-\", \"_\")\r\n",
-					"table_name: str = f\"sb_{table_name_replace}\"\r\n",
-					"full_table_name: str = f\"{db_name}.{table_name}\"\r\n",
+					"%run \"service-bus/py_spark_df_ingestion_functions\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"import json\n",
+					"from datetime import datetime, date\n",
+					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\n",
+					"from pyspark.sql import DataFrame"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\r\n",
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
-					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
+					"table_name: str = f\"odw_standardised_db.sb_{entity_name.replace('-', '_')}\"\r\n",
+					"today: str = datetime.now().date().strftime('%Y-%m-%d')\r\n",
+					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Reading raw data and adding standardised master columns to the dataframe"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def read_raw_messages(source_path: str) -> DataFrame:\n",
+					"    try: \n",
+					"        df: DataFrame = spark.read.json(source_path)\n",
+					"        print(f\"Found {df.count()} new rows.\")\n",
+					"\n",
+					"        # adding the standardised columns\n",
+					"        df: DataFrame = df.withColumn(\"expected_from\", current_timestamp())\n",
+					"        df: DataFrame = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
+					"        df: DataFrame = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
+					"\n",
+					"    except Exception as e:\n",
+					"        print('Raw data not found at ', source_path, e)\n",
+					"        mssparkutils.notebook.exit('')\n",
+					"\n",
+					"    return df"
 				],
 				"execution_count": null
 			},
@@ -122,14 +183,22 @@
 					}
 				},
 				"source": [
-					"import pprint\r\n",
-					"from pyspark.sql.types import *\r\n",
-					"import json\r\n",
-					"from pyspark.sql.functions import col\r\n",
-					"from pyspark.sql import DataFrame\r\n",
-					"from notebookutils import mssparkutils"
+					"df: DataFrame = read_raw_messages(source_path)"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Comparing and altering the table's schema based on the current data's schema"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -145,13 +214,22 @@
 					}
 				},
 				"source": [
-					"def test_table_exists(db_name: str, table_name: str) -> bool:\r\n",
-					"    spark.sql(f\"USE {db_name}\")\r\n",
-					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\r\n",
-					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\r\n",
-					"    return table_name in table_names"
+					"compare_and_merge_schema(df, table_name)"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Appending the new dataframe into the existing dataframe and removing duplicates"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -167,8 +245,17 @@
 					}
 				},
 				"source": [
-					"if test_table_exists(db_name, table_name):\n",
-					"    mssparkutils.notebook.exit('')"
+					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\n",
+					"    table_df: DataFrame = spark.table(table_name)\n",
+					"    df: DataFrame = df.select(table_df.columns)\n",
+					"    table_df: DataFrame = table_df.union(df)\n",
+					"\n",
+					"    # removing duplicates while ignoring the ingestion dates columns\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\n",
+					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\n",
+					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\n",
+					"\n",
+					"    return table_df"
 				],
 				"execution_count": null
 			},
@@ -183,103 +270,12 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"def get_incremental_key(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\n",
-					"    # getting the incremental key from the odw-config/orchestration\n",
-					"    df: DataFrame = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
-					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
-					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
-					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
 					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
+					"collapsed": false
 				},
 				"source": [
-					"def create_spark_schema(db_name: str, entity_name: str) -> StructType:\r\n",
-					"    incremental_key: str = get_incremental_key(entity_name, storage_account, path_to_orchestration_file) if db_name == 'odw_harmonised_db' else None\r\n",
-					"    json_schema: str = mssparkutils.notebook.run(\"/py_get_schema_from_url\", 30, {\"db_name\": db_name, \"entity_name\": entity_name, \"incremental_key\": incremental_key})\r\n",
-					"    spark_schema: StructType = StructType.fromJson(json.loads(json_schema))\r\n",
-					"    return spark_schema"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def create_spark_dataframe() -> DataFrame:\r\n",
-					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
-					"    return spark_dataframe"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame) -> None:\r\n",
-					"    spark_dataframe.write.saveAsTable(f\"{db_name}.{table_name}\")\r\n",
-					"    print(\"Table created\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"spark_dataframe = create_spark_dataframe()\r\n",
-					"create_spark_table(db_name, table_name, spark_dataframe)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"test_table_exists(db_name, table_name)"
+					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\r\n",
+					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
 				"execution_count": null
 			}
