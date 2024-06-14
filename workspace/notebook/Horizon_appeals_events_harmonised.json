@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3bdf09c1-abf2-41df-984d-f7d18a229aba"
+				"spark.autotune.trackingId": "de2e3709-c23a-4ddf-9767-5af665678e1e"
 			}
 		},
 		"metadata": {
@@ -155,7 +155,7 @@
 					"        AND raw.ingested_datetime < Newer_record.Latest_Record\r\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -210,7 +210,7 @@
 					"WHERE\r\n",
 					"    Target.eventId IS NULL\r\n",
 					"UNION -- Using union to deal with interdupes\r\n",
-					"SELECT -- Step 1: Identify records that are updates\r\n",
+					"SELECT -- Step 2: Identify records that are updates\r\n",
 					"    raw.eventId\r\n",
 					"    ,raw.caseReference\r\n",
 					"    ,raw.eventType\r\n",
@@ -242,7 +242,7 @@
 					"        AND raw.IsActive = 'Y' -- Only care about updates for records that are active as we could have older records we've never seen before\r\n",
 					"        AND Target.IsActive = 'Y'\r\n",
 					"UNION -- Using union to deal with interdupes\r\n",
-					"SELECT -- Step 1: Identify records that are updates\r\n",
+					"SELECT -- Step 3: Bring records in to archive\r\n",
 					"    Target.eventId\r\n",
 					"    ,Target.caseReference\r\n",
 					"    ,Target.eventType\r\n",
@@ -262,7 +262,7 @@
 					"    ,Target.ODTSourceSystem\r\n",
 					"    ,Target.SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\r\n",
 					"    ,Target.IngestionDate\r\n",
-					"    ,Target.ValidTo\r\n",
+					"    ,to_timestamp(date_sub(raw.IngestionDate,1)) AS ValidTo\r\n",
 					"    ,Target.RowID\r\n",
 					"    ,'N' AS IsActive\r\n",
 					"    ,'Update' AS UpdateMode\r\n",
@@ -308,7 +308,7 @@
 					"WHERE\r\n",
 					"    Perm.eventId IS NULL"
 				],
-				"execution_count": null
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -321,12 +321,144 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
 				},
 				"source": [
+					"%%sql\r\n",
+					"MERGE INTO odw_harmonised_db.sb_appeal_event AS Target \r\n",
+					"USING vw_Horizon_Event_Delta AS Raw\r\n",
+					"    ON Target.eventId = Raw.eventId\r\n",
+					"    AND Target.RowID = Raw.RowID\r\n",
+					"WHEN MATCHED THEN \r\n",
+					"    UPDATE\r\n",
+					"    SET\r\n",
+					"        Target.ValidTo = raw.ValidTo,\r\n",
+					"        Target.IsActive = 'N'\r\n",
+					"WHEN NOT MATCHED THEN\r\n",
+					"    INSERT (eventId\r\n",
+					"            ,caseReference\r\n",
+					"            ,eventType\r\n",
+					"            ,eventName\r\n",
+					"            ,eventstatus\r\n",
+					"            ,isUrgent\r\n",
+					"            ,eventPublished\r\n",
+					"            ,eventStartDatetime\r\n",
+					"            ,eventEndDatetime\r\n",
+					"            ,notificationOfSitevisit\r\n",
+					"            ,AddressLine1\r\n",
+					"            ,AddressLine2\r\n",
+					"            ,AddressTown\r\n",
+					"            ,AddressCounty\r\n",
+					"            ,AddressPostcode\r\n",
+					"            ,Migrated\r\n",
+					"            ,ODTSourceSystem\r\n",
+					"            ,SourceSystemID \r\n",
+					"            ,IngestionDate\r\n",
+					"            ,ValidTo\r\n",
+					"            ,RowID\r\n",
+					"            ,IsActive)\r\n",
+					"    VALUES  (raw.eventId\r\n",
+					"            ,raw.caseReference\r\n",
+					"            ,raw.eventType\r\n",
+					"            ,raw.eventName\r\n",
+					"            ,raw.eventstatus\r\n",
+					"            ,raw.isUrgent\r\n",
+					"            ,raw.eventPublished\r\n",
+					"            ,raw.eventStartDatetime\r\n",
+					"            ,raw.eventEndDatetime\r\n",
+					"            ,raw.notificationOfSitevisit\r\n",
+					"            ,raw.AddressLine1\r\n",
+					"            ,raw.AddressLine2\r\n",
+					"            ,raw.AddressTown\r\n",
+					"            ,raw.AddressCounty\r\n",
+					"            ,raw.AddressPostcode\r\n",
+					"            ,raw.Migrated\r\n",
+					"            ,raw.ODTSourceSystem\r\n",
+					"            ,raw.SourceSystemID \r\n",
+					"            ,raw.IngestionDate\r\n",
+					"            ,raw.ValidTo\r\n",
+					"            ,raw.RowID\r\n",
+					"            ,raw.IsActive)"
+				],
+				"execution_count": 26
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- Fix identity column\r\n",
+					"INSERT OVERWRITE odw_harmonised_db.sb_appeal_event\r\n",
+					"SELECT \r\n",
+					"    ROW_NUMBER() OVER (ORDER BY AppealsEventId NULLS LAST) AS AppealsEventId\r\n",
+					"    ,eventId\r\n",
+					"    ,caseReference\r\n",
+					"    ,eventType\r\n",
+					"    ,eventName\r\n",
+					"    ,eventstatus\r\n",
+					"    ,isUrgent\r\n",
+					"    ,eventPublished\r\n",
+					"    ,eventStartDatetime\r\n",
+					"    ,eventEndDatetime\r\n",
+					"    ,notificationOfSitevisit\r\n",
+					"    ,AddressLine1\r\n",
+					"    ,AddressLine2\r\n",
+					"    ,AddressTown\r\n",
+					"    ,AddressCounty\r\n",
+					"    ,AddressPostcode\r\n",
+					"    ,Migrated\r\n",
+					"    ,ODTSourceSystem\r\n",
+					"    ,SourceSystemID \r\n",
+					"    ,IngestionDate\r\n",
+					"    ,ValidTo\r\n",
+					"    ,RowID\r\n",
+					"    ,IsActive\r\n",
+					"FROM \r\n",
+					"    odw_harmonised_db.sb_appeal_event;\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_harmonised_db.sb_appeal_event"
+				],
+				"execution_count": 24
 			}
 		]
 	}
