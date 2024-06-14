@@ -3,6 +3,10 @@
 	"properties": {
 		"nbformat": 4,
 		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
 		"sessionProperties": {
 			"driverMemory": "28g",
 			"driverCores": 4,
@@ -13,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ee4c8911-1667-48e8-afa2-a50b7c42e44f"
+				"spark.autotune.trackingId": "4c9084d6-581e-4fed-a37a-2cc12dc65632"
 			}
 		},
 		"metadata": {
@@ -21,10 +25,25 @@
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
-				"display_name": "python"
+				"display_name": "Synapse PySpark"
 			},
 			"language_info": {
 				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -63,7 +82,20 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": null
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Defining standardised table name, source file name and path"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +120,79 @@
 					"file_name = f\"{today}.json\"\n",
 					"file_path = f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/entraid/{file_name}\""
 				],
-				"execution_count": null
+				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Reading source file and converting it into a dataframe"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_entra_id_data(file_path: str) -> DataFrame:\n",
+					"    \"\"\"\n",
+					"    Reads EntraID json files into a DataFrame\n",
+					"\n",
+					"    Returns:\n",
+					"        Spark DataFrame\n",
+					"    \"\"\"\n",
+					"\n",
+					"    file_rdd = spark.read.text(file_path, wholetext=True).rdd\n",
+					"    data = file_rdd.take(1)[0]['value']\n",
+					"    if data.startswith('\\ufeff'):\n",
+					"        data = data[1:]\n",
+					"    json_data = json.loads(data)\n",
+					"    \n",
+					"    results = json_data[0][\"value\"]\n",
+					"    pddf=pd.DataFrame(results)\n",
+					"    pddf=pddf.applymap(str)\n",
+					"    pddf = pddf.dropna(axis='columns', how='all') # Drops columns with all NA values\n",
+					"    df = spark.createDataFrame(pddf)\n",
+					"    partition = Window.partitionBy(\"SourceSystemID\").orderBy('id')\n",
+					"    df = df.withColumn(\"SourceSystemID\",lit(6)).withColumn('IngestionDate', F.current_timestamp()).withColumn('ValidTo', lit(\"NULL\")).withColumn('IsActive', lit(\"Y\")).withColumn('RowID', row_number().over(partition))\n",
+					"    display(df)\n",
+					"    return df"
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df = get_entra_id_data(file_path)"
+				],
+				"execution_count": 32
 			}
 		]
 	}
