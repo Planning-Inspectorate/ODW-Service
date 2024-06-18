@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "708d48c0-467e-4237-bf3a-d52f3a32ff75"
+				"spark.autotune.trackingId": "e66f30c3-c16e-4529-8bf8-c46140a6028c"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 1
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -120,7 +120,7 @@
 					"file_name = f\"{today}.json\"\n",
 					"file_path = f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/entraid/{file_name}\""
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -163,10 +163,14 @@
 					"            dfs.append(data)\n",
 					"    print(\"Found \" +str(len(dfs))+\" records\")\n",
 					"    df = spark.createDataFrame(dfs)\n",
+					"    \n",
+					"    #store the ingestion date\n",
+					"    df = df.withColumn('IngestionDate', F.current_timestamp())\n",
+					"\n",
 					"    display(df)\n",
 					"    return df"
 				],
-				"execution_count": null
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -185,7 +189,7 @@
 				"source": [
 					"df = get_entra_id_data(file_path)"
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -214,13 +218,14 @@
 					}
 				},
 				"source": [
-					"print(\"Clearing down \" +table_name)\n",
-					"#spark.sql(f\"delete from {table_name};\")\n",
-					"#we are unable to truncate or delete from which means that the table from schema code is irrelevant\n",
+					"print(\"Dropping \" +table_name)\n",
+					"#spark.sql(f\"delete from {table_name};\") \n",
+					"#there's an error when deleting or truncating\n",
 					"spark.sql(f\"drop table {table_name};\")\n",
-					"df.write.format('delta').saveAsTable(f\"{table_name}\")"
+					"df.write.format('delta').saveAsTable(f\"{table_name}\")\n",
+					"print(\"Wrote \" +str(df.count()) +\" rows to \" +table_name)"
 				],
-				"execution_count": null
+				"execution_count": 24
 			}
 		]
 	}
