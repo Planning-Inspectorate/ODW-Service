@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c4acb114-f576-4d6f-9e0d-63df4e2ba768"
+				"spark.autotune.trackingId": "21aaf08c-fd9a-4534-958f-b080c8367cb8"
 			}
 		},
 		"metadata": {
@@ -74,6 +74,25 @@
 					}
 				},
 				"source": [
+					"entity_name = \"nsip-project\"\r\n",
+					"table_name = \"odw_standardised_db.sb_nsip_project\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
 				"execution_count": null
@@ -93,10 +112,10 @@
 				},
 				"source": [
 					"def create_valid_dataframe() -> DataFrame:\r\n",
-					"    df: DataFrame = collect_all_raw_sb_data(\"nsip-project\")\r\n",
+					"    df: DataFrame = collect_all_raw_sb_data(f\"{entity_name}\")\r\n",
 					"    # drop corrupt records loaded with bad files and any test columns created during testing\r\n",
-					"    valid_df: DataFrame = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\")\r\n",
-					"    valid_df: DataFrame = valid_df.withColumnRenamed(\"applicantIds\", \"applicantId\")\r\n",
+					"    valid_df: DataFrame = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\", \"applicantIds\")\r\n",
+					"    # valid_df: DataFrame = valid_df.withColumnRenamed(\"applicantIds\", \"applicantId\")\r\n",
 					"    return valid_df"
 				],
 				"execution_count": null
@@ -115,8 +134,8 @@
 					}
 				},
 				"source": [
-					"def schemas_match(historical_schema: StructType, table_schema: StructType) -> bool:\r\n",
-					"    return historical_schema == table_schema"
+					"def schemas_match(schema1: StructType, schema2: StructType) -> bool:\r\n",
+					"    return schema1 == schema2"
 				],
 				"execution_count": null
 			},
@@ -160,10 +179,10 @@
 					"collapsed": false
 				},
 				"source": [
-					"historical_df: DataFrame = create_valid_dataframe()\r\n",
-					"old_table_df = spark.sql(\"select * from odw_standardised_db.nsip_project\")\r\n",
+					"historical_df: DataFrame = create_valid_dataframe().alias(\"historical\")\r\n",
+					"old_table_df = spark.sql(\"select message_id, ingested_datetime, expected_from, expected_to from odw_standardised_db.nsip_project\").alias(\"old\")\r\n",
 					"historical_schema = historical_df.schema\r\n",
-					"table_schema = spark.table(\"odw_standardised_db.sb_nsip_project\").schema\r\n",
+					"table_schema = spark.table(f\"{table_name}\").schema\r\n",
 					"joined_df = historical_df.join(old_table_df, on=\"message_id\", how=\"left\")\r\n",
 					"joined_df_schema = joined_df.schema"
 				],
@@ -201,7 +220,7 @@
 					}
 				},
 				"source": [
-					"schemas_match(historical_schema, table_schema)"
+					"schemas_match(joined_df_schema, table_schema)"
 				],
 				"execution_count": null
 			},
@@ -237,7 +256,7 @@
 					}
 				},
 				"source": [
-					"print(historical_schema)"
+					"print(joined_df_schema)"
 				],
 				"execution_count": null
 			},
@@ -255,9 +274,210 @@
 					}
 				},
 				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schema_fields_only(joined_df_schema, table_schema)\r\n",
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(joined_df_schema, table_schema)\r\n",
 					"\r\n",
-					"print(in_schema1_not_in_schema2)"
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(in_schema2_not_in_schema1)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(joined_df.head(5))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"joined_df: DataFrame = joined_df.withColumn(\"expected_from\", current_timestamp())\r\n",
+					"joined_df: DataFrame = joined_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
+					"joined_df: DataFrame = joined_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"historical.message_enqueued_time_utc\")))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(joined_df.filter(\"ingested_datetime is not null\").head(3))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(joined_df.select(\"message_id\", \"ingested_datetime\").filter(\"ingested_datetime is not null\").head(5))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"joined_df.printSchema()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
+					"    for field in schema.fields:\r\n",
+					"        df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
+					"    return df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df = cast_columns(joined_df, table_schema)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.printSchema()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\r\n",
+					"    table_df: DataFrame = spark.table(table_name)\r\n",
+					"    df: DataFrame = df.select(table_df.columns)\r\n",
+					"    table_df: DataFrame = table_df.union(df)\r\n",
+					"\r\n",
+					"    # removing duplicates while ignoring the ingestion dates columns\r\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
+					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
+					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\r\n",
+					"\r\n",
+					"    return table_df"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_df: DataFrame = create_dataframe_to_load(final_df, table_name)\r\n",
+					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
 				"execution_count": null
 			}
