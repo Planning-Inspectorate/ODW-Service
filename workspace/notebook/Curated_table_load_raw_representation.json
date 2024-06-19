@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e020c47d-16f0-4fa2-bc9f-3b99dec7775b"
+				"spark.autotune.trackingId": "2cc98cfb-b9e1-4dd2-89e7-95a955544521"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"entity_name='nsip-representation'"
 				],
-				"execution_count": 1
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -91,7 +91,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 5
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -113,7 +113,7 @@
 					"today: str = datetime.now().date().strftime('%Y-%m-%d')\r\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\""
 				],
-				"execution_count": 3
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +129,7 @@
 					"    #valid_df = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\")\r\n",
 					"    return df"
 				],
-				"execution_count": 10
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -148,9 +148,13 @@
 				"source": [
 					"df = load_data_from_raw()\r\n",
 					"\r\n",
+					"existing = spark.sql(\"SELECT message_id, ingested_datetime, expected_from, expected_to FROM odw_standardised_db.nsip_representation\")\r\n",
+					"\r\n",
+					"df = df.join(existing, ['message_id'], how='inner')\r\n",
+					"\r\n",
 					"display(df)"
 				],
-				"execution_count": 12
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -180,7 +184,7 @@
 					"    # Rename the temporary table to replace the original table\r\n",
 					"    spark.sql(f\"ALTER TABLE {db_name}.{temp_table_name} RENAME TO {db_name}.{table_name}\")"
 				],
-				"execution_count": 25
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -198,7 +202,7 @@
 				"source": [
 					"apply_df_to_table(df, 'odw_standardised_db', 'sb_nsip_representation')"
 				],
-				"execution_count": 26
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -215,11 +219,11 @@
 					"collapsed": false
 				},
 				"source": [
-					"check = spark.sql(\"select * from odw_standardised_db.sb_nsip_representation\")\r\n",
+					"check = spark.sql(\"select * from odw_standardised_db.sb_nsip_representation order by message_id\")\r\n",
 					"\r\n",
 					"display(check)"
 				],
-				"execution_count": 27
+				"execution_count": 18
 			}
 		]
 	}
