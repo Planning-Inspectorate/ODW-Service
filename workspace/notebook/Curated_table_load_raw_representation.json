@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2cc98cfb-b9e1-4dd2-89e7-95a955544521"
+				"spark.autotune.trackingId": "32d7f69b-9804-4799-b096-7eb72a7d7bb9"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"entity_name='nsip-representation'"
 				],
-				"execution_count": 10
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -89,9 +89,11 @@
 					"from datetime import datetime, date\r\n",
 					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\r\n",
 					"from pyspark.sql import DataFrame\r\n",
-					"from pyspark.sql.functions import *"
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.functions import col, lit\r\n",
+					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 11
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -113,7 +115,7 @@
 					"today: str = datetime.now().date().strftime('%Y-%m-%d')\r\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\""
 				],
-				"execution_count": 12
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +131,7 @@
 					"    #valid_df = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\")\r\n",
 					"    return df"
 				],
-				"execution_count": 13
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -151,10 +153,38 @@
 					"existing = spark.sql(\"SELECT message_id, ingested_datetime, expected_from, expected_to FROM odw_standardised_db.nsip_representation\")\r\n",
 					"\r\n",
 					"df = df.join(existing, ['message_id'], how='inner')\r\n",
+					"df = df.withColumn(\"migrated\", lit(\"N\"))\r\n",
+					"df = df.withColumn(\"NSIPRepresentaionID\", lit(None).cast(LongType()))\r\n",
+					"\r\n",
+					"\r\n",
+					"df = df.selectExpr(\"message_id\"\r\n",
+					"                    ,\"attachmentIds\"\r\n",
+					"                    ,\"caseId\"\r\n",
+					"                    ,\"dateReceived\"\r\n",
+					"                    ,\"examinationLibraryRef\"\r\n",
+					"                    ,\"message_enqueued_time_utc\"\r\n",
+					"                    ,\"message_type\"\r\n",
+					"                    ,\"originalRepresentation\"\r\n",
+					"                    ,\"redacted\"\r\n",
+					"                    ,\"redactedBy\"\r\n",
+					"                    ,\"redactedNotes\"\r\n",
+					"                    ,\"redactedRepresentation\"\r\n",
+					"                    ,\"referenceId\"\r\n",
+					"                    ,\"registerFor\"\r\n",
+					"                    ,\"representationFrom\"\r\n",
+					"                    ,\"representationId\"\r\n",
+					"                    ,\"status\"\r\n",
+					"                    ,\"ingested_datetime\"\r\n",
+					"                    ,\"expected_from\"\r\n",
+					"                    ,\"expected_to\"\r\n",
+					"                    ,\"migrated\"\r\n",
+					"                    ,\"NSIPRepresentaionID\")\r\n",
+					"\r\n",
+					"\r\n",
 					"\r\n",
 					"display(df)"
 				],
-				"execution_count": 14
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -184,7 +214,7 @@
 					"    # Rename the temporary table to replace the original table\r\n",
 					"    spark.sql(f\"ALTER TABLE {db_name}.{temp_table_name} RENAME TO {db_name}.{table_name}\")"
 				],
-				"execution_count": 15
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -202,7 +232,7 @@
 				"source": [
 					"apply_df_to_table(df, 'odw_standardised_db', 'sb_nsip_representation')"
 				],
-				"execution_count": 16
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -223,7 +253,7 @@
 					"\r\n",
 					"display(check)"
 				],
-				"execution_count": 18
+				"execution_count": 48
 			}
 		]
 	}
