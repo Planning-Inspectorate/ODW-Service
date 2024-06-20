@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ef0eea86-1463-4e88-b144-a532f03b8ae8"
+				"spark.autotune.trackingId": "59bab9b8-479b-46d7-acb4-b17f3240bb91"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"entity_name='nsip-representation'"
 				],
-				"execution_count": 97
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -93,7 +93,7 @@
 					"from pyspark.sql.functions import col, lit\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 98
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 					"today: str = datetime.now().date().strftime('%Y-%m-%d')\r\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{today}/\""
 				],
-				"execution_count": 99
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -131,7 +131,7 @@
 					"    #valid_df = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\")\r\n",
 					"    return df"
 				],
-				"execution_count": 100
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +187,7 @@
 					"display(df)\r\n",
 					""
 				],
-				"execution_count": 101
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -217,7 +217,7 @@
 					"    # Rename the temporary table to replace the original table\r\n",
 					"    spark.sql(f\"ALTER TABLE {db_name}.{temp_table_name} RENAME TO {db_name}.{table_name}\")"
 				],
-				"execution_count": 102
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -233,32 +233,9 @@
 					}
 				},
 				"source": [
-					"apply_df_to_table(df, 'odw_standardised_db', 'sb_nsip_representation')"
+					"apply_df_to_table(df, 'odw_standardised_db', 'sb_nsip_representation_Iterate')"
 				],
-				"execution_count": 103
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"REFRESH TABLE odw_standardised_db.sb_nsip_representation"
-				],
-				"execution_count": 104
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -275,11 +252,18 @@
 					"collapsed": false
 				},
 				"source": [
-					"check = spark.sql(\"select * from odw_standardised_db.sb_nsip_representation order by message_id\")\r\n",
+					"check = spark.sql(\"select distinct dateReceived from odw_standardised_db.sb_nsip_representation_Iterate order by 1 asc\")\r\n",
 					"\r\n",
-					"display(check)"
+					"for row in check.collect():\r\n",
+					"    current_date = row[\"dateReceived\"]\r\n",
+					"\r\n",
+					"    to_process = spark.sql(f\"SELECT * FROM odw_standardised_db.sb_nsip_representation_Iterate where dateReceived = '{current_date}'\")\r\n",
+					"\r\n",
+					"    to_process.write.mode(\"append\").saveAsTable(\"odw_standardised_db.sb_nsip_representation\")\r\n",
+					"\r\n",
+					"    mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 60, {\"entity_name\": \"nsip-representation\"})"
 				],
-				"execution_count": 105
+				"execution_count": 20
 			}
 		]
 	}
