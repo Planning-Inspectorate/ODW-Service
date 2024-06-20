@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8c8c4be8-e239-415d-bbeb-e1d7bd700423"
+				"spark.autotune.trackingId": "2dd59b3b-4423-46b8-833c-772623910aa7"
 			}
 		},
 		"metadata": {
@@ -90,9 +90,15 @@
 					"\n",
 					"    from notebookutils import mssparkutils\n",
 					"\n",
-					"    # Use delta format to generate timetravel history for rollback, \n",
-					"    # and include merge schema option to ensure new schema's load rather than fail\n",
-					"    df.write.mode(\"overwrite\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(f\"{db_name}.{table_name}\")"
+					"    # Write the DataFrame with the new column to a new temporary table\n",
+					"    temp_table_name: str = 'temporary_table'\n",
+					"    df.write.mode(\"overwrite\").saveAsTable(f\"{db_name}.{temp_table_name}\")\n",
+					"\n",
+					"    # Drop the original table\n",
+					"    spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")\n",
+					"\n",
+					"    # Rename the temporary table to replace the original table\n",
+					"    spark.sql(f\"ALTER TABLE {db_name}.{temp_table_name} RENAME TO {db_name}.{table_name}\")"
 				],
 				"execution_count": null
 			},
