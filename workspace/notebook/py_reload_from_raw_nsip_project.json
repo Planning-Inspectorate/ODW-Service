@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2dd18cb4-c4a1-4bad-9081-b4c91cab46d6"
+				"spark.autotune.trackingId": "ac8c72c8-dbd3-43a5-9596-543e3e070db1"
 			}
 		},
 		"metadata": {
@@ -83,7 +83,7 @@
 					"raw_table_name = \"odw_standardised_db.sb_nsip_project_tmp\"\r\n",
 					"raw_table = \"sb_nsip_project_tmp\"\r\n",
 					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
-					"hrm_table_name_full = f\"{hrm_db_name}.{hrm_table_name}\"\r\n",
+					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
 					""
 				],
 				"execution_count": null
@@ -170,6 +170,25 @@
 					"#ALTER TABLE odw_standardised_db.sb_nsip_project RENAME TO sb_nsip_project_tmp;\r\n",
 					"\r\n",
 					"spark.sql(f\"ALTER TABLE {std_table_name_full} RENAME TO {raw_table_name}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##Go create our standardised table again\r\n",
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
 				],
 				"execution_count": null
 			},
@@ -802,13 +821,13 @@
 					"    std = spark.sql(f\"\"\"SELECT \r\n",
 					"                            * \r\n",
 					"                        FROM \r\n",
-					"                            {st_table_name}\r\n",
+					"                            {std_table_name_full}\r\n",
 					"                        WHERE \r\n",
 					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
 					"                        \"\"\")\r\n",
 					"    \r\n",
 					"    if std.count() == 0:\r\n",
-					"        print(f\"Inserting into {st_table_name}\")\r\n",
+					"        print(f\"Inserting into {std_table_name_full}\")\r\n",
 					"        ##Add the data into standardised for processing if we haven't processed it\r\n",
 					"        rw = spark.sql(f\"\"\"SELECT \r\n",
 					"                            * \r\n",
@@ -818,25 +837,25 @@
 					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
 					"                        \"\"\")\r\n",
 					"        \r\n",
-					"        rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(st_table_name)\r\n",
-					"        spark.sql(f\"REFRESH TABLE {st_table_name}\")\r\n",
+					"        rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
+					"        spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
 					"\r\n",
 					"    #Check if we've already processed the data or not\r\n",
 					"    hrm = spark.sql(f\"\"\"SELECT \r\n",
 					"                            * \r\n",
 					"                        FROM \r\n",
-					"                            {hrm_table_name}\r\n",
+					"                            {hrm_table_name_full}\r\n",
 					"                        WHERE \r\n",
 					"                            CAST(IngestionDate AS DATE) = '{processing}'\r\n",
 					"                        \"\"\")\r\n",
 					"\r\n",
 					"    \r\n",
 					"    \r\n",
-					"    if hrm.count() == 0:\r\n",
-					"        print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name}\")\r\n",
-					"        ## Run the standard process if we haven't already\r\n",
-					"        mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 6100, {\"entity_name\": entity_name})\r\n",
-					"        spark.sql(f\"REFRESH TABLE {hrm_table_name}\")\r\n",
+					"    # if hrm.count() == 0:\r\n",
+					"    #     print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
+					"    #     ## Run the standard process if we haven't already\r\n",
+					"    #     mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 6100, {\"entity_name\": entity_name})\r\n",
+					"    #     spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
 					"        \r\n",
 					"\r\n",
 					""
@@ -880,7 +899,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_nsip_project"
+					"SELECT * FROM odw_standardised_db.sb_nsip_project limit 10"
 				],
 				"execution_count": null
 			}
