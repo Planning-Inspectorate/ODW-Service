@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f3931fa3-dde0-470e-9749-657f414a9493"
+				"spark.autotune.trackingId": "441cfdf0-d304-44e1-a3b6-3c82e50e80e7"
 			}
 		},
 		"metadata": {
@@ -320,7 +320,7 @@
 					}
 				},
 				"source": [
-					"def ingest_adhoc(storage_account, definition, folder_path, filename, expected_from, expected_to):\n",
+					"def ingest_adhoc(storage_account, definition, folder_path, filename, expected_from, expected_to, isMultilineJSON=False, dataAttribute=None):\n",
 					"\n",
 					"    from pyspark.sql import SparkSession\n",
 					"    from notebookutils import mssparkutils\n",
@@ -367,11 +367,21 @@
 					"        df = spark.read.options(quote='\"', escape='\\\\', encoding='utf8', header=True, multiLine=True).csv(f\"{folder_path}/{filename}\")\n",
 					"        df = df.toPandas()\n",
 					"    elif '.json' in filename.lower():\n",
-					"        df = spark.read.json(f\"{folder_path}/{filename}\")\n",
-					"        if \"_corrupt_record\" in df.columns:\n",
-					"            #try this as a multiline JSON, we found corrupted records\n",
+					"        if isMultilineJSON == False:\n",
+					"            df = spark.read.json(f\"{folder_path}/{filename}\")\n",
+					"        else:\n",
 					"            print(\"Reading multiline JSON\")\n",
 					"            df = spark.read.option(\"multiline\", \"true\").json(f\"{folder_path}/{filename}\")\n",
+					"\n",
+					"            if dataAttribute:\n",
+					"                dfs: list = [] # an empty list to store the data frames\n",
+					"                for row in df.select('value').collect():\n",
+					"                    for data in row['value']:\n",
+					"                        dfs.append(data)\n",
+					"                print(\"Found \" +str(len(dfs))+\" records\")\n",
+					"                df = spark.createDataFrame(dfs)\n",
+					"                display(df)\n",
+					"                    \n",
 					"        df = df.toPandas()\n",
 					"    else:\n",
 					"        raise RuntimeError(f\"This file type for {filename} is unsupported\")\n",
