@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6430b640-f753-471b-a2cf-9cd727bf3adf"
+				"spark.autotune.trackingId": "a7de566d-8f8c-4d40-b11b-5b81e1c326e8"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,7 @@
 				"source": [
 					"entity_name = 'nsip-project'"
 				],
-				"execution_count": 1
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -112,7 +112,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 2
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +130,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 3
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -169,7 +169,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 4
+				"execution_count": 39
 			},
 			{
 				"cell_type": "markdown",
@@ -207,7 +207,7 @@
 					"hrm_incremental_key: str = definition[\"Harmonised_Incremental_Key\"]\n",
 					"entity_primary_key: str = definition[\"Entity_Primary_Key\"]"
 				],
-				"execution_count": 5
+				"execution_count": 40
 			},
 			{
 				"cell_type": "markdown",
@@ -260,7 +260,7 @@
 					"    \n",
 					"    return df"
 				],
-				"execution_count": 6
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -285,7 +285,7 @@
 					"\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": 7
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -354,7 +354,7 @@
 					"            delete_df,\n",
 					"            target_df)"
 				],
-				"execution_count": 8
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -372,7 +372,7 @@
 				"source": [
 					"latest_ingestion, create_df, update_df, delete_df, target_df = get_latest_ingested_data()"
 				],
-				"execution_count": 9
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
@@ -406,7 +406,7 @@
 					"update_df: DataFrame = update_df.drop(\"message_type\").select(target_df.columns)\n",
 					"delete_df: DataFrame = delete_df.drop(\"message_type\").select(target_df.columns)"
 				],
-				"execution_count": 10
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -424,7 +424,7 @@
 				"source": [
 					"compare_and_merge_schema(latest_ingestion, f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 11
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -455,7 +455,7 @@
 				"source": [
 					"spark.sql(f\"REFRESH TABLE {hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 12
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -478,7 +478,48 @@
 					"update_df: DataFrame = update_df.drop(\"message_type\").select(target_df.columns)\r\n",
 					"delete_df: DataFrame = delete_df.drop(\"message_type\").select(target_df.columns)"
 				],
-				"execution_count": 13
+				"execution_count": 89
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Drop any duplicates"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if create_df.count() > 0:\r\n",
+					"    create_df = update_df.dropDuplicates().orderBy(\"IngestionDate\")\r\n",
+					"\r\n",
+					"if update_df.count() > 0:\r\n",
+					"    update_df = update_df.dropDuplicates().orderBy(\"IngestionDate\")\r\n",
+					"\r\n",
+					"if delete_df.count() > 0:\r\n",
+					"    delete_df = delete_df.dropDuplicates().orderBy(\"IngestionDate\")\r\n",
+					"\r\n",
+					"if target_df.count() > 0:\r\n",
+					"    target_df = target_df.dropDuplicates().orderBy(\"IngestionDate\")"
+				],
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -500,7 +541,7 @@
 					"print(f\"Delete: {delete_df.count()}\")\r\n",
 					"print(f\"Target: {target_df.count()}\")"
 				],
-				"execution_count": 14
+				"execution_count": 91
 			},
 			{
 				"cell_type": "markdown",
@@ -534,7 +575,7 @@
 					"\n",
 					"print(f\"New rows: {create_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 15
+				"execution_count": 92
 			},
 			{
 				"cell_type": "markdown",
@@ -560,26 +601,39 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"if update_df.count() > 0:\n",
 					"    update_df = update_df.dropDuplicates().orderBy(\"IngestionDate\")\n",
+					"   \n",
+					"    #Assume we have multiple updates for the same record to be applied in a single load. We need to deal with that to make sure we're handling it correctly\n",
+					"    window_spec = Window.partitionBy(f\"{entity_primary_key}\").orderBy(update_df[\"IngestionDate\"].desc())\n",
+					"    update_df = update_df.withColumn('Submitted', row_number().over(window_spec))\n",
 					"\n",
-					"    for row in update_df.collect():\n",
-					"        mask = (target_df[\"IsActive\"] == \"Y\") & (target_df[entity_primary_key] == row[entity_primary_key])\n",
+					"    #The first pot of data we need are the straight inserts of the most recent data\n",
+					"    latest_updates = update_df.filter(update_df.Submitted == 1)\n",
+					"    latest_updates = latest_updates.select(target_df.columns)\n",
 					"\n",
-					"        target_df = target_df.withColumn(\"ValidTo\", when(mask, row[\"IngestionDate\"]).otherwise(target_df[\"ValidTo\"]))\n",
-					"        target_df = target_df.withColumn(\"IsActive\", when(mask, \"N\").otherwise(target_df[\"IsActive\"]))\n",
+					"    target_df = insert_rows_in_df(latest_updates, target_df, hrm_incremental_key)\n",
 					"\n",
-					"        # Filter rows to insert\n",
-					"        rows_to_insert = spark.createDataFrame([row], target_df.schema)\n",
-					"        target_df = insert_rows_in_df(rows_to_insert, target_df, hrm_incremental_key)\n",
+					"    #Next, we have the group of data that is inbound but we have had a subsequent update in the same day\n",
+					"    raw = update_df.filter(update_df.Submitted > 1)\n",
+					"    raw = raw.withColumn(\"next_submitted\", raw['Submitted']-1)\n",
+					"    raw = raw.drop(\"IsActive\").drop(\"ValidTo\").drop(\"Submitted\")\n",
 					"\n",
+					"    next_received = update_df.select(f\"{entity_primary_key}\",\"IngestionDate\", \"Submitted\")\n",
+					"    next_received = next_received.withColumn(\"IsActive\", lit('N')).withColumnRenamed(\"IngestionDate\", \"ValidTo\").withColumnRenamed(f\"{entity_primary_key}\", \"Key\")\n",
+					"    \n",
+					"    raw = raw.join(next_received, (raw[f\"{entity_primary_key}\"] == next_received[\"Key\"]) & (raw[\"next_submitted\"] == next_received[\"Submitted\"]))\n",
+					"\n",
+					"    previous_updates = raw.select(target_df.columns)   \n",
+					"    target_df = insert_rows_in_df(previous_updates, target_df, hrm_incremental_key)\n",
 					"\n",
 					"print(f\"Updated rows: {update_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 16
+				"execution_count": 93
 			},
 			{
 				"cell_type": "markdown",
@@ -617,7 +671,7 @@
 					"\n",
 					"print(f\"Deleted rows: {delete_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": null
+				"execution_count": 94
 			},
 			{
 				"cell_type": "markdown",
@@ -650,7 +704,7 @@
 					"columns_to_consider = [c for c in target_df.columns if c not in [hrm_incremental_key, \"ValidTo\"]]\n",
 					"target_df = target_df.orderBy(hrm_incremental_key).dropDuplicates(subset=columns_to_consider).orderBy(\"IngestionDate\")"
 				],
-				"execution_count": null
+				"execution_count": 95
 			},
 			{
 				"cell_type": "markdown",
@@ -681,6 +735,24 @@
 				},
 				"source": [
 					"apply_df_to_table(target_df, hrm_db, hrm_table)"
+				],
+				"execution_count": 96
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
 				],
 				"execution_count": null
 			}
