@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4babf70d-1763-423e-bd5b-5dd9bdf5121b"
+				"spark.autotune.trackingId": "2d8e1f72-4355-41d5-a4a5-3a4c0b43055f"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 75
+				"execution_count": 216
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +106,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_project\""
 				],
-				"execution_count": 16
+				"execution_count": 217
 			},
 			{
 				"cell_type": "code",
@@ -220,7 +220,7 @@
 					"                        odw_harmonised_db.sb_nsip_project\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 167
+				"execution_count": 218
 			},
 			{
 				"cell_type": "code",
@@ -337,7 +337,7 @@
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 168
+				"execution_count": 219
 			},
 			{
 				"cell_type": "code",
@@ -378,7 +378,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 169
+				"execution_count": 220
 			},
 			{
 				"cell_type": "code",
@@ -396,7 +396,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 170
+				"execution_count": 221
 			},
 			{
 				"cell_type": "code",
@@ -413,9 +413,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"results.write.format(\"delta\").mode(\"Overwrite\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 171
+				"execution_count": 222
 			},
 			{
 				"cell_type": "markdown",
@@ -449,7 +449,7 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_project_updates_base\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_project_calculations_base\r\n",
 					"AS\r\n",
 					"SELECT  \r\n",
 					"    row_number() OVER(PARTITION BY caseid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\r\n",
@@ -467,7 +467,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_project"
 				],
-				"execution_count": 191
+				"execution_count": 223
 			},
 			{
 				"cell_type": "code",
@@ -481,34 +481,141 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"SELECT\r\n",
-					"    CurrentRow.NSIPProjectInfoInternalID\r\n",
-					"    ,CurrentRow.caseid\r\n",
-					"    ,CurrentRow.IngestionDate\r\n",
-					"    ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
-					"    ,CASE\r\n",
-					"        WHEN raw.caseid IS NOT NULL THEN \r\n",
-					"            \"1\"\r\n",
-					"        ELSE \r\n",
-					"            \"0\"\r\n",
-					"    END AS migrated\r\n",
-					"    ,CurrentRow.IsActive\r\n",
-					"FROM\r\n",
-					"    vw_nsip_project_updates_base AS CurrentRow\r\n",
-					"    LEFT OUTER JOIN vw_nsip_project_updates_base AS NextRow\r\n",
-					"        ON CurrentRow.caseid = NextRow.caseid\r\n",
-					"        AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
-					"    LEFT OUTER JOIN (SELECT DISTINCT caseid FROM odw_harmonised_db.sb_nsip_project) AS Raw\r\n",
-					"        ON CurrentRow.caseid = raw.caseid"
+					"df_calcs = spark.sql(\"\"\"\r\n",
+					"                        SELECT\r\n",
+					"                            CurrentRow.NSIPProjectInfoInternalID\r\n",
+					"                            ,CurrentRow.caseid \r\n",
+					"                            ,CurrentRow.IngestionDate\r\n",
+					"                            ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
+					"                            ,CASE\r\n",
+					"                                WHEN raw.caseid IS NOT NULL THEN \r\n",
+					"                                    \"1\"\r\n",
+					"                                ELSE \r\n",
+					"                                    \"0\"\r\n",
+					"                            END AS migrated\r\n",
+					"                            ,CurrentRow.IsActive\r\n",
+					"                        FROM\r\n",
+					"                            vw_nsip_project_calculations_base AS CurrentRow\r\n",
+					"                            LEFT OUTER JOIN vw_nsip_project_calculations_base AS NextRow\r\n",
+					"                                ON CurrentRow.caseid = NextRow.caseid\r\n",
+					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT caseid FROM odw_harmonised_db.sb_nsip_project) AS Raw\r\n",
+					"                                ON CurrentRow.caseid = Raw.caseid \"\"\")\r\n",
+					"\r\n",
+					"df_calcs =df_calcs.withColumnRenamed(\"caseid\", \"temp_caseid\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
+					"\r\n",
+					"\r\n",
+					"#To Do: Need to complete this statement. At the moment will return duplicate fields called RowID\r\n",
+					"results = spark.sql(f\"\"\"\r\n",
+					"    SELECT \r\n",
+					"        * \r\n",
+					"        ,MD5(\r\n",
+					"            COALESCE(\r\n",
+					"                    IFNULL(caseId, '.')\r\n",
+					"                    ,IFNULL(caseReference, '.')\r\n",
+					"                    ,IFNULL(projectName, '.')\r\n",
+					"                    ,IFNULL(projectNameWelsh, '.')\r\n",
+					"                    ,IFNULL(projectDescription, '.')\r\n",
+					"                    ,IFNULL(projectDescriptionWelsh, '.')\r\n",
+					"                    ,IFNULL(caseCreatedDate, '.')\r\n",
+					"                    ,IFNULL(decision, '.')\r\n",
+					"                    ,IFNULL(publishStatus, '.')\r\n",
+					"                    ,IFNULL(sector, '.')\r\n",
+					"                    ,IFNULL(projectType, '.')\r\n",
+					"                    ,IFNULL(sourceSystem, '.')\r\n",
+					"                        ,IFNULL(stage, '.')\r\n",
+					"                        ,IFNULL(projectLocation, '.')\r\n",
+					"                        ,IFNULL(projectLocationWelsh, '.')\r\n",
+					"                        ,IFNULL(projectEmailAddress, '.')\r\n",
+					"                        ,IFNULL(regions, '.')\r\n",
+					"                        ,IFNULL(transboundary, '.')\r\n",
+					"                        ,IFNULL(easting, '.')\r\n",
+					"                        ,IFNULL(northing, '.')\r\n",
+					"                        ,IFNULL(welshLanguage, '.')\r\n",
+					"                        ,IFNULL(mapZoomLevel, '.')\r\n",
+					"                        ,IFNULL(secretaryOfState, '.')\r\n",
+					"                        ,IFNULL(datePINSFirstNotifiedOfProject, '.')\r\n",
+					"                        ,IFNULL(dateProjectAppearsOnWebsite, '.')\r\n",
+					"                        ,IFNULL(anticipatedSubmissionDateNonSpecific, '.')\r\n",
+					"                        ,IFNULL(anticipatedDateOfSubmission, '.')\r\n",
+					"                        ,IFNULL(screeningOpinionSought, '.')\r\n",
+					"                        ,IFNULL(scopingOpinionIssued, '.')\r\n",
+					"                        ,IFNULL(section46Notification, '.')\r\n",
+					"                        ,IFNULL(dateOfDCOSubmission, '.')\r\n",
+					"                        ,IFNULL(dateOfNonAcceptance, '.')\r\n",
+					"                        ,IFNULL(dateOfRepresentationPeriodOpen, '.')\r\n",
+					"                        ,IFNULL(dateOfRelevantRepresentationClose, '.')\r\n",
+					"                        ,IFNULL(extensionToDateRelevantRepresentationsClose, '.')\r\n",
+					"                        ,IFNULL(dateRRepAppearOnWebsite, '.')\r\n",
+					"                        ,IFNULL(dateIAPIDue, '.')\r\n",
+					"                        ,IFNULL(rule6LetterPublishDate, '.')\r\n",
+					"                        ,IFNULL(preliminaryMeetingStartDate, '.')\r\n",
+					"                        ,IFNULL(notificationDateForPMAndEventsDirectlyFollowingPM, '.')\r\n",
+					"                        ,IFNULL(notificationDateForEventsDeveloper, '.')\r\n",
+					"                        ,IFNULL(dateSection58NoticeReceived, '.')\r\n",
+					"                        ,IFNULL(confirmedStartOfExamination, '.')\r\n",
+					"                        ,IFNULL(rule8LetterPublishDate, '.')\r\n",
+					"                        ,IFNULL(deadlineForCloseOfExamination, '.')\r\n",
+					"                        ,IFNULL(dateTimeExaminationEnds, '.')\r\n",
+					"                        ,IFNULL(stage4ExtensionToExamCloseDate, '.')\r\n",
+					"                        ,IFNULL(deadlineForSubmissionOfRecommendation, '.')\r\n",
+					"                        ,IFNULL(dateOfRecommendations, '.')\r\n",
+					"                        ,IFNULL(stage5ExtensionToRecommendationDeadline, '.')\r\n",
+					"                        ,IFNULL(jRPeriodEndDate, '.')\r\n",
+					"                        ,IFNULL(dateProjectWithdrawn, '.')\r\n",
+					"                        ,IFNULL(operationsLeadId, '.')\r\n",
+					"                        ,IFNULL(operationsManagerId, '.')\r\n",
+					"                        ,IFNULL(caseManagerId, '.')\r\n",
+					"                        ,IFNULL(nsipOfficerIds, '.')\r\n",
+					"                        ,IFNULL(nsipAdministrationOfficerIds, '.')\r\n",
+					"                        ,IFNULL(leadInspectorId, '.')\r\n",
+					"                        ,IFNULL(inspectorIds, '.')\r\n",
+					"                        ,IFNULL(environmentalServicesOfficerId, '.')\r\n",
+					"                        ,IFNULL(legalOfficerId, '.')\r\n",
+					"                        ,IFNULL(applicantId, '.')\r\n",
+					"                        ,IFNULL(migrationStatus, '.')\r\n",
+					"                        ,IFNULL(dateOfReOpenRelevantRepresentationStart, '.')\r\n",
+					"                        ,IFNULL(dateOfReOpenRelevantRepresentationClose, '.')\r\n",
+					"                        ,IFNULL(migrated, '.')\r\n",
+					"                        ,IFNULL(ODTSourceSystem, '.')\r\n",
+					"                        ,IFNULL(SourceSystemID, '.')\r\n",
+					"                        ,IFNULL(IngestionDate, '.')\r\n",
+					"                        ,IFNULL(ValidTo, '.')\r\n",
+					"                        ,IFNULL(IsActive, '.')\r\n",
+					"                        --Start Horizon only fields\r\n",
+					"                        ,IFNULL(examTimetablePublishStatus, '.')\r\n",
+					"                        ,IFNULL(twitteraccountname, '.')\r\n",
+					"                        ,IFNULL(exasize, '.')\r\n",
+					"                        ,IFNULL(tene, '.')\r\n",
+					"                        ,IFNULL(promotername, '.')\r\n",
+					"                        ,IFNULL(applicantfirstname, '.')\r\n",
+					"                        ,IFNULL(applicantlastname, '.')\r\n",
+					"                        ,IFNULL(addressLine1, '.')\r\n",
+					"                        ,IFNULL(addressLine2, '.')\r\n",
+					"                        ,IFNULL(addressTown, '.')\r\n",
+					"                        ,IFNULL(addressCounty, '.')\r\n",
+					"                        ,IFNULL(Postcode, '.')\r\n",
+					"                        ,IFNULL(applicantemailaddress, '.')\r\n",
+					"                        ,IFNULL(applicantwebaddress, '.')\r\n",
+					"                        ,IFNULL(applicantphonenumber, '.')\r\n",
+					"                        ,IFNULL(applicantdescriptionofproject, '.')\r\n",
+					"                        ,IFNULL(caseNodeId, '.')\r\n",
+					"            )\r\n",
+					"        ) AS RowID\r\n",
+					"    FROM \r\n",
+					"        {spark_table_final}\")\r\n",
+					"\r\n",
+					"\r\n",
+					"results = results.drop(\"NSIPProjectInfoInternalID\", \"ValidTo\", \"migrated\", \"IsActive\")\r\n",
+					"\r\n",
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseid\"] == results[\"caseid\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(service_bus_data.columns)\r\n",
+					"\r\n",
+					"display(final_df)"
 				],
-				"execution_count": 194
+				"execution_count": 236
 			},
 			{
 				"cell_type": "code",
