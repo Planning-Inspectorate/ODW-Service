@@ -1,0 +1,462 @@
+{
+	"name": "py_sb_horizon_harmonised_nsip_project",
+	"properties": {
+		"description": "Sample notebook showing how to join a flat table with a spark table with arrays.",
+		"folder": {
+			"name": "odw-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "291c395a-691e-4479-8ffe-2f21f3a94489"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Sample notebook showing how to join a flat table with a spark table with arrays\r\n",
+					"\r\n",
+					"The example below shows the following:  \r\n",
+					"\r\n",
+					"You have a table from Service Bus which has an array field for attachmentIds.  \r\n",
+					"You have a similar table from Horizon with attachmentIds in a flat schema - 1 row per attachmentId.  \r\n",
+					"You want to merge them together into a final table, e.g. curated layer, joining on the primary key, in this case \"caseId\".  \r\n",
+					"\r\n",
+					"1. Create spark dataframes for each table.  \r\n",
+					"2. Explode the service bus array field \"attachmentIds\" so you have 1 attachmentId per row.  \r\n",
+					"3. Union the 2 dataframes as they have the same column names.  \r\n",
+					"4. Group all the attachmentIds into an array using the collect_list function, grouping by the primary key, \"caseId\".  \r\n",
+					"5. Use this final dataframe to load / create the final table.  \r\n",
+					"\r\n",
+					"**NB: this is just an example of how this can be achieved. Each use case should be examined to see if this approach is appropriate for that particular entity**"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.types import IntegerType, ArrayType, StructType, StructField\r\n",
+					"from pyspark.sql import Row\r\n",
+					"from pyspark.sql.functions import *"
+				],
+				"execution_count": 75
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"service_bus_table = \"odw_harmonised_db.sb_nsip_project\"\r\n",
+					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\r\n",
+					"spark_table_final = \"odw_harmonised_db.nsip_project\""
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"service_bus_data = spark.sql(\"\"\"\r\n",
+					"                    SELECT \r\n",
+					"                        NSIPProjectInfoInternalID\r\n",
+					"                        ,caseId\r\n",
+					"                        ,caseReference\r\n",
+					"                        ,projectName\r\n",
+					"                        ,projectNameWelsh\r\n",
+					"                        ,projectDescription\r\n",
+					"                        ,projectDescriptionWelsh\r\n",
+					"                        ,CAST(NULL AS Timestamp) AS caseCreatedDate\r\n",
+					"                        ,decision\r\n",
+					"                        ,publishStatus\r\n",
+					"                        ,sector\r\n",
+					"                        ,projectType\r\n",
+					"                        ,sourceSystem\r\n",
+					"                        ,stage\r\n",
+					"                        ,projectLocation\r\n",
+					"                        ,projectLocationWelsh\r\n",
+					"                        ,projectEmailAddress\r\n",
+					"                        ,regions\r\n",
+					"                        ,transboundary\r\n",
+					"                        ,easting\r\n",
+					"                        ,northing\r\n",
+					"                        ,welshLanguage\r\n",
+					"                        ,mapZoomLevel\r\n",
+					"                        ,secretaryOfState\r\n",
+					"                        ,datePINSFirstNotifiedOfProject\r\n",
+					"                        ,dateProjectAppearsOnWebsite\r\n",
+					"                        ,anticipatedSubmissionDateNonSpecific\r\n",
+					"                        ,anticipatedDateOfSubmission\r\n",
+					"                        ,screeningOpinionSought\r\n",
+					"                        ,scopingOpinionIssued\r\n",
+					"                        ,section46Notification\r\n",
+					"                        ,dateOfDCOSubmission\r\n",
+					"                        ,dateOfNonAcceptance\r\n",
+					"                        ,dateOfRepresentationPeriodOpen\r\n",
+					"                        ,dateOfRelevantRepresentationClose\r\n",
+					"                        ,extensionToDateRelevantRepresentationsClose\r\n",
+					"                        ,dateRRepAppearOnWebsite\r\n",
+					"                        ,dateIAPIDue\r\n",
+					"                        ,rule6LetterPublishDate\r\n",
+					"                        ,preliminaryMeetingStartDate\r\n",
+					"                        ,notificationDateForPMAndEventsDirectlyFollowingPM\r\n",
+					"                        ,notificationDateForEventsDeveloper\r\n",
+					"                        ,dateSection58NoticeReceived\r\n",
+					"                        ,confirmedStartOfExamination\r\n",
+					"                        ,rule8LetterPublishDate\r\n",
+					"                        ,deadlineForCloseOfExamination\r\n",
+					"                        ,dateTimeExaminationEnds\r\n",
+					"                        ,stage4ExtensionToExamCloseDate\r\n",
+					"                        ,deadlineForSubmissionOfRecommendation\r\n",
+					"                        ,dateOfRecommendations\r\n",
+					"                        ,stage5ExtensionToRecommendationDeadline\r\n",
+					"                        ,jRPeriodEndDate\r\n",
+					"                        ,dateProjectWithdrawn\r\n",
+					"                        ,operationsLeadId\r\n",
+					"                        ,operationsManagerId\r\n",
+					"                        ,caseManagerId\r\n",
+					"                        ,nsipOfficerIds\r\n",
+					"                        ,nsipAdministrationOfficerIds\r\n",
+					"                        ,leadInspectorId\r\n",
+					"                        ,inspectorIds\r\n",
+					"                        ,environmentalServicesOfficerId\r\n",
+					"                        ,legalOfficerId\r\n",
+					"                        ,applicantId\r\n",
+					"                        ,migrationStatus\r\n",
+					"                        ,dateOfReOpenRelevantRepresentationStart\r\n",
+					"                        ,dateOfReOpenRelevantRepresentationClose\r\n",
+					"                        ,migrated\r\n",
+					"                        ,ODTSourceSystem\r\n",
+					"                        ,SourceSystemID\r\n",
+					"                        ,IngestionDate\r\n",
+					"                        ,ValidTo\r\n",
+					"                        ,'' AS RowID\r\n",
+					"                        ,IsActive\r\n",
+					"                        --Start Horizon only fields\r\n",
+					"                        ,CAST(NULL AS String) AS examTimetablePublishStatus\r\n",
+					"                        ,CAST(NULL AS String) AS twitteraccountname\r\n",
+					"                        ,CAST(NULL AS String) AS exasize\r\n",
+					"                        ,CAST(NULL AS String) AS tene\r\n",
+					"                        ,CAST(NULL AS String) AS promotername\r\n",
+					"                        ,CAST(NULL AS String) AS applicantfirstname\r\n",
+					"                        ,CAST(NULL AS String) AS applicantlastname\r\n",
+					"                        ,CAST(NULL AS String) AS addressLine1\r\n",
+					"                        ,CAST(NULL AS String) AS addressLine2\r\n",
+					"                        ,CAST(NULL AS String) AS addressTown\r\n",
+					"                        ,CAST(NULL AS String) AS addressCounty\r\n",
+					"                        ,CAST(NULL AS String) AS Postcode\r\n",
+					"                        ,CAST(NULL AS String) AS applicantemailaddress\r\n",
+					"                        ,CAST(NULL AS String) AS applicantwebaddress\r\n",
+					"                        ,CAST(NULL AS String) AS applicantphonenumber\r\n",
+					"                        ,CAST(NULL AS String) AS applicantdescriptionofproject\r\n",
+					"                        ,CAST(NULL AS String) AS caseNodeId\r\n",
+					"                        --End Horizon only fields\r\n",
+					"                    FROM \r\n",
+					"                        odw_harmonised_db.sb_nsip_project\r\n",
+					"                    \"\"\")"
+				],
+				"execution_count": 167
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"horizon_data = spark.sql(\"\"\"\r\n",
+					"                SELECT\r\n",
+					"                        CAST(NULL AS Long) AS NSIPProjectInfoInternalID\r\n",
+					"                        ,HorizonCaseNumber AS caseid\r\n",
+					"                        ,casereference\r\n",
+					"                        ,projectname\r\n",
+					"                        ,CAST(NULL AS String) AS projectNameWelsh\r\n",
+					"                        ,summary AS projectDescription\r\n",
+					"                        ,CAST(NULL AS String) AS projectDescriptionWelsh\r\n",
+					"                        ,caseCreatedDate\r\n",
+					"                        ,CAST(NULL AS String) AS decision\r\n",
+					"                        ,projectstatus AS publishStatus\r\n",
+					"                        ,sector\r\n",
+					"                        ,projecttype AS projectType\r\n",
+					"                        ,'Horizon' AS sourceSystem\r\n",
+					"                        ,stage\r\n",
+					"                        ,projectLocation\r\n",
+					"                        ,CAST(NULL AS Date) AS projectLocationWelsh\r\n",
+					"                        ,projectEmailAddress\r\n",
+					"                        ,Region\r\n",
+					"                        ,CAST(transboundary AS Boolean) AS transboundary\r\n",
+					"                        ,easting\r\n",
+					"                        ,northing\r\n",
+					"                        ,CAST(welshLanguage AS Boolean) AS welshLanguage\r\n",
+					"                        ,mapZoomLevel\r\n",
+					"                        ,sos AS secretaryOfState\r\n",
+					"                        ,datePINSFirstNotifiedOfProject\r\n",
+					"                        ,dateProjectAppearsOnWebsite\r\n",
+					"                        ,anticipatedSubmissionDateNonSpecific\r\n",
+					"                        ,anticipatedDateOfSubmission\r\n",
+					"                        ,screeningOpinionSought\r\n",
+					"                        ,scopingOpinionIssued\r\n",
+					"                        ,section46Notification\r\n",
+					"                        ,dateOfDCOSubmission\r\n",
+					"                        ,CAST(NULL AS Date) AS dateOfNonAcceptance\r\n",
+					"                        ,dateOfRepresentationPeriodOpen\r\n",
+					"                        ,dateOfRelevantRepresentationClose\r\n",
+					"                        ,extensionToDateRelevantRepresentationsClose\r\n",
+					"                        ,dateRRepAppearOnWebsite\r\n",
+					"                        ,CAST(NULL AS Date) AS dateIAPIDue\r\n",
+					"                        ,CAST(NULL AS Date) AS rule6LetterPublishDate\r\n",
+					"                        ,preliminaryMeetingStartDate\r\n",
+					"                        ,CAST(NULL AS Date) AS notificationDateForPMAndEventsDirectlyFollowingPM\r\n",
+					"                        ,CAST(NULL AS Date) AS notificationDateForEventsDeveloper\r\n",
+					"                        ,dateSection58NoticeReceived\r\n",
+					"                        ,confirmedStartOfExamination\r\n",
+					"                        ,CAST(NULL AS Date) AS rule8LetterPublishDate\r\n",
+					"                        ,deadlineForCloseOfExamination\r\n",
+					"                        ,dateTimeExaminationEnds\r\n",
+					"                        ,stage4ExtensionToExamCloseDate\r\n",
+					"                        ,deadlineForSubmissionOfRecommendation\r\n",
+					"                        ,dateOfRecommendations\r\n",
+					"                        ,stage5ExtensionToRecommendationDeadline\r\n",
+					"                        ,jRPeriodEndDate\r\n",
+					"                        ,dateProjectWithdrawn\r\n",
+					"                        ,CAST(NULL AS String) AS operationsLeadId\r\n",
+					"                        ,CAST(NULL AS String) AS operationsManagerId\r\n",
+					"                        ,CAST(NULL AS String) AS caseManagerId\r\n",
+					"                        ,CAST(NULL AS String) AS nsipOfficerIds\r\n",
+					"                        ,CAST(NULL AS String) AS nsipAdministrationOfficerIds\r\n",
+					"                        ,CAST(NULL AS String) AS leadInspectorId\r\n",
+					"                        ,CAST(NULL AS String) AS inspectorIds\r\n",
+					"                        ,CAST(NULL AS String) AS environmentalServicesOfficerId\r\n",
+					"                        ,CAST(NULL AS String) AS legalOfficerId\r\n",
+					"                        ,CAST(NULL AS String) AS applicantId\r\n",
+					"                        ,CAST(NULL AS Boolean) AS migrationStatus\r\n",
+					"                        ,CAST(NULL AS Date) AS dateOfReOpenRelevantRepresentationStart\r\n",
+					"                        ,CAST(NULL AS Date) AS dateOfReOpenRelevantRepresentationClose\r\n",
+					"                        --Start Horizon only fields\r\n",
+					"                        ,examTimetablePublishStatus\r\n",
+					"                        ,twitteraccountname\r\n",
+					"                        ,exasize\r\n",
+					"                        ,tene\r\n",
+					"                        ,promotername\r\n",
+					"                        ,applicantfirstname\r\n",
+					"                        ,applicantlastname\r\n",
+					"                        ,addressLine1\r\n",
+					"                        ,addressLine2\r\n",
+					"                        ,addressTown\r\n",
+					"                        ,addressCounty\r\n",
+					"                        ,Postcode\r\n",
+					"                        ,applicantemailaddress\r\n",
+					"                        ,applicantwebaddress\r\n",
+					"                        ,applicantphonenumber\r\n",
+					"                        ,applicantdescriptionofproject\r\n",
+					"                        ,caseNodeId\r\n",
+					"                        --End Horizon only fields\r\n",
+					"                        ,'0' AS migrated\r\n",
+					"                        ,'Horizon' AS ODTSourceSystem\r\n",
+					"                        ,NULL AS SourceSystemID\r\n",
+					"                        ,ingested_datetime AS IngestionDate\r\n",
+					"                        ,expected_to AS ValidTo\r\n",
+					"                        ,'' AS RowID\r\n",
+					"                        ,'Y' AS IsActive\r\n",
+					"FROM\r\n",
+					"    odw_standardised_db.horizon_nsip_data\r\n",
+					"WHERE\r\n",
+					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_nsip_data)\r\n",
+					"\r\n",
+					"                \"\"\")"
+				],
+				"execution_count": 168
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#Establish aggregated view of regions\r\n",
+					"horizon_region = horizon_data.groupBy(\"caseid\").agg(collect_list(\"region\").alias(\"regions\"))\r\n",
+					"horizon_data = horizon_data.join(horizon_region, on=\"caseid\", how=\"inner\").drop(\"region\")\r\n",
+					"\r\n",
+					"#Build nsipOfficerIds \r\n",
+					"horizon_officer = horizon_data.groupBy(\"caseid\").agg(collect_list(\"nsipOfficerIds\").alias(\"nsipOfficerIds\"))\r\n",
+					"\r\n",
+					"horizon_data = horizon_data.drop(\"nsipOfficerIds\")\r\n",
+					"horizon_data = horizon_data.join(horizon_officer, on=\"caseid\", how=\"inner\")\r\n",
+					"\r\n",
+					"#Build nsipAdministrationOfficerIds \r\n",
+					"horizon_Administrationofficer = horizon_data.groupBy(\"caseid\").agg(collect_list(\"nsipAdministrationOfficerIds\").alias(\"nsipAdministrationOfficerIds\"))\r\n",
+					"\r\n",
+					"horizon_data = horizon_data.drop(\"nsipAdministrationOfficerIds\")\r\n",
+					"horizon_data = horizon_data.join(horizon_Administrationofficer, on=\"caseid\", how=\"inner\")\r\n",
+					"#Build inspectorIds\r\n",
+					"horizon_inspectorIds = horizon_data.groupBy(\"caseid\").agg(collect_list(\"inspectorIds\").alias(\"inspectorIds\"))\r\n",
+					"\r\n",
+					"horizon_data = horizon_data.drop(\"inspectorIds\")\r\n",
+					"horizon_data = horizon_data.join(horizon_inspectorIds, on=\"caseid\", how=\"inner\")\r\n",
+					"\r\n",
+					"#sort columns into same order as service bus\r\n",
+					"horizon_data = horizon_data.select(service_bus_data.columns)"
+				],
+				"execution_count": 169
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"results = service_bus_data.union(horizon_data)"
+				],
+				"execution_count": 170
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"results.write.format(\"delta\").mode(\"Overwrite\").saveAsTable(f\"{spark_table_final}\")"
+				],
+				"execution_count": 171
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Now need to sort internal ids, IsActive flags, and valid_to dates"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT  \r\n",
+					"    row_number() OVER(PARTITION BY caseid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\r\n",
+					"    ,*                 \r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.nsip_project"
+				],
+				"execution_count": 174
+			}
+		]
+	}
+}
