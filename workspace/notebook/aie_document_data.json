@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "11600b47-3229-4c4b-866c-abcb94bfd953"
+				"spark.autotune.trackingId": "de5031f1-a74e-4587-9b14-6ce653c4d68b"
 			}
 		},
 		"metadata": {
@@ -70,6 +70,104 @@
 					"\n",
 					"## View aie_document_data is created"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"/* Need to create a view of both net new and changed records. For this feed the PK is a composite key of:\r\n",
+					"\r\n",
+					"- DocumentID\r\n",
+					"- Version\r\n",
+					"- Mime\r\n",
+					"\r\n",
+					"When we're looking for records to process we need to consider three groups:\r\n",
+					"\r\n",
+					"1. Net new records\r\n",
+					"2. Updates to records that we've seen before but have isActive set to 'N' incorrectly\r\n",
+					"3. Updates to records that we've seen before, but are a net new version\r\n",
+					"4. Updates to records that isActive is set to 'Y' but it should be set to 'N' based on the latest data \r\n",
+					"\r\n",
+					"*/\r\n",
+					"\r\n",
+					"WITH Latest\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"    SELECT\r\n",
+					"        MAX(ingested_datetime) AS LatestDate\r\n",
+					"    FROM \r\n",
+					"        odw_standardised_db.aie_document_data\r\n",
+					"\r\n",
+					")\r\n",
+					"--1. net new records\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.main_sourcesystem_fact AS source_system\r\n",
+					"    INNER JOIN Latest\r\n",
+					"        ON source_system.Description = \"DocumentTree\"\r\n",
+					"        AND source_system.IsActive = 'Y'\r\n",
+					"    INNER JOIN odw_standardised_db.aie_document_data AS standard\r\n",
+					"        ON Latest.LatestDate = standard.ingested_datetime\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.aie_document_data AS Target\r\n",
+					"        ON standard.documentID = Target.documentID\r\n",
+					"        AND standard.Version = Target.Version\r\n",
+					"        AND standard.Mime = Target.Mime\r\n",
+					"WHERE\r\n",
+					"    Target.documentID IS NULL"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Old code below this cell"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
