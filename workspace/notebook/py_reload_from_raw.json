@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "04f96fb5-0f18-49f3-89c2-258637142421"
+				"spark.autotune.trackingId": "0d9ec8e8-9d87-4f77-9f74-fee064b687d0"
 			}
 		},
 		"metadata": {
@@ -58,11 +58,11 @@
 					"from pyspark.sql.functions import *\r\n",
 					"import pprint\r\n",
 					"import pandas\r\n",
-					"from IPython.display import display\r\n",
+					"# from IPython.display import display\r\n",
 					"from pyspark.sql.functions import col, lit\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 2
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
@@ -83,12 +83,12 @@
 					"hrm_db_name = \"odw_harmonised_db\" # example: odw_harmonised_db\r\n",
 					"table_name = \"sb_appeal_has\" # example: sb_nsip_project\r\n",
 					"raw_table_name = \"odw_standardised_db.sb_appeal_has_temp\" # example: odw_standardised_db.sb_nsip_project_tmp\r\n",
-					"raw_table = \"sb_appeal_has_tmp\" # example: sb_nsip_project_tmp\r\n",
+					"raw_table = \"sb_appeal_has_temp\" # example: sb_nsip_project_tmp\r\n",
 					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
 					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -110,7 +110,7 @@
 					"\r\n",
 					"spark.sql(f\"DROP TABLE IF EXISTS {raw_table_name}\")"
 				],
-				"execution_count": 4
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -132,7 +132,7 @@
 					"\r\n",
 					"spark.sql(f\"DROP TABLE IF EXISTS {std_table_name_full}\")"
 				],
-				"execution_count": 5
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +151,7 @@
 					"##Go create our standardised table\r\n",
 					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
 				],
-				"execution_count": 6
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -172,7 +172,7 @@
 					"#ALTER TABLE odw_standardised_db.sb_nsip_project RENAME TO sb_nsip_project_tmp;\r\n",
 					"spark.sql(f\"ALTER TABLE {std_table_name_full} RENAME TO {raw_table_name}\")"
 				],
-				"execution_count": 7
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -191,7 +191,7 @@
 					"##Go create our standardised table again\r\n",
 					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
 				],
-				"execution_count": 8
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -209,7 +209,7 @@
 				"source": [
 					"spark.table(raw_table_name).printSchema()"
 				],
-				"execution_count": 9
+				"execution_count": 107
 			},
 			{
 				"cell_type": "markdown",
@@ -240,7 +240,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": 10
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -259,10 +259,10 @@
 					"def create_valid_dataframe() -> DataFrame:\r\n",
 					"    df: DataFrame = collect_all_raw_sb_data(f\"{entity_name}\")\r\n",
 					"    # drop corrupt records loaded with bad files and any test columns created during testing\r\n",
-					"    valid_df: DataFrame = df # .filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\", \"applicantIds\", \"ProjectStatus\")\r\n",
-					"    return valid_df"
+					"    # valid_df: DataFrame = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\", \"applicantIds\", \"ProjectStatus\")\r\n",
+					"    return df"
 				],
-				"execution_count": 11
+				"execution_count": 109
 			},
 			{
 				"cell_type": "code",
@@ -281,7 +281,7 @@
 					"def test_schemas_match(schema1: StructType, schema2: StructType) -> bool:\r\n",
 					"    return schema1 == schema2"
 				],
-				"execution_count": 12
+				"execution_count": 110
 			},
 			{
 				"cell_type": "code",
@@ -306,7 +306,25 @@
 					"    \r\n",
 					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
 				],
-				"execution_count": 13
+				"execution_count": 111
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#compare_schemas()"
+				],
+				"execution_count": 112
 			},
 			{
 				"cell_type": "code",
@@ -323,14 +341,34 @@
 					"collapsed": false
 				},
 				"source": [
-					"historical_df: DataFrame = create_valid_dataframe().alias(\"historical\")\r\n",
-					"old_table_df = spark.sql(f\"select message_id, ingested_datetime, expected_from, expected_to from {raw_table_name}\").alias(\"old\")\r\n",
+					"historical_df: DataFrame = create_valid_dataframe()\r\n",
+					"#old_table_df = spark.sql(f\"select message_id, ingested_datetime, expected_from, expected_to from {raw_table_name}\").alias(\"old\")\r\n",
 					"historical_schema = historical_df.schema\r\n",
-					"table_schema = spark.table(f\"{raw_table_name}\").schema\r\n",
-					"joined_df = historical_df.join(old_table_df, on=\"message_id\", how=\"left\")\r\n",
-					"joined_df_schema = joined_df.schema"
+					"temp_table_schema = spark.table(f\"{raw_table_name}\").schema\r\n",
+					"#historical_df = historical_df.join(old_table_df, on=\"message_id\", how=\"left\")\r\n",
+					"#historical_df_schema = historical_df.schema\r\n",
+					"#display(historical_df)\r\n",
+					"historical_df.count()"
 				],
-				"execution_count": 14
+				"execution_count": 113
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"historical_df.show()"
+				],
+				"execution_count": 114
 			},
 			{
 				"cell_type": "code",
@@ -347,9 +385,9 @@
 				},
 				"source": [
 					"\n",
-					"joined_df.printSchema()"
+					"historical_df.printSchema()"
 				],
-				"execution_count": 15
+				"execution_count": 115
 			},
 			{
 				"cell_type": "code",
@@ -365,9 +403,9 @@
 					}
 				},
 				"source": [
-					"test_schemas_match(joined_df_schema, table_schema)"
+					"test_schemas_match(historical_df, table_schema)"
 				],
-				"execution_count": 16
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
@@ -385,7 +423,7 @@
 				"source": [
 					"print(table_schema)"
 				],
-				"execution_count": 17
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
@@ -401,9 +439,9 @@
 					}
 				},
 				"source": [
-					"print(joined_df_schema)"
+					"#print(historical_df_schema)"
 				],
-				"execution_count": 18
+				"execution_count": 118
 			},
 			{
 				"cell_type": "code",
@@ -419,12 +457,13 @@
 					}
 				},
 				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(joined_df_schema, table_schema)\r\n",
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, table_schema)\r\n",
 					"\r\n",
 					"print(in_schema1_not_in_schema2)\r\n",
+					"print(\"##############################################\")\r\n",
 					"print(in_schema2_not_in_schema1)"
 				],
-				"execution_count": 19
+				"execution_count": 119
 			},
 			{
 				"cell_type": "code",
@@ -441,9 +480,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(joined_df.head(5))"
+					"display(historical_df.head(5))"
 				],
-				"execution_count": 20
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -460,11 +499,11 @@
 					"collapsed": false
 				},
 				"source": [
-					"joined_df: DataFrame = joined_df.withColumn(\"expected_from\", current_timestamp())\r\n",
-					"joined_df: DataFrame = joined_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
-					"joined_df: DataFrame = joined_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"historical.message_enqueued_time_utc\")))"
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_from\", current_timestamp())\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"message_enqueued_time_utc\")))"
 				],
-				"execution_count": 21
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -481,9 +520,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(joined_df.filter(\"ingested_datetime is not null\").head(3))"
+					"display(historical_df.filter(\"ingested_datetime is not null\").head(3))"
 				],
-				"execution_count": 22
+				"execution_count": 122
 			},
 			{
 				"cell_type": "code",
@@ -500,9 +539,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(joined_df.select(\"message_id\", \"ingested_datetime\").filter(\"ingested_datetime is not null\").head(5))"
+					"display(historical_df.select(\"message_id\", \"ingested_datetime\").filter(\"ingested_datetime is not null\").head(5))"
 				],
-				"execution_count": 23
+				"execution_count": 123
 			},
 			{
 				"cell_type": "code",
@@ -518,9 +557,27 @@
 					}
 				},
 				"source": [
-					"joined_df.printSchema()"
+					"historical_df.printSchema()"
 				],
-				"execution_count": 24
+				"execution_count": 124
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_schema"
+				],
+				"execution_count": 125
 			},
 			{
 				"cell_type": "code",
@@ -537,11 +594,16 @@
 				},
 				"source": [
 					"def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
+					"    x=0\r\n",
 					"    for field in schema.fields:\r\n",
-					"        df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
+					"        #if field.name == \"caseSpecialisms\":\r\n",
+					"        if field.dataType == ArrayType(StringType()):\r\n",
+					"            x=+1\r\n",
+					"        else: \r\n",
+					"            df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
 					"    return df"
 				],
-				"execution_count": 25
+				"execution_count": 126
 			},
 			{
 				"cell_type": "code",
@@ -557,12 +619,12 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql.types import ArrayType,IntegerType\r\n",
-					"# joined_df = joined_df.withColumn(\"caseSpecialisms\",  joined_df[\"caseSpecialisms\"].cast(ArrayType))\r\n",
-					"# final_df = cast_columns(joined_df, table_schema)\r\n",
-					"final_df = joined_df"
+					"# from pyspark.sql.types import ArrayType,IntegerType\r\n",
+					"# historical_df = historical_df.withColumn(\"caseSpecialisms\",  historical_df[\"caseSpecialisms\"].cast(ArrayType))\r\n",
+					"final_df = cast_columns(historical_df, table_schema)\r\n",
+					"final_df = historical_df"
 				],
-				"execution_count": 27
+				"execution_count": 127
 			},
 			{
 				"cell_type": "code",
@@ -581,7 +643,7 @@
 					"# drop the input_file column as that's just for analysis\r\n",
 					"final_df = final_df.drop(\"input_file\")"
 				],
-				"execution_count": 28
+				"execution_count": 128
 			},
 			{
 				"cell_type": "code",
@@ -602,7 +664,7 @@
 					"print(in_schema1_not_in_schema2)\r\n",
 					"print(in_schema2_not_in_schema1)"
 				],
-				"execution_count": 29
+				"execution_count": 129
 			},
 			{
 				"cell_type": "code",
@@ -620,7 +682,7 @@
 				"source": [
 					"test_schemas_match(final_df.schema, table_schema)"
 				],
-				"execution_count": 30
+				"execution_count": 130
 			},
 			{
 				"cell_type": "code",
@@ -648,7 +710,7 @@
 					"\r\n",
 					"    return table_df"
 				],
-				"execution_count": 31
+				"execution_count": 131
 			},
 			{
 				"cell_type": "code",
@@ -668,7 +730,7 @@
 					"\r\n",
 					"apply_df_to_table(table_df, std_db_name, raw_table)"
 				],
-				"execution_count": 32
+				"execution_count": 132
 			},
 			{
 				"cell_type": "code",
