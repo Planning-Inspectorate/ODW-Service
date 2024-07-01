@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2e8ad9d2-aa8f-4a5a-b5bf-70d3b81df0f3"
+				"spark.autotune.trackingId": "ae404f30-af0b-4804-a313-c487eb039c2d"
 			}
 		},
 		"metadata": {
@@ -93,7 +93,7 @@
 					"\n",
 					"    # Write the DataFrame with the new column to a new temporary table\n",
 					"    temp_table_name: str = 'temporary_table'\n",
-					"    df.write.mode(\"overwrite\").saveAsTable(f\"{db_name}.{temp_table_name}\")\n",
+					"    df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(f\"{db_name}.{temp_table_name}\")\n",
 					"\n",
 					"    # Drop the original table\n",
 					"    spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")\n",
@@ -118,13 +118,16 @@
 				},
 				"source": [
 					"def compare_schemas(schema1: StructType, schema2: StructType) -> tuple:\n",
-					"    fields1 = set((field.name, field.dataType) for field in schema1.fields)\n",
-					"    fields2 = set((field.name, field.dataType) for field in schema2.fields) # can add field.nullable for more accuracy\n",
+					"    fields1 = set((field.name, field.dataType, field.nullable) for field in schema1.fields)\n",
+					"    fields2 = set((field.name, field.dataType, field.nullable) for field in schema2.fields)\n",
+					"\n",
+					"    in_schema1_not_in_schema2 = fields1 - fields2\n",
+					"    in_schema2_not_in_schema1 = fields2 - fields1\n",
 					"    \n",
-					"    in_schema1_not_in_schema2: set = fields1 - fields2\n",
-					"    in_schema2_not_in_schema1: set = fields2 - fields1\n",
+					"    in_schema1_not_in_schema2_sorted = sorted(in_schema1_not_in_schema2, key=lambda x: x[0])\n",
+					"    in_schema2_not_in_schema1_sorted = sorted(in_schema2_not_in_schema1, key=lambda x: x[0])\n",
 					"    \n",
-					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
+					"    return in_schema1_not_in_schema2_sorted, in_schema2_not_in_schema1_sorted"
 				],
 				"execution_count": null
 			},
