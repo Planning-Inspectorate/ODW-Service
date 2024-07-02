@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "36df23c5-9fca-4192-95a7-322ce4102ebd"
+				"spark.autotune.trackingId": "dca4fc50-ba24-4fd7-9200-223ec83f7f12"
 			}
 		},
 		"metadata": {
@@ -60,7 +60,7 @@
 					"from pyspark.sql.functions import col, lit\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 1
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -76,17 +76,17 @@
 					}
 				},
 				"source": [
-					"entity_name = \"nsip-project\"\r\n",
+					"entity_name = \"s51-advice\"\r\n",
 					"std_db_name = \"odw_standardised_db\"\r\n",
 					"hrm_db_name = \"odw_harmonised_db\"\r\n",
-					"table_name = \"sb_nsip_project\"\r\n",
-					"raw_table_name = \"odw_standardised_db.sb_nsip_project_tmp\"\r\n",
-					"raw_table = \"sb_nsip_project_tmp\"\r\n",
+					"table_name = \"sb_s51_advice\"\r\n",
+					"raw_table_name = \"odw_standardised_db.sb_s51_advice_tmp\"\r\n",
+					"raw_table = \"sb_s51_advice_tmp\"\r\n",
 					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
 					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
-					""
+					"folder_name = \"nsip-s51-advice\""
 				],
-				"execution_count": 2
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -103,12 +103,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"#%%sql\r\n",
-					"#DROP TABLE IF EXISTS odw_standardised_db.sb_nsip_project_tmp\r\n",
-					"\r\n",
 					"spark.sql(f\"DROP TABLE IF EXISTS {raw_table_name}\")"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -125,52 +122,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"#%%sql\r\n",
-					"#DROP TABLE IF EXISTS odw_standardised_db.sb_nsip_project\r\n",
-					"\r\n",
-					"spark.sql(f\"DROP TABLE IF EXISTS {std_table_name_full}\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##Go create our standardised table\r\n",
-					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"#%%sql\r\n",
-					"#ALTER TABLE odw_standardised_db.sb_nsip_project RENAME TO sb_nsip_project_tmp;\r\n",
 					"spark.sql(f\"ALTER TABLE {std_table_name_full} RENAME TO {raw_table_name}\")"
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -189,25 +143,7 @@
 					"##Go create our standardised table again\r\n",
 					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark.table(raw_table_name).printSchema()"
-				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -238,7 +174,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": 7
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -255,12 +191,12 @@
 				},
 				"source": [
 					"def create_valid_dataframe() -> DataFrame:\r\n",
-					"    df: DataFrame = collect_all_raw_sb_data(f\"{entity_name}\")\r\n",
+					"    df: DataFrame = collect_all_raw_sb_data(folder_name)\r\n",
 					"    # drop corrupt records loaded with bad files and any test columns created during testing\r\n",
-					"    valid_df: DataFrame = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\", \"applicantIds\", \"ProjectStatus\")\r\n",
-					"    return valid_df"
+					"    # valid_df: DataFrame = df.filter(col(\"_corrupt_record\").isNull()).drop(\"_corrupt_record\", \"baddata\", \"interestedpartyids\", \"applicantIds\", \"ProjectStatus\")\r\n",
+					"    return df"
 				],
-				"execution_count": 3
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -279,7 +215,7 @@
 					"def test_schemas_match(schema1: StructType, schema2: StructType) -> bool:\r\n",
 					"    return schema1 == schema2"
 				],
-				"execution_count": 4
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -304,7 +240,7 @@
 					"    \r\n",
 					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
 				],
-				"execution_count": 5
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -322,13 +258,13 @@
 				},
 				"source": [
 					"historical_df: DataFrame = create_valid_dataframe().alias(\"historical\")\r\n",
-					"old_table_df = spark.sql(f\"select message_id, ingested_datetime, expected_from, expected_to from {raw_table_name}\").alias(\"old\")\r\n",
+					"# old_table_df = spark.sql(f\"select message_id, ingested_datetime, expected_from, expected_to from {raw_table_name}\").alias(\"old\")\r\n",
 					"historical_schema = historical_df.schema\r\n",
-					"table_schema = spark.table(f\"{raw_table_name}\").schema\r\n",
-					"joined_df = historical_df.join(old_table_df, on=\"message_id\", how=\"left\")\r\n",
-					"joined_df_schema = joined_df.schema"
+					"temp_table_schema = spark.table(f\"{raw_table_name}\").schema\r\n",
+					"# joined_df = historical_df.join(old_table_df, on=\"message_id\", how=\"left\")\r\n",
+					"# joined_df_schema = joined_df.schema"
 				],
-				"execution_count": null
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -344,9 +280,9 @@
 					}
 				},
 				"source": [
-					"joined_df.printSchema()"
+					"test_schemas_match(historical_schema, temp_table_schema)"
 				],
-				"execution_count": null
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -362,144 +298,12 @@
 					}
 				},
 				"source": [
-					"test_schemas_match(joined_df_schema, table_schema)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"print(table_schema)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"print(joined_df_schema)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(joined_df_schema, table_schema)\r\n",
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, temp_table_schema)\r\n",
 					"\r\n",
 					"print(in_schema1_not_in_schema2)\r\n",
 					"print(in_schema2_not_in_schema1)"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(joined_df.head(5))"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"joined_df: DataFrame = joined_df.withColumn(\"expected_from\", current_timestamp())\r\n",
-					"joined_df: DataFrame = joined_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
-					"joined_df: DataFrame = joined_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"historical.message_enqueued_time_utc\")))"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(joined_df.filter(\"ingested_datetime is not null\").head(3))"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(joined_df.select(\"message_id\", \"ingested_datetime\").filter(\"ingested_datetime is not null\").head(5))"
-				],
-				"execution_count": null
+				"execution_count": 165
 			},
 			{
 				"cell_type": "code",
@@ -515,9 +319,167 @@
 					}
 				},
 				"source": [
-					"joined_df.printSchema()"
+					"def check_null_message_enqueued_time_utc(df) -> DataFrame:\r\n",
+					"    # define date pattern to extract the dates from the input file path\r\n",
+					"    date_pattern = r'(\\d{4}-\\d{2}-\\d{2})'\r\n",
+					"    df_final = df.withColumn(\"message_enqueued_time_utc\", when(col(\"message_enqueued_time_utc\").isNull(),regexp_extract(df[\"input_file\"], date_pattern,1)).otherwise(col(\"message_enqueued_time_utc\")))\r\n",
+					"\r\n",
+					"    return df_final"
 				],
-				"execution_count": null
+				"execution_count": 117
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"historical_df_f = check_null_message_enqueued_time_utc(historical_df)"
+				],
+				"execution_count": 166
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"historical_df = historical_df_f"
+				],
+				"execution_count": 167
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_from\", current_timestamp())\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"message_enqueued_time_utc\")))"
+				],
+				"execution_count": 170
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"historical_schema = historical_df.schema\r\n",
+					"test_schemas_match(historical_schema, temp_table_schema)"
+				],
+				"execution_count": 171
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, temp_table_schema)\r\n",
+					"\r\n",
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(in_schema2_not_in_schema1)"
+				],
+				"execution_count": 172
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(historical_df.filter(\"ingested_datetime is not null\").head(3))"
+				],
+				"execution_count": 173
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(historical_df.select(\"message_id\", \"ingested_datetime\", \"message_enqueued_time_utc\", \"input_file\").filter(\"ingested_datetime is null\").head(5))"
+				],
+				"execution_count": 175
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"historical_df.printSchema()"
+				],
+				"execution_count": 176
 			},
 			{
 				"cell_type": "code",
@@ -538,7 +500,7 @@
 					"        df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
 					"    return df"
 				],
-				"execution_count": 6
+				"execution_count": 177
 			},
 			{
 				"cell_type": "code",
@@ -554,7 +516,7 @@
 					}
 				},
 				"source": [
-					"final_df = cast_columns(joined_df, table_schema)"
+					"# final_df = cast_columns(historical_df, temp_table_schema)"
 				],
 				"execution_count": null
 			},
@@ -573,9 +535,9 @@
 				},
 				"source": [
 					"# drop the input_file column as that's just for analysis\r\n",
-					"final_df = final_df.drop(\"input_file\")"
+					"final_df = historical_df.drop(\"input_file\")"
 				],
-				"execution_count": null
+				"execution_count": 179
 			},
 			{
 				"cell_type": "code",
@@ -591,12 +553,12 @@
 					}
 				},
 				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(final_df.schema, table_schema)\r\n",
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(final_df.schema, temp_table_schema)\r\n",
 					"\r\n",
 					"print(in_schema1_not_in_schema2)\r\n",
 					"print(in_schema2_not_in_schema1)"
 				],
-				"execution_count": null
+				"execution_count": 180
 			},
 			{
 				"cell_type": "code",
@@ -612,9 +574,9 @@
 					}
 				},
 				"source": [
-					"test_schemas_match(final_df.schema, table_schema)"
+					"test_schemas_match(final_df.schema, temp_table_schema)"
 				],
-				"execution_count": null
+				"execution_count": 181
 			},
 			{
 				"cell_type": "code",
@@ -642,7 +604,7 @@
 					"\r\n",
 					"    return table_df"
 				],
-				"execution_count": null
+				"execution_count": 182
 			},
 			{
 				"cell_type": "code",
@@ -662,7 +624,7 @@
 					"\r\n",
 					"apply_df_to_table(table_df, std_db_name, raw_table)"
 				],
-				"execution_count": null
+				"execution_count": 183
 			},
 			{
 				"cell_type": "code",
@@ -683,9 +645,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_nsip_project_tmp limit 10"
+					"SELECT * FROM odw_standardised_db.sb_s51_advice_tmp limit 65"
 				],
-				"execution_count": null
+				"execution_count": 186
 			},
 			{
 				"cell_type": "markdown",
@@ -721,9 +683,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"DROP TABLE IF EXISTS odw_harmonised_db.sb_nsip_project"
+					"DROP TABLE IF EXISTS odw_harmonised_db.sb_s51_advice"
 				],
-				"execution_count": null
+				"execution_count": 187
 			},
 			{
 				"cell_type": "code",
@@ -740,9 +702,9 @@
 				},
 				"source": [
 					"##Go create our harmonised table\r\n",
-					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": \"nsip-project\"})"
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": \"s51-advice\"})"
 				],
-				"execution_count": null
+				"execution_count": 188
 			},
 			{
 				"cell_type": "code",
@@ -758,9 +720,9 @@
 					}
 				},
 				"source": [
-					"spark.table(\"odw_harmonised_db.sb_nsip_project\").printSchema()"
+					"spark.table(\"odw_harmonised_db.sb_s51_advice\").printSchema()"
 				],
-				"execution_count": null
+				"execution_count": 189
 			},
 			{
 				"cell_type": "code",
@@ -781,9 +743,102 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"REFRESH TABLE odw_harmonised_db.sb_nsip_project"
+					"REFRESH TABLE odw_harmonised_db.sb_s51_advice"
 				],
-				"execution_count": 8
+				"execution_count": 190
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"base = spark.sql(f\"\"\"\r\n",
+					"                SELECT DISTINCT\r\n",
+					"                    CAST(ingested_datetime AS Date) AS ingested_datetime\r\n",
+					"                FROM\r\n",
+					"                    {raw_table_name}\r\n",
+					"                WHERE\r\n",
+					"                    ingested_datetime IS NOT NULL\r\n",
+					"                ORDER BY \r\n",
+					"                    1 ASC\r\n",
+					"                \"\"\")"
+				],
+				"execution_count": 191
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"for rows in base.collect():\r\n",
+					"    processing = rows[\"ingested_datetime\"]\r\n",
+					"    \r\n",
+					"    print(f\"Processing {processing}\")\r\n",
+					"\r\n",
+					"    #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
+					"    std = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {std_table_name_full}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                        \"\"\")"
+				],
+				"execution_count": 192
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"std.printSchema()"
+				],
+				"execution_count": 193
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": 194
 			},
 			{
 				"cell_type": "code",
@@ -859,7 +914,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 195
 			},
 			{
 				"cell_type": "code",
@@ -880,9 +935,9 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_nsip_project --limit 10"
+					"SELECT * FROM odw_standardised_db.sb_s51_advice --limit 10"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
