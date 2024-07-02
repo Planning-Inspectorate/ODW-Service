@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "21116932-bc73-4873-9f5b-9bab87d48676"
+				"spark.autotune.trackingId": "b1b53dd5-fc92-4d10-8218-d3239a391874"
 			}
 		},
 		"metadata": {
@@ -268,6 +268,31 @@
 					"collapsed": false
 				},
 				"source": [
+					"#date_folder='2024-06-21'\n",
+					"#source_folder='entraid'\n",
+					"#source_frequency_folder=''\n",
+					"#specific_file='' # if not provided, it will ingest all files in the date_folder\n",
+					"#delete_existing_table=False\n",
+					"#isMultiLine = True\n",
+					"#dataAttribute = \"value\""
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
 					"if date_folder == '':\n",
 					"    date_folder = datetime.now().date()\n",
 					"else:\n",
@@ -283,7 +308,6 @@
 					"\n",
 					"source_path = f\"{raw_container}{source_folder_path}/{date_folder_str}\"\n",
 					"\n",
-					"\n",
 					"files = mssparkutils.fs.ls(source_path)\n",
 					"for file in files:\n",
 					"\n",
@@ -291,7 +315,9 @@
 					"    if source_folder == 'ServiceBus' and file.name.endswith('.json'):\n",
 					"        continue\n",
 					"        \n",
-					"    definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) and (not source_frequency_folder or d['Source_Frequency_Folder'] == source_frequency_folder) and file.name.startswith(d['Source_Filename_Start'])), None)\n",
+					"    definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) \n",
+					"                        and (not source_frequency_folder or d['Source_Frequency_Folder'] == source_frequency_folder) \n",
+					"                        and file.name.startswith(d['Source_Filename_Start'])), None)\n",
 					"    \n",
 					"    if definition:\n",
 					"        expected_from = date_folder - timedelta(days=1)\n",
@@ -303,7 +329,10 @@
 					"            mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
 					"\n",
 					"        print(f\"Ingesting {file.name}\")\n",
-					"        ingest_adhoc(storage_account, definition, source_path, file.name, expected_from, expected_to)\n",
+					"        row_count = ingest_adhoc(storage_account, definition, source_path, file.name, expected_from, expected_to, isMultiLine, dataAttribute)\n",
+					"        print(f\"Ingested {row_count} rows\")\n",
+					"    else:\n",
+					"        print(\"No definition found\")    \n",
 					""
 				],
 				"execution_count": 106
