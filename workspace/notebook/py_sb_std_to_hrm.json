@@ -15,12 +15,12 @@
 			"driverCores": 4,
 			"executorMemory": "28g",
 			"executorCores": 4,
-			"numExecutors": 2,
+			"numExecutors": 3,
 			"conf": {
-				"spark.dynamicAllocation.enabled": "true",
-				"spark.dynamicAllocation.minExecutors": "2",
-				"spark.dynamicAllocation.maxExecutors": "8",
-				"spark.autotune.trackingId": "415e5a6a-7718-4f97-954d-bf4a65961ed5"
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "3",
+				"spark.dynamicAllocation.maxExecutors": "3",
+				"spark.autotune.trackingId": "556a6138-7203-441e-867a-a6d963d7e032"
 			}
 		},
 		"metadata": {
@@ -335,7 +335,7 @@
 				},
 				"source": [
 					"def get_latest_ingested_data() -> tuple:\n",
-					"    latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {std_db}.{std_table}) ORDER BY message_enqueued_time_utc\")\n",
+					"    latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE CAST(ingested_datetime AS Date) = (SELECT MAX(CAST(ingested_datetime AS Date)) FROM {std_db}.{std_table}) ORDER BY message_enqueued_time_utc\")\n",
 					"    if latest_ingestion.count() == 0:\n",
 					"        mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\n",
 					"\n",
@@ -347,6 +347,7 @@
 					"    update_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"].isin([\"Update\", \"Publish\", \"Unpublish\"])]\n",
 					"    delete_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Delete\"]\n",
 					"    target_df: DataFrame = spark.table(f\"{hrm_db}.{hrm_table}\")\n",
+					"\n",
 					"\n",
 					"    return (latest_ingestion,\n",
 					"            create_df, \n",
