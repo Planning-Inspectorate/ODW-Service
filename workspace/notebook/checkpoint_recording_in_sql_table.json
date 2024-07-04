@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c96ea020-617f-4c29-a937-6fef7a783e3f"
+				"spark.autotune.trackingId": "72649217-6972-418e-8585-cd173e1d470a"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"spark.sql(f\"drop table if exists default.PipelineCheckpoints;\")"
 				],
-				"execution_count": 7
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +88,7 @@
 					");\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -104,28 +104,85 @@
 					}
 				},
 				"source": [
-					"import logging\r\n",
+					"import os\r\n",
 					"import pyodbc\r\n",
-					"import azure.functions as func\r\n",
 					"from datetime import datetime\r\n",
 					"\r\n",
+					"def save_checkpoint(req):\r\n",
+					"    pipeline_name = req.get('pipelineName')\r\n",
+					"    activity_name = req.get('activityName')\r\n",
+					"    status = req.get('status')\r\n",
+					"    if not pipeline_name or not activity_name or not status:\r\n",
+					"        return \"Please pass pipelineName, activityName, and status\", 400\r\n",
+					"\r\n",
+					"    server = os.environ['DB_SERVER']\r\n",
+					"    database = os.environ['DB_NAME']\r\n",
+					"    username = os.environ['DB_USERNAME']\r\n",
+					"    password = os.environ['DB_PASSWORD']\r\n",
+					"    \r\n",
+					"    conn_str = f'Driver={{ODBC Driver 17 for SQL Server}};Server=tcp:{server},1433;Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'\r\n",
+					"    conn = pyodbc.connect(conn_str)\r\n",
+					"    \r\n",
+					"    cursor = conn.cursor()\r\n",
+					"    sql = \"\"\"\r\n",
+					"        MERGE INTO PipelineCheckpoints AS target \r\n",
+					"        USING (SELECT ? AS PipelineName, ? AS ActivityName, ? AS Status, ? AS LastUpdated) AS source \r\n",
+					"        ON (target.PipelineName = source.PipelineName AND target.ActivityName = source.ActivityName) \r\n",
+					"        WHEN MATCHED THEN \r\n",
+					"            UPDATE SET Status = source.Status, LastUpdated = source.LastUpdated \r\n",
+					"        WHEN NOT MATCHED THEN \r\n",
+					"            INSERT (PipelineName, ActivityName, Status, LastUpdated) \r\n",
+					"            VALUES (source.PipelineName, source.ActivityName, source.Status, source.LastUpdated);\r\n",
+					"    \"\"\"\r\n",
+					"    cursor.execute(sql, (pipeline_name, activity_name, status, datetime.utcnow()))\r\n",
+					"    conn.commit()\r\n",
+					"    cursor.close()\r\n",
+					"    conn.close()\r\n",
+					"    \r\n",
+					"    return f\"Checkpoint for {pipeline_name}-{activity_name} saved with status {status}.\", 200\r\n",
+					"\r\n",
+					"# Example request payload\r\n",
+					"req_payload = {\r\n",
+					"    'pipelineName': 'Pipeline1',\r\n",
+					"    'activityName': 'Activity1',\r\n",
+					"    'status': 'Succeeded'\r\n",
+					"}\r\n",
+					"print(save_checkpoint(req_payload))\r\n",
+					""
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"def main(req: func.HttpRequest) -> func.HttpResponse:\r\n",
 					"    pipeline_name = req.params.get('pipelineName')\r\n",
-					"    activity_name = req.params.get('activityName')\r\n",
-					"    status = req.params.get('status')\r\n",
-					"    if not pipeline_name or not activity_name or not status:\r\n",
+					"    if not pipeline_name:\r\n",
 					"        return func.HttpResponse(\r\n",
-					"            \"Please pass pipelineName, activityName, and status on the query string or in the request body\",\r\n",
+					"            \"Please pass pipelineName on the query string or in the request body\",\r\n",
 					"            status_code=400\r\n",
 					"        )\r\n",
 					"\r\n",
 					"    conn = pyodbc.connect(\"Driver={ODBC Driver 17 for SQL Server};Server=tcp:<your-server-name>.database.windows.net,1433;Database=<your-database-name>;Uid=<your-username>;Pwd=<your-password>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;\")\r\n",
 					"    cursor = conn.cursor()\r\n",
-					"    cursor.execute(\"MERGE INTO PipelineCheckpoints AS target USING (SELECT ? AS PipelineName, ? AS ActivityName, ? AS Status, ? AS LastUpdated) AS source ON (target.PipelineName = source.PipelineName AND target.ActivityName = source.ActivityName) WHEN MATCHED THEN UPDATE SET Status = source.Status, LastUpdated = source.LastUpdated WHEN NOT MATCHED THEN INSERT (PipelineName, ActivityName, Status, LastUpdated) VALUES (source.PipelineName, source.ActivityName, source.Status, source.LastUpdated);\", (pipeline_name, activity_name, status, datetime.utcnow()))\r\n",
-					"    conn.commit()\r\n",
+					"    cursor.execute(\"SELECT ActivityName, Status FROM PipelineCheckpoints WHERE PipelineName = ?\", pipeline_name)\r\n",
+					"    rows = cursor.fetchall()\r\n",
 					"    cursor.close()\r\n",
 					"    conn.close()\r\n",
-					"    return func.HttpResponse(f\"Checkpoint for {pipeline_name}-{activity_name} saved with status {status}.\")\r\n",
+					"\r\n",
+					"    checkpoints = {row.ActivityName: row.Status for row in rows}\r\n",
+					"    return func.HttpResponse(body=json.dumps(checkpoints), mimetype=\"application/json\")\r\n",
 					""
 				],
 				"execution_count": null
@@ -144,27 +201,38 @@
 					}
 				},
 				"source": [
-					"import logging\r\n",
+					"import os\r\n",
 					"import pyodbc\r\n",
-					"import azure.functions as func\r\n",
+					"import json\r\n",
 					"\r\n",
-					"def main(req: func.HttpRequest) -> func.HttpResponse:\r\n",
-					"    pipeline_name = req.params.get('pipelineName')\r\n",
+					"def load_checkpoint(req):\r\n",
+					"    pipeline_name = req.get('pipelineName')\r\n",
 					"    if not pipeline_name:\r\n",
-					"        return func.HttpResponse(\r\n",
-					"            \"Please pass pipelineName on the query string or in the request body\",\r\n",
-					"            status_code=400\r\n",
-					"        )\r\n",
+					"        return \"Please pass pipelineName\", 400\r\n",
 					"\r\n",
-					"    conn = pyodbc.connect(\"Driver={ODBC Driver 17 for SQL Server};Server=tcp:<your-server-name>.database.windows.net,1433;Database=<your-database-name>;Uid=<your-username>;Pwd=<your-password>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;\")\r\n",
+					"    server = os.environ['DB_SERVER']\r\n",
+					"    database = os.environ['DB_NAME']\r\n",
+					"    username = os.environ['DB_USERNAME']\r\n",
+					"    password = os.environ['DB_PASSWORD']\r\n",
+					"    \r\n",
+					"    conn_str = f'Driver={{ODBC Driver 17 for SQL Server}};Server=tcp:{server},1433;Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'\r\n",
+					"    conn = pyodbc.connect(conn_str)\r\n",
+					"    \r\n",
 					"    cursor = conn.cursor()\r\n",
-					"    cursor.execute(\"SELECT ActivityName, Status FROM PipelineCheckpoints WHERE PipelineName = ?\", pipeline_name)\r\n",
+					"    sql = \"SELECT ActivityName, Status FROM PipelineCheckpoints WHERE PipelineName = ?\"\r\n",
+					"    cursor.execute(sql, (pipeline_name,))\r\n",
 					"    rows = cursor.fetchall()\r\n",
 					"    cursor.close()\r\n",
 					"    conn.close()\r\n",
-					"\r\n",
+					"    \r\n",
 					"    checkpoints = {row.ActivityName: row.Status for row in rows}\r\n",
-					"    return func.HttpResponse(body=json.dumps(checkpoints), mimetype=\"application/json\")\r\n",
+					"    return json.dumps(checkpoints), 200\r\n",
+					"\r\n",
+					"# Example request payload\r\n",
+					"req_payload = {\r\n",
+					"    'pipelineName': 'Pipeline1'\r\n",
+					"}\r\n",
+					"print(load_checkpoint(req_payload))\r\n",
 					""
 				],
 				"execution_count": null
