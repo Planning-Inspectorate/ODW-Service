@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fc9e730f-b1b4-48ce-b1e8-21794f0e23f2"
+				"spark.autotune.trackingId": "972c62c7-f74f-4570-8db1-6b4df0521578"
 			}
 		},
 		"metadata": {
@@ -105,9 +105,51 @@
 				},
 				"source": [
 					"import os\r\n",
+					"from azure.identity import DefaultAzureCredential\r\n",
+					"from azure.keyvault.secrets import SecretClient\r\n",
 					"import pyodbc\r\n",
-					"from datetime import datetime\r\n",
-					"\r\n",
+					"from datetime import datetime"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_secret(secret_name):\r\n",
+					"    key_vault_name = os.environ[\"KEY_VAULT_NAME\"]\r\n",
+					"    kv_uri = f\"https://{key_vault_name}.vault.azure.net\"\r\n",
+					"    credential = DefaultAzureCredential()\r\n",
+					"    client = SecretClient(vault_url=kv_uri, credential=credential)\r\n",
+					"    secret = client.get_secret(secret_name)\r\n",
+					"    return secret.value"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"def save_checkpoint(req):\r\n",
 					"    req_body = req.get_json()\r\n",
 					"    pipeline_name = req_body.get('pipelineName')\r\n",
@@ -117,10 +159,10 @@
 					"    if not pipeline_name or not activity_name or not status:\r\n",
 					"        return \"Please pass pipelineName, activityName, and status\", 400\r\n",
 					"\r\n",
-					"    server = os.environ['pins-synw-odw-dev-uks-ondemand.sql.azuresynapse.net']\r\n",
-					"    database = os.environ['master']\r\n",
-					"    username = os.environ['paul.dragan@planninginspectorate.gov.uk']\r\n",
-					"    password = os.environ['Mallard414!.']\r\n",
+					"    server = get_secret('DB_SERVER')\r\n",
+					"    database = get_secret('DB_NAME')\r\n",
+					"    username = get_secret('DB_USERNAME')\r\n",
+					"    password = get_secret('DB_PASSWORD')\r\n",
 					"    \r\n",
 					"    conn_str = f'Driver={{ODBC Driver 17 for SQL Server}};Server=tcp:{server},1433;Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;'\r\n",
 					"    conn = pyodbc.connect(conn_str)\r\n",
