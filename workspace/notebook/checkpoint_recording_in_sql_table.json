@@ -1,0 +1,174 @@
+{
+	"name": "checkpoint_recording_in_sql_table",
+	"properties": {
+		"folder": {
+			"name": "utils"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "c96ea020-617f-4c29-a937-6fef7a783e3f"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"spark.sql(f\"drop table if exists default.PipelineCheckpoints;\")"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE TABLE \r\n",
+					"    PipelineCheckpoints (\r\n",
+					"    PipelineName VARCHAR(8000),\r\n",
+					"    ActivityName VARCHAR(8000),\r\n",
+					"    Status VARCHAR(8000),\r\n",
+					"    LastUpdated timestamp\r\n",
+					");\r\n",
+					""
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import logging\r\n",
+					"import pyodbc\r\n",
+					"import azure.functions as func\r\n",
+					"from datetime import datetime\r\n",
+					"\r\n",
+					"def main(req: func.HttpRequest) -> func.HttpResponse:\r\n",
+					"    pipeline_name = req.params.get('pipelineName')\r\n",
+					"    activity_name = req.params.get('activityName')\r\n",
+					"    status = req.params.get('status')\r\n",
+					"    if not pipeline_name or not activity_name or not status:\r\n",
+					"        return func.HttpResponse(\r\n",
+					"            \"Please pass pipelineName, activityName, and status on the query string or in the request body\",\r\n",
+					"            status_code=400\r\n",
+					"        )\r\n",
+					"\r\n",
+					"    conn = pyodbc.connect(\"Driver={ODBC Driver 17 for SQL Server};Server=tcp:<your-server-name>.database.windows.net,1433;Database=<your-database-name>;Uid=<your-username>;Pwd=<your-password>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;\")\r\n",
+					"    cursor = conn.cursor()\r\n",
+					"    cursor.execute(\"MERGE INTO PipelineCheckpoints AS target USING (SELECT ? AS PipelineName, ? AS ActivityName, ? AS Status, ? AS LastUpdated) AS source ON (target.PipelineName = source.PipelineName AND target.ActivityName = source.ActivityName) WHEN MATCHED THEN UPDATE SET Status = source.Status, LastUpdated = source.LastUpdated WHEN NOT MATCHED THEN INSERT (PipelineName, ActivityName, Status, LastUpdated) VALUES (source.PipelineName, source.ActivityName, source.Status, source.LastUpdated);\", (pipeline_name, activity_name, status, datetime.utcnow()))\r\n",
+					"    conn.commit()\r\n",
+					"    cursor.close()\r\n",
+					"    conn.close()\r\n",
+					"    return func.HttpResponse(f\"Checkpoint for {pipeline_name}-{activity_name} saved with status {status}.\")\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import logging\r\n",
+					"import pyodbc\r\n",
+					"import azure.functions as func\r\n",
+					"\r\n",
+					"def main(req: func.HttpRequest) -> func.HttpResponse:\r\n",
+					"    pipeline_name = req.params.get('pipelineName')\r\n",
+					"    if not pipeline_name:\r\n",
+					"        return func.HttpResponse(\r\n",
+					"            \"Please pass pipelineName on the query string or in the request body\",\r\n",
+					"            status_code=400\r\n",
+					"        )\r\n",
+					"\r\n",
+					"    conn = pyodbc.connect(\"Driver={ODBC Driver 17 for SQL Server};Server=tcp:<your-server-name>.database.windows.net,1433;Database=<your-database-name>;Uid=<your-username>;Pwd=<your-password>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;\")\r\n",
+					"    cursor = conn.cursor()\r\n",
+					"    cursor.execute(\"SELECT ActivityName, Status FROM PipelineCheckpoints WHERE PipelineName = ?\", pipeline_name)\r\n",
+					"    rows = cursor.fetchall()\r\n",
+					"    cursor.close()\r\n",
+					"    conn.close()\r\n",
+					"\r\n",
+					"    checkpoints = {row.ActivityName: row.Status for row in rows}\r\n",
+					"    return func.HttpResponse(body=json.dumps(checkpoints), mimetype=\"application/json\")\r\n",
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
