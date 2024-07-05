@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2dd59b3b-4423-46b8-833c-772623910aa7"
+				"spark.autotune.trackingId": "a5a5a2aa-a644-4d61-ad7a-770cb8eba57e"
 			}
 		},
 		"metadata": {
@@ -79,9 +79,10 @@
 				},
 				"source": [
 					"from pyspark.sql import DataFrame\r\n",
-					"from pyspark.sql.types import StructType"
+					"from pyspark.sql.types import StructType\r\n",
+					"from pyspark.sql.functions import *"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -92,7 +93,7 @@
 					"\n",
 					"    # Write the DataFrame with the new column to a new temporary table\n",
 					"    temp_table_name: str = 'temporary_table'\n",
-					"    df.write.mode(\"overwrite\").saveAsTable(f\"{db_name}.{temp_table_name}\")\n",
+					"    df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(f\"{db_name}.{temp_table_name}\")\n",
 					"\n",
 					"    # Drop the original table\n",
 					"    spark.sql(f\"DROP TABLE IF EXISTS {db_name}.{table_name}\")\n",
@@ -118,12 +119,15 @@
 				"source": [
 					"def compare_schemas(schema1: StructType, schema2: StructType) -> tuple:\n",
 					"    fields1 = set((field.name, field.dataType) for field in schema1.fields)\n",
-					"    fields2 = set((field.name, field.dataType) for field in schema2.fields) # can add field.nullable for more accuracy\n",
+					"    fields2 = set((field.name, field.dataType) for field in schema2.fields)\n",
+					"\n",
+					"    in_schema1_not_in_schema2 = fields1 - fields2\n",
+					"    in_schema2_not_in_schema1 = fields2 - fields1\n",
 					"    \n",
-					"    in_schema1_not_in_schema2: set = fields1 - fields2\n",
-					"    in_schema2_not_in_schema1: set = fields2 - fields1\n",
+					"    in_schema1_not_in_schema2_sorted = sorted(in_schema1_not_in_schema2, key=lambda x: x[0])\n",
+					"    in_schema2_not_in_schema1_sorted = sorted(in_schema2_not_in_schema1, key=lambda x: x[0])\n",
 					"    \n",
-					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
+					"    return in_schema1_not_in_schema2_sorted, in_schema2_not_in_schema1_sorted"
 				],
 				"execution_count": null
 			},
@@ -189,6 +193,96 @@
 					"        \n",
 					"    else:\n",
 					"        print('Schemas match.')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def collect_all_raw_sb_data(folder_name: str, schema: StructType) -> DataFrame:\r\n",
+					"\r\n",
+					"    \"\"\"\r\n",
+					"    Function to loop through all sub-folders in a given folder path and collect all\r\n",
+					"    json data into a single DataFrame. To be used for a reload of an entity from all\r\n",
+					"    data in the RAW layer.\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        folder_name: the name of the folder in the storage account. May be different from the\r\n",
+					"        entity name.\r\n",
+					"        schema: a spark schema of type StructType to apply to the RAW data.\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        A spark DataFrame of all json data from the RAW layer for a given root folder\r\n",
+					"    \"\"\"\r\n",
+					"\r\n",
+					"    storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"\r\n",
+					"    folder: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{folder_name}\"\r\n",
+					"\r\n",
+					"    df: DataFrame = (spark.read.format(\"json\")\r\n",
+					"        .schema(schema) \r\n",
+					"        .option(\"recursiveFileLookup\", \"true\")\r\n",
+					"        .option(\"pathGlobFilter\",\"*.json\")\r\n",
+					"        .load(folder))\r\n",
+					"\r\n",
+					"    df_with_filename: DataFrame = df.withColumn(\"input_file\", input_file_name())\r\n",
+					"\r\n",
+					"    return df_with_filename"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def collect_all_raw_sb_data_historic(folder_name: str) -> DataFrame:\r\n",
+					"\r\n",
+					"    \"\"\"\r\n",
+					"    Function to loop through all sub-folders in a given folder path and collect all\r\n",
+					"    json data into a single DataFrame. To be used for a reload of an entity from all\r\n",
+					"    data in the RAW layer.\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        folder_name: the name of the folder in the storage account. May be different from the\r\n",
+					"        entity name.\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        A spark DataFrame of all json data from the RAW layer for a given root folder\r\n",
+					"    \"\"\"\r\n",
+					"\r\n",
+					"    storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"\r\n",
+					"    folder: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{folder_name}\"\r\n",
+					"\r\n",
+					"    df: DataFrame = (spark.read.format(\"json\")\r\n",
+					"        .option(\"recursiveFileLookup\", \"true\")\r\n",
+					"        .option(\"pathGlobFilter\",\"*.json\")\r\n",
+					"        .load(folder))\r\n",
+					"\r\n",
+					"    df_with_filename: DataFrame = df.withColumn(\"input_file\", input_file_name())\r\n",
+					"\r\n",
+					"    return df_with_filename"
 				],
 				"execution_count": null
 			}
