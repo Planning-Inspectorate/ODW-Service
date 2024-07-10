@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e4a747e4-cc6d-4e42-888b-55a21cd95517"
+				"spark.autotune.trackingId": "d3c22ca6-390c-40d3-828e-e161188a5903"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 157
+				"execution_count": 194
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
 				],
-				"execution_count": 158
+				"execution_count": 195
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +129,7 @@
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 159
+				"execution_count": 196
 			},
 			{
 				"cell_type": "code",
@@ -147,7 +147,7 @@
 				"source": [
 					"service_bus_data"
 				],
-				"execution_count": 160
+				"execution_count": 197
 			},
 			{
 				"cell_type": "code",
@@ -196,7 +196,7 @@
 					"                        odw_standardised_db.horizon_nsip_advice\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 161
+				"execution_count": 198
 			},
 			{
 				"cell_type": "code",
@@ -214,11 +214,13 @@
 				"source": [
 					"#Establish aggregated view of attachmentIds\r\n",
 					"horizon_attachement= horizon_data.groupBy(\"caseid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
-					"horizon_data = horizon_data.join(horizon_attachement, on=\"caseid\", how=\"inner\").drop(\"attachmentIds\")\r\n",
+					"horizon_data = horizon_data.drop(\"attachmentIds\")\r\n",
+					"horizon_data = horizon_data.join(horizon_attachement, on=\"caseid\", how=\"inner\")\r\n",
 					"#sort columns into same order as service bus\r\n",
-					"horizon_data = horizon_data.select(service_bus_data.columns)"
+					"horizon_data = horizon_data.select(service_bus_data.columns)\r\n",
+					""
 				],
-				"execution_count": 164
+				"execution_count": 199
 			},
 			{
 				"cell_type": "code",
@@ -236,7 +238,25 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 163
+				"execution_count": 201
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+				],
+				"execution_count": 202
 			},
 			{
 				"cell_type": "markdown",
