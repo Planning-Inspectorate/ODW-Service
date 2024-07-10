@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a28d154c-1a8a-4093-9ee7-90f090ee483a"
+				"spark.autotune.trackingId": "f8db2961-39b7-43c9-9a89-d1e6a14a361d"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
 				],
-				"execution_count": 19
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -97,34 +97,39 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
 					"service_bus_data = spark.sql(\"\"\"\r\n",
 					"                    SELECT \r\n",
-					"                        ingested_datetime\r\n",
-					"                        ,expected_from\r\n",
-					"                        ,expected_to\r\n",
-					"                        ,advicedate\r\n",
-					"                        ,advicedetails\r\n",
-					"                        ,advicegivenby\r\n",
-					"                        ,adviceid\r\n",
-					"                        ,advicereference\r\n",
-					"                        ,agent,\r\n",
-					"                        attachmentids\r\n",
+					"                        S51AdviceID\r\n",
+					"                        ,adviceId\r\n",
+					"                        ,NULL AS adviceReference\r\n",
 					"                        ,caseid\r\n",
 					"                        ,casereference\r\n",
-					"                        ,enquirydate\r\n",
-					"                        ,enquirydetails\r\n",
-					"                        ,from\r\n",
-					"                        ,method\r\n",
-					"                        ,status\r\n",
 					"                        ,title\r\n",
-					"                        ,redactionstatus\r\n",
-					"                        ,message_type\r\n",
-					"                        ,message_enqueued_time_utc\r\n",
+					"                        ,titleWelsh\r\n",
+					"                        ,from\r\n",
+					"                        ,agent\r\n",
+					"                        ,method\r\n",
+					"                        ,enquirydate as enquiryDate\r\n",
+					"                        ,enquirydetails as enquiryDetails\r\n",
+					"                        ,advicegivenby as adviceGivenBy\r\n",
+					"                        ,advicedate as adviceDate\r\n",
+					"                        ,advicedetails as adviceDetails\r\n",
+					"                        ,enquiryDetailsWelsh\r\n",
+					"                        ,status\r\n",
+					"                        ,redactionstatus as redactionStatus\r\n",
+					"                        ,attachmentids\r\n",
+					"                        ,ValidTo\r\n",
+					"                        ,RowID\r\n",
+					"                        ,IsActive\r\n",
+					"                        ,null as message_type\r\n",
+					"                        ,null as message_enqueued_time_utc\r\n",
+					"                        ,null as message_id\r\n",
+					"                        ,NULL as ingested_datetime\r\n",
 					"\r\n",
 					"                    FROM \r\n",
-					"                        {service_bus_table}\r\n",
+					"                        odw_harmonised_db.sb_s51_advice\r\n",
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -143,32 +148,32 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\r\n",
 					"horizon_data = spark.sql(\"\"\"\r\n",
 					"                SELECT   NULL as NSIPAdviceID\r\n",
-					"                        ,advicenodeid as AdviceNodeID\r\n",
-					"                        ,title as AdviceTitle\r\n",
-					"                        ,casereference  as CaseReference\r\n",
-					"                        ,advicereference as AdviceReference\r\n",
-					"                        ,advicestatus as AdviceStatus\r\n",
-					"                        ,null as RedactionStatus\r\n",
-					"                        ,section51advice as Section51Advice\r\n",
-					"                        , Null as Enquirer\r\n",
-					"                        ,enquirerorganisation as EnquirerOrganisation\r\n",
+					"                        ,advicenodeid as adviceId\r\n",
+					"                        ,AdviceReference as adviceReference\r\n",
+					"                        ,CaseNodeID as caseid\r\n",
+					"                        ,CaseReference as caseReference\r\n",
+					"                        ,title\r\n",
+					"                        ,null as titleWelsh\r\n",
+					"                        ,concat(enquirerfirstname,' ',enquirerlastname)  as from\r\n",
+					"                        ,EnquirerOrganisation as agent\r\n",
+					"                        ,enqirymethod as method\r\n",
 					"                        ,enquirydate as EnquiryDate\r\n",
-					"                        ,enqirymethod as EnquiryMethod\r\n",
-					"                        ,enquiry as Enquiry\r\n",
-					"                        ,advicefrom as AdviceFrom\r\n",
-					"                        ,advicedate as AdviceDate\r\n",
-					"                        ,advice as Advice\r\n",
-					"                        ,advicelastmodified as AdviceLastModified\r\n",
-					"                        ,attachmentcount as AttachmentCount\r\n",
-					"                        , AttachmentID\r\n",
-					"                        ,attachmentslastmodified as AttachmentLastModified\r\n",
-					"                        ,lastpublisheddate as LastPublishedDate\r\n",
-					"                        ,casenodeid as CaseNodeID\r\n",
-					"                        ,welshlanguage as WelshLanguage\r\n",
-					"                        ,caseWorktype as CaseWorkType\r\n",
-					"                        ,\"0\" as Migrated\r\n",
-					"                        ,\"Horizon\" as ODTSourceSystem\r\n",
-					"                        ,NULL as SourceSystemID\r\n",
+					"                        ,enquiry as EnquiryDetails\r\n",
+					"                        ,AdviceFrom as adviceGivenBy\r\n",
+					"                        ,AdviceDate as adviceDate\r\n",
+					"                        ,null as enquiryDetailsWelsh\r\n",
+					"                        ,AdviceStatus as status\r\n",
+					"                        ,null as redactionStatus\r\n",
+					"                        ,AttachmentID as attachmentIds\r\n",
+					"                    \r\n",
+					"                        ,null as ValidTo\r\n",
+					"                        ,null as RowID\r\n",
+					"                        ,'Y' AS IsActive\r\n",
+					"                        ,null as message_type\r\n",
+					"                        ,null as message_type\r\n",
+					"                        ,null as message_enqueued_time_utc\r\n",
+					"                        ,null as message_id\r\n",
+					"                        ,NULL as ingested_datetime\r\n",
 					"                        ,ingested_datetime\r\n",
 					"                        ,null as ValidTo\r\n",
 					"                        ,null as RowID\r\n",
@@ -177,7 +182,26 @@
 					"                        odw_standardised_db.horizon_nsip_advice\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 11
+				"execution_count": 64
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"horizon_attachement= horizon_data.groupBy(\"attachmentIds\").agg(collect_list(\"attachmentIds\").alias(\"attachement\"))\r\n",
+					"horizon_attachement = horizon_data.join(horizon_attachement, on=\"caseid\", how=\"inner\").drop(\"horizon_attachement\")"
+				],
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -194,8 +218,8 @@
 				},
 				"source": [
 					"#Establish aggregated view of regions\r\n",
-					"horizon_region = horizon_data.groupBy(\"caseid\").agg(collect_list(\"region\").alias(\"regions\"))\r\n",
-					"horizon_data = horizon_data.join(horizon_region, on=\"caseid\", how=\"inner\").drop(\"region\")\r\n",
+					"horizon_region = horizon_data.groupBy(\"attachmentIds\").agg(collect_list(\"region\").alias(\"regions\"))\r\n",
+					"horizon_data = horizon_data.join(horizon_region, on=\"horizon_attachement\", how=\"inner\").drop(\"horizon_attachement\")\r\n",
 					"\r\n",
 					"#Build nsipOfficerIds \r\n",
 					"horizon_officer = horizon_data.groupBy(\"caseid\").agg(collect_list(\"nsipOfficerIds\").alias(\"nsipOfficerIds\"))\r\n",
