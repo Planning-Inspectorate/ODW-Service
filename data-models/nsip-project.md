@@ -29,7 +29,7 @@ classDiagram
              casenodeid:int
         }
 
-        class nsip_project {
+        class sb_nsip_project-std {
             CaseID
         }
 
@@ -37,10 +37,12 @@ classDiagram
 
     namespace Harmonised {
 
+        class sb_nsip_project-hrm{
+            CaseID
+        }
 
-        class casework_nsip_data_dim {
-            horizon_nsip_data
-            nsip_project
+        class nsip_project-hrm {
+            CaseID
         }
 
     }
@@ -54,12 +56,12 @@ classDiagram
 
 
 `HZN_NSIP_Data_Copy` --> `horizon_nsip_data`
-`nsip-project` -->`nsip_project`
+`nsip-project` -->`sb_nsip_project-std`
+`sb_nsip_project-std` -->`sb_nsip_project-hrm`
+`sb_nsip_project-hrm` -->`nsip_project-hrm`
 
-`horizon_nsip_data` --> `casework_nsip_data_dim`
+`horizon_nsip_data` -->`nsip_project-hrm`
+`nsip_project-hrm` -->`nsip_data`
 
-`nsip_project`--> `casework_nsip_data_dim`
-
-`casework_nsip_data_dim` --> `nsip_data`
 
 ```
