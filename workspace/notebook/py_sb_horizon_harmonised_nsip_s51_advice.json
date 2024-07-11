@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f2a6c948-bd0d-41dc-89c3-ad8892b91b66"
+				"spark.autotune.trackingId": "a6d8e2a5-f009-484c-a2db-9e575733c271"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 194
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
 				],
-				"execution_count": 195
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -119,10 +119,23 @@
 					"                        ,ValidTo\r\n",
 					"                        ,RowID\r\n",
 					"                        ,IsActive\r\n",
-					"                        ,null as message_type\r\n",
-					"                        ,null as message_enqueued_time_utc\r\n",
-					"                        ,null as message_id\r\n",
 					"                        ,NULL as ingested_datetime\r\n",
+					"                        ---Horizon columns\r\n",
+					"                        ,NULL as RedactionStatus\r\n",
+					"                        ,NULL as Section51Advice\r\n",
+					"                        ,enquirerfirstname as EnquirerFirstName\r\n",
+					"                        ,enquirerorganisation as EnquirerOrganisation\r\n",
+					"                        ,enquiry as Enquiry\r\n",
+					"                        ,advice as Advice\r\n",
+					"                        ,advicelastmodified as AdviceLastModified\r\n",
+					"                        ,attachmentcount as AttachmentCount\r\n",
+					"                        ,attachmentslastmodified as AttachmentLastModified\r\n",
+					"                        ,lastpublisheddate as LastPublishedDate\r\n",
+					"                        ,welshlanguage as WelshLanguage\r\n",
+					"                        ,caseWorktype as CaseWorkType\r\n",
+					"                        ,\"0\" as Migrated\r\n",
+					"                        ,\"Horizon\" as ODTSourceSystem\r\n",
+					"                        ,to_timestamp(expected_from)  AS IngestionDate\r\n",
 					"\r\n",
 					"                    FROM \r\n",
 					"                        odw_harmonised_db.sb_s51_advice\r\n",
@@ -159,26 +172,38 @@
 					"                        ,enqirymethod as method\r\n",
 					"                        ,enquirydate as EnquiryDate\r\n",
 					"                        ,enquiry as EnquiryDetails\r\n",
-					"                        ,AdviceFrom as adviceGivenBy\r\n",
+					"                        ,AdviceFrom as adviceGivenBy --AdviceFrom\r\n",
 					"                        ,AdviceDate as adviceDate\r\n",
 					"                        ,advice as adviceDetails\r\n",
 					"                        ,null as enquiryDetailsWelsh\r\n",
 					"                        ,AdviceStatus as status\r\n",
 					"                        ,null as redactionStatus\r\n",
-					"                        ,AttachmentID as attachmentIds\r\n",
+					"                        ,AttachmentID as attachmentId\r\n",
 					"                        ,null as ValidTo\r\n",
 					"                        ,null as RowID\r\n",
-					"                        ,'Y' AS IsActive\r\n",
-					"                        ,null as message_type\r\n",
-					"                        ,null as message_enqueued_time_utc\r\n",
-					"                        ,null as message_id\r\n",
 					"                        ,NULL as ingested_datetime\r\n",
-					" \r\n",
+					"\r\n",
+					"                        ,NULL as RedactionStatus\r\n",
+					"                        ,section51advice as Section51Advice\r\n",
+					"                        ,enquirerfirstname as EnquirerFirstName\r\n",
+					"                        ,enquirerorganisation as EnquirerOrganisation\r\n",
+					"                        ,enquiry as Enquiry\r\n",
+					"                        ,advice as Advice\r\n",
+					"                        ,advicelastmodified as AdviceLastModified\r\n",
+					"                        ,attachmentcount as AttachmentCount\r\n",
+					"                        ,attachmentslastmodified as AttachmentLastModified\r\n",
+					"                        ,lastpublisheddate as LastPublishedDate\r\n",
+					"                        ,welshlanguage as WelshLanguage\r\n",
+					"                        ,caseWorktype as CaseWorkType\r\n",
+					"                        ,\"0\" as Migrated\r\n",
+					"                        ,\"Horizon\" as ODTSourceSystem\r\n",
+					"                        ,to_timestamp(expected_from)  AS IngestionDate\r\n",
+					"\r\n",
 					"                    FROM\r\n",
 					"                        odw_standardised_db.horizon_nsip_advice\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 198
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -195,8 +220,8 @@
 				},
 				"source": [
 					"#Establish aggregated view of attachmentIds\r\n",
-					"horizon_attachement= horizon_data.groupBy(\"caseid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
-					"horizon_data = horizon_data.drop(\"attachmentIds\")\r\n",
+					"horizon_attachement= horizon_data.groupBy(\"caseid\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
+					"horizon_data = horizon_data.drop(\"attachmentId\")\r\n",
 					"horizon_data = horizon_data.join(horizon_attachement, on=\"caseid\", how=\"inner\")\r\n",
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)\r\n",
