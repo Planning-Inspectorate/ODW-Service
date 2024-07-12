@@ -1,0 +1,515 @@
+{
+	"name": "py_reload_from_raw_4059649f-cb21-49e6-93e6-21b8b43d10aa",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "71c8f447-7662-4922-9e2d-058fe60ad11d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": [
+						"parameters_overwritten"
+					]
+				},
+				"source": [
+					"# This cell is generated from runtime parameters. Learn more: https://go.microsoft.com/fwlink/?linkid=2161015\n",
+					"entity_name = \"appeal-has\"\n",
+					"std_db_name = \"odw_standardised_db\"\n",
+					"hrm_db_name = \"odw_harmonised_db\"\n",
+					"table_name = \"sb_appeal_has\"\n",
+					"raw_table_name  = \"odw_standardised_db.sb_appeal_has_temp\"\n",
+					"raw_table = \"sb_appeal_has_tmp\"\n",
+					""
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import DataFrame\r\n",
+					"from pyspark.sql.functions import *\r\n",
+					"import pprint\r\n",
+					"import pandas\r\n",
+					"from pyspark.sql.functions import col, lit\r\n",
+					"from pyspark.sql.types import *"
+				],
+				"execution_count": 42
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"entity_name = \"\" # example: nsip-project\r\n",
+					"std_db_name = \"\" # example: odw_standardised_db\r\n",
+					"hrm_db_name = \"\" # example: odw_harmonised_db\r\n",
+					"table_name = \"\" # example: sb_nsip_project\r\n",
+					"raw_table_name = \"\" # example: odw_standardised_db.sb_nsip_project_tmp\r\n",
+					"raw_table = \"\" # example: sb_nsip_project_tmp\r\n",
+					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
+					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
+					""
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#%%sql\r\n",
+					"#DROP TABLE IF EXISTS odw_standardised_db.sb_nsip_project_tmp\r\n",
+					"\r\n",
+					"spark.sql(f\"DROP TABLE IF EXISTS {raw_table_name}\")"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#%%sql\r\n",
+					"#DROP TABLE IF EXISTS odw_standardised_db.sb_nsip_project\r\n",
+					"\r\n",
+					"spark.sql(f\"DROP TABLE IF EXISTS {std_table_name_full}\")"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"##Go create our standardised table\r\n",
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#%%sql\r\n",
+					"#ALTER TABLE odw_standardised_db.sb_nsip_project RENAME TO sb_nsip_project_tmp;\r\n",
+					"spark.sql(f\"ALTER TABLE {std_table_name_full} RENAME TO {raw_table_name}\")"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"##Go create our standardised table again\r\n",
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": std_db_name, \"entity_name\": entity_name})"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.table(raw_table_name).printSchema()"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "markdown",
+				"source": [
+					"### Load all historic files into a table that we can use for processing"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run service-bus/py_spark_df_ingestion_functions"
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def create_valid_dataframe(entity_name: str, schema: StructType ) -> DataFrame:\r\n",
+					"    df: DataFrame = collect_all_raw_sb_data(entity_name, schema)\r\n",
+					"    return df"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def test_schemas_match(schema1: StructType, schema2: StructType) -> bool:\r\n",
+					"    return schema1 == schema2"
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def compare_schema_fields_only(schema1: StructType, schema2: StructType) -> tuple:\r\n",
+					"    fields1 = set((field.name) for field in schema1.fields)\r\n",
+					"    fields2 = set((field.name) for field in schema2.fields)\r\n",
+					"    \r\n",
+					"    in_schema1_not_in_schema2: set = fields1 - fields2\r\n",
+					"    in_schema2_not_in_schema1: set = fields2 - fields1\r\n",
+					"    \r\n",
+					"    return in_schema1_not_in_schema2, in_schema2_not_in_schema1"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"temp_table_schema = spark.table(f\"{raw_table_name}\").schema\r\n",
+					"historical_df: DataFrame = create_valid_dataframe(entity_name, temp_table_schema)\r\n",
+					"historical_schema = historical_df.schema"
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"display(historical_df)"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"historical_df.printSchema()"
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"test_schemas_match(historical_schema, temp_table_schema)"
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, temp_table_schema)\r\n",
+					"\r\n",
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(\"#\"*20)\r\n",
+					"print(in_schema2_not_in_schema1)"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_from\", current_timestamp())\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
+					"historical_df: DataFrame = historical_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"message_enqueued_time_utc\")))"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"display(historical_df)"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"historical_df.printSchema()"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, temp_table_schema)\r\n",
+					"\r\n",
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(\"#\"*20)\r\n",
+					"print(in_schema2_not_in_schema1)"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
+					"#     x=0\r\n",
+					"#     for field in schema.fields:\r\n",
+					"#         #if field.name == \"caseSpecialisms\":\r\n",
+					"#         if field.dataType == ArrayType(StringType()):\r\n",
+					"#             x=+1\r\n",
+					"#         else: \r\n",
+					"#             df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
+					"#     return df"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# from pyspark.sql.types import ArrayType,IntegerType\r\n",
+					"# historical_df = historical_df.withColumn(\"caseSpecialisms\",  historical_df[\"caseSpecialisms\"].cast(ArrayType))\r\n",
+					"# final_df = cast_columns(historical_df, table_schema)\r\n",
+					"final_df = historical_df"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# drop the input_file column as that's just for analysis\r\n",
+					"final_df = final_df.drop(\"input_file\")"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(final_df.schema, temp_table_schema)\r\n",
+					"\r\n",
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(\"#\"*20)\r\n",
+					"print(in_schema2_not_in_schema1)"
+				],
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"test_schemas_match(final_df.schema, temp_table_schema)"
+				],
+				"execution_count": 26
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\r\n",
+					"    table_df: DataFrame = spark.table(table_name)\r\n",
+					"    df: DataFrame = df.select(table_df.columns)\r\n",
+					"    table_df: DataFrame = table_df.union(df)\r\n",
+					"\r\n",
+					"    # removing duplicates while ignoring the ingestion dates columns\r\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
+					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
+					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\r\n",
+					"\r\n",
+					"    return table_df"
+				],
+				"execution_count": 27
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_df: DataFrame = create_dataframe_to_load(final_df, raw_table_name)\r\n",
+					"\r\n",
+					"apply_df_to_table(table_df, std_db_name, raw_table)"
+				],
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_data = spark.sql(\"SELECT * FROM odw_standardised_db.sb_appeal_has_temp\")\r\n",
+					"display(table_data)"
+				],
+				"execution_count": 29
+			},
+			{
+				"cell_type": "markdown",
+				"source": [
+					"### Load data into standardised and harmonised\r\n",
+					"\r\n",
+					"Now load the data into standardised. We need to replay each of the loads, that way we ensure that updates and deletes are handled correctly. If we try to do this in a bulk load, we'll only load the last file in the set (as standard code is only designed for single loads)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"DROP TABLE IF EXISTS odw_harmonised_db.sb_appeal_has"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"##Go create our harmonised table\r\n",
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": entity_name})"
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.table(\"odw_harmonised_db.sb_appeal_has\").printSchema()"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"REFRESH TABLE odw_harmonised_db.sb_appeal_has"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"base = spark.sql(f\"\"\"\r\n",
+					"                SELECT DISTINCT\r\n",
+					"                    CAST(ingested_datetime AS Date) AS ingested_datetime\r\n",
+					"                FROM\r\n",
+					"                    {raw_table_name}\r\n",
+					"                WHERE\r\n",
+					"                    ingested_datetime IS NOT NULL\r\n",
+					"                ORDER BY \r\n",
+					"                    1 ASC\r\n",
+					"                \"\"\")\r\n",
+					"\r\n",
+					"for rows in base.collect():\r\n",
+					"    processing = rows[\"ingested_datetime\"]\r\n",
+					"    \r\n",
+					"    print(f\"Processing {processing}\")\r\n",
+					"\r\n",
+					"    #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
+					"    std = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {std_table_name_full}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
+					"    \r\n",
+					"    if std.count() == 0:\r\n",
+					"        print(f\"Inserting into {std_table_name_full}\")\r\n",
+					"        ##Add the data into standardised for processing if we haven't processed it\r\n",
+					"        rw = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {raw_table_name}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
+					"        \r\n",
+					"        rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
+					"        spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
+					"\r\n",
+					"    #Check if we've already processed the data or not\r\n",
+					"    hrm = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {hrm_table_name_full}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(IngestionDate AS DATE) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
+					"\r\n",
+					"    \r\n",
+					"    \r\n",
+					"    if hrm.count() == 0:\r\n",
+					"         print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
+					"         ## Run the standard process if we haven't already\r\n",
+					"         mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 6100, {\"entity_name\": entity_name})\r\n",
+					"         spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
+					"        \r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_standardised_db.sb_appeal_has --limit 10"
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_harmonised_db.sb_appeal_has --limit 10"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def collect_all_raw_sb_data(folder_name: str):\n",
+					"\n",
+					"    storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"\n",
+					"    folder: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{folder_name}\"\n",
+					"\n",
+					"    df: DataFrame = (spark.read.format(\"json\") \n",
+					"        .option(\"recursiveFileLookup\", \"true\")\n",
+					"        .option(\"pathGlobFilter\",\"*.json\")\n",
+					"        .load(folder))\n",
+					"\n",
+					"    df_with_filename: DataFrame = df.withColumn(\"input_file\", input_file_name())\n",
+					"\n",
+					"    return df_with_filename"
+				],
+				"execution_count": 37
+			}
+		]
+	}
+}
