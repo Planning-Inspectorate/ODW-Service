@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a2e45585-b7b7-4977-ba4f-006b1bcec20c"
+				"spark.autotune.trackingId": "9d762be6-c2a3-410b-ac23-5293260d9d1e"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 87
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
 				],
-				"execution_count": 88
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -134,14 +134,14 @@
 					"                        ,NULL as CaseWorkType\r\n",
 					"                        ,\"0\" as Migrated\r\n",
 					"                        ,null as ODTSourceSystem\r\n",
-					"                        ,null  AS IngestionDate\r\n",
+					"                        , null  AS IngestionDate\r\n",
 					"                        \r\n",
 					"                    FROM \r\n",
 					"                        odw_harmonised_db.sb_s51_advice\r\n",
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 89
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -177,7 +177,7 @@
 					"                        ,null as enquiryDetailsWelsh\r\n",
 					"                        ,AdviceStatus as status\r\n",
 					"                        ,null as redactionStatus\r\n",
-					"                        ,AttachmentID as attachmentIds\r\n",
+					"                        ,Cast(AttachmentID as string) as attachmentIds\r\n",
 					"                        ,null as ValidTo\r\n",
 					"                        ,null as RowID\r\n",
 					"                        ,null as IsActive\r\n",
@@ -195,13 +195,49 @@
 					"                        ,caseWorktype as CaseWorkType\r\n",
 					"                        ,\"0\" as Migrated\r\n",
 					"                        ,\"Horizon\" as ODTSourceSystem\r\n",
-					"                        ,to_timestamp(expected_from)  AS IngestionDate\r\n",
+					"                        , to_timestamp(expected_from)  AS IngestionDate\r\n",
 					"\r\n",
 					"                    FROM\r\n",
 					"                        odw_standardised_db.horizon_nsip_advice\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 90
+				"execution_count": 98
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"horizon_data"
+				],
+				"execution_count": 99
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"service_bus_data"
+				],
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
@@ -219,13 +255,13 @@
 				"source": [
 					"#Establish aggregated view of attachmentIds\r\n",
 					"horizon_attachement= horizon_data.groupBy(\"caseid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIdss\"))\r\n",
-					"horizon_data = horizon_data.drop(\"attachmentId\")\r\n",
+					"horizon_data = horizon_data.drop(\"attachmentIds\")\r\n",
 					"horizon_data = horizon_data.join(horizon_attachement, on=\"caseid\", how=\"inner\")\r\n",
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)\r\n",
 					""
 				],
-				"execution_count": 91
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -242,24 +278,6 @@
 				},
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
-				],
-				"execution_count": 92
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"results"
 				],
 				"execution_count": null
 			},
@@ -279,7 +297,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 93
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -332,81 +350,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.casework_nsip_advice_dim"
 				],
-				"execution_count": 94
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df_calcs = spark.sql(\"\"\"\r\n",
-					"                        SELECT\r\n",
-					"                            CurrentRow.caseid \r\n",
-					"                            ,CurrentRow.IngestionDate\r\n",
-					"                            ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
-					"                            ,CASE\r\n",
-					"                                WHEN raw.caseid IS NOT NULL THEN \r\n",
-					"                                    \"1\"\r\n",
-					"                                ELSE \r\n",
-					"                                    \"0\"\r\n",
-					"                            END AS migrated\r\n",
-					"                            ,CurrentRow.IsActive\r\n",
-					"                        FROM\r\n",
-					"                            vw_nsip_s51_advice_calculations_base AS CurrentRow\r\n",
-					"                            LEFT OUTER JOIN vw_nsip_s51_advice_calculations_base AS NextRow\r\n",
-					"                                ON CurrentRow.caseid = NextRow.caseid\r\n",
-					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT caseid FROM  odw_harmonised_db.sb_s51_advice) AS Raw\r\n",
-					"                                ON CurrentRow.caseid = Raw.caseid \"\"\")"
-				],
-				"execution_count": 95
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df_calcs = spark.sql(\"\"\"\r\n",
-					"                        SELECT\r\n",
-					"                            CurrentRow.caseid \r\n",
-					"                            ,CurrentRow.IngestionDate\r\n",
-					"                            ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
-					"                            ,CASE\r\n",
-					"                                WHEN raw.caseid IS NOT NULL THEN \r\n",
-					"                                    \"1\"\r\n",
-					"                                ELSE \r\n",
-					"                                    \"0\"\r\n",
-					"                            END AS migrated\r\n",
-					"                            ,CurrentRow.IsActive\r\n",
-					"                        FROM\r\n",
-					"                            vw_nsip_s51_advice_calculations_base AS CurrentRow\r\n",
-					"                            LEFT OUTER JOIN vw_nsip_s51_advice_calculations_base AS NextRow\r\n",
-					"                                ON CurrentRow.caseid = NextRow.caseid\r\n",
-					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT caseid FROM  odw_harmonised_db.sb_s51_advice) AS Raw\r\n",
-					"                                ON CurrentRow.caseid = Raw.caseid \"\"\")\r\n",
-					"\r\n",
-					"df_calcs =df_calcs.withColumnRenamed(\"caseid\", \"temp_caseid\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
-				],
-				"execution_count": 96
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -531,7 +475,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 99
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -549,7 +493,7 @@
 				"source": [
 					"final_df"
 				],
-				"execution_count": 100
+				"execution_count": null
 			}
 		]
 	}
