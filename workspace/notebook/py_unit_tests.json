@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "99ac4899-1a89-408a-aa11-d131f1120ee1"
+				"spark.autotune.trackingId": "7f1b50ab-c67f-474f-88cb-7578611d1ce1"
 			}
 		},
 		"metadata": {
@@ -103,9 +103,14 @@
 					}
 				},
 				"source": [
-					"entity_name: str = 'appeal-has'\r\n",
-					"db_name: str = 'odw_standardised_db'\r\n",
-					"table_name = 'sb_appeal_has'"
+					"entity_name: str = 'nsip-project'\r\n",
+					"std_db_name: str = 'odw_standardised_db'\r\n",
+					"hrm_db_name = 'odw_harmonised_db'\r\n",
+					"curated_db_name = 'odw_curated_db'\r\n",
+					"std_table_name = 'sb_nsip_project'\r\n",
+					"hrm_table_name = 'sb_nsip_project'\r\n",
+					"hrm_table_final = 'nsip_project'\r\n",
+					"curated_table_name = 'nsip_data'"
 				],
 				"execution_count": null
 			},
@@ -225,8 +230,8 @@
 					}
 				},
 				"source": [
-					"my_schema = create_spark_schema(db_name, entity_name)\r\n",
-					"table_schema = spark.table(f\"{db_name}.{table_name}\").schema"
+					"my_schema = create_spark_schema(std_db_name, entity_name)\r\n",
+					"table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema"
 				],
 				"execution_count": null
 			},
@@ -311,9 +316,25 @@
 					"    result = {}\r\n",
 					"    for field in schema.fields:\r\n",
 					"        result.update(extract_field(field))\r\n",
-					"    return result\r\n",
-					"\r\n",
-					"def compare_schemas(schema1, schema2):\r\n",
+					"    return result"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_compare_schemas(schema1, schema2):\r\n",
 					"    structure1 = extract_schema_structure(schema1)\r\n",
 					"    structure2 = extract_schema_structure(schema2)\r\n",
 					"    \r\n",
@@ -341,18 +362,161 @@
 					"                    differences.append((field, structure1[field], structure2[field]))\r\n",
 					"    \r\n",
 					"    if differences:\r\n",
-					"        print(\"Schemas are different.\")\r\n",
+					"        # print(\"Schemas are different.\")\r\n",
 					"        # Create a Spark DataFrame to display the differences\r\n",
 					"        differences_df = spark.createDataFrame(differences, [\"Field\", \"Schema 1\", \"Schema 2\"])\r\n",
 					"        display(differences_df)\r\n",
 					"        return False\r\n",
 					"    else:\r\n",
-					"        print(\"Schemas are identical.\")\r\n",
-					"        return True\r\n",
+					"        # print(\"Schemas are identical.\")\r\n",
+					"        return True"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_std_same_rows_hrm(std_table: str, hrm_table: str) -> tuple:\r\n",
+					"    std_table_full = f\"{std_db_name}.{std_table}\"\r\n",
+					"    hrm_table_full = f\"{hrm_db_name}.{hrm_table}\"\r\n",
+					"    std_count = spark.table(std_table_full).count()\r\n",
+					"    hrm_count = spark.table(hrm_table_full).count()\r\n",
 					"\r\n",
-					"# Compare the schemas\r\n",
-					"are_schemas_equal = compare_schemas(schema1, schema2)\r\n",
-					"print(f\"Are the schemas equal? {are_schemas_equal}\")"
+					"    return (std_count, hrm_count, std_count == hrm_count)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_curated_row_count(hrm_table_final: str, curated_table: str):\r\n",
+					"    hrm_table_full = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"    curated_table_full = f\"{curated_db_name}.{curated_table_name}\"\r\n",
+					"    hrm_count = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
+					"    curated_count = spark.table(curated_table_full).count()\r\n",
+					"\r\n",
+					"    return (hrm_count, curated_count, hrm_count == curated_count)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Compare schemas"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"are_schemas_equal = test_compare_schemas(my_schema, table_schema)\r\n",
+					"print(f\"Schemas match: {are_schemas_equal}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Compare service bus standardised with harmonised\r\n",
+					"Should be the same count"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
+					"print(f\"Standardised count: {standardised_count}\\nHarmonised count: {harmonised_count}\\nCounts match: {counts_match}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Compare final harmonised table (if combined with Horizon) with curated table\r\n",
+					"Comparing where IsActive = Y in harmonised = curated row count"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
+					"print(f\"Harmonised Final Count: {harmonised_final_count}\\nCurated Count: {curated_count}\\nCounts match: {counts_match}\")"
 				],
 				"execution_count": null
 			}
