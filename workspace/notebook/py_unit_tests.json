@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0ecbb897-3af7-43d0-a84e-c3ea5a3046cd"
+				"spark.autotune.trackingId": "99ac4899-1a89-408a-aa11-d131f1120ee1"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,44 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%pip install pytest"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import json\r\n",
+					"import pytest\r\n",
+					"from pyspark.sql.types import *"
+				],
+				"execution_count": null
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -206,8 +244,115 @@
 					}
 				},
 				"source": [
-					"def test_schemas_match(my_schema, table_schema):\r\n",
-					"    in_schema1_not_in_schema2_sorted, in_schema2_not_in_schema1_sortedcompare_schemas(my_schema, table_schema)"
+					"schema1 = StructType([\r\n",
+					"    StructField('id', StringType(), False),\r\n",
+					"    StructField('name', StringType(), True),\r\n",
+					"    StructField('neighbouringSites', ArrayType(\r\n",
+					"        StructType([\r\n",
+					"            StructField('neighbouringSiteAddressLine_test', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteAddressLine2', IntegerType(), True),\r\n",
+					"            StructField('neighbouringSiteAddressTown', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteAddressCounty', StringType(), True),\r\n",
+					"            StructField('neighbouringSiteAddressPostcode', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteAccessDetails', StringType(), True),\r\n",
+					"            StructField('neighbouringSiteSafetyDetails', StringType(), True)\r\n",
+					"        ])\r\n",
+					"    ), True),\r\n",
+					"    StructField('tags', ArrayType(StringType()), True)\r\n",
+					"])\r\n",
+					"\r\n",
+					"schema2 = StructType([\r\n",
+					"    StructField('id', IntegerType(), True),\r\n",
+					"    StructField('name', StringType(), False),\r\n",
+					"    StructField('neighbouringSites', ArrayType(\r\n",
+					"        StructType([\r\n",
+					"            StructField('neighbouringSiteAddressLine1', StringType(), True),\r\n",
+					"            StructField('neighbouringSiteAddressLine2', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteAddressTown', StringType(), True),\r\n",
+					"            StructField('neighbouringSiteAddressCounty', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteAddressPostcode', StringType(), True),\r\n",
+					"            StructField('neighbouringSiteAccessDetails', StringType(), False),\r\n",
+					"            StructField('neighbouringSiteSafetyDetails', DecimalType(), False)\r\n",
+					"        ])\r\n",
+					"    ), False),\r\n",
+					"    StructField('tags', ArrayType(StringType()), False)\r\n",
+					"])"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"def extract_schema_structure(schema):\r\n",
+					"    def extract_field(field):\r\n",
+					"        if isinstance(field.dataType, StructType):\r\n",
+					"            return {field.name: {subfield.name: str(subfield.dataType) for subfield in field.dataType.fields}}\r\n",
+					"        elif isinstance(field.dataType, ArrayType):\r\n",
+					"            element_type = field.dataType.elementType\r\n",
+					"            if isinstance(element_type, StructType):\r\n",
+					"                return {field.name: {subfield.name: str(subfield.dataType) for subfield in element_type.fields}}\r\n",
+					"            else:\r\n",
+					"                return {field.name: f'array<{str(element_type)}>'}\r\n",
+					"        else:\r\n",
+					"            return {field.name: str(field.dataType)}\r\n",
+					"    \r\n",
+					"    result = {}\r\n",
+					"    for field in schema.fields:\r\n",
+					"        result.update(extract_field(field))\r\n",
+					"    return result\r\n",
+					"\r\n",
+					"def compare_schemas(schema1, schema2):\r\n",
+					"    structure1 = extract_schema_structure(schema1)\r\n",
+					"    structure2 = extract_schema_structure(schema2)\r\n",
+					"    \r\n",
+					"    differences = []\r\n",
+					"    \r\n",
+					"    all_fields = set(structure1.keys()).union(set(structure2.keys()))\r\n",
+					"    \r\n",
+					"    for field in all_fields:\r\n",
+					"        if field not in structure1:\r\n",
+					"            differences.append((field, \"Field not in schema1\", structure2[field]))\r\n",
+					"        elif field not in structure2:\r\n",
+					"            differences.append((field, structure1[field], \"Field not in schema2\"))\r\n",
+					"        else:\r\n",
+					"            if structure1[field] != structure2[field]:\r\n",
+					"                if isinstance(structure1[field], dict) and isinstance(structure2[field], dict):\r\n",
+					"                    subfields = set(structure1[field].keys()).union(set(structure2[field].keys()))\r\n",
+					"                    for subfield in subfields:\r\n",
+					"                        if subfield not in structure1[field]:\r\n",
+					"                            differences.append((f\"{field}.{subfield}\", \"Field not in schema1\", structure2[field][subfield]))\r\n",
+					"                        elif subfield not in structure2[field]:\r\n",
+					"                            differences.append((f\"{field}.{subfield}\", structure1[field][subfield], \"Field not in schema2\"))\r\n",
+					"                        elif structure1[field][subfield] != structure2[field][subfield]:\r\n",
+					"                            differences.append((f\"{field}.{subfield}\", structure1[field][subfield], structure2[field][subfield]))\r\n",
+					"                else:\r\n",
+					"                    differences.append((field, structure1[field], structure2[field]))\r\n",
+					"    \r\n",
+					"    if differences:\r\n",
+					"        print(\"Schemas are different.\")\r\n",
+					"        # Create a Spark DataFrame to display the differences\r\n",
+					"        differences_df = spark.createDataFrame(differences, [\"Field\", \"Schema 1\", \"Schema 2\"])\r\n",
+					"        display(differences_df)\r\n",
+					"        return False\r\n",
+					"    else:\r\n",
+					"        print(\"Schemas are identical.\")\r\n",
+					"        return True\r\n",
+					"\r\n",
+					"# Compare the schemas\r\n",
+					"are_schemas_equal = compare_schemas(schema1, schema2)\r\n",
+					"print(f\"Are the schemas equal? {are_schemas_equal}\")"
 				],
 				"execution_count": null
 			}
