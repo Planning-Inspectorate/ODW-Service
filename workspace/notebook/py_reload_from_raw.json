@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "805a6e31-9b58-4108-919a-7b519e37b011"
+				"spark.autotune.trackingId": "9e65d2aa-3d01-43a7-9b49-caa369347e43"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,7 @@
 					"from pyspark.sql.functions import col, lit\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 42
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -87,9 +87,9 @@
 					"entity_name = \"nsip-project\"\r\n",
 					"std_db_name = \"odw_standardised_db\"\r\n",
 					"hrm_db_name = \"odw_harmonised_db\"\r\n",
-					"table_name = \"sb_nsip_project\"\r\n",
-					"raw_table_name = \"odw_standardised_db.sb_nsip_project_tmp\"\r\n",
-					"raw_table = \"sb_nsip_project_tmp\"\r\n",
+					"table_name = \"sb_appeal_has\"\r\n",
+					"raw_table_name = \"odw_standardised_db.sb_appeal_has_tmp\"\r\n",
+					"raw_table = \"sb_appeal_has_tmp\"\r\n",
 					"\r\n",
 					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
 					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
@@ -446,7 +446,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(historical_df)"
+					"display(joined_df.head(5))"
 				],
 				"execution_count": 19
 			},
@@ -464,7 +464,9 @@
 					}
 				},
 				"source": [
-					"historical_df.printSchema()"
+					"joined_df: DataFrame = joined_df.withColumn(\"expected_from\", current_timestamp())\n",
+					"joined_df: DataFrame = joined_df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
+					"joined_df: DataFrame = joined_df.withColumn(\"ingested_datetime\", to_timestamp(col(\"historical.message_enqueued_time_utc\")))"
 				],
 				"execution_count": 20
 			},
@@ -482,11 +484,7 @@
 					}
 				},
 				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(historical_schema, temp_table_schema)\r\n",
-					"\r\n",
-					"print(in_schema1_not_in_schema2)\r\n",
-					"print(\"#\"*20)\r\n",
-					"print(in_schema2_not_in_schema1)"
+					"display(joined_df.filter(\"ingested_datetime is not null\").head(3))"
 				],
 				"execution_count": 21
 			},
@@ -504,15 +502,46 @@
 					}
 				},
 				"source": [
-					"# def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
-					"#     x=0\r\n",
-					"#     for field in schema.fields:\r\n",
-					"#         #if field.name == \"caseSpecialisms\":\r\n",
-					"#         if field.dataType == ArrayType(StringType()):\r\n",
-					"#             x=+1\r\n",
-					"#         else: \r\n",
-					"#             df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
-					"#     return df"
+					"display(joined_df.select(\"message_id\", \"ingested_datetime\").filter(\"ingested_datetime is not null\").head(5))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"joined_df.printSchema()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
+					"   for field in schema.fields:\r\n",
+					"       df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
+					"   return df"
 				],
 				"execution_count": 22
 			},
@@ -530,10 +559,8 @@
 					}
 				},
 				"source": [
-					"# from pyspark.sql.types import ArrayType,IntegerType\r\n",
-					"# historical_df = historical_df.withColumn(\"caseSpecialisms\",  historical_df[\"caseSpecialisms\"].cast(ArrayType))\r\n",
-					"# final_df = cast_columns(historical_df, table_schema)\r\n",
-					"final_df = historical_df"
+					"final_df = cast_columns(joined_df, table_schema)\r\n",
+					"final_df = final_df.withColumn(\"input_file_reversed\", reverse(final_df['input_file']))"
 				],
 				"execution_count": 23
 			},
@@ -551,8 +578,8 @@
 					}
 				},
 				"source": [
-					"# drop the input_file column as that's just for analysis\r\n",
-					"final_df = final_df.drop(\"input_file\")"
+					"from pyspark.sql.functions import reverse\r\n",
+					"from datetime import datetime  "
 				],
 				"execution_count": 24
 			},
@@ -570,11 +597,30 @@
 					}
 				},
 				"source": [
-					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(final_df.schema, temp_table_schema)\r\n",
+					"def process_row(row):\r\n",
+					" # drop the input_file column as that's just for analysis\r\n",
+					"   input_file = row['input_file_reversed']\r\n",
+					"   try:\r\n",
 					"\r\n",
-					"print(in_schema1_not_in_schema2)\r\n",
-					"print(\"#\"*20)\r\n",
-					"print(in_schema2_not_in_schema1)"
+					"\r\n",
+					"       date = input_file.split('/',1)[0].split('_',1)[0].split('nosj.',1)[1].split('+', 1)[1].split('.', 1)[1]\r\n",
+					"       date = \"\".join(reversed(date))\r\n",
+					"   except Exception as e:\r\n",
+					"       date = \"\"\r\n",
+					"\r\n",
+					"\r\n",
+					"   processed = row['ingested_datetime']\r\n",
+					"\r\n",
+					"\r\n",
+					"   if processed is None and date.find(':') > 0:\r\n",
+					"       processed = datetime.strptime(date, '%Y-%m-%dT%H:%M:%S')\r\n",
+					"\r\n",
+					"\r\n",
+					"   new_row = row.asDict()\r\n",
+					"   new_row['ingested_datetime'] = processed\r\n",
+					"  \r\n",
+					"   return new_row\r\n",
+					""
 				],
 				"execution_count": 25
 			},
@@ -592,7 +638,13 @@
 					}
 				},
 				"source": [
-					"test_schemas_match(final_df.schema, temp_table_schema)"
+					"temp = spark.createDataFrame(final_df.rdd.map(process_row), final_df.schema)\n",
+					"\n",
+					"\n",
+					"temp = temp.drop('input_file', 'input_file_reversed')\n",
+					"\n",
+					"\n",
+					"final_df = temp"
 				],
 				"execution_count": 26
 			},
@@ -610,17 +662,11 @@
 					}
 				},
 				"source": [
-					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\r\n",
-					"    table_df: DataFrame = spark.table(table_name)\r\n",
-					"    df: DataFrame = df.select(table_df.columns)\r\n",
-					"    table_df: DataFrame = table_df.union(df)\r\n",
+					"in_schema1_not_in_schema2, in_schema2_not_in_schema1 = compare_schemas(final_df.schema, table_schema)\r\n",
 					"\r\n",
-					"    # removing duplicates while ignoring the ingestion dates columns\r\n",
-					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
-					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
-					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\r\n",
 					"\r\n",
-					"    return table_df"
+					"print(in_schema1_not_in_schema2)\r\n",
+					"print(in_schema2_not_in_schema1)"
 				],
 				"execution_count": 27
 			},
@@ -638,9 +684,7 @@
 					}
 				},
 				"source": [
-					"table_df: DataFrame = create_dataframe_to_load(final_df, raw_table_name)\r\n",
-					"\r\n",
-					"apply_df_to_table(table_df, std_db_name, raw_table)"
+					"test_schemas_match(final_df.schema, table_schema)"
 				],
 				"execution_count": 28
 			},
@@ -659,10 +703,41 @@
 					"collapsed": false
 				},
 				"source": [
-					"table_data = spark.sql(\"SELECT * FROM odw_standardised_db.sb_appeal_has_temp\")\r\n",
-					"display(table_data)"
+					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\r\n",
+					"   table_df: DataFrame = spark.table(table_name)\r\n",
+					"   df: DataFrame = df.select(table_df.columns)\r\n",
+					"   table_df: DataFrame = table_df.union(df)\r\n",
+					"\r\n",
+					"\r\n",
+					"   # removing duplicates while ignoring the ingestion dates columns\r\n",
+					"   columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
+					"   columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
+					"   table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\r\n",
+					"\r\n",
+					"\r\n",
+					"   return table_df"
 				],
 				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_df: DataFrame = create_dataframe_to_load(final_df, raw_table_name)\n",
+					"\n",
+					"apply_df_to_table(table_df, std_db_name, raw_table)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -690,34 +765,11 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"DROP TABLE IF EXISTS odw_harmonised_db.sb_appeal_has"
-				],
-				"execution_count": 30
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
 					}
 				},
 				"source": [
 					"##Go create our harmonised table\r\n",
-					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": entity_name})"
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": f\"{entity_name}\"})"
 				],
 				"execution_count": 31
 			},
@@ -735,7 +787,7 @@
 					}
 				},
 				"source": [
-					"spark.table(\"odw_harmonised_db.sb_appeal_has\").printSchema()"
+					"spark.table(f\"{hrm_table_name_full}\").printSchema()"
 				],
 				"execution_count": 32
 			},
@@ -751,14 +803,10 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"REFRESH TABLE odw_harmonised_db.sb_appeal_has"
+					"spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")"
 				],
 				"execution_count": 33
 			},
@@ -778,62 +826,69 @@
 				},
 				"source": [
 					"base = spark.sql(f\"\"\"\r\n",
-					"                SELECT DISTINCT\r\n",
-					"                    CAST(ingested_datetime AS Date) AS ingested_datetime\r\n",
-					"                FROM\r\n",
-					"                    {raw_table_name}\r\n",
-					"                WHERE\r\n",
-					"                    ingested_datetime IS NOT NULL\r\n",
-					"                ORDER BY \r\n",
-					"                    1 ASC\r\n",
-					"                \"\"\")\r\n",
+					"               SELECT DISTINCT\r\n",
+					"                  CAST(ingested_datetime AS Date)\r\n",
+					"               FROM\r\n",
+					"                   {raw_table_name}\r\n",
+					"               WHERE\r\n",
+					"                   ingested_datetime IS NOT NULL\r\n",
+					"                   AND message_type IS NOT NULL\r\n",
+					"               ORDER BY\r\n",
+					"                   1 ASC\r\n",
+					"               \"\"\")\r\n",
+					"\r\n",
 					"\r\n",
 					"for rows in base.collect():\r\n",
-					"    processing = rows[\"ingested_datetime\"]\r\n",
-					"    \r\n",
-					"    print(f\"Processing {processing}\")\r\n",
+					"   processing = rows[\"ingested_datetime\"]\r\n",
+					"  \r\n",
+					"   print(f\"Processing {processing}\")\r\n",
 					"\r\n",
-					"    #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
-					"    std = spark.sql(f\"\"\"SELECT \r\n",
-					"                            * \r\n",
-					"                        FROM \r\n",
-					"                            {std_table_name_full}\r\n",
-					"                        WHERE \r\n",
+					"\r\n",
+					"   #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
+					"   std = spark.sql(f\"\"\"SELECT\r\n",
+					"                           *\r\n",
+					"                       FROM\r\n",
+					"                           {std_table_name_full}\r\n",
+					"                       WHERE\r\n",
 					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
-					"                        \"\"\")\r\n",
-					"    \r\n",
-					"    if std.count() == 0:\r\n",
-					"        print(f\"Inserting into {std_table_name_full}\")\r\n",
-					"        ##Add the data into standardised for processing if we haven't processed it\r\n",
-					"        rw = spark.sql(f\"\"\"SELECT \r\n",
-					"                            * \r\n",
-					"                        FROM \r\n",
-					"                            {raw_table_name}\r\n",
-					"                        WHERE \r\n",
-					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
-					"                        \"\"\")\r\n",
-					"        \r\n",
-					"        rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
-					"        spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
+					"                       \"\"\")\r\n",
+					"  \r\n",
+					"   if std.count() == 0:\r\n",
+					"       print(f\"Inserting into {std_table_name_full}\")\r\n",
+					"       ##Add the data into standardised for processing if we haven't processed it\r\n",
+					"       rw = spark.sql(f\"\"\"SELECT\r\n",
+					"                           *\r\n",
+					"                       FROM\r\n",
+					"                           {raw_table_name}\r\n",
+					"                       WHERE\r\n",
+					"                           CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                       \"\"\")\r\n",
+					"      \r\n",
+					"       rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
+					"       spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
 					"\r\n",
-					"    #Check if we've already processed the data or not\r\n",
-					"    hrm = spark.sql(f\"\"\"SELECT \r\n",
-					"                            * \r\n",
-					"                        FROM \r\n",
-					"                            {hrm_table_name_full}\r\n",
-					"                        WHERE \r\n",
-					"                            CAST(IngestionDate AS DATE) = '{processing}'\r\n",
-					"                        \"\"\")\r\n",
 					"\r\n",
-					"    \r\n",
-					"    \r\n",
-					"    if hrm.count() == 0:\r\n",
-					"         print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
-					"         ## Run the standard process if we haven't already\r\n",
-					"         mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 6100, {\"entity_name\": entity_name})\r\n",
-					"         spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
-					"        \r\n",
+					"   #Check if we've already processed the data or not\r\n",
+					"   hrm = spark.sql(f\"\"\"SELECT\r\n",
+					"                           *\r\n",
+					"                       FROM\r\n",
+					"                           {hrm_table_name_full}\r\n",
+					"                       WHERE\r\n",
+					"                           CAST(IngestionDate AS Date) = '{processing}'\r\n",
+					"                       \"\"\")\r\n",
 					"\r\n",
+					"\r\n",
+					"  \r\n",
+					"  \r\n",
+					"   if hrm.count() == 0:\r\n",
+					"       print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
+					"       ## Run the standard process if we haven't already\r\n",
+					"       try:\r\n",
+					"           mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
+					"       except Exception as error:\r\n",
+					"           mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
+					"    \r\n",
+					"       spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
 					""
 				],
 				"execution_count": 34
@@ -852,20 +907,20 @@
 					}
 				},
 				"source": [
-					"def collect_all_raw_sb_data(folder_name: str):\n",
+					"# def collect_all_raw_sb_data(folder_name: str):\n",
 					"\n",
-					"    storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"#     storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"\n",
-					"    folder: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{folder_name}\"\n",
+					"#     folder: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{folder_name}\"\n",
 					"\n",
-					"    df: DataFrame = (spark.read.format(\"json\") \n",
-					"        .option(\"recursiveFileLookup\", \"true\")\n",
-					"        .option(\"pathGlobFilter\",\"*.json\")\n",
-					"        .load(folder))\n",
+					"#     df: DataFrame = (spark.read.format(\"json\") \n",
+					"#         .option(\"recursiveFileLookup\", \"true\")\n",
+					"#         .option(\"pathGlobFilter\",\"*.json\")\n",
+					"#         .load(folder))\n",
 					"\n",
-					"    df_with_filename: DataFrame = df.withColumn(\"input_file\", input_file_name())\n",
+					"#     df_with_filename: DataFrame = df.withColumn(\"input_file\", input_file_name())\n",
 					"\n",
-					"    return df_with_filename"
+					"#     return df_with_filename"
 				],
 				"execution_count": 37
 			},
