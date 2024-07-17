@@ -1,10 +1,15 @@
 ---
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: Dev
+    values:
+    - Dev
+    - Test
 trigger: none
-
 pr: none
-
 pool: 'pins-agent-pool-odw-dev-uks'
-
 variables:
   - name: environment
     value: dev
@@ -13,27 +18,29 @@ variables:
   - name: resourceGroup
     value: 'pins-rg-function-app-odw-${{ variables.environment }}-uks'
   - name: poolName
-    value: 'pins-agent-pool-odw-${{ variables.environment }}-uks'
+    value: ${{ format('pins-agent-pool-odw-{0}-uks', lower(parameters.environment)) }}
   - name: PYTHON_VERSION
     value: '3.8'
-
 stages:
-- stage: Test
+- stage: PyTest
   jobs:
-  - job: RunPyTests
-    displayName: 'Run PyTests'
     steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(PYTHON_VERSION)'
-        addToPath: true
+    - checkout: self
+      displayName: 'Checkout'
+    - template: steps/azure-login.yaml
+    - job: RunPyTests
+      displayName: Run PyTests
+      steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '$(PYTHON_VERSION)'
+          addToPath: true
+      - script: |
+          pip install pytest
+          pip install pandas
+          pip install pyarrow
+        displayName: 'Install dependencies'
 
-    - script: |
-        pip install pytest
-        pip install pandas
-        pip install pyarrow
-      displayName: 'Install dependencies'
-
-    # - script: |
-    #     pytest $(Build.SourcesDirectory)/pytests.py
-    #   displayName: 'Run PyTests'
+      - script: |
+          pytest $(Build.SourcesDirectory)pytests.py
+        displayName: 'Run PyTests'

@@ -1,0 +1,46 @@
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: Dev
+    values:
+      - Dev
+      - Test
+trigger: none
+pr: none
+pool: pins-agent-pool-odw-dev-uks
+variables:
+  - name: environment
+    value: dev
+  - name: armServiceConnectionName
+    value: >-
+      ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure',
+      upper(variables.environment)) }}
+  - name: resourceGroup
+    value: 'pins-rg-function-app-odw-${{ variables.environment }}-uks'
+  - name: poolName
+    value: ${{ format('pins-agent-pool-odw-{0}-uks', lower(parameters.environment)) }}
+  - name: PYTHON_VERSION
+    value: '3.8'
+stages:
+  - stage: PyTest
+    jobs:
+      steps:
+        - checkout: self
+          displayName: Checkout
+        - template: steps/azure-login.yaml
+        - job: RunPyTests
+          displayName: Run PyTests
+          steps:
+            - task: UsePythonVersion@0
+              inputs:
+                versionSpec: $(PYTHON_VERSION)
+                addToPath: true
+            - script: |
+                pip install pytest
+                pip install pandas
+                pip install pyarrow
+              displayName: Install dependencies
+            - script: |
+                pytest $(Build.SourcesDirectory)pytests.py
+              displayName: Run PyTests
