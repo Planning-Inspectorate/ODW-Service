@@ -88,10 +88,11 @@ def azure_credential(pytestconfig):
     client_secret = pytestconfig.getoption("client_secret")
     tenant_id = pytestconfig.getoption("tenant")
     if client_id is None or client_secret is None or tenant_id is None:
-        print(f"###########using default")
+        print(f"###########Credentials created from default")
         credentials = DefaultAzureCredential()
         return credentials
     else:
+        print(f"########### Credentials created from parameters ")
         credentials = ClientSecretCredential(
             client_id=client_id,
             client_secret=client_secret,
