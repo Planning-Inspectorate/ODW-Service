@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "737873e4-fcc2-4c4f-a55b-b05e9a57527b"
+				"spark.autotune.trackingId": "6a11193e-9190-482b-9d55-94cfec7cd8c1"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": null
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -100,6 +100,7 @@
 					"%%sql\r\n",
 					"select *\r\n",
 					"from odw_harmonised_db.nsip_s51_advice\r\n",
+					"where adviceId = '30830550'\r\n",
 					""
 				],
 				"execution_count": null
@@ -123,7 +124,8 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"REFRESH odw_harmonised_db.nsip_s51_advice"
+					"REFRESH odw_harmonised_db.nsip_s51_advice\r\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -145,7 +147,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
 				],
-				"execution_count": null
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
@@ -184,7 +186,7 @@
 					"                        ,redactionstatus as redactionStatus\r\n",
 					"                        ,attachmentIds\r\n",
 					"                        ,ValidTo\r\n",
-					"                        ,RowID\r\n",
+					"                        ,'' as RowID\r\n",
 					"                        ,IsActive\r\n",
 					"                        ---Horizon columns\r\n",
 					"                        ,'Yes' as Section51Advice\r\n",
@@ -208,7 +210,7 @@
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -246,7 +248,7 @@
 					"                        ,null as redactionStatus\r\n",
 					"                        ,attachmentdataID as attachmentIds\r\n",
 					"                        ,null as ValidTo\r\n",
-					"                        ,null as RowID\r\n",
+					"                        ,'' as RowID\r\n",
 					"                        ,'Y' as IsActive\r\n",
 					"                        ,section51advice as Section51Advice\r\n",
 					"                        ,enquirerfirstname as EnquirerFirstName\r\n",
@@ -269,7 +271,7 @@
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -288,7 +290,7 @@
 				"source": [
 					"display(service_bus_data)"
 				],
-				"execution_count": null
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -305,11 +307,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(horizon_data)\r\n",
-					"\r\n",
-					""
+					"display(horizon_data)"
 				],
-				"execution_count": null
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -333,7 +333,7 @@
 					"horizon_data = horizon_data.select(service_bus_data.columns)\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -351,7 +351,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": null
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -369,7 +369,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": null
+				"execution_count": 74
 			},
 			{
 				"cell_type": "markdown",
@@ -402,7 +402,7 @@
 				"source": [
 					"display(results)"
 				],
-				"execution_count": null
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -441,7 +441,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_s51_advice"
 				],
-				"execution_count": null
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -457,9 +457,28 @@
 					}
 				},
 				"source": [
-					""
+					"result_view = spark.sql(\"SELECT * FROM vw_nsip_s51_advice_calculations_base\")"
 				],
-				"execution_count": null
+				"execution_count": 77
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(result_view)"
+				],
+				"execution_count": 78
 			},
 			{
 				"cell_type": "code",
@@ -494,9 +513,10 @@
 					"                                ON CurrentRow.adviceid = NextRow.adviceid\r\n",
 					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
 					"                            LEFT OUTER JOIN (SELECT DISTINCT adviceid FROM  odw_harmonised_db.sb_s51_advice) AS Raw\r\n",
-					"                                ON CurrentRow.adviceid = Raw.adviceid \"\"\")"
+					"                                ON CurrentRow.adviceid = Raw.adviceid \r\n",
+					"                            ORDER BY currentRow.ReverseOrderProcessed\"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -515,7 +535,27 @@
 					"df_calcs =df_calcs.withColumnRenamed(\"adviceid\", \"temp_adviceid\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 84
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(df_calcs)\r\n",
+					""
+				],
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -531,7 +571,99 @@
 					}
 				},
 				"source": [
-					"df_calcs"
+					"# results = results.drop(\"NSIPAdviceID\", \"ValidTo\", \"migrated\", \"IsActive\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"results = spark.sql(f\"\"\"\r\n",
+					"                    SELECT NSIPAdviceID\r\n",
+					"                        ,adviceId\r\n",
+					"                        ,adviceReference\r\n",
+					"                        ,caseid\r\n",
+					"                        ,caseReference\r\n",
+					"                        ,title\r\n",
+					"                        ,titleWelsh\r\n",
+					"                        ,from\r\n",
+					"                        ,agent\r\n",
+					"                        ,method\r\n",
+					"                        ,EnquiryDate\r\n",
+					"                        ,EnquiryDetails\r\n",
+					"                        ,adviceGivenBy \r\n",
+					"                        ,adviceDate\r\n",
+					"                        ,adviceDetails\r\n",
+					"                        ,EnquiryDetailsWelsh\r\n",
+					"                        ,status\r\n",
+					"                        ,redactionStatus\r\n",
+					"                        ,attachmentIds\r\n",
+					"                        ,ValidTo\r\n",
+					"                        --Start Horizon only fields\r\n",
+					"                        ,Section51Advice\r\n",
+					"                        ,EnquirerFirstName\r\n",
+					"                        ,EnquirerOrganisation\r\n",
+					"                        ,Enquiry\r\n",
+					"                        ,Advice\r\n",
+					"                        ,AdviceLastModified\r\n",
+					"                        ,AttachmentCount\r\n",
+					"                        ,AttachmentLastModified\r\n",
+					"                        ,LastPublishedDate\r\n",
+					"                        ,WelshLanguage\r\n",
+					"                        ,CaseWorkType\r\n",
+					"                        ,Migrated\r\n",
+					"                        ,ODTSourceSystem\r\n",
+					"                        ,ingestionDate\r\n",
+					"            ,MD5(\r\n",
+					"                COALESCE(\r\n",
+					"                        IFNULL(CAST(NSIPAdviceID AS bigint), '.')\r\n",
+					"                        ,IFNULL(CAST(adviceId AS integer), '.')\r\n",
+					"                        ,IFNULL(CAST(adviceReference AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(caseid AS integer), '.')\r\n",
+					"                        ,IFNULL(CAST(caseReference AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(title AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(titleWelsh AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(from AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(agent AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(method AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(EnquiryDate AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(EnquiryDetails AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(adviceGivenBy AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(adviceDate AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(adviceDetails AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(EnquiryDetailsWelsh AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(status AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(attachmentIds AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(ValidTo AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(RowID AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(Section51Advice AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(EnquirerFirstName AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(EnquirerOrganisation AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(Enquiry AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(Advice AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(AdviceLastModified AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(LastPublishedDate AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(WelshLanguage AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(Migrated AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(ODTSourceSystem AS String), '.')\r\n",
+					"                        ,IFNULL(CAST(ingestionDate AS String), '.')\r\n",
+					"                )\r\n",
+					"            ) AS RowID\r\n",
+					"            ,IsActive\r\n",
+					"    FROM \r\n",
+					"        {spark_table_final}\"\"\")"
 				],
 				"execution_count": null
 			},
@@ -549,6 +681,8 @@
 					}
 				},
 				"source": [
+					"columns = results.columns\r\n",
+					"\r\n",
 					"results = results.drop(\"NSIPAdviceID\", \"ValidTo\", \"migrated\", \"IsActive\")"
 				],
 				"execution_count": null
@@ -567,7 +701,26 @@
 					}
 				},
 				"source": [
-					"results"
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_adviceid\"] == results[\"adviceid\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\r\n",
+					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
 				"execution_count": null
 			},
@@ -668,6 +821,43 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_adviceid\"] == results[\"adviceid\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\r\n",
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"columns = results.columns\r\n",
+					"columns"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"display(spark_table_final)"
 				],
 				"execution_count": null
 			},
