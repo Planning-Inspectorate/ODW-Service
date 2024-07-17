@@ -6,17 +6,14 @@ terraform {
     subscription_id      = "edb1ff78-90da-4901-a497-7e79f966f8e2"
     storage_account_name = "pinsstsharedtfstateuks"
   }
-  required_version = ">= 1.7.3, <= 1.9.0"
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0.0"
+      version = "~> 3.74.0"
     }
   }
+  required_version = ">= 1.1.6, < 3.74.0"
 }
 
 provider "azurerm" {
