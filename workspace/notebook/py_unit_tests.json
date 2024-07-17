@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "72558c0d-3bc3-441b-b6b0-8000e78394b1"
+				"spark.autotune.trackingId": "674f4f72-b608-42f7-92cc-00b90814e9cc"
 			}
 		},
 		"metadata": {
@@ -66,7 +66,9 @@
 				},
 				"source": [
 					"import json\r\n",
-					"from pyspark.sql.types import *"
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import DataFrame\r\n",
+					"import pprint"
 				],
 				"execution_count": null
 			},
@@ -84,14 +86,14 @@
 					}
 				},
 				"source": [
-					"entity_name: str = 'nsip-project'\r\n",
+					"entity_name: str = 'appeal-document'\r\n",
 					"std_db_name: str = 'odw_standardised_db'\r\n",
-					"hrm_db_name = 'odw_harmonised_db'\r\n",
-					"curated_db_name = 'odw_curated_db'\r\n",
-					"std_table_name = 'sb_nsip_project'\r\n",
-					"hrm_table_name = 'sb_nsip_project'\r\n",
-					"hrm_table_final = 'nsip_project'\r\n",
-					"curated_table_name = 'nsip_data'"
+					"hrm_db_name: str = 'odw_harmonised_db'\r\n",
+					"curated_db_name: str = 'odw_curated_db'\r\n",
+					"std_table_name: str = 'sb_appeal_document'\r\n",
+					"hrm_table_name: str = 'sb_appeal_document'\r\n",
+					"hrm_table_final: str = 'appeals_document_metadata'\r\n",
+					"curated_table_name: str = 'appeal_document'"
 				],
 				"execution_count": null
 			},
@@ -111,24 +113,6 @@
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"%run service-bus/py_spark_df_ingestion_functions"
 				],
 				"execution_count": null
 			},
@@ -211,58 +195,10 @@
 					}
 				},
 				"source": [
-					"my_schema = create_spark_schema(std_db_name, entity_name)\r\n",
-					"table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"schema1 = StructType([\r\n",
-					"    StructField('id', StringType(), False),\r\n",
-					"    StructField('name', StringType(), True),\r\n",
-					"    StructField('neighbouringSites', ArrayType(\r\n",
-					"        StructType([\r\n",
-					"            StructField('neighbouringSiteAddressLine_test', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteAddressLine2', IntegerType(), True),\r\n",
-					"            StructField('neighbouringSiteAddressTown', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteAddressCounty', StringType(), True),\r\n",
-					"            StructField('neighbouringSiteAddressPostcode', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteAccessDetails', StringType(), True),\r\n",
-					"            StructField('neighbouringSiteSafetyDetails', StringType(), True)\r\n",
-					"        ])\r\n",
-					"    ), True),\r\n",
-					"    StructField('tags', ArrayType(StringType()), True)\r\n",
-					"])\r\n",
-					"\r\n",
-					"schema2 = StructType([\r\n",
-					"    StructField('id', IntegerType(), True),\r\n",
-					"    StructField('name', StringType(), False),\r\n",
-					"    StructField('neighbouringSites', ArrayType(\r\n",
-					"        StructType([\r\n",
-					"            StructField('neighbouringSiteAddressLine1', StringType(), True),\r\n",
-					"            StructField('neighbouringSiteAddressLine2', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteAddressTown', StringType(), True),\r\n",
-					"            StructField('neighbouringSiteAddressCounty', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteAddressPostcode', StringType(), True),\r\n",
-					"            StructField('neighbouringSiteAccessDetails', StringType(), False),\r\n",
-					"            StructField('neighbouringSiteSafetyDetails', DecimalType(), False)\r\n",
-					"        ])\r\n",
-					"    ), False),\r\n",
-					"    StructField('tags', ArrayType(StringType()), False)\r\n",
-					"])"
+					"sb_std_schema = create_spark_schema(std_db_name, entity_name)\r\n",
+					"sb_std_table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema\r\n",
+					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\r\n",
+					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
 				"execution_count": null
 			},
@@ -281,7 +217,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"def extract_schema_structure(schema):\r\n",
+					"def extract_schema_structure(schema: StructType) -> dict:\r\n",
 					"    def extract_field(field):\r\n",
 					"        if isinstance(field.dataType, StructType):\r\n",
 					"            return {field.name: {subfield.name: str(subfield.dataType) for subfield in field.dataType.fields}}\r\n",
@@ -315,13 +251,13 @@
 					}
 				},
 				"source": [
-					"def test_compare_schemas(schema1, schema2):\r\n",
-					"    structure1 = extract_schema_structure(schema1)\r\n",
-					"    structure2 = extract_schema_structure(schema2)\r\n",
+					"def test_compare_schemas(schema1: StructType, schema2: StructType) -> bool:\r\n",
+					"    structure1: dict = extract_schema_structure(schema1)\r\n",
+					"    structure2: dict = extract_schema_structure(schema2)\r\n",
 					"    \r\n",
-					"    differences = []\r\n",
+					"    differences: list = []\r\n",
 					"    \r\n",
-					"    all_fields = set(structure1.keys()).union(set(structure2.keys()))\r\n",
+					"    all_fields: set = set(structure1.keys()).union(set(structure2.keys()))\r\n",
 					"    \r\n",
 					"    for field in all_fields:\r\n",
 					"        if field not in structure1:\r\n",
@@ -331,7 +267,7 @@
 					"        else:\r\n",
 					"            if structure1[field] != structure2[field]:\r\n",
 					"                if isinstance(structure1[field], dict) and isinstance(structure2[field], dict):\r\n",
-					"                    subfields = set(structure1[field].keys()).union(set(structure2[field].keys()))\r\n",
+					"                    subfields: set = set(structure1[field].keys()).union(set(structure2[field].keys()))\r\n",
 					"                    for subfield in subfields:\r\n",
 					"                        if subfield not in structure1[field]:\r\n",
 					"                            differences.append((f\"{field}.{subfield}\", \"Field not in schema1\", structure2[field][subfield]))\r\n",
@@ -343,13 +279,11 @@
 					"                    differences.append((field, structure1[field], structure2[field]))\r\n",
 					"    \r\n",
 					"    if differences:\r\n",
-					"        # print(\"Schemas are different.\")\r\n",
 					"        # Create a Spark DataFrame to display the differences\r\n",
-					"        differences_df = spark.createDataFrame(differences, [\"Field\", \"Schema 1\", \"Schema 2\"])\r\n",
+					"        differences_df: DataFrame = spark.createDataFrame(differences, [\"Field\", \"Schema 1\", \"Schema 2\"])\r\n",
 					"        display(differences_df)\r\n",
 					"        return False\r\n",
 					"    else:\r\n",
-					"        # print(\"Schemas are identical.\")\r\n",
 					"        return True"
 				],
 				"execution_count": null
@@ -369,10 +303,10 @@
 				},
 				"source": [
 					"def test_std_same_rows_hrm(std_table: str, hrm_table: str) -> tuple:\r\n",
-					"    std_table_full = f\"{std_db_name}.{std_table}\"\r\n",
-					"    hrm_table_full = f\"{hrm_db_name}.{hrm_table}\"\r\n",
-					"    std_count = spark.table(std_table_full).count()\r\n",
-					"    hrm_count = spark.table(hrm_table_full).count()\r\n",
+					"    std_table_full: str = f\"{std_db_name}.{std_table}\"\r\n",
+					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table}\"\r\n",
+					"    std_count: int = spark.table(std_table_full).count()\r\n",
+					"    hrm_count: int = spark.table(hrm_table_full).count()\r\n",
 					"\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
@@ -392,11 +326,11 @@
 					}
 				},
 				"source": [
-					"def test_curated_row_count(hrm_table_final: str, curated_table: str):\r\n",
-					"    hrm_table_full = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
-					"    curated_table_full = f\"{curated_db_name}.{curated_table_name}\"\r\n",
-					"    hrm_count = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
-					"    curated_count = spark.table(curated_table_full).count()\r\n",
+					"def test_curated_row_count(hrm_table_final: str, curated_table: str) -> tuple:\r\n",
+					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
+					"    hrm_count: int = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
+					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
 					"\r\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
@@ -430,8 +364,10 @@
 					"collapsed": false
 				},
 				"source": [
-					"are_schemas_equal = test_compare_schemas(my_schema, table_schema)\r\n",
-					"print(f\"Schemas match: {are_schemas_equal}\")"
+					"std_schema_correct: bool = test_compare_schemas(sb_std_schema, sb_std_table_schema)\r\n",
+					"print(f\"Service bus standardised schema correct: {std_schema_correct}\\nTable: {std_db_name}.{std_table_name}\\nDifferences shown above (if any)\")\r\n",
+					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\r\n",
+					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
 				],
 				"execution_count": null
 			},
@@ -464,7 +400,7 @@
 				},
 				"source": [
 					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
-					"print(f\"Standardised count: {standardised_count}\\nHarmonised count: {harmonised_count}\\nCounts match: {counts_match}\")"
+					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
 				],
 				"execution_count": null
 			},
@@ -497,7 +433,7 @@
 				},
 				"source": [
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
-					"print(f\"Harmonised Final Count: {harmonised_final_count}\\nCurated Count: {curated_count}\\nCounts match: {counts_match}\")"
+					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
 				],
 				"execution_count": null
 			}
