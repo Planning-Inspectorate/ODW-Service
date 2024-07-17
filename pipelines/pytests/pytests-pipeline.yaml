@@ -1,29 +1,39 @@
 ---
 trigger: none
 
-pool:
-  vmImage: 'ubuntu-latest'
+pr: none
 
-variables:
-  PYTHON_VERSION: '3.8'
+pool: 'pins-agent-pool-odw-dev-uks'
+
+# variables:
+#   PYTHON_VERSION: '3.8'
+
 
 stages:
-- stage: Test
-  jobs:
-  - job: RunPyTests
-    displayName: 'Run PyTests'
-    steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(PYTHON_VERSION)'
-        addToPath: true
+variables:
+  - name: environment
+    value: dev
+  - name: armServiceConnectionName
+    value: ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure', upper(variables.environment)) }}
+  - name: resourceGroup
+    value: 'pins-rg-function-app-odw-${{ variables.environment }}-uks'
+  - name: poolName
+    value: 'pins-agent-pool-odw-${{ variables.environment }}-uks'
 
-    - script: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install pandas
-      displayName: 'Install dependencies'
-
-    - script: |
-        pytest pytests.py
+  - stage: Test
+    jobs:
+    - job: RunPyTests
       displayName: 'Run PyTests'
+      steps:
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '$(PYTHON_VERSION)'
+          addToPath: true
+
+      - script: |
+          cd $(Build.SourcesDirectory)/requirements.txt
+        displayName: 'Install dependencies'
+
+      - script: |
+          pytest cd $(Build.SourcesDirectory)/pytests.py
+        displayName: 'Run PyTests'
