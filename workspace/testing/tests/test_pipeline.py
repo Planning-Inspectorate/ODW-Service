@@ -25,7 +25,7 @@ def run_before_and_after_tests(adls_connection_client,
         azure_credential, synapse_endpoint, constants.INTEGRATIONTEST_CLEANUP_PIPELINE, params)
 
 
-def DO_NOT_TEST_test_source_to_processed_workflow(azure_credential,
+def test_source_to_processed_workflow(azure_credential,
                                  synapse_endpoint: str,
                                  pipeline_name: str,
                                  storage_account_name: str,
