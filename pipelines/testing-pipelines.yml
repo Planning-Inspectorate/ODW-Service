@@ -1,15 +1,43 @@
 # List of Azure modules are here https://azure.github.io/azure-sdk/releases/latest/all/python.html
 # https://aka.ms/yaml
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: Dev
+    values:
+      - Dev
+      - Test
+trigger: none
+pr: none
+pool: pins-agent-pool-odw-dev-uks
 
-trigger:
-- main
-
-pool:
-  vmImage: ubuntu-latest
-
-steps:
-  - script: |
-      pip install pandas pyarrow pytest pytest-azurepipelines aiohttp pyodbc azure-storage-blob azure-keyvault-secrets azure-identity azure-storage-file-datalake azure-synapse azure-mgmt-resource
-      cd $(Build.SourcesDirectory)/workspace/testing/tests
-      pytest -vv -rP
-    displayName: 'pytest'
+variables:
+  - group: Terraform ${{ parameters.environment }}
+  - name: armServiceConnectionName
+    value: ${{ format('Azure DevOps Pipelines - ODW {0} - Infrastructure', upper(variables.environment)) }}
+  - name: environment
+    value: ${{ lower(parameters.environment) }}
+  - name: resourceGroup
+    value: 'pins-rg-function-app-odw-${{ variables.environment }}-uks'
+  - name: poolName
+    value: ${{ format('pins-agent-pool-odw-{0}-uks', lower(parameters.environment)) }}
+stages:
+  - stage: azure_login
+    displayName: Terraform Output ${{ parameters.environment }}
+    jobs:
+    - job: Output
+      displayName: Terraform Output
+      pool: ${{ variables.poolName }}
+      steps:
+      - checkout: self
+        displayName: Checkout
+      - template: steps/azure-login.yaml
+    - job: RunPyTests
+      displayName: Run PyTests
+      steps:
+        - script: |
+            pip install pandas pyarrow pytest pytest-azurepipelines aiohttp pyodbc azure-storage-blob azure-keyvault-secrets azure-identity azure-storage-file-datalake azure-synapse azure-mgmt-resource
+            cd $(Build.SourcesDirectory)/workspace/testing/tests
+            pytest -vv -rP
+          displayName: 'pytest'
