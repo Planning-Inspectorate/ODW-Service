@@ -7,7 +7,8 @@ def test_source_to_processed_workflow(azure_credential,
                                  pipeline_name: str):
     
     # run the testing notebook
-    notebookname: str = "py_unit_tests"
+    #notebookname: str = "py_unit_tests"
+    notebookname: str = "zendesk_read_me"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     notebook_raw_params = {

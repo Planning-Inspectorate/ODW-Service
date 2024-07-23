@@ -70,16 +70,13 @@ def observe_pipeline(synapse_client: ArtifactsClient, run_id: str,
 def run_and_observe_notebook(azure_credential: ClientSecretCredential,
                              synapse_endpoint: str, notebook_name: str,
                              params: dict):
-    synapse_client: ArtifactsClient = ArtifactsClient(
-        azure_credential, synapse_endpoint)
+    synapse_client: ArtifactsClient = ArtifactsClient(azure_credential, synapse_endpoint)
     if params is not None:
-        notebook_run_id = _run_notebook(
-            azure_credential, synapse_endpoint, notebook_name, params)
+        notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name, params)
     else:
-        notebook_run_id = _run_notebook(
-            azure_credential, synapse_endpoint, notebook_name)
+        notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name)
     print(f'notebook RUNNING WITH RunID: {notebook_run_id}\n')
-    notebook_run_status = observe_notebook(synapse_client, notebook_run_id)
+    notebook_run_status = observe_notebook(azure_credential, synapse_endpoint, notebook_run_id)
     return notebook_run_status
 
 
@@ -89,14 +86,16 @@ def _run_notebook(azure_credential: ClientSecretCredential,
     print(f'RUNNING notebook {notebook_name}...\n')
     # Implementation with REST API
     notebook_run_id:str = str(uuid.uuid4())
-    run_notebook_url = f'{synapse_endpoint}/notebooks/runs/{notebook_run_id }?api-version=2022-03-01-preview'
+    run_notebook_url = f'{synapse_endpoint}/notebooks/runs/{notebook_run_id}?api-version=2022-03-01-preview'
     access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
     headers = {'Authorization': f'Bearer {access_token.token}'}
     response = requests.post(run_notebook_url, headers=headers,data=json.dumps(params))
     return notebook_run_id
 
 
-def observe_notebook(synapse_client: ArtifactsClient, run_id: str,
+def observe_notebook(azure_credential: ClientSecretCredential,
+                     synapse_endpoint: str, 
+                     notebook_run_id: str,
                      until_status=["Succeeded", "TimedOut",
                                    "Failed", "Cancelled"],
                      poll_interval=15) -> str:
@@ -104,14 +103,20 @@ def observe_notebook(synapse_client: ArtifactsClient, run_id: str,
     notebook_run_status = ""
     while(notebook_run_status not in until_status):
         now = datetime.datetime.now()
-        print(
-            f'{now.strftime("%Y-%m-%d %H:%M:%S")}'
-            f' Polling notebook with run id {run_id}'
-            f' for status in {", ".join(until_status)}')
-        notebook_run = synapse_client.notebook_run.get_notebook_run(run_id)
-        notebook_run_status = notebook_run.status
-        time.sleep(poll_interval)
-    print(
-        f'notebook run id {run_id}'
-        f'finished with status {notebook_run_status}\n')
+        print(f'{now.strftime("%Y-%m-%d %H:%M:%S")}'f' Polling notebook with run id {notebook_run_id}'f' for status in {", ".join(until_status)}')
+
+
+        run_notebook_url = f'{synapse_endpoint}/notebooks/runs/{notebook_run_id}?api-version=2022-03-01-preview'
+        access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
+        headers = {'Authorization': f'Bearer {access_token.token}'}
+        response = requests.post(run_notebook_url, headers=headers)
+        if response.status_code == 200 : 
+            print(response)
+            notebook_run_status = response.json()['result']['runStatus']
+            time.sleep(poll_interval)
+        else:
+            print("Failed to check status " +str(response.status_code))
+            return "Failed"
+
+    print(f'notebook run id {notebook_run_id}' f'finished with status {notebook_run_status}\n')
     return notebook_run_status
