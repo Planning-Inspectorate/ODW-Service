@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "438450f1-94fc-42f4-9db1-adeb154ee093"
+				"spark.autotune.trackingId": "4426229e-98e9-4762-99c8-5602b7baa363"
 			}
 		},
 		"metadata": {
@@ -35,10 +35,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"id": "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d/resourceGroups/pins-rg-data-odw-test-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-test-uks/bigDataPools/pinssynspodw",
 				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-test-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_project\""
 				],
-				"execution_count": 2
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -104,6 +104,7 @@
 					"                        ,projectName\r\n",
 					"                        ,projectNameWelsh\r\n",
 					"                        ,projectDescription\r\n",
+					"                        ,CAST(NULL AS string) AS summary\r\n",
 					"                        ,projectDescriptionWelsh\r\n",
 					"                        ,CAST(NULL AS Timestamp) AS caseCreatedDate\r\n",
 					"                        ,decision\r\n",
@@ -116,9 +117,9 @@
 					"                        ,projectLocationWelsh\r\n",
 					"                        ,projectEmailAddress\r\n",
 					"                        ,regions\r\n",
-					"                        ,transboundary\r\n",
-					"                        ,easting\r\n",
-					"                        ,northing\r\n",
+					"                        ,CAST(transboundary AS Boolean) AS transboundary\r\n",
+					"                        ,CAST(easting AS Integer) AS easting\r\n",
+					"                        ,CAST(northing AS Integer) AS northing\r\n",
 					"                        ,welshLanguage\r\n",
 					"                        ,mapZoomLevel\r\n",
 					"                        ,secretaryOfState\r\n",
@@ -168,7 +169,7 @@
 					"                        ,environmentalServicesOfficerId\r\n",
 					"                        ,legalOfficerId\r\n",
 					"                        ,applicantId\r\n",
-					"                        ,migrationStatus\r\n",
+					"                        ,CAST(migrationStatus AS Boolean) AS migrationStatus\r\n",
 					"                        ,dateOfReOpenRelevantRepresentationStart\r\n",
 					"                        ,dateOfReOpenRelevantRepresentationClose\r\n",
 					"                        ,IsActive\r\n",
@@ -191,7 +192,7 @@
 					"                        ,CAST(NULL AS String) AS applicantdescriptionofproject\r\n",
 					"                        ,CAST(NULL AS String) AS caseNodeId\r\n",
 					"                        --End Horizon only fields\r\n",
-					"                        ,migrated\r\n",
+					"                        ,TRUE AS migrated\r\n",
 					"                        ,ODTSourceSystem\r\n",
 					"                        ,SourceSystemID\r\n",
 					"                        ,IngestionDate\r\n",
@@ -201,7 +202,7 @@
 					"                        {service_bus_table}\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 3
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -221,11 +222,12 @@
 					"horizon_data = spark.sql(f\"\"\"\r\n",
 					"                SELECT\r\n",
 					"                        CAST(NULL AS Long) AS NSIPProjectInfoInternalID\r\n",
-					"                        ,Horizon.HorizonCaseNumber AS caseid\r\n",
+					"                        ,CAST(Horizon.HorizonCaseNumber AS Int) AS caseid\r\n",
 					"                        ,Horizon.casereference\r\n",
 					"                        ,Horizon.projectname\r\n",
 					"                        ,CAST(NULL AS String) AS projectNameWelsh\r\n",
-					"                        ,Horizon.summary AS projectDescription\r\n",
+					"                        ,Horizon.projectDescription AS projectDescription\r\n",
+					"                        ,Horizon.summary\r\n",
 					"                        ,CAST(NULL AS String) AS projectDescriptionWelsh\r\n",
 					"                        ,Horizon.caseCreatedDate\r\n",
 					"                        ,CAST(NULL AS String) AS decision\r\n",
@@ -239,8 +241,8 @@
 					"                        ,projectEmailAddress\r\n",
 					"                        ,LOWER(Region) AS Region\r\n",
 					"                        ,CAST(transboundary AS Boolean) AS transboundary\r\n",
-					"                        ,easting\r\n",
-					"                        ,northing\r\n",
+					"                        ,CAST(easting AS Integer) AS easting\r\n",
+					"                        ,CAST(northing AS Integer) AS northing\r\n",
 					"                        ,CAST(welshLanguage AS Boolean) AS welshLanguage\r\n",
 					"                        ,LOWER(mapZoomLevel) AS mapZoomLevel\r\n",
 					"                        ,sos AS secretaryOfState\r\n",
@@ -290,7 +292,7 @@
 					"                        ,CAST(NULL AS String) AS environmentalServicesOfficerId\r\n",
 					"                        ,CAST(NULL AS String) AS legalOfficerId\r\n",
 					"                        ,CAST(NULL AS String) AS applicantId\r\n",
-					"                        ,CAST(NULL AS Boolean) AS migrationStatus\r\n",
+					"                        ,CAST(FALSE AS Boolean) AS migrationStatus\r\n",
 					"                        ,CAST(NULL AS Date) AS dateOfReOpenRelevantRepresentationStart\r\n",
 					"                        ,CAST(NULL AS Date) AS dateOfReOpenRelevantRepresentationClose\r\n",
 					"                        --Start Horizon only fields\r\n",
@@ -312,7 +314,7 @@
 					"                        ,applicantdescriptionofproject\r\n",
 					"                        ,caseNodeId\r\n",
 					"                        --End Horizon only fields\r\n",
-					"                        ,'0' AS migrated\r\n",
+					"                        ,FALSE AS migrated\r\n",
 					"                        ,'Horizon' AS ODTSourceSystem\r\n",
 					"                        ,NULL AS SourceSystemID\r\n",
 					"                        ,ingested_datetime AS IngestionDate\r\n",
@@ -323,10 +325,11 @@
 					"    {horizon_table} AS Horizon\r\n",
 					"WHERE\r\n",
 					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
+					"    AND HorizonCaseNumber NOT IN (SELECT DISTINCT caseId FROM {service_bus_table}) -- Need to drop cases that have been migraed\r\n",
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 4
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -367,7 +370,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 5
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -385,7 +388,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 6
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -404,7 +407,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 7
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -456,7 +459,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_project"
 				],
-				"execution_count": 8
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -501,11 +504,12 @@
 					"results = spark.sql(f\"\"\"\r\n",
 					"    SELECT \r\n",
 					"        NSIPProjectInfoInternalID\r\n",
-					"        ,caseid\r\n",
+					"        ,CAST(caseid AS Integer) AS caseId\r\n",
 					"        ,casereference\r\n",
 					"        ,projectname\r\n",
 					"        ,projectNameWelsh\r\n",
 					"        ,projectDescription\r\n",
+					"        ,summary\r\n",
 					"        ,projectDescriptionWelsh\r\n",
 					"        ,caseCreatedDate\r\n",
 					"        ,decision\r\n",
@@ -518,10 +522,10 @@
 					"        ,projectLocationWelsh\r\n",
 					"        ,projectEmailAddress\r\n",
 					"        ,Regions\r\n",
-					"        ,transboundary\r\n",
-					"        ,easting\r\n",
-					"        ,northing\r\n",
-					"        ,welshLanguage\r\n",
+					"        ,CAST(transboundary AS Boolean) AS transboundary\r\n",
+					"        ,CAST(easting AS Integer) AS easting\r\n",
+					"        ,CAST(northing AS Integer) AS northing\r\n",
+					"        ,CAST(welshLanguage AS Boolean) AS welshLanguage\r\n",
 					"        ,mapZoomLevel\r\n",
 					"        ,secretaryOfState\r\n",
 					"        ,datePINSFirstNotifiedOfProject\r\n",
@@ -604,6 +608,7 @@
 					"                    ,IFNULL(CAST(projectName AS String), '.')\r\n",
 					"                    ,IFNULL(CAST(projectNameWelsh AS String), '.')\r\n",
 					"                    ,IFNULL(CAST(projectDescription AS String), '.')\r\n",
+					"                    ,IFNULL(CAST(summary AS String), '.')\r\n",
 					"                    ,IFNULL(CAST(projectDescriptionWelsh AS String), '.')\r\n",
 					"                    ,IFNULL(CAST(caseCreatedDate AS String), '.')\r\n",
 					"                    ,IFNULL(CAST(decision AS String), '.')\r\n",
@@ -709,7 +714,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 9
+				"execution_count": 27
 			}
 		]
 	}
