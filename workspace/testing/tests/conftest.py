@@ -3,19 +3,15 @@ import datetime
 import pytest
 import pyodbc
 from azure.identity import ClientSecretCredential
-from azure.keyvault.secrets import SecretClient
 from azure.identity import DefaultAzureCredential
 import constants
-from azure.storage.filedatalake import DataLakeServiceClient
 
 
 def pytest_addoption(parser):
     # synapse name
-    parser.addoption("--synapse", action="store",
-                     default="pins-synw-odw-dev-uks")
+    parser.addoption("--synapse", action="store", default="pins-synw-odw-test-uks")
     # pipeline name
-    parser.addoption("--pipeline", action="store",
-                     default="MasterPipeline")
+    parser.addoption("--pipeline", action="store", default="MasterPipeline")
 
     # input location at landing zone
     parser.addoption("--client_id", action="store")
@@ -25,20 +21,8 @@ def pytest_addoption(parser):
     parser.addoption("--tenant", action="store")
 
 @pytest.fixture()
-def input_sample_file_name(pytestconfig) -> str:
-    return pytestconfig.getoption("input_sample_filename")
-
-@pytest.fixture()
 def pipeline_name(pytestconfig) -> str:
     return pytestconfig.getoption("pipeline")
-
-@pytest.fixture()
-def container_name(pytestconfig) -> str:
-    return pytestconfig.getoption("container_name")
-
-@pytest.fixture()
-def file_time(pytestconfig) -> datetime:
-    return datetime.datetime.now()
 
 @pytest.fixture()
 def synapse_endpoint(pytestconfig) -> str:

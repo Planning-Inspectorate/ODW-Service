@@ -6,6 +6,7 @@ from azure.synapse.artifacts import ArtifactsClient
 from azure.identity import ClientSecretCredential
 import constants
 import uuid
+import pipelineutils
 
 
 def run_and_observe_pipeline(azure_credential: ClientSecretCredential,
