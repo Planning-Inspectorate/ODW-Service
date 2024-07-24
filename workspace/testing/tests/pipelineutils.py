@@ -93,6 +93,10 @@ def _run_notebook(azure_credential: ClientSecretCredential,
     return notebook_run_id
 
 
+#Logs are available here : https://portal.azure.com/#view/Microsoft_Azure_Monitoring/AzureMonitoringBrowseBlade/~/logs
+#query is 
+#   search in (SynapseGatewayApiRequests) "<runid>" 
+
 def observe_notebook(azure_credential: ClientSecretCredential,
                      synapse_endpoint: str, 
                      notebook_run_id: str,
