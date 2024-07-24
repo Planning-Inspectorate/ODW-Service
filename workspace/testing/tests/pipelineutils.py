@@ -90,7 +90,10 @@ def _run_notebook(azure_credential: ClientSecretCredential,
     access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
     headers = {'Authorization': f'Bearer {access_token.token}'}
     response = requests.post(run_notebook_url, headers=headers,data=json.dumps(params))
-    print(response)
+    if response.status_code == 200 : 
+        print(response.content)
+    else:
+        print(f'Failed to run notebook {notebook_name}...\n')
     return notebook_run_id
 
 
@@ -115,7 +118,7 @@ def observe_notebook(azure_credential: ClientSecretCredential,
         headers = {'Authorization': f'Bearer {access_token.token}'}
         response = requests.get(run_notebook_url, headers=headers)
         if response.status_code == 200 : 
-            print(response)
+            print(response.content)
             notebook_run_status = response.json()['result']['runStatus']
             exitMessage = response.json()['result']['exitValue']
             time.sleep(poll_interval)
