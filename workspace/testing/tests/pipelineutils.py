@@ -76,8 +76,8 @@ def run_and_observe_notebook(azure_credential: ClientSecretCredential,
     else:
         notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name)
     print(f'notebook RUNNING WITH RunID: {notebook_run_id}\n')
-    notebook_run_status = observe_notebook(azure_credential, synapse_endpoint, notebook_run_id)
-    return notebook_run_status
+    notebook_run_status, exitMessage = observe_notebook(azure_credential, synapse_endpoint, notebook_run_id)
+    return (notebook_run_status, exitMessage)
 
 
 def _run_notebook(azure_credential: ClientSecretCredential,
@@ -104,8 +104,6 @@ def observe_notebook(azure_credential: ClientSecretCredential,
     while(notebook_run_status not in until_status):
         now = datetime.datetime.now()
         print(f'{now.strftime("%Y-%m-%d %H:%M:%S")}'f' Polling notebook with run id {notebook_run_id}'f' for status in {", ".join(until_status)}')
-
-
         run_notebook_url = f'{synapse_endpoint}/notebooks/runs/{notebook_run_id}?api-version=2022-03-01-preview'
         access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
         headers = {'Authorization': f'Bearer {access_token.token}'}
@@ -113,10 +111,11 @@ def observe_notebook(azure_credential: ClientSecretCredential,
         if response.status_code == 200 : 
             print(response)
             notebook_run_status = response.json()['result']['runStatus']
+            exitMessage = response.json()['result']['exitValue']
             time.sleep(poll_interval)
         else:
             print("Failed to check status " +str(response.status_code))
-            return "Failed"
+            return ("Failed", "")
 
     print(f'notebook run id {notebook_run_id}' f'finished with status {notebook_run_status}\n')
-    return notebook_run_status
+    return (notebook_run_status, exitMessage)

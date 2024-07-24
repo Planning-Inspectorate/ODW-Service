@@ -1,18 +1,19 @@
 import pytest
 import pipelineutils
 import constants
+import warnings
 
-def test_source_to_processed_workflow(azure_credential,
-                                 synapse_endpoint: str,
-                                 pipeline_name: str):
-    
+def test_entraid(azure_credential, synapse_endpoint: str, pipeline_name: str):
+
+    warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
     # run the testing notebook
     #notebookname: str = "py_unit_tests"
     notebookname: str = "zendesk_read_me"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     notebook_raw_params = {
-        "sparkPool": "exampleSparkpool",
+        "sparkPool": "pinssynspodwpr",
         "notebook": notebookname,
         "parameters": {
             "entity_name": {
@@ -52,13 +53,11 @@ def test_source_to_processed_workflow(azure_credential,
 
     print(f"{notebookname} Notebook Raw Parameters : {notebook_raw_params}\n")
     #run the notebook
-    notebook_run_result = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, pipeline_name, notebook_raw_params)
-
+    (notebook_run_result, exitMessage) = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, pipeline_name, notebook_raw_params)
+    print("Notebook response *" +exitMessage +"*")
     assert notebook_run_result == constants.NOTEBOOK_SUCCESS_STATUS
 
-    print("Running Test")
-    assert True is True
-    print("Test Completed")
+    print("test_entraid Completed")
 
 @pytest.fixture(autouse=True)
 def run_before_and_after_tests():
