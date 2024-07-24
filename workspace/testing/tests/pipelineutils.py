@@ -112,7 +112,7 @@ def observe_notebook(azure_credential: ClientSecretCredential,
         print(f'{now.strftime("%Y-%m-%d %H:%M:%S")}'f' Polling notebook with run id {notebook_run_id}'f' for status in {", ".join(until_status)}')
         access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
         headers = {'Authorization': f'Bearer {access_token.token}'}
-        response = requests.post(run_notebook_url, headers=headers)
+        response = requests.get(run_notebook_url, headers=headers)
         if response.status_code == 200 : 
             print(response)
             notebook_run_status = response.json()['result']['runStatus']
