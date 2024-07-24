@@ -8,11 +8,11 @@ def test_entraid(azure_credential, synapse_endpoint: str, pipeline_name: str):
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     # run the testing notebook
-    notebookname: str = "py_unit_tests"
+    notebookname: str = "utils/unit-tests/py_unit_tests"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     notebook_raw_params = {
-        "sparkPool": "pinssynspodwpr",
+        "sparkPool": "pinssynspodw",
         "notebook": notebookname,
         "parameters": {
             "entity_name": {
