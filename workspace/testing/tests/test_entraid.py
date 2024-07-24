@@ -52,7 +52,7 @@ def test_entraid(azure_credential, synapse_endpoint: str, pipeline_name: str):
 
     print(f"{notebookname} Notebook Raw Parameters : {notebook_raw_params}\n")
     #run the notebook
-    (notebook_run_result, exitMessage) = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, pipeline_name, notebook_raw_params)
+    (notebook_run_result, exitMessage) = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, notebookname, notebook_raw_params)
     print("Notebook response *" +exitMessage +"*")
     assert notebook_run_result == constants.NOTEBOOK_SUCCESS_STATUS
 
