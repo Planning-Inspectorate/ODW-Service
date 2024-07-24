@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5c647abf-7bce-4b01-b3d6-e12523b49e72"
+				"spark.autotune.trackingId": "ed4e7a10-923e-492a-be0c-fff75043d015"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"import pprint"
 				],
-				"execution_count": 8
+				"execution_count": 204
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,7 @@
 					"hrm_table_final: str = 'nsip_s51_advice'\r\n",
 					"curated_table_name: str = 'nsip_s51_advice'"
 				],
-				"execution_count": 9
+				"execution_count": 180
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 10
+				"execution_count": 181
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +138,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\r\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 11
+				"execution_count": 182
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +160,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\r\n",
 					"    return spark_schema"
 				],
-				"execution_count": 12
+				"execution_count": 183
 			},
 			{
 				"cell_type": "code",
@@ -180,7 +180,7 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 13
+				"execution_count": 184
 			},
 			{
 				"cell_type": "code",
@@ -201,7 +201,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\r\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 14
+				"execution_count": 185
 			},
 			{
 				"cell_type": "code",
@@ -236,7 +236,7 @@
 					"        result.update(extract_field(field))\r\n",
 					"    return result"
 				],
-				"execution_count": 15
+				"execution_count": 186
 			},
 			{
 				"cell_type": "code",
@@ -287,7 +287,7 @@
 					"    else:\r\n",
 					"        return True"
 				],
-				"execution_count": 16
+				"execution_count": 187
 			},
 			{
 				"cell_type": "code",
@@ -310,7 +310,7 @@
 					"    hrm_count: int = spark.table(hrm_table_full).count()\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 17
+				"execution_count": 188
 			},
 			{
 				"cell_type": "code",
@@ -333,7 +333,7 @@
 					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 18
+				"execution_count": 189
 			},
 			{
 				"cell_type": "markdown",
@@ -368,7 +368,7 @@
 					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\r\n",
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 19
+				"execution_count": 190
 			},
 			{
 				"cell_type": "markdown",
@@ -401,7 +401,7 @@
 					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
 					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 20
+				"execution_count": 191
 			},
 			{
 				"cell_type": "code",
@@ -425,15 +425,15 @@
 					"SELECT\r\n",
 					"    *\r\n",
 					"FROM\r\n",
-					"    odw_standardised_db.sb_nsip_project as sb\r\n",
-					"    LEFT OUTER JOIN odw_harmonised_db.sb_nsip_project as hrm\r\n",
-					"        ON sb.caseId = hrm.caseId\r\n",
+					"    odw_standardised_db.sb_s51_advice as sb\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.sb_s51_advice as hrm\r\n",
+					"        ON sb.adviceid = hrm.adviceid\r\n",
 					"        AND sb.ingested_datetime = hrm.IngestionDate\r\n",
 					"WHERE\r\n",
 					"    hrm.caseId Is null\r\n",
 					"LIMIT 1"
 				],
-				"execution_count": 21
+				"execution_count": 193
 			},
 			{
 				"cell_type": "markdown",
@@ -463,10 +463,73 @@
 					}
 				},
 				"source": [
+					"def test_curated_row_count(hrm_table_final: str, curated_table: str) -> tuple[int, int, bool]:\r\n",
+					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
+					"    hrm_count: int = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
+					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
+					"    return (hrm_count, curated_count, hrm_count == curated_count)"
+				],
+				"execution_count": 197
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"  hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"  curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
+					"  hrm_count: int = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
+					"  hrm_count\r\n",
+					"  curated_count: int = spark.table(curated_table_full).count()"
+				],
+				"execution_count": 203
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 22
+				"execution_count": 194
 			},
 			{
 				"cell_type": "markdown",
