@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "341bd120-ee82-4974-bd07-07973345431b"
+				"spark.autotune.trackingId": "ef089c11-0be2-4425-a807-9b545a726691"
 			}
 		},
 		"metadata": {
@@ -316,7 +316,7 @@
 					"\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 66
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -335,11 +335,34 @@
 					"def test_curated_row_count(hrm_table_final: str, curated_table: str) -> tuple[int, int, bool]:\r\n",
 					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
 					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
-					"    hrm_count: int = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
+					"    \r\n",
+					"    \r\n",
+					"    selected_columns = [\"adviceId\",\r\n",
+					"\t\t\"adviceReference\",\r\n",
+					"\t\t\"caseId\",\r\n",
+					"\t\t\"caseReference\",\r\n",
+					"\t\t\"title\",\r\n",
+					"\t\t\"from\",\r\n",
+					"\t\t\"agent\",\r\n",
+					"\t\t\"method\",\r\n",
+					"\t\t\"enquiryDate\",\r\n",
+					"\t\t\"enquiryDetails\",\r\n",
+					"\t\t\"adviceGivenBy\",\r\n",
+					"\t\t\"adviceDate\",\r\n",
+					"\t\t\"adviceDetails\",\r\n",
+					"\t\t\"status\",\r\n",
+					"\t\t\"redactionStatus\",\r\n",
+					"\t\t\"attachmentIds\"]\r\n",
+					"\r\n",
+					"\r\n",
+					"    hrm_df: DataFrame = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").select(selected_columns).drop_duplicates()\r\n",
+					"    hrm_count: int = hrm_df.count()\r\n",
+					"\r\n",
 					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
+					"    \r\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 67
+				"execution_count": 90
 			},
 			{
 				"cell_type": "markdown",
@@ -407,7 +430,7 @@
 					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
 					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 191
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -421,25 +444,50 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"SELECT\r\n",
-					"    *\r\n",
-					"FROM\r\n",
-					"    odw_standardised_db.sb_s51_advice as sb\r\n",
-					"    LEFT OUTER JOIN odw_harmonised_db.sb_s51_advice as hrm\r\n",
-					"        ON sb.adviceid = hrm.adviceid\r\n",
-					"        AND sb.ingested_datetime = hrm.IngestionDate\r\n",
-					"WHERE\r\n",
-					"    hrm.caseId Is null\r\n",
-					"LIMIT 1"
+					"std_table_full: str = f\"{std_db_name}.{std_table_name}\"\n",
+					"hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_name}\"\n",
+					"\n",
+					"# filter standardised df with non-null message_type and exclude 'Delete' message_type since it doesn't add a new row in hrm\n",
+					"std_df: DataFrame = spark.table(std_table_full)\n",
+					"std_df = std_df.filter((std_df.message_type != 'Delete') & (std_df.message_type.isNotNull()))\n",
+					"\n",
+					"hrm_df  = spark.table(hrm_table_full)\n",
+					"\n",
+					"print(std_df.count())\n",
+					"print(hrm_df.count())\n",
+					"\n",
+					"selected_columns = [\"adviceId\",\n",
+					"\t\t\"adviceReference\",\n",
+					"\t\t\"caseId\",\n",
+					"\t\t\"caseReference\",\n",
+					"\t\t\"title\",\n",
+					"\t\t\"from\",\n",
+					"\t\t\"agent\",\n",
+					"\t\t\"method\",\n",
+					"\t\t\"enquiryDate\",\n",
+					"\t\t\"enquiryDetails\",\n",
+					"\t\t\"adviceGivenBy\",\n",
+					"\t\t\"adviceDate\",\n",
+					"\t\t\"adviceDetails\",\n",
+					"\t\t\"status\",\n",
+					"\t\t\"redactionStatus\",\n",
+					"\t\t\"attachmentIds\"]\n",
+					"\n",
+					"\n",
+					"# Find rows in the original table that are not in the new table\n",
+					"missing_rows_in_std = hrm_df.select(selected_columns).subtract(std_df.select(selected_columns))\n",
+					"\n",
+					"# Show the missing rows\n",
+					"display(missing_rows_in_std)\n",
+					"\n",
+					"missing_rows_in_hrm = std_df.select(selected_columns).subtract(hrm_df.select(selected_columns))\n",
+					"display(missing_rows_in_hrm)\n",
+					""
 				],
-				"execution_count": 193
+				"execution_count": 82
 			},
 			{
 				"cell_type": "markdown",
@@ -472,7 +520,7 @@
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 215
+				"execution_count": 91
 			},
 			{
 				"cell_type": "markdown",
@@ -487,77 +535,6 @@
 					"##### Trace service bus data from standardised to curated\r\n",
 					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_s51_advice"
-				],
-				"execution_count": 216
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_s51_advice \r\n",
-					"WHERE adviceid = 100000199 order by ingested_datetime desc"
-				],
-				"execution_count": 217
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.sb_s51_advice WHERE adviceid = 100000199 \r\n",
-					"Order by IngestionDate desc"
-				],
-				"execution_count": 218
 			},
 			{
 				"cell_type": "markdown",
@@ -606,7 +583,7 @@
 					"ORDER BY\r\n",
 					"    2 DESC"
 				],
-				"execution_count": 224
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -622,15 +599,13 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					},
-					"collapsed": false
+					}
 				},
 				"source": [
-					"%%sql\r\n",
-					"SELECT * FROM \r\n",
-					"    odw_standardised_db.horizon_nsip_advice"
+					"%%sql\n",
+					"select attachmentIds FROM [odw_curated_db].[dbo].[nsip_s51_advice] where adviceId = 16347955"
 				],
-				"execution_count": 225
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
