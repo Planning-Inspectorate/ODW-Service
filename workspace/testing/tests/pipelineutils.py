@@ -90,6 +90,7 @@ def _run_notebook(azure_credential: ClientSecretCredential,
     access_token = azure_credential.get_token(constants.AZURE_SYNAPSE_ENDPOINT)
     headers = {'Authorization': f'Bearer {access_token.token}'}
     response = requests.post(run_notebook_url, headers=headers,data=json.dumps(params))
+    print(response)
     return notebook_run_id
 
 
