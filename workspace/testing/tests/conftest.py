@@ -9,7 +9,7 @@ import constants
 
 def pytest_addoption(parser):
     # synapse name
-    parser.addoption("--synapse", action="store", default="pins-synw-odw-test-uks")
+    parser.addoption("--synapse", action="store", default="pins-synw-odw-dev-uks")
     # pipeline name
     parser.addoption("--pipeline", action="store", default="MasterPipeline")
 
