@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d4075903-1828-4067-ad77-2cb928faef30"
+				"spark.autotune.trackingId": "341bd120-ee82-4974-bd07-07973345431b"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"import pprint"
 				],
-				"execution_count": 204
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,7 @@
 					"hrm_table_final: str = 'nsip_s51_advice'\r\n",
 					"curated_table_name: str = 'nsip_s51_advice'"
 				],
-				"execution_count": 180
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 181
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +138,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\r\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 182
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +160,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\r\n",
 					"    return spark_schema"
 				],
-				"execution_count": 183
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -180,7 +180,7 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 184
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -201,7 +201,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\r\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 185
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -236,7 +236,7 @@
 					"        result.update(extract_field(field))\r\n",
 					"    return result"
 				],
-				"execution_count": 186
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -287,7 +287,7 @@
 					"    else:\r\n",
 					"        return True"
 				],
-				"execution_count": 187
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -306,11 +306,17 @@
 					"def test_std_same_rows_hrm(std_table: str, hrm_table: str) -> tuple[int, int, bool]:\r\n",
 					"    std_table_full: str = f\"{std_db_name}.{std_table}\"\r\n",
 					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table}\"\r\n",
-					"    std_count: int = spark.table(std_table_full).count()\r\n",
+					"\r\n",
+					"    # filter standardised df with non-null message_type and exclude 'Delete' message_type since it doesn't add a new row in hrm\r\n",
+					"    std_df: DataFrame = spark.table(std_table_full)\r\n",
+					"    std_df = std_df.filter((std_df.message_type != 'Delete') & (std_df.message_type.isNotNull()))\r\n",
+					"    \r\n",
+					"    std_count: int = std_df.count()\r\n",
 					"    hrm_count: int = spark.table(hrm_table_full).count()\r\n",
+					"\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 188
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -333,7 +339,7 @@
 					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 189
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -368,7 +374,7 @@
 					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\r\n",
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 190
+				"execution_count": 68
 			},
 			{
 				"cell_type": "markdown",
