@@ -3,7 +3,7 @@ resource "azurerm_virtual_machine_extension" "custom_script_runtime" {
   virtual_machine_id   = azurerm_windows_virtual_machine.synapse.id
   publisher            = "Microsoft.Compute"
   type                 = "CustomScriptExtension"
-  type_handler_version = "1.10.17"
+  type_handler_version = "1.10"
 
   protected_settings = <<PROTECTED_SETTINGS
     {
