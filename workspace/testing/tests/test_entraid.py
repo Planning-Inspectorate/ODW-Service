@@ -14,6 +14,14 @@ def test_entraid(azure_credential, synapse_endpoint: str, pipeline_name: str):
     notebook_raw_params = {
         "sparkPool": "pinssynspodw",
         "notebook": notebookname,
+        "sessionOptions": {
+            "driverMemory": "28g",
+            "driverCores": 4,
+            "executorMemory": "28g",
+            "executorCores": 4,
+            "numExecutors": 2,
+            "runAsWorkspaceSystemIdentity": False
+        },
         "parameters": {
             "entity_name": {
                "type": "String",
