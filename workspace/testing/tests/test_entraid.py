@@ -3,7 +3,33 @@ import pipelineutils
 import constants
 import warnings
 
-def test_entraid(azure_credential, synapse_endpoint: str):
+def test_entraid_pipeline(azure_credential, synapse_endpoint: str):
+    warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
+    # run the pipeline
+    pipelinename: str = "EntraID"
+    
+    # Trigger the Master Pipeline for Landing to Raw Zone
+    pipeline_raw_params = {
+        "sparkPool": "pinssynspodw",
+        "pipeline": pipelinename,
+        "sessionOptions": {
+            "driverMemory": "28g",
+            "driverCores": 4,
+            "executorMemory": "28g",
+            "executorCores": 4,
+            "numExecutors": 2,
+            "runAsWorkspaceSystemIdentity": False
+        }
+    }
+
+    #run the notebook
+    pipeline_run_result = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, pipelinename, pipeline_raw_params)
+    assert pipeline_run_result == constants.PIPELINE_SUCCESS_STATUS
+    print("test_entraid Completed")
+
+
+def test_entraid_notebook(azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
