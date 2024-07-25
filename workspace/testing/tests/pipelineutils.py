@@ -72,13 +72,18 @@ def run_and_observe_notebook(azure_credential: ClientSecretCredential,
                              params: dict):
     synapse_client: ArtifactsClient = ArtifactsClient(azure_credential, synapse_endpoint)
     if params is not None:
-        notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name, params)
+        print(f"{notebook_name} Notebook Raw Parameters : {params}\n")
+        success, notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name, params)
     else:
-        notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name)
-    print(f'notebook RUNNING WITH RunID: {notebook_run_id}\n')
-    notebook_run_status, exitMessage = observe_notebook(azure_credential, synapse_endpoint, notebook_run_id)
-    return (notebook_run_status, exitMessage)
-
+        success, notebook_run_id = _run_notebook(azure_credential, synapse_endpoint, notebook_name)
+    
+    if (success):
+        print(f'notebook RUNNING WITH RunID: {notebook_run_id}\n')
+        notebook_run_status, exitMessage = observe_notebook(azure_credential, synapse_endpoint, notebook_run_id)
+        return (notebook_run_status, exitMessage)
+    else:
+        print(f'notebook NOT RUNNING FOR RunID: {notebook_run_id}\n')
+        return ("Failed", "Execution Error")
 
 def _run_notebook(azure_credential: ClientSecretCredential,
                   synapse_endpoint: str, notebook_name: str,
@@ -92,9 +97,11 @@ def _run_notebook(azure_credential: ClientSecretCredential,
     response = requests.post(run_notebook_url, headers=headers,data=json.dumps(params))
     if response.status_code == 200 : 
         print(response.content)
+        return (True, notebook_run_id)
     else:
-        print(f'Failed to run notebook {notebook_name}...\n')
-    return notebook_run_id
+        print(f'Failed to run notebook {notebook_name}, Error is {response.status_code}...\n')
+        return (False, notebook_run_id)
+    
 
 
 #Logs are available here : https://portal.azure.com/#view/Microsoft_Azure_Monitoring/AzureMonitoringBrowseBlade/~/logs
