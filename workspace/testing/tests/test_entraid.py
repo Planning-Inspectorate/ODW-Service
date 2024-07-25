@@ -3,7 +3,7 @@ import pipelineutils
 import constants
 import warnings
 
-def test_entraid_pipeline(azure_credential, synapse_endpoint: str):
+def test_entraid_pipeline(credential_name, azure_credential, synapse_endpoint: str):
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     # run the pipeline
@@ -23,8 +23,8 @@ def test_entraid_pipeline(azure_credential, synapse_endpoint: str):
         }
     }
 
-    #run the notebook
-    pipeline_run_result = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, pipelinename, pipeline_raw_params)
+    #run the pipeline
+    pipeline_run_result = pipelineutils.run_and_observe_pipeline(credential_name, azure_credential, synapse_endpoint, pipelinename, pipeline_raw_params)
     assert pipeline_run_result == constants.PIPELINE_SUCCESS_STATUS
     print("test_entraid Completed")
 
