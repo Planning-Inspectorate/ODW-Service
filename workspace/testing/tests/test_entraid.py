@@ -29,13 +29,12 @@ def test_entraid_pipeline(azure_credential, synapse_endpoint: str):
     print("test_entraid Completed")
 
 
-def test_entraid_notebook(azure_credential, synapse_endpoint: str):
+def test_entraid_notebook(credential_name, azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     # run the testing notebook
-    #notebookname: str = "py_unit_tests"
-    notebookname: str = "zendesk_read_me"
+    notebookname: str = "py_unit_tests"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     notebook_raw_params = {
@@ -86,7 +85,7 @@ def test_entraid_notebook(azure_credential, synapse_endpoint: str):
     }
 
     #run the notebook
-    (notebook_run_result, exitMessage) = pipelineutils.run_and_observe_notebook(azure_credential, synapse_endpoint, notebookname, notebook_raw_params)
+    (notebook_run_result, exitMessage) = pipelineutils.run_and_observe_notebook(credential_name, azure_credential, synapse_endpoint, notebookname, notebook_raw_params)
     print("Notebook response *" +exitMessage +"*")
     assert notebook_run_result == constants.NOTEBOOK_SUCCESS_STATUS
 
