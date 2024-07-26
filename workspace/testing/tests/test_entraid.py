@@ -7,10 +7,10 @@ def test_entraid_pipeline(credential_name, azure_credential, synapse_endpoint: s
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     #list the pipelines out
-    pipelineutils.list_pipelines(credential_name, azure_credential, synapse_endpoint)
+    #pipelineutils.list_pipelines(credential_name, azure_credential, synapse_endpoint)
 
     # run the pipeline
-    pipelinename: str = "EntraID"
+    pipelinename: str = "rel_1262_entra_id"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     pipeline_raw_params = {
