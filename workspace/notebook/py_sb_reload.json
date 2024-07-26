@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "00cbc6c6-c9c1-454d-92d4-20ecd9831ac9"
+				"spark.autotune.trackingId": "876d3aa2-d1e2-4076-82e5-5cab859d2fb1"
 			}
 		},
 		"metadata": {
@@ -791,14 +791,16 @@
 				"source": [
 					"base = spark.sql(f\"\"\"\r\n",
 					"                SELECT DISTINCT\r\n",
-					"                    CAST(ingested_datetime AS Date) AS ingested_datetime\r\n",
+					"                   CAST(ingested_datetime AS Date)\r\n",
 					"                FROM\r\n",
 					"                    {raw_table_name}\r\n",
 					"                WHERE\r\n",
 					"                    ingested_datetime IS NOT NULL\r\n",
+					"                    -- AND message_type IS NOT NULL\r\n",
 					"                ORDER BY \r\n",
 					"                    1 ASC\r\n",
 					"                \"\"\")\r\n",
+					"\r\n",
 					"\r\n",
 					"for rows in base.collect():\r\n",
 					"    processing = rows[\"ingested_datetime\"]\r\n",
@@ -840,14 +842,16 @@
 					"                        \"\"\")\r\n",
 					"\r\n",
 					"    \r\n",
-					"    \r\n",
 					"    if hrm.count() == 0:\r\n",
-					"         print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
-					"         ## Run the standard process if we haven't already\r\n",
-					"         mssparkutils.notebook.run(\"py_sb_std_to_hrm\", 6100, {\"entity_name\": folder_name})\r\n",
-					"         spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
-					"         print(f\"Rows Count in {hrm_table_name_full}: {spark.table(hrm_table_name_full).count()}\")\r\n",
-					"        "
+					"        print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
+					"        ## Run the standard process if we haven't already            \r\n",
+					"        try:\r\n",
+					"            mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": folder_name})\r\n",
+					"        except Exception as error:\r\n",
+					"            mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": folder_name})\r\n",
+					"        \r\n",
+					"        spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
+					"        print(f\"Rows Count in {hrm_table_name_full}: {spark.table(hrm_table_name_full).count()}\")"
 				],
 				"execution_count": 140
 			}
