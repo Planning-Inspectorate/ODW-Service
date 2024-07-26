@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7135430a-e0b2-4594-87d3-0f2af9538a0b"
+				"spark.autotune.trackingId": "97ce8011-d653-4615-8280-ecaa6da1b066"
 			}
 		},
 		"metadata": {
@@ -45,8 +45,8 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 4,
-				"memory": 28,
+				"cores": 8,
+				"memory": 56,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 30
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_project\""
 				],
-				"execution_count": 31
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -202,7 +202,7 @@
 					"                        {service_bus_table}\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 32
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -323,13 +323,23 @@
 					"                        ,'Y' AS IsActive\r\n",
 					"FROM\r\n",
 					"    {horizon_table} AS Horizon\r\n",
+					"    LEFT OUTER JOIN \r\n",
+					"            (   SELECT\r\n",
+					"                    caseId\r\n",
+					"                    ,MIN(IngestionDate) AS ingested\r\n",
+					"                FROM\r\n",
+					"                    {service_bus_table} AS Service_Bus\r\n",
+					"                GROUP BY\r\n",
+					"                    caseId\r\n",
+					"            ) AS First_seen\r\n",
+					"        ON Horizon.HorizonCaseNumber = First_seen.caseId\r\n",
+					"        AND Horizon.ingested_datetime < First_seen.ingested\r\n",
 					"WHERE\r\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
-					"    AND HorizonCaseNumber NOT IN (SELECT DISTINCT caseId FROM {service_bus_table} WHERE migrationstatus = TRUE) -- Need to drop cases that have been migrated\r\n",
+					"    caseId IS NULL -- Need to drop cases that have been migrated, but keep the history from Horizon\r\n",
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 33
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -370,7 +380,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 34
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -388,7 +398,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 35
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -407,7 +417,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 36
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -459,7 +469,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_project"
 				],
-				"execution_count": 37
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -714,7 +724,48 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 38
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_harmonised_db.nsip_project where caseId = 3147837 order by IngestionDate desc"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
