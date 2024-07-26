@@ -6,6 +6,9 @@ import warnings
 def test_entraid_pipeline(credential_name, azure_credential, synapse_endpoint: str):
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
+    #list the pipelines out
+    pipelineutils.list_pipelines(credential_name, azure_credential, synapse_endpoint)
+
     # run the pipeline
     pipelinename: str = "EntraID"
     
