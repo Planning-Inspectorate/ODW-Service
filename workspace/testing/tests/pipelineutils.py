@@ -21,7 +21,6 @@ def list_pipelines(credential_name: str, azure_credential: ClientSecretCredentia
         print(f'Failed to list pipelines, Error is {response.status_code}...\n')
 
 
-
 def run_and_observe_pipeline(credential_name: str, azure_credential: ClientSecretCredential, synapse_endpoint: str, pipeline_name: str,params: dict):
     synapse_client: ArtifactsClient = ArtifactsClient(azure_credential, synapse_endpoint)
     if params is not None:
@@ -45,7 +44,7 @@ def _run_pipeline(credential_name: str, azure_credential: ClientSecretCredential
     headers = {'Authorization': f'Bearer {access_token.token}', 'Content-Type': 'application/json'}
     response = requests.post(run_pipeline_url, headers=headers,data=json.dumps(params))
 
-    if response.status_code == 200 : 
+    if response.status_code >= 200 and response.status_code < 400 : 
         pipeline_run_id = response.json()['runId']
         print(response.content)
         return (True, pipeline_run_id)
@@ -90,7 +89,7 @@ def _run_notebook(credential_name: str, azure_credential: ClientSecretCredential
     access_token = azure_credential.get_token(credential_name)
     headers = {'Authorization': f'Bearer {access_token.token}', 'Content-Type': 'application/json'}
     response = requests.put(run_notebook_url, headers=headers,data=json.dumps(params))
-    if response.status_code == 200 : 
+    if response.status_code >= 200 and response.status_code < 400 : 
         print(response.content)
         return (True, notebook_run_id)
     else:
@@ -114,7 +113,7 @@ def observe_notebook(credential_name: str, azure_credential: ClientSecretCredent
         access_token = azure_credential.get_token(credential_name)
         headers = {'Authorization': f'Bearer {access_token.token}', 'Content-Type': 'application/json'}
         response = requests.get(run_notebook_url, headers=headers)
-        if response.status_code == 200 : 
+        if response.status_code >= 200 and response.status_code < 400: 
             print(response.content)
             notebook_run_status = response.json()['result']['runStatus']
             exitMessage = response.json()['result']['exitValue']
