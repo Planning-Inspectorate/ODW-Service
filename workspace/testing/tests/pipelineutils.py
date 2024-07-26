@@ -68,7 +68,7 @@ def observe_pipeline(synapse_client: ArtifactsClient, run_id: str, until_status=
 def run_and_observe_notebook(credential_name: str, azure_credential: ClientSecretCredential,synapse_endpoint: str, notebook_name: str,params: dict):
     synapse_client: ArtifactsClient = ArtifactsClient(azure_credential, synapse_endpoint)
     if params is not None:
-        print(f"{notebook_name} Notebook Raw Parameters : {params}\n")
+        #print(f"{notebook_name} Notebook Raw Parameters : {params}\n")
         success, notebook_run_id = _run_notebook(credential_name, azure_credential, synapse_endpoint, notebook_name, params)
     else:
         success, notebook_run_id = _run_notebook(credential_name, azure_credential, synapse_endpoint, notebook_name)
