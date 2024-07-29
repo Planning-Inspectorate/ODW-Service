@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "07d687b8-9b68-4142-b83a-58c9038dd8df"
+				"spark.autotune.trackingId": "2d9287d9-e48e-4fae-8034-e9d630857f2f"
 			}
 		},
 		"metadata": {
@@ -57,10 +57,9 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"from pyspark.sql.functions import *\r\n",
 					"import pprint\r\n",
-					"from pyspark.sql.functions import col, lit\r\n",
 					"from pyspark.sql.types import *"
 				],
-				"execution_count": 136
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -79,9 +78,9 @@
 					]
 				},
 				"source": [
-					"entity_name = \"\"\r\n",
-					"folder_name = \"\"\r\n",
-					"table_name = \"\""
+					"entity_name: str = \"\"\r\n",
+					"folder_name: str = \"\"\r\n",
+					"table_name: str = \"\""
 				],
 				"execution_count": 139
 			},
@@ -99,17 +98,17 @@
 					}
 				},
 				"source": [
-					"std_db_name = \"odw_standardised_db\"\n",
-					"hrm_db_name = \"odw_harmonised_db\"\n",
+					"std_db_name: str = \"odw_standardised_db\"\n",
+					"hrm_db_name: str = \"odw_harmonised_db\"\n",
 					"\n",
-					"raw_table = f\"{table_name}_tmp\"\n",
-					"raw_table_name = f\"{std_db_name}.{raw_table}\"\n",
+					"raw_table: str = f\"{table_name}_tmp\"\n",
+					"raw_table_name: str = f\"{std_db_name}.{raw_table}\"\n",
 					"\n",
-					"std_table_name_full = f\"{std_db_name}.{table_name}\"\n",
-					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\n",
+					"std_table_name_full: str = f\"{std_db_name}.{table_name}\"\n",
+					"hrm_table_name_full: str = f\"{hrm_db_name}.{table_name}\"\n",
 					"\n",
 					"if folder_name == \"\":\n",
-					"    folder_name = entity_name"
+					"    folder_name: str = entity_name"
 				],
 				"execution_count": null
 			},
@@ -222,7 +221,7 @@
 					}
 				},
 				"source": [
-					"table_schema =spark.table(raw_table_name).schema\r\n",
+					"table_schema: StructType = spark.table(raw_table_name).schema\r\n",
 					"print(table_schema)"
 				],
 				"execution_count": null
@@ -272,8 +271,8 @@
 					}
 				},
 				"source": [
-					"def create_valid_dataframe() -> DataFrame:\r\n",
-					"    df: DataFrame = collect_all_raw_sb_data(folder_name,table_schema)\r\n",
+					"def create_valid_dataframe(folder_name: str, table_schema: StructType) -> DataFrame:\r\n",
+					"    df: DataFrame = collect_all_raw_sb_data(folder_name, table_schema)\r\n",
 					"    return df"
 				],
 				"execution_count": null
@@ -337,8 +336,8 @@
 					"collapsed": false
 				},
 				"source": [
-					"historical_df: DataFrame = create_valid_dataframe().alias(\"historical\")\r\n",
-					"historical_schema = historical_df.schema"
+					"historical_df: DataFrame = create_valid_dataframe(folder_name, table_schema).alias(\"historical\")\r\n",
+					"historical_schema: StructType = historical_df.schema"
 				],
 				"execution_count": null
 			},
@@ -434,10 +433,12 @@
 					}
 				},
 				"source": [
-					"def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
-					"    for field in schema.fields:\r\n",
-					"        df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
-					"    return df"
+					"# Don't want to cast data types ideally and be specifying the schema above we shouldn't need to\r\n",
+					"\r\n",
+					"# def cast_columns(df: DataFrame, schema: StructType) -> DataFrame:\r\n",
+					"#     for field in schema.fields:\r\n",
+					"#         df = df.withColumn(field.name, col(field.name).cast(field.dataType))\r\n",
+					"#     return df"
 				],
 				"execution_count": null
 			},
@@ -455,10 +456,10 @@
 					}
 				},
 				"source": [
-					"def check_null_message_enqueued_time_utc(df) -> DataFrame:\r\n",
+					"def check_null_message_enqueued_time_utc(df: DataFrame) -> DataFrame:\r\n",
 					"    # define date pattern to extract the dates from the input file path\r\n",
 					"    date_pattern = r'(\\d{4}-\\d{2}-\\d{2})'\r\n",
-					"    df_final = df.withColumn(\"message_enqueued_time_utc\", when(col(\"message_enqueued_time_utc\").isNull(),regexp_extract(df[\"input_file\"], date_pattern,1)).otherwise(col(\"message_enqueued_time_utc\")))\r\n",
+					"    df_final = df.withColumn(\"message_enqueued_time_utc\", when(col(\"message_enqueued_time_utc\").isNull(), regexp_extract(df[\"input_file\"], date_pattern,1)).otherwise(col(\"message_enqueued_time_utc\")))\r\n",
 					"\r\n",
 					"    return df_final"
 				],
@@ -478,7 +479,7 @@
 					}
 				},
 				"source": [
-					"final_df = check_null_message_enqueued_time_utc(historical_df)"
+					"final_df: DataFrame = check_null_message_enqueued_time_utc(historical_df)"
 				],
 				"execution_count": null
 			},
@@ -518,7 +519,7 @@
 				},
 				"source": [
 					"# drop the input_file column as that's just for analysis\r\n",
-					"final_df = final_df.drop(\"input_file\")"
+					"final_df: DataFrame = final_df.drop(\"input_file\")"
 				],
 				"execution_count": null
 			},
