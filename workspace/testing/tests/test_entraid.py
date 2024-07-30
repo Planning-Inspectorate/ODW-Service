@@ -37,7 +37,7 @@ def test_entraid_notebook(credential_name, azure_credential, synapse_endpoint: s
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     # run the testing notebook
-    notebookname: str = "zendesk_read_me"
+    notebookname: str = "py_unit_tests"
     
     # Trigger the Master Pipeline for Landing to Raw Zone
     notebook_raw_params = {
