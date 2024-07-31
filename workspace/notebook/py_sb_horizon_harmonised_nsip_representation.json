@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "eb627343-c5d1-4fc5-8b9b-cb6cc30d188a"
+				"spark.autotune.trackingId": "c6ad64cf-4501-4e0e-828d-4532cdc131d1"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 19
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -77,9 +77,9 @@
 				"source": [
 					"service_bus_table = \"odw_harmonised_db.sb_nsip_representation\"\r\n",
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
-					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
+					"spark_table_final = \"odw_harmonised_db.nsip_relevant_representation\""
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -185,7 +185,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +283,7 @@
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -301,13 +301,32 @@
 				},
 				"source": [
 					"#Establish aggregated view of attachmentId\r\n",
-					"horizon_region = horizon_data.groupBy(\"caseid\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
-					"horizon_data = horizon_data.join(horizon_region, on=\"caseid\", how=\"inner\").drop(\"attachmentId\")\r\n",
+					"horizon_region = horizon_data.groupBy(\"representationId\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
+					"horizon_data = horizon_data.join(horizon_region, on=\"representationId\", how=\"inner\").drop(\"attachmentId\")\r\n",
 					"\r\n",
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 14
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(results)"
+				],
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -325,7 +344,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 15
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -344,7 +363,25 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 16
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -396,7 +433,25 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_relevant_representation"
 				],
-				"execution_count": 17
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -506,7 +561,7 @@
 					"                        ,IngestionDate\r\n",
 					"                        ,ValidTo\r\n",
 					"                        ,MD5(\r\n",
-					"                            COALESCE(\r\n",
+					"                            CONCAT(\r\n",
 					"                                    IFNULL(CAST(Target.NSIPRepresentaionID AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(representationId AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(referenceId AS String), '.')\r\n",
@@ -581,7 +636,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 18
+				"execution_count": 13
 			}
 		]
 	}
