@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "dce438a5-eed1-4f34-b47d-254067294c97"
+				"spark.autotune.trackingId": "fa112e03-feb5-4f02-9893-1be739f87987"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"\n",
 					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 49
+				"execution_count": 181
 			},
 			{
 				"cell_type": "markdown",
@@ -126,6 +126,29 @@
 				"source": [
 					""
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"DROP TABLE odw_curated_db.service_user"
+				],
+				"execution_count": 250
 			},
 			{
 				"cell_type": "code",
@@ -179,7 +202,7 @@
 					"    df.write.mode(\"Overwrite\").option(\"mergeSchema\", \"true\").format(\"delta\").saveAsTable(\"odw_curated_db.service_user\")\r\n",
 					""
 				],
-				"execution_count": 129
+				"execution_count": 251
 			},
 			{
 				"cell_type": "markdown",
@@ -220,6 +243,7 @@
 					"    ,caseReference\r\n",
 					"    ,salutation\r\n",
 					"    ,FirstName\r\n",
+					"    ,lastName\r\n",
 					"    ,addressLine1\r\n",
 					"    ,addressLine2\r\n",
 					"    ,addressTown\r\n",
@@ -242,7 +266,7 @@
 					"WHERE\r\n",
 					"    IsActive = 'Y'"
 				],
-				"execution_count": 131
+				"execution_count": 252
 			},
 			{
 				"cell_type": "code",
@@ -272,6 +296,7 @@
 					"    SET\r\n",
 					"        salutation = source.salutation\r\n",
 					"        ,firstName = source.FirstName\r\n",
+					"        ,lastName = source.lastName\r\n",
 					"        ,addressLine1 = source.addressLine1\r\n",
 					"        ,AddressLine2 = source.addressLine2\r\n",
 					"        ,addressTown = source.addressTown\r\n",
@@ -295,6 +320,7 @@
 					"        ,caseReference\r\n",
 					"        ,salutation\r\n",
 					"        ,firstName\r\n",
+					"        ,lastName\r\n",
 					"        ,addressLine1\r\n",
 					"        ,AddressLine2\r\n",
 					"        ,addressTown\r\n",
@@ -318,6 +344,7 @@
 					"        ,source.caseReference\r\n",
 					"        ,source.salutation\r\n",
 					"        ,source.FirstName\r\n",
+					"        ,source.LastName\r\n",
 					"        ,source.addressLine1\r\n",
 					"        ,source.addressLine2\r\n",
 					"        ,source.addressTown\r\n",
@@ -338,7 +365,7 @@
 					"    )\r\n",
 					""
 				],
-				"execution_count": 132
+				"execution_count": 253
 			},
 			{
 				"cell_type": "markdown",
@@ -445,7 +472,7 @@
 					"            'Appellant'\r\n",
 					"    END IS NOT NULL"
 				],
-				"execution_count": 149
+				"execution_count": 254
 			},
 			{
 				"cell_type": "code",
@@ -481,7 +508,7 @@
 					"        AND source.sourceSUID = target.sourceSUID\r\n",
 					""
 				],
-				"execution_count": 134
+				"execution_count": 255
 			},
 			{
 				"cell_type": "code",
@@ -514,7 +541,8 @@
 					"        ON source.CaseReference = target.caseReference\r\n",
 					"        AND source.serviceUserType = target.serviceUserType\r\n",
 					"        AND ( -- Name match\r\n",
-					"                COALESCE(source.firstName, ' ', source.lastName) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                OR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
 					"                OR (-- separated name elements. Coalesce to cater for org only matches\r\n",
 					"                        COALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
 					"                        AND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
@@ -522,7 +550,7 @@
 					"                OR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
 					"                    source.organisation = target.firstName \r\n",
 					"                    AND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
-					"                    AND COALESCE(source.firstName, ' ', source.lastName) <> target.firstName\r\n",
+					"                    AND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
 					"                )\r\n",
 					"            )\r\n",
 					"        AND ( -- Address elements match\r\n",
@@ -532,10 +560,11 @@
 					"                AND COALESCE(source.addressCounty, '') = COALESCE(target.addressCounty, '')\r\n",
 					"                AND COALESCE(source.postcode, '') = COALESCE(target.postcode, '')\r\n",
 					"                AND COALESCE(source.organisation, '') = COALESCE(target.organisation, '')\r\n",
+					"                AND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
 					"            )\r\n",
 					""
 				],
-				"execution_count": 135
+				"execution_count": 256
 			},
 			{
 				"cell_type": "code",
@@ -568,7 +597,8 @@
 					"        ON source.CaseReference = target.caseReference\r\n",
 					"        AND source.serviceUserType = target.serviceUserType\r\n",
 					"        AND ( -- Name match\r\n",
-					"                COALESCE(source.firstName, ' ', source.lastName) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                OR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
 					"                OR (-- separated name elements. Coalesce to cater for org only matches\r\n",
 					"                        COALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
 					"                        AND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
@@ -576,8 +606,8 @@
 					"                OR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
 					"                    source.organisation = target.firstName \r\n",
 					"                    AND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
-					"                    AND COALESCE(source.firstName, ' ', source.lastName) <> target.firstName\r\n",
-					"                    )\r\n",
+					"                    AND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"                )\r\n",
 					"            )\r\n",
 					"        AND ( -- At least one telephone element matches\r\n",
 					"                COALESCE(source.telephoneNumber, '') = COALESCE(target.telephoneNumber, '')\r\n",
@@ -586,7 +616,7 @@
 					"            )\r\n",
 					""
 				],
-				"execution_count": 136
+				"execution_count": 257
 			},
 			{
 				"cell_type": "code",
@@ -619,7 +649,8 @@
 					"        ON source.CaseReference = target.caseReference\r\n",
 					"        AND source.serviceUserType = target.serviceUserType\r\n",
 					"        AND ( -- Name match\r\n",
-					"                COALESCE(source.firstName, ' ', source.lastName) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                OR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
 					"                OR (-- separated name elements. Coalesce to cater for org only matches\r\n",
 					"                        COALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
 					"                        AND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
@@ -627,15 +658,15 @@
 					"                OR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
 					"                    source.organisation = target.firstName \r\n",
 					"                    AND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
-					"                    AND COALESCE(source.firstName, ' ', source.lastName) <> target.firstName\r\n",
-					"                    )\r\n",
+					"                    AND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"                )\r\n",
 					"            )\r\n",
 					"        AND ( -- Email matches\r\n",
 					"                COALESCE(source.emailAddress, '') = COALESCE(target.emailAddress, '')\r\n",
 					"            )\r\n",
 					""
 				],
-				"execution_count": 137
+				"execution_count": 258
 			},
 			{
 				"cell_type": "code",
@@ -747,7 +778,7 @@
 					"        ON raw.CaseInvolvementID = dedupe.CaseInvolvementID\r\n",
 					"        AND MatchID = 1"
 				],
-				"execution_count": 138
+				"execution_count": 259
 			},
 			{
 				"cell_type": "code",
@@ -777,6 +808,7 @@
 					"    SET\r\n",
 					"        salutation = source.salutation\r\n",
 					"        ,firstName = source.FirstName\r\n",
+					"        ,lastName = source.LastName\r\n",
 					"        ,addressLine1 = source.addressLine1\r\n",
 					"        ,AddressLine2 = source.addressLine2\r\n",
 					"        ,addressTown = source.addressTown\r\n",
@@ -800,6 +832,7 @@
 					"        ,caseReference\r\n",
 					"        ,salutation\r\n",
 					"        ,firstName\r\n",
+					"        ,lastName\r\n",
 					"        ,addressLine1\r\n",
 					"        ,AddressLine2\r\n",
 					"        ,addressTown\r\n",
@@ -823,6 +856,7 @@
 					"        ,source.caseReference\r\n",
 					"        ,source.salutation\r\n",
 					"        ,source.FirstName\r\n",
+					"        ,source.lastName\r\n",
 					"        ,source.addressLine1\r\n",
 					"        ,source.addressLine2\r\n",
 					"        ,source.addressTown\r\n",
@@ -842,7 +876,7 @@
 					"        ,source.sourceSUID\r\n",
 					"    )"
 				],
-				"execution_count": 139
+				"execution_count": 260
 			},
 			{
 				"cell_type": "markdown",
@@ -930,7 +964,20 @@
 					"   source.isActive = 'Y'\r\n",
 					"   AND target.id IS NULL"
 				],
-				"execution_count": 146
+				"execution_count": 261
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Next we look to merge in NSIP project data"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -951,12 +998,56 @@
 				},
 				"source": [
 					"%%sql\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_project\r\n",
+					"AS\r\n",
 					"SELECT\r\n",
-					"    *\r\n",
+					"    CAST(NULL AS String) AS id\r\n",
+					"    ,CAST(NULL AS String) AS salutation\r\n",
+					"    ,applicantFirstName AS firstName\r\n",
+					"    ,applicantLastName AS lastName\r\n",
+					"    ,addressline1\r\n",
+					"    ,addressline2\r\n",
+					"    ,addressTown\r\n",
+					"    ,addressCounty\r\n",
+					"    ,postcode\r\n",
+					"    ,CAST(NULL AS String) AS addressCountry\r\n",
+					"    ,promotername AS organisation\r\n",
+					"    ,CAST(NULL AS String) AS organisationType\r\n",
+					"    ,CAST(NULL AS String) AS role\r\n",
+					"    ,applicantphonenumber AS telephoneNumber\r\n",
+					"    ,CAST(NULL AS String) AS otherPhoneNumber\r\n",
+					"    ,CAST(NULL AS String) AS faxNumber\r\n",
+					"    ,applicantemailaddress AS emailAddress\r\n",
+					"    ,applicantwebaddress AS webAddress\r\n",
+					"    ,'Applicant' AS serviceUserType\r\n",
+					"    ,source.caseReference \r\n",
+					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
+					"    ,CAST(NULL AS String) AS sourceSuid\r\n",
+					"    ,NSIPProjectInfoInternalID\r\n",
 					"FROM\r\n",
-					"    odw_curated_db.service_user"
+					"    odw_harmonised_db.nsip_project AS source\r\n",
+					"WHERE\r\n",
+					"    isActive = 'Y'"
 				],
-				"execution_count": 148
+				"execution_count": 268
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Now we need to match the existing records in. Again as with Horizon data earlier, we have multiple passes:\r\n",
+					"1. case reference, service user type, Name (separate and joint components), address\r\n",
+					"2. case reference, service user type, Name (separate and joint components) and telephoneNumber\r\n",
+					"3. case reference, service user type, Name (separate and joint components) and emailAddress\r\n",
+					"\r\n",
+					""
+				]
 			},
 			{
 				"cell_type": "code",
@@ -977,12 +1068,58 @@
 				},
 				"source": [
 					"%%sql\r\n",
+					"--View for match criteria 1\r\n",
+					"CREATE TEMPORARY VIEW vw_match_nsip_address\r\n",
+					"AS\r\n",
 					"SELECT\r\n",
-					"    *\r\n",
+					"    target.id\r\n",
+					"    ,source.NSIPProjectInfoInternalID\r\n",
 					"FROM\r\n",
-					"    odw_harmonised_db.nsip_project"
+					"    vw_nsip_project AS source\r\n",
+					"    INNER JOIN odw_curated_db.service_user AS target\r\n",
+					"        ON source.CaseReference = target.caseReference\r\n",
+					"        AND source.serviceUserType = target.serviceUserType\r\n",
+					"        AND ( -- Name match\r\n",
+					"                CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"                OR (-- separated name elements. Coalesce to cater for org only matches\r\n",
+					"                        COALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
+					"                        AND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
+					"                    )\r\n",
+					"                OR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
+					"                    source.organisation = target.firstName \r\n",
+					"                    AND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
+					"                    AND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"                    )\r\n",
+					"            )\r\n",
+					"        AND ( -- Address elements match\r\n",
+					"                COALESCE(source.AddressLine1, '') = COALESCE(target.AddressLine1, '')\r\n",
+					"                AND COALESCE(source.AddressLine2, '') = COALESCE(target.AddressLine2, '')\r\n",
+					"                AND COALESCE(source.addressTown, '') = COALESCE(target.addressTown, '')\r\n",
+					"                AND COALESCE(source.addressCounty, '') = COALESCE(target.addressCounty, '')\r\n",
+					"                AND COALESCE(source.postcode, '') = COALESCE(target.postcode, '')\r\n",
+					"                AND COALESCE(source.organisation, '') = COALESCE(target.organisation, '')\r\n",
+					"                AND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
+					"            )"
 				],
-				"execution_count": 147
+				"execution_count": 264
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -1159,6 +1296,24 @@
 				"source": [
 					"To do: Need to include Zendesk records"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Could be interest parties or complainants. If unable to match <Gareth to confirm>"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
