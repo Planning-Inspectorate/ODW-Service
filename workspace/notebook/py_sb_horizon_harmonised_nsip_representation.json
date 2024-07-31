@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7084182c-b6ee-48e7-9ced-d1ece9bbe01f"
+				"spark.autotune.trackingId": "a1c24bd5-45ee-4ad4-b8a4-4fb0be687e7d"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 51
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_relevant_representation\""
 				],
-				"execution_count": null
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -185,7 +185,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -305,7 +305,7 @@
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -321,9 +321,10 @@
 					}
 				},
 				"source": [
-					""
+					"row_count = horizon_data.count()\r\n",
+					"print(f\"The number of rows in the DataFrame is: {row_count}\")"
 				],
-				"execution_count": null
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -369,7 +370,26 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 36
+				"execution_count": 71
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"row_count = results.count()\r\n",
+					"print(f\"The number of rows in the DataFrame is: {row_count}\")"
+				],
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -406,7 +426,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 38
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -425,25 +445,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 39
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 74
 			},
 			{
 				"cell_type": "markdown",
@@ -481,8 +483,8 @@
 					"AS\r\n",
 					"SELECT  \r\n",
 					"    row_number() OVER(PARTITION BY representationId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\r\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate ASC, NSIPRepresentaionID ASC) AS NSIPRepresentInfoInternalID\r\n",
-					"    ,NSIPRepresentaionID\r\n",
+					"    ,row_number() OVER(ORDER BY IngestionDate ASC, representationId ASC) AS NSIPRepresentaionID\r\n",
+					"    ,representationId\r\n",
 					"    ,IngestionDate\r\n",
 					"    ,ValidTo\r\n",
 					"    ,'0' AS migrated\r\n",
@@ -495,7 +497,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_relevant_representation"
 				],
-				"execution_count": 40
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -511,9 +513,28 @@
 					}
 				},
 				"source": [
-					""
+					"df_calcs = spark.sql(\"\"\"\r\n",
+					"                        SELECT\r\n",
+					"                            CurrentRow.representationId\r\n",
+					"                            ,CurrentRow.NSIPRepresentaionID \r\n",
+					"                            ,CurrentRow.IngestionDate\r\n",
+					"                            ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
+					"                            ,CASE\r\n",
+					"                                WHEN raw.representationId IS NOT NULL THEN \r\n",
+					"                                    \"1\"\r\n",
+					"                                ELSE \r\n",
+					"                                    \"0\"\r\n",
+					"                            END AS migrated\r\n",
+					"                            ,CurrentRow.IsActive\r\n",
+					"                        FROM\r\n",
+					"                            vw_nsip_relevant_representation_calculations_base AS CurrentRow\r\n",
+					"                            LEFT OUTER JOIN vw_nsip_relevant_representation_calculations_base AS NextRow\r\n",
+					"                                ON CurrentRow.representationId = NextRow.representationId\r\n",
+					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT representationId FROM odw_harmonised_db.sb_nsip_representation) AS Raw\r\n",
+					"                                ON CurrentRow.representationId = Raw.representationId \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -530,28 +551,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"df_calcs = spark.sql(\"\"\"\r\n",
-					"                        SELECT\r\n",
-					"                            CurrentRow.NSIPRepresentInfoInternalID\r\n",
-					"                            ,CurrentRow.NSIPRepresentaionID \r\n",
-					"                            ,CurrentRow.IngestionDate\r\n",
-					"                            ,COALESCE(CurrentRow.ValidTo, NextRow.IngestionDate) AS ValidTo\r\n",
-					"                            ,CASE\r\n",
-					"                                WHEN raw.NSIPRepresentaionID IS NOT NULL THEN \r\n",
-					"                                    \"1\"\r\n",
-					"                                ELSE \r\n",
-					"                                    \"0\"\r\n",
-					"                            END AS migrated\r\n",
-					"                            ,CurrentRow.IsActive\r\n",
-					"                        FROM\r\n",
-					"                            vw_nsip_relevant_representation_calculations_base AS CurrentRow\r\n",
-					"                            LEFT OUTER JOIN vw_nsip_relevant_representation_calculations_base AS NextRow\r\n",
-					"                                ON CurrentRow.NSIPRepresentaionID = NextRow.NSIPRepresentaionID\r\n",
-					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT NSIPRepresentaionID FROM odw_harmonised_db.sb_nsip_representation) AS Raw\r\n",
-					"                                ON CurrentRow.NSIPRepresentaionID = Raw.NSIPRepresentaionID \"\"\")\r\n",
-					"\r\n",
-					"df_calcs =df_calcs.withColumnRenamed(\"NSIPRepresentaionID\", \"temp_NSIPRepresentaionID\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
+					"df_calcs =df_calcs.withColumnRenamed(\"representationId\", \"temp_representationId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
 					"\r\n",
 					"\r\n",
 					"#To Do: Need to complete this statement. At the moment will return duplicate fields called RowID\r\n",
@@ -692,13 +692,31 @@
 					"\r\n",
 					"columns = results.columns\r\n",
 					"\r\n",
-					"results = results.drop(\"NSIPRepresentInfoInternalID\", \"ValidTo\", \"migrated\", \"IsActive\")\r\n",
+					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"migrated\", \"IsActive\")\r\n",
+					""
+				],
+				"execution_count": 83
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"\r\n",
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_NSIPRepresentaionID\"] == results[\"NSIPRepresentaionID\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\r\n",
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_representationId\"] == results[\"representationId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\r\n",
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 41
+				"execution_count": 84
 			},
 			{
 				"cell_type": "code",
