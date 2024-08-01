@@ -64,6 +64,9 @@ curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/instal
 # Azure CLI
 curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
+# Azure Tools
+sudo curl -fsSL https://aka.ms/install-azd.sh | bash
+
 # .NET Core and PowerShell
 wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 sudo dpkg -i packages-microsoft-prod.deb
