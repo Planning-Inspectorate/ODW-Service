@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0fac848e-3db0-431e-a471-377c0036fc4a"
+				"spark.autotune.trackingId": "63c149ff-2ffb-42f9-a161-2de9b4df01e4"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 65
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
 				],
-				"execution_count": 66
+				"execution_count": 80
 			},
 			{
 				"cell_type": "markdown",
@@ -146,7 +146,6 @@
 					"                        ,CAST(NULL AS String) AS country\r\n",
 					"                        ,CAST(NULL AS String) AS postcode\r\n",
 					"                        ,CAST(NULL AS String) AS attendprelimmeeting\r\n",
-					"                        ,CAST(NULL AS String) AS notes\r\n",
 					"                        ,CAST(NULL AS String) AS agentcontactid\r\n",
 					"                        ,CAST(NULL AS String) AS AgentFullName\r\n",
 					"                        ,CAST(NULL AS String) AS AgentOrganisationName\r\n",
@@ -184,7 +183,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 67
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -205,17 +204,17 @@
 					"horizon_data = spark.sql(f\"\"\"\r\n",
 					"                SELECT DISTINCT\r\n",
 					"                        CAST(NULL AS Long) AS NSIPRepresentaionID\r\n",
-					"                        ,contactid AS representationId\r\n",
+					"                        ,CAST(contactid AS integer) AS representationId\r\n",
 					"                        ,CAST(NULL AS String) AS referenceId\r\n",
 					"                        ,CAST(NULL AS String) AS examinationLibraryRef\r\n",
 					"                        ,casereference AS caseRef\r\n",
-					"                        ,caseuniqueid AS caseId\r\n",
+					"                        ,CAST(caseuniqueid AS integer) AS caseId\r\n",
 					"                        ,RelevantRepStatus AS status\r\n",
 					"                        ,representationoriginal AS originalRepresentation\r\n",
-					"                        ,CAST(NULL AS boolean) AS redacted\r\n",
+					"                        ,CAST((representationredacted IS NOT NULL) AS boolean) AS redacted\r\n",
 					"                        ,representationredacted AS redactedRepresentation\r\n",
 					"                        ,redactedBy\r\n",
-					"                        ,CAST(NULL AS String) AS redactedNotes\r\n",
+					"                        ,notes AS redactedNotes\r\n",
 					"                        ,RelRepOnBehalfOf AS representationFrom\r\n",
 					"                        ,CAST(NULL AS String) AS representedId\r\n",
 					"                        ,relevantrepid AS representativeId\r\n",
@@ -238,7 +237,6 @@
 					"                        ,country\r\n",
 					"                        ,postcode\r\n",
 					"                        ,attendprelimmeeting\r\n",
-					"                        ,notes\r\n",
 					"                        ,agentcontactid\r\n",
 					"                        ,agent_fullname AS AgentFullName\r\n",
 					"                        ,agent_organisationname AS AgentOrganisationName\r\n",
@@ -281,26 +279,7 @@
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 68
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"row_count = horizon_data.count()\r\n",
-					"print(f\"The number of rows in the DataFrame is: {row_count}\")"
-				],
-				"execution_count": 69
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -324,7 +303,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 70
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -342,7 +321,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 71
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -361,7 +340,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 72
+				"execution_count": 88
 			},
 			{
 				"cell_type": "markdown",
@@ -413,7 +392,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_representation"
 				],
-				"execution_count": 73
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -450,7 +429,7 @@
 					"                            LEFT OUTER JOIN (SELECT DISTINCT representationId FROM odw_harmonised_db.sb_nsip_representation) AS Raw\r\n",
 					"                                ON CurrentRow.representationId = Raw.representationId \"\"\")"
 				],
-				"execution_count": 74
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -506,7 +485,6 @@
 					"                        ,country\r\n",
 					"                        ,postcode\r\n",
 					"                        ,attendprelimmeeting\r\n",
-					"                        ,notes\r\n",
 					"                        ,agentcontactid\r\n",
 					"                        ,AgentFullName\r\n",
 					"                        ,AgentOrganisationName\r\n",
@@ -571,7 +549,6 @@
 					"                                    ,IFNULL(CAST(country AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(postcode AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(attendprelimmeeting AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(notes AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(agentcontactid AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(AgentFullName AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(AgentOrganisationName AS String), '.')\r\n",
@@ -602,7 +579,7 @@
 					"                        {spark_table_final} AS Target\"\"\")\r\n",
 					""
 				],
-				"execution_count": 75
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -621,7 +598,7 @@
 					"columns = results.columns\n",
 					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 76
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -642,7 +619,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 77
+				"execution_count": 93
 			}
 		]
 	}
