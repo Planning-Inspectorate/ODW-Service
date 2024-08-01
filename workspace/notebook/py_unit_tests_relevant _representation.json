@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8ad407b2-f2a2-45cc-b7ed-6dfd1a5bee9d"
+				"spark.autotune.trackingId": "187c4592-04cf-4061-9924-c8be6af1a41b"
 			}
 		},
 		"metadata": {
@@ -44,8 +44,8 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 64,
-				"memory": 400,
+				"cores": 4,
+				"memory": 28,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
@@ -81,7 +81,7 @@
 					"curated_db_name: str = 'odw_curated_db'\r\n",
 					"std_table_name: str = 'sb_nsip_representation'\r\n",
 					"hrm_table_name: str = 'sb_nsip_representation'\r\n",
-					"hrm_table_final: str = 'nsip_relevant_representation'\r\n",
+					"hrm_table_final: str = 'nsip_representation'\r\n",
 					"curated_table_name: str = 'nsip_representation'"
 				],
 				"execution_count": 23
@@ -296,7 +296,7 @@
 					"\r\n",
 					"    # filter standardised df with non-null message_type and exclude 'Delete' message_type since it doesn't add a new row in hrm\r\n",
 					"    std_df: DataFrame = spark.table(std_table_full)\r\n",
-					"    std_df = std_df.filter((std_df.message_type != 'Delete') & (std_df.message_type.isNotNull()))\r\n",
+					"    std_df = std_df.filter((std_df.message_type != 'Delete') & std_df.message_type.isNotNull() & std_df.message_id.isNotNull())\r\n",
 					"    \r\n",
 					"    std_count: int = std_df.count()\r\n",
 					"    hrm_count: int = spark.table(hrm_table_full).count()\r\n",
@@ -319,14 +319,41 @@
 					}
 				},
 				"source": [
-					"def test_curated_row_count(hrm_table_final: str, curated_table: str) -> tuple[int, int, bool]:\r\n",
-					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
-					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
-					"    hrm_count: int = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").count()\r\n",
-					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
+					"def test_curated_row_count(hrm_table_final: str, curated_table: str) -> tuple[int, int, bool]:\n",
+					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\n",
+					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\n",
+					"    \n",
+					"    \n",
+					"    selected_columns = [\n",
+					"\t\t\"representationId\",\n",
+					"\t\t\"referenceId\",\n",
+					"\t\t\"examinationLibraryRef\",\n",
+					"\t\t\"caseRef\",\n",
+					"\t\t\"caseId\",\n",
+					"\t\t\"status\",\n",
+					"\t\t\"originalRepresentation\",\n",
+					"\t\t\"redacted\",\n",
+					"\t\t\"redactedRepresentation\",\n",
+					"\t\t\"redactedBy\",\n",
+					"\t\t\"redactedNotes\",\n",
+					"\t\t\"representationFrom\",\n",
+					"\t\t\"representedId\",\n",
+					"\t\t\"representativeId\",\n",
+					"\t\t\"registerFor\",\n",
+					"\t\t\"representationType\",\n",
+					"\t\t\"dateReceived\",\n",
+					"\t\t\"attachmentIds\"\n",
+					"\t]\n",
+					"\n",
+					"\n",
+					"    hrm_df: DataFrame = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").select(selected_columns).drop_duplicates()\n",
+					"    hrm_count: int = hrm_df.count()\n",
+					"\n",
+					"    curated_count: int = spark.table(curated_table_full).count()\n",
+					"    \n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 32
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -477,9 +504,9 @@
 					"    contactID,\r\n",
 					"    COUNT(DISTINCT attachmentid)\r\n",
 					"FROM\r\n",
-					"    odw_standardised_db.horizon_nsip_relevant_representation\r\n",
+					"    odw_standardised_db.horizon_nsip_representation\r\n",
 					"WHERE\r\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_nsip_relevant_representation)\r\n",
+					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_nsip_representation)\r\n",
 					"GROUP BY\r\n",
 					"    contactID\r\n",
 					"HAVING\r\n",
@@ -508,7 +535,7 @@
 				"source": [
 					"%%sql\r\n",
 					"select attachmentIds\r\n",
-					"from odw_harmonised_db.nsip_relevant_representation\r\n",
+					"from odw_harmonised_db.nsip_representation\r\n",
 					"where representationid = 100000482"
 				],
 				"execution_count": null
@@ -571,7 +598,7 @@
 					"SELECT\r\n",
 					"distinct *\r\n",
 					"FROM\r\n",
-					"    odw_harmonised_db.nsip_relevant_representation\r\n",
+					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'Horizon'\r\n",
 					"    and representationid = 37051"
@@ -614,7 +641,7 @@
 					"    representationId\r\n",
 					"    ,count(*)\r\n",
 					"FROM\r\n",
-					"    odw_harmonised_db.nsip_relevant_representation\r\n",
+					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'Horizon'\r\n",
 					"GROUP BY\r\n",
@@ -647,7 +674,7 @@
 					"\r\n",
 					"*\r\n",
 					"FROM\r\n",
-					"    odw_harmonised_db.nsip_relevant_representation\r\n",
+					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'ODT'\r\n",
 					"    and representationid = 100006258"
@@ -677,7 +704,7 @@
 					"    representationid\r\n",
 					"    ,count(*)\r\n",
 					"FROM\r\n",
-					"    odw_harmonised_db.nsip_relevant_representation\r\n",
+					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'ODT'\r\n",
 					"GROUP BY\r\n",
