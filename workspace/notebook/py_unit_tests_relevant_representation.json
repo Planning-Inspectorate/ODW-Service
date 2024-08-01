@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f8c44e14-f6a6-49f6-ad83-54d50d136ac2"
+				"spark.autotune.trackingId": "e489ca1a-a789-4a1d-bd8e-dfc95153aa0d"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"import pprint"
 				],
-				"execution_count": 25
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -84,7 +84,44 @@
 					"hrm_table_final: str = 'nsip_representation'\r\n",
 					"curated_table_name: str = 'nsip_representation'"
 				],
-				"execution_count": 26
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#This needs to be updated in case there is an addition of columns. Or in the future can be extracted automatically 01/08/2024\r\n",
+					"data_model_columns = [\"representationId\",\r\n",
+					"\t\t\"referenceId\",\r\n",
+					"\t\t\"examinationLibraryRef\",\r\n",
+					"\t\t\"caseRef\",\r\n",
+					"\t\t\"caseId\",\r\n",
+					"\t\t\"status\",\r\n",
+					"\t\t\"originalRepresentation\",\r\n",
+					"\t\t\"redacted\",\r\n",
+					"\t\t\"redactedRepresentation\",\r\n",
+					"\t\t\"redactedBy\",\r\n",
+					"\t\t\"redactedNotes\",\r\n",
+					"\t\t\"representationFrom\",\r\n",
+					"\t\t\"representedId\",\r\n",
+					"\t\t\"representativeId\",\r\n",
+					"\t\t\"registerFor\",\r\n",
+					"\t\t\"representationType\",\r\n",
+					"\t\t\"dateReceived\",\r\n",
+					"\t\t\"attachmentIds\"\r\n",
+					"\t]"
+				],
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +140,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 27
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +163,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\r\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 28
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -148,7 +185,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\r\n",
 					"    return spark_schema"
 				],
-				"execution_count": 29
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +205,7 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 30
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -189,7 +226,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\r\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 31
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -223,7 +260,7 @@
 					"        result.update(extract_field(field))\r\n",
 					"    return result"
 				],
-				"execution_count": 32
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -274,7 +311,7 @@
 					"    else:\r\n",
 					"        return True"
 				],
-				"execution_count": 33
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -303,7 +340,7 @@
 					"\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 34
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +390,7 @@
 					"    \n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 35
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -387,7 +424,7 @@
 					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\r\n",
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 36
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -417,10 +454,46 @@
 					}
 				},
 				"source": [
-					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
-					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
+					"def differentiate_std_and_hrm(std_table_full, hrm_table_full):\r\n",
+					"    # filter standardised df with non-null message_type and exclude 'Delete' message_type since it doesn't add a new row in hrm\r\n",
+					"    std_df: DataFrame = spark.table(std_table_full)\r\n",
+					"    std_df = std_df.filter((std_df.message_type != 'Delete') & (std_df.message_type.isNotNull()))\r\n",
+					"\r\n",
+					"    hrm_df  = spark.table(hrm_table_full)\r\n",
+					"\r\n",
+					"    # Find rows in the original table that are not in the new table\r\n",
+					"    missing_rows_in_std = hrm_df.select(data_model_columns).subtract(std_df.select(data_model_columns))\r\n",
+					"\r\n",
+					"    # Show the missing rows\r\n",
+					"    display(missing_rows_in_std)\r\n",
+					"\r\n",
+					"    missing_rows_in_hrm = std_df.select(data_model_columns).subtract(hrm_df.select(data_model_columns))\r\n",
+					"    display(missing_rows_in_hrm)"
 				],
-				"execution_count": 37
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
+					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")\r\n",
+					"\r\n",
+					"if standardised_count > harmonised_count:\r\n",
+					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\r\n",
+					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\")"
+				],
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -453,7 +526,7 @@
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 38
+				"execution_count": 49
 			},
 			{
 				"cell_type": "markdown",
@@ -514,7 +587,30 @@
 					"ORDER BY\r\n",
 					"    2 DESC"
 				],
-				"execution_count": 40
+				"execution_count": 50
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select attachmentids FROM odw_curated_db.nsip_representation where representationid = 33574"
+				],
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -537,9 +633,9 @@
 					"%%sql\r\n",
 					"select attachmentIds\r\n",
 					"from odw_harmonised_db.nsip_representation\r\n",
-					"where representationid = 100000482"
+					"where representationid = 33574"
 				],
-				"execution_count": 41
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -555,14 +651,15 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\r\n",
-					"select attachmentIds FROM odw_curated_db.relevant_representation\r\n",
-					"where representationid = 100000172"
+					"select attachmentIds FROM odw_curated_db.nsip_representation\r\n",
+					"where representationid = 33574"
 				],
-				"execution_count": 42
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -602,9 +699,10 @@
 					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'Horizon'\r\n",
-					"    and representationid = 37051"
+					"    and representationid = 37051\r\n",
+					"    and   ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_nsip_relevant_representation);"
 				],
-				"execution_count": null
+				"execution_count": 54
 			},
 			{
 				"cell_type": "markdown",
@@ -678,7 +776,7 @@
 					"    odw_harmonised_db.nsip_representation\r\n",
 					"WHERE\r\n",
 					"    ODTSourceSystem = 'ODT'\r\n",
-					"    and representationid = 100006258"
+					"    -- and representationid = 100006258"
 				],
 				"execution_count": null
 			},
@@ -714,6 +812,128 @@
 					"    2 desc"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"###### **Harmonised Data updated in curated correctly**"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT DISTINCT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.nsip_representation\r\n",
+					"WHERE\r\n",
+					"     representationid = '100006295' and IsActive = 'Y'\r\n",
+					"order BY\r\n",
+					"    ingestiondate DESC"
+				],
+				"execution_count": 56
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_curated_db.nsip_representation\r\n",
+					"WHERE\r\n",
+					"    representationid = '100006295'"
+				],
+				"execution_count": 59
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Data Validation against the curated table"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Horizon and Service Bus data successfully combined and flags set appropriately"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from odw_standardised_db.horizon_nsip_relevant_representation where representationid = 100006295 and ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_nsip_relevant_representation);\r\n",
+					"select * from odw_harmonised_db.sb_nsip_representation where representationid = 100006295;\r\n",
+					"select * from odw_harmonised_db.nsip_representation where representationid = 100006295;\r\n",
+					"select * from odw_curated_db.nsip_representation where representationid = 100006295;"
+				],
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
