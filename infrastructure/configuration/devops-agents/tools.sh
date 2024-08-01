@@ -14,6 +14,7 @@ sudo apt-get install -y --no-install-recommends \
   apt-transport-https \
   build-essential \
   ca-certificates \
+  unixodbc-dev \
   curl \
   gnupg \
   jq \
