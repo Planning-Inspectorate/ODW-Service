@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "66de8d65-c357-478b-943a-541391ec1a28"
+				"spark.autotune.trackingId": "6b81509f-b305-4e3b-8718-a45eeb1c8af4"
 			}
 		},
 		"metadata": {
@@ -45,8 +45,8 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 64,
-				"memory": 400,
+				"cores": 4,
+				"memory": 28,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 26
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
 				],
-				"execution_count": 27
+				"execution_count": 43
 			},
 			{
 				"cell_type": "markdown",
@@ -133,6 +133,7 @@
 					"                        ,attachmentIds\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
+					"                        ,CAST(NULL AS String) AS contactId\r\n",
 					"                        ,CAST(NULL AS String) AS caseuniqueid\r\n",
 					"                        ,CAST(NULL AS String) AS organisationname\r\n",
 					"                        ,CAST(NULL AS String) AS jobtitle\r\n",
@@ -183,7 +184,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 28
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -224,6 +225,7 @@
 					"                        ,attachmentId AS attachmentIds\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
+					"                        ,contactId\r\n",
 					"                        ,caseuniqueid\r\n",
 					"                        ,organisationname\r\n",
 					"                        ,jobtitle\r\n",
@@ -279,7 +281,7 @@
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -304,7 +306,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 30
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -322,7 +324,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 31
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -341,7 +343,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 32
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -393,7 +395,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_representation"
 				],
-				"execution_count": 33
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -430,7 +432,7 @@
 					"                            LEFT OUTER JOIN (SELECT DISTINCT representationId FROM odw_harmonised_db.sb_nsip_representation) AS Raw\r\n",
 					"                                ON CurrentRow.representationId = Raw.representationId \"\"\")"
 				],
-				"execution_count": 34
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -474,6 +476,7 @@
 					"                        ,attachmentIds\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
+					"                        ,contactId\r\n",
 					"                        ,caseuniqueid\r\n",
 					"                        ,organisationname\r\n",
 					"                        ,jobtitle\r\n",
@@ -539,6 +542,7 @@
 					"                                    ,IFNULL(CAST(attachmentIds AS String), '.')\r\n",
 					"                                    \r\n",
 					"                                    --Start Horizon only fields\r\n",
+					"                                    ,IFNULL(CAST(contactId AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(caseuniqueid AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(organisationname AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(jobtitle AS String), '.')\r\n",
@@ -582,7 +586,7 @@
 					"                        {spark_table_final} AS Target\"\"\")\r\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -601,7 +605,7 @@
 					"columns = results.columns\n",
 					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 36
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -622,7 +626,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 37
+				"execution_count": 53
 			}
 		]
 	}
