@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "63c149ff-2ffb-42f9-a161-2de9b4df01e4"
+				"spark.autotune.trackingId": "66de8d65-c357-478b-943a-541391ec1a28"
 			}
 		},
 		"metadata": {
@@ -45,8 +45,8 @@
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
-				"cores": 4,
-				"memory": 28,
+				"cores": 64,
+				"memory": 400,
 				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 79
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
 				],
-				"execution_count": 80
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -133,7 +133,7 @@
 					"                        ,attachmentIds\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
-					"                        ,CAST(NULL AS String) AS casenodeid\r\n",
+					"                        ,CAST(NULL AS String) AS caseuniqueid\r\n",
 					"                        ,CAST(NULL AS String) AS organisationname\r\n",
 					"                        ,CAST(NULL AS String) AS jobtitle\r\n",
 					"                        ,CAST(NULL AS String) AS fullname\r\n",
@@ -183,7 +183,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 81
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -204,11 +204,11 @@
 					"horizon_data = spark.sql(f\"\"\"\r\n",
 					"                SELECT DISTINCT\r\n",
 					"                        CAST(NULL AS Long) AS NSIPRepresentaionID\r\n",
-					"                        ,CAST(contactid AS integer) AS representationId\r\n",
-					"                        ,CAST(NULL AS String) AS referenceId\r\n",
+					"                        ,CAST(relevantrepid AS integer) AS representationId\r\n",
+					"                        ,CONCAT(COALESCE(casereference, ''), \"-\", COALESCE(relevantrepid, '')) AS referenceId\r\n",
 					"                        ,CAST(NULL AS String) AS examinationLibraryRef\r\n",
 					"                        ,casereference AS caseRef\r\n",
-					"                        ,CAST(caseuniqueid AS integer) AS caseId\r\n",
+					"                        ,CAST(casenodeid AS integer) AS caseId\r\n",
 					"                        ,RelevantRepStatus AS status\r\n",
 					"                        ,representationoriginal AS originalRepresentation\r\n",
 					"                        ,CAST((representationredacted IS NOT NULL) AS boolean) AS redacted\r\n",
@@ -217,14 +217,14 @@
 					"                        ,notes AS redactedNotes\r\n",
 					"                        ,RelRepOnBehalfOf AS representationFrom\r\n",
 					"                        ,CAST(NULL AS String) AS representedId\r\n",
-					"                        ,relevantrepid AS representativeId\r\n",
+					"                        ,CAST(NULL AS String) AS representativeId\r\n",
 					"                        ,RelRepOnBehalfOf AS registerFor\r\n",
 					"                        ,RelRepOrganisation AS representationType\r\n",
 					"                        ,dateReceived\r\n",
-					"                        ,attachmentId\r\n",
+					"                        ,attachmentId AS attachmentIds\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
-					"                        ,casenodeid\r\n",
+					"                        ,caseuniqueid\r\n",
 					"                        ,organisationname\r\n",
 					"                        ,jobtitle\r\n",
 					"                        ,fullname\r\n",
@@ -279,7 +279,7 @@
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 83
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -297,13 +297,14 @@
 				},
 				"source": [
 					"#Establish aggregated view of attachmentId\r\n",
-					"horizon_region = horizon_data.groupBy(\"representationId\").agg(collect_list(\"attachmentId\").alias(\"attachmentIds\"))\r\n",
-					"horizon_data = horizon_data.join(horizon_region, on=\"representationId\", how=\"inner\").drop(\"attachmentId\")\r\n",
+					"horizon_region = horizon_data.groupBy(\"representationId\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
+					"horizon_data = horizon_data.drop(\"attachmentIds\")\r\n",
+					"horizon_data = horizon_data.join(horizon_region, on=\"representationId\", how=\"inner\")\r\n",
 					"\r\n",
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 86
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -321,7 +322,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 87
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -340,7 +341,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 88
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -392,7 +393,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_representation"
 				],
-				"execution_count": 89
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -429,7 +430,7 @@
 					"                            LEFT OUTER JOIN (SELECT DISTINCT representationId FROM odw_harmonised_db.sb_nsip_representation) AS Raw\r\n",
 					"                                ON CurrentRow.representationId = Raw.representationId \"\"\")"
 				],
-				"execution_count": 90
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -471,8 +472,9 @@
 					"                        ,representationType\r\n",
 					"                        ,dateReceived\r\n",
 					"                        ,attachmentIds\r\n",
+					"\r\n",
 					"                        --Start Horizon only fields\r\n",
-					"                        ,casenodeid\r\n",
+					"                        ,caseuniqueid\r\n",
 					"                        ,organisationname\r\n",
 					"                        ,jobtitle\r\n",
 					"                        ,fullname\r\n",
@@ -508,6 +510,7 @@
 					"                        ,descriptionifother\r\n",
 					"                        ,preferredcontactmethod\r\n",
 					"                        --End Horizon only fields\r\n",
+					"\r\n",
 					"                        ,0 AS Migrated\r\n",
 					"                        ,ODTSourceSystem\r\n",
 					"                        ,SourceSystemID\r\n",
@@ -536,7 +539,7 @@
 					"                                    ,IFNULL(CAST(attachmentIds AS String), '.')\r\n",
 					"                                    \r\n",
 					"                                    --Start Horizon only fields\r\n",
-					"                                    ,IFNULL(CAST(casenodeid AS String), '.')\r\n",
+					"                                    ,IFNULL(CAST(caseuniqueid AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(organisationname AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(jobtitle AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(fullname AS String), '.')\r\n",
@@ -579,7 +582,7 @@
 					"                        {spark_table_final} AS Target\"\"\")\r\n",
 					""
 				],
-				"execution_count": 91
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -598,7 +601,7 @@
 					"columns = results.columns\n",
 					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 92
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -619,7 +622,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 93
+				"execution_count": 37
 			}
 		]
 	}
