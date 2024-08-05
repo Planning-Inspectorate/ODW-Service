@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7083f7d9-edbb-4f02-8659-b82ebdc88d2c"
+				"spark.autotune.trackingId": "0525c456-0828-4d42-8d80-0565b78fc3a8"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"\n",
 					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 67
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -169,6 +169,7 @@
 					"            ,caseReference \r\n",
 					"            ,sourceSystem\r\n",
 					"            ,sourceSuid\r\n",
+					"            ,1 AS Source_priority -- Used to make sure an older/poorer quality source does not update the record\r\n",
 					"        FROM\r\n",
 					"            odw_harmonised_db.sb_service_user\r\n",
 					"        WHERE\r\n",
@@ -179,7 +180,7 @@
 					"    df.write.mode(\"Overwrite\").format('delta').option(\"mergeSchema\", \"true\").saveAsTable(\"odw_harmonised_db.curated_service_user\")\r\n",
 					""
 				],
-				"execution_count": 68
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -238,12 +239,13 @@
 					"    ,serviceUserType\r\n",
 					"    ,sourceSystem\r\n",
 					"    ,sourceSUID\r\n",
+					"    ,1 AS Source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.sb_service_user\r\n",
 					"WHERE\r\n",
 					"    IsActive = 'Y'"
 				],
-				"execution_count": 69
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -271,26 +273,27 @@
 					"WHEN MATCHED THEN\r\n",
 					"    UPDATE\r\n",
 					"    SET\r\n",
-					"        salutation = source.salutation\r\n",
-					"        ,firstName = source.FirstName\r\n",
-					"        ,lastName = source.lastName\r\n",
-					"        ,addressLine1 = source.addressLine1\r\n",
-					"        ,AddressLine2 = source.addressLine2\r\n",
-					"        ,addressTown = source.addressTown\r\n",
-					"        ,addressCounty = source.addressCounty\r\n",
-					"        ,postcode = source.postcode\r\n",
-					"        ,addressCountry = source.addressCountry\r\n",
-					"        ,organisation = source.organisation\r\n",
-					"        ,organisationType = source.organisationType\r\n",
-					"        ,role = source.role\r\n",
-					"        ,telephoneNumber = source.telephoneNumber\r\n",
-					"        ,otherPhoneNumber = source.otherPhoneNumber\r\n",
-					"        ,faxNumber = source.faxNumber\r\n",
-					"        ,emailAddress = source.emailAddress\r\n",
-					"        ,webAddress = source.webAddress\r\n",
-					"        ,serviceUserType = source.serviceUserType\r\n",
-					"        ,sourceSystem = source.sourceSystem\r\n",
-					"        ,sourceSUID = source.sourceSUID\r\n",
+					"        salutation = CASE WHEN source.Source_priority <= target.source_priority THEN source.salutation ELSE target.salutation END\r\n",
+					"        ,firstName = CASE WHEN source.Source_priority <= target.source_priority THEN source.FirstName ELSE target.FirstName END\r\n",
+					"        ,lastName = CASE WHEN source.Source_priority <= target.source_priority THEN source.lastName ELSE target.lastName END\r\n",
+					"        ,addressLine1 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine1 ELSE target.addressLine1 END\r\n",
+					"        ,AddressLine2 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine2 ELSE target.addressLine2 END\r\n",
+					"        ,addressTown = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressTown ELSE target.addressTown END\r\n",
+					"        ,addressCounty = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCounty ELSE target.addressCounty END\r\n",
+					"        ,postcode = CASE WHEN source.Source_priority <= target.source_priority THEN source.postcode ELSE target.postcode END\r\n",
+					"        ,addressCountry = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCountry ELSE target.addressCountry END\r\n",
+					"        ,organisation = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisation ELSE target.organisation END\r\n",
+					"        ,organisationType = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisationType ELSE target.organisationType END\r\n",
+					"        ,role = CASE WHEN source.Source_priority <= target.source_priority THEN source.role ELSE target.role END\r\n",
+					"        ,telephoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.telephoneNumber ELSE target.telephoneNumber END\r\n",
+					"        ,otherPhoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.otherPhoneNumber ELSE target.otherPhoneNumber END\r\n",
+					"        ,faxNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.faxNumber ELSE target.faxNumber END\r\n",
+					"        ,emailAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.emailAddress ELSE target.emailAddress END\r\n",
+					"        ,webAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.webAddress ELSE target.webAddress END\r\n",
+					"        ,serviceUserType = CASE WHEN source.Source_priority <= target.source_priority THEN source.serviceUserType ELSE target.serviceUserType END\r\n",
+					"        ,sourceSystem = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSystem ELSE target.sourceSystem END\r\n",
+					"        ,sourceSUID = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSUID ELSE target.sourceSUID END\r\n",
+					"        ,source_priority = CASE WHEN source.Source_priority <= target.source_priority THEN source.Source_priority ELSE target.Source_priority END\r\n",
 					"WHEN NOT MATCHED THEN\r\n",
 					"    INSERT (\r\n",
 					"        id\r\n",
@@ -315,6 +318,7 @@
 					"        ,serviceUserType\r\n",
 					"        ,sourceSystem\r\n",
 					"        ,sourceSUID\r\n",
+					"        ,Source_priority\r\n",
 					"            )\r\n",
 					"    VALUES (\r\n",
 					"        source.id\r\n",
@@ -339,10 +343,11 @@
 					"        ,source.serviceUserType\r\n",
 					"        ,source.sourceSystem\r\n",
 					"        ,source.sourceSUID\r\n",
+					"        ,source.Source_priority\r\n",
 					"    )\r\n",
 					""
 				],
-				"execution_count": 70
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -432,6 +437,7 @@
 					"    ,'Horizon' AS sourceSystem\r\n",
 					"    ,REPLACE(REPLACE(REPLACE(source.ContactID, 'S_', ''), 'O_', ''), 'P_', '') AS sourceSUID\r\n",
 					"    ,caseInvolvementID\r\n",
+					"    ,2 AS Source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.casework_case_involvement_dim AS source\r\n",
 					"WHERE\r\n",
@@ -449,7 +455,7 @@
 					"            'Appellant'\r\n",
 					"    END IS NOT NULL"
 				],
-				"execution_count": 71
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -485,7 +491,7 @@
 					"        AND source.sourceSUID = target.sourceSUID\r\n",
 					""
 				],
-				"execution_count": 72
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -541,7 +547,7 @@
 					"            )\r\n",
 					""
 				],
-				"execution_count": 73
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -593,7 +599,7 @@
 					"            )\r\n",
 					""
 				],
-				"execution_count": 74
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -643,7 +649,7 @@
 					"            )\r\n",
 					""
 				],
-				"execution_count": 75
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -749,13 +755,14 @@
 					"    ,raw.caseReference \r\n",
 					"    ,raw.sourceSystem\r\n",
 					"    ,raw.sourceSUID\r\n",
+					"    ,raw.Source_priority\r\n",
 					"FROM\r\n",
 					"    vw_Horizon_casework_raw AS raw\r\n",
 					"    LEFT OUTER JOIN dedupe\r\n",
 					"        ON raw.CaseInvolvementID = dedupe.CaseInvolvementID\r\n",
 					"        AND MatchID = 1"
 				],
-				"execution_count": 76
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -783,26 +790,27 @@
 					"WHEN MATCHED THEN\r\n",
 					"    UPDATE\r\n",
 					"    SET\r\n",
-					"        salutation = source.salutation\r\n",
-					"        ,firstName = source.FirstName\r\n",
-					"        ,lastName = source.LastName\r\n",
-					"        ,addressLine1 = source.addressLine1\r\n",
-					"        ,AddressLine2 = source.addressLine2\r\n",
-					"        ,addressTown = source.addressTown\r\n",
-					"        ,addressCounty = source.addressCounty\r\n",
-					"        ,postcode = source.postcode\r\n",
-					"        ,addressCountry = source.addressCountry\r\n",
-					"        ,organisation = source.organisation\r\n",
-					"        ,organisationType = source.organisationType\r\n",
-					"        ,role = source.role\r\n",
-					"        ,telephoneNumber = source.telephoneNumber\r\n",
-					"        ,otherPhoneNumber = source.otherPhoneNumber\r\n",
-					"        ,faxNumber = source.faxNumber\r\n",
-					"        ,emailAddress = source.emailAddress\r\n",
-					"        ,webAddress = source.webAddress\r\n",
-					"        ,serviceUserType = source.serviceUserType\r\n",
-					"        ,sourceSystem = source.sourceSystem\r\n",
-					"        ,sourceSUID = source.sourceSUID\r\n",
+					"        salutation = CASE WHEN source.Source_priority <= target.source_priority THEN source.salutation ELSE target.salutation END\r\n",
+					"        ,firstName = CASE WHEN source.Source_priority <= target.source_priority THEN source.FirstName ELSE target.FirstName END\r\n",
+					"        ,lastName = CASE WHEN source.Source_priority <= target.source_priority THEN source.LastName ELSE target.LastName END\r\n",
+					"        ,addressLine1 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine1 ELSE target.addressLine1 END\r\n",
+					"        ,AddressLine2 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine2 ELSE target.addressLine2 END\r\n",
+					"        ,addressTown = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressTown ELSE target.addressTown END\r\n",
+					"        ,addressCounty = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCounty ELSE target.addressCounty END\r\n",
+					"        ,postcode = CASE WHEN source.Source_priority <= target.source_priority THEN source.postcode ELSE target.postcode END\r\n",
+					"        ,addressCountry = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCountry ELSE target.addressCountry END\r\n",
+					"        ,organisation = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisation ELSE target.organisation END\r\n",
+					"        ,organisationType = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisationType ELSE target.organisationType END\r\n",
+					"        ,role = CASE WHEN source.Source_priority <= target.source_priority THEN source.role ELSE target.role END\r\n",
+					"        ,telephoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.telephoneNumber ELSE target.telephoneNumber END\r\n",
+					"        ,otherPhoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.otherPhoneNumber ELSE target.otherPhoneNumber END\r\n",
+					"        ,faxNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.faxNumber ELSE target.faxNumber END\r\n",
+					"        ,emailAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.emailAddress ELSE target.emailAddress END\r\n",
+					"        ,webAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.webAddress ELSE target.webAddress END\r\n",
+					"        ,serviceUserType = CASE WHEN source.Source_priority <= target.source_priority THEN source.serviceUserType ELSE target.serviceUserType END\r\n",
+					"        ,sourceSystem = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSystem ELSE target.sourceSystem END\r\n",
+					"        ,sourceSUID = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSUID ELSE target.sourceSUID END\r\n",
+					"        ,source_priority = CASE WHEN source.Source_priority <= target.source_priority THEN source.source_priority ELSE target.source_priority END\r\n",
 					"WHEN NOT MATCHED THEN\r\n",
 					"    INSERT (\r\n",
 					"        id\r\n",
@@ -827,6 +835,7 @@
 					"        ,serviceUserType\r\n",
 					"        ,sourceSystem\r\n",
 					"        ,sourceSUID\r\n",
+					"        ,source_priority\r\n",
 					"            )\r\n",
 					"    VALUES (\r\n",
 					"        source.id\r\n",
@@ -851,9 +860,10 @@
 					"        ,source.serviceUserType\r\n",
 					"        ,source.sourceSystem\r\n",
 					"        ,source.sourceSUID\r\n",
+					"        ,source.source_priority\r\n",
 					"    )"
 				],
-				"execution_count": 77
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -916,6 +926,7 @@
 					"    ,source.caseId AS caseReference \r\n",
 					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
 					"    ,CAST(source.adviceId AS String) AS sourceSuid\r\n",
+					"    ,10 AS source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_s51_advice AS source\r\n",
 					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
@@ -941,7 +952,7 @@
 					"   source.isActive = 'Y'\r\n",
 					"   AND target.id IS NULL"
 				],
-				"execution_count": 78
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -1001,12 +1012,13 @@
 					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
 					"    ,CAST(NULL AS String) AS sourceSuid\r\n",
 					"    ,NSIPProjectInfoInternalID\r\n",
+					"    ,3 AS Source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_project AS source\r\n",
 					"WHERE\r\n",
 					"    isActive = 'Y'"
 				],
-				"execution_count": 79
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -1078,7 +1090,7 @@
 					"                AND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
 					"            )"
 				],
-				"execution_count": 80
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -1126,7 +1138,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\r\n",
 					"            )"
 				],
-				"execution_count": 81
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -1174,7 +1186,7 @@
 					"                source.emailAddress = target.emailAddress\r\n",
 					"            )"
 				],
-				"execution_count": 82
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -1262,13 +1274,14 @@
 					"    ,Base.caseReference \r\n",
 					"    ,Base.sourceSystem \r\n",
 					"    ,Base.sourceSuid\r\n",
+					"    ,Base.Source_priority\r\n",
 					"FROM\r\n",
 					"    vw_nsip_project AS Base\r\n",
 					"    LEFT OUTER JOIN Dedupe\r\n",
 					"        ON Base.NSIPProjectInfoInternalID = Dedupe.NSIPProjectInfoInternalID\r\n",
 					"        AND Dedupe.Update_row = 1"
 				],
-				"execution_count": 83
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -1296,26 +1309,27 @@
 					"WHEN MATCHED THEN\r\n",
 					"    UPDATE\r\n",
 					"    SET\r\n",
-					"        salutation = source.salutation\r\n",
-					"        ,firstName = source.FirstName\r\n",
-					"        ,lastName = source.LastName\r\n",
-					"        ,addressLine1 = source.addressLine1\r\n",
-					"        ,AddressLine2 = source.addressLine2\r\n",
-					"        ,addressTown = source.addressTown\r\n",
-					"        ,addressCounty = source.addressCounty\r\n",
-					"        ,postcode = source.postcode\r\n",
-					"        ,addressCountry = source.addressCountry\r\n",
-					"        ,organisation = source.organisation\r\n",
-					"        ,organisationType = source.organisationType\r\n",
-					"        ,role = source.role\r\n",
-					"        ,telephoneNumber = source.telephoneNumber\r\n",
-					"        ,otherPhoneNumber = source.otherPhoneNumber\r\n",
-					"        ,faxNumber = source.faxNumber\r\n",
-					"        ,emailAddress = source.emailAddress\r\n",
-					"        ,webAddress = source.webAddress\r\n",
-					"        ,serviceUserType = source.serviceUserType\r\n",
-					"        ,sourceSystem = source.sourceSystem\r\n",
-					"        ,sourceSUID = source.sourceSUID\r\n",
+					"        salutation = CASE WHEN source.Source_priority <= target.source_priority THEN source.salutation ELSE target.salutation END\r\n",
+					"        ,firstName =  CASE WHEN source.Source_priority <= target.source_priority THEN source.FirstName ELSE target.FirstName END\r\n",
+					"        ,lastName =  CASE WHEN source.Source_priority <= target.source_priority THEN source.LastName ELSE target.LastName END\r\n",
+					"        ,addressLine1 =  CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine1 ELSE target.addressLine1 END\r\n",
+					"        ,AddressLine2 =  CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine2 ELSE target.addressLine2 END\r\n",
+					"        ,addressTown =  CASE WHEN source.Source_priority <= target.source_priority THEN source.addressTown ELSE target.addressTown END\r\n",
+					"        ,addressCounty =  CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCounty ELSE target.addressCounty END\r\n",
+					"        ,postcode =  CASE WHEN source.Source_priority <= target.source_priority THEN source.postcode ELSE target.postcode END\r\n",
+					"        ,addressCountry =  CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCountry ELSE target.addressCountry END\r\n",
+					"        ,organisation =  CASE WHEN source.Source_priority <= target.source_priority THEN source.organisation ELSE target.organisation END\r\n",
+					"        ,organisationType =  CASE WHEN source.Source_priority <= target.source_priority THEN source.organisationType ELSE target.organisationType END\r\n",
+					"        ,role =  CASE WHEN source.Source_priority <= target.source_priority THEN source.role ELSE target.role END\r\n",
+					"        ,telephoneNumber =  CASE WHEN source.Source_priority <= target.source_priority THEN source.telephoneNumber ELSE target.telephoneNumber END\r\n",
+					"        ,otherPhoneNumber =  CASE WHEN source.Source_priority <= target.source_priority THEN source.otherPhoneNumber ELSE target.otherPhoneNumber END\r\n",
+					"        ,faxNumber =  CASE WHEN source.Source_priority <= target.source_priority THEN source.faxNumber ELSE target.faxNumber END\r\n",
+					"        ,emailAddress =  CASE WHEN source.Source_priority <= target.source_priority THEN source.emailAddress ELSE target.emailAddress END\r\n",
+					"        ,webAddress =  CASE WHEN source.Source_priority <= target.source_priority THEN source.webAddress ELSE target.webAddress END\r\n",
+					"        ,serviceUserType =  CASE WHEN source.Source_priority <= target.source_priority THEN source.serviceUserType ELSE target.serviceUserType END\r\n",
+					"        ,sourceSystem =  CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSystem ELSE target.sourceSystem END\r\n",
+					"        ,sourceSUID =  CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSUID ELSE target.sourceSUID END\r\n",
+					"        ,source_priority =  CASE WHEN source.Source_priority <= target.source_priority THEN source.source_priority ELSE target.source_priority END\r\n",
 					"WHEN NOT MATCHED THEN\r\n",
 					"    INSERT (\r\n",
 					"        id\r\n",
@@ -1340,6 +1354,7 @@
 					"        ,serviceUserType\r\n",
 					"        ,sourceSystem\r\n",
 					"        ,sourceSUID\r\n",
+					"        ,source_priority\r\n",
 					"            )\r\n",
 					"    VALUES (\r\n",
 					"        source.id\r\n",
@@ -1364,9 +1379,10 @@
 					"        ,source.serviceUserType\r\n",
 					"        ,source.sourceSystem\r\n",
 					"        ,source.sourceSUID\r\n",
+					"        ,source.source_priority\r\n",
 					"    )"
 				],
-				"execution_count": 84
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -1426,6 +1442,7 @@
 					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
 					"    ,CAST(representativeId AS String) AS sourceSuid\r\n",
 					"    ,NSIPRepresentaionID\r\n",
+					"    ,4 AS source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_relevant_representation AS source\r\n",
 					"WHERE\r\n",
@@ -1456,6 +1473,7 @@
 					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
 					"    ,CAST(source.agentcontactid AS String) AS sourceSuid\r\n",
 					"    ,NSIPRepresentaionID\r\n",
+					"    ,4 AS source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_relevant_representation AS source\r\n",
 					"WHERE\r\n",
@@ -1486,13 +1504,14 @@
 					"    ,source.ODTSourceSystem AS sourceSystem \r\n",
 					"    ,CAST(representedId AS String) AS sourceSuid\r\n",
 					"    ,NSIPRepresentaionID\r\n",
+					"    ,4 AS source_priority\r\n",
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_relevant_representation AS source\r\n",
 					"WHERE\r\n",
 					"    isActive = 'Y'\r\n",
 					"    AND representedId IS NOT NULL"
 				],
-				"execution_count": 85
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -1526,7 +1545,7 @@
 					"        AND source.sourceSystem = target.sourceSystem\r\n",
 					"        AND source.sourceSUID = target.sourceSUID"
 				],
-				"execution_count": 86
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -1582,7 +1601,7 @@
 					"            )\r\n",
 					""
 				],
-				"execution_count": 87
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -1630,7 +1649,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\r\n",
 					"            )"
 				],
-				"execution_count": 88
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -1678,7 +1697,7 @@
 					"                source.emailAddress = target.emailAddress\r\n",
 					"            )"
 				],
-				"execution_count": 89
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -1784,13 +1803,14 @@
 					"    ,raw.caseReference \r\n",
 					"    ,raw.sourceSystem\r\n",
 					"    ,raw.sourceSUID\r\n",
+					"    ,raw.Source_priority\r\n",
 					"FROM\r\n",
 					"    vw_rel_reps_raw AS raw\r\n",
 					"    LEFT OUTER JOIN dedupe\r\n",
 					"        ON raw.NSIPRepresentaionID = dedupe.NSIPRepresentaionID\r\n",
 					"        AND MatchID = 1"
 				],
-				"execution_count": 90
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -1818,26 +1838,27 @@
 					"WHEN MATCHED THEN\r\n",
 					"    UPDATE\r\n",
 					"    SET\r\n",
-					"        salutation = COALESCE(source.salutation, target.salutation)\r\n",
-					"        ,firstName = COALESCE(source.FirstName, target.FirstName)\r\n",
-					"        ,lastName = COALESCE(source.LastName, target.LastName)\r\n",
-					"        ,addressLine1 = COALESCE(source.addressLine1, target.addressLine1)\r\n",
-					"        ,AddressLine2 = COALESCE(source.addressLine2, target.addressLine2)\r\n",
-					"        ,addressTown = COALESCE(source.addressTown, target.addressTown)\r\n",
-					"        ,addressCounty = COALESCE(source.addressCounty, target.addressCounty)\r\n",
-					"        ,postcode = COALESCE(source.postcode, target.postcode)\r\n",
-					"        ,addressCountry = COALESCE(source.addressCountry, target.addressCountry)\r\n",
-					"        ,organisation = COALESCE(source.organisation, target.organisation)\r\n",
-					"        ,organisationType = COALESCE(source.organisationType, target.organisationType)\r\n",
-					"        ,role = COALESCE(source.role, target.role)\r\n",
-					"        ,telephoneNumber = COALESCE(source.telephoneNumber, target.telephoneNumber)\r\n",
-					"        ,otherPhoneNumber = COALESCE(source.otherPhoneNumber, target.otherPhoneNumber)\r\n",
-					"        ,faxNumber = COALESCE(source.faxNumber, target.faxNumber)\r\n",
-					"        ,emailAddress = COALESCE(source.emailAddress, target.emailAddress)\r\n",
-					"        ,webAddress = COALESCE(source.webAddress, target.webAddress)\r\n",
-					"        ,serviceUserType = COALESCE(source.serviceUserType, target.serviceUserType)\r\n",
-					"        ,sourceSystem = COALESCE(source.sourceSystem, target.sourceSystem)\r\n",
-					"        ,sourceSUID = COALESCE(source.sourceSUID, target.sourceSUID)\r\n",
+					"        salutation = CASE WHEN source.Source_priority <= target.source_priority THEN source.salutation ELSE target.salutation END\r\n",
+					"        ,firstName = CASE WHEN source.Source_priority <= target.source_priority THEN source.FirstName ELSE target.FirstName END\r\n",
+					"        ,lastName = CASE WHEN source.Source_priority <= target.source_priority THEN source.LastName ELSE target.LastName END\r\n",
+					"        ,addressLine1 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine1 ELSE target.addressLine1 END\r\n",
+					"        ,AddressLine2 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine2 ELSE target.addressLine2 END\r\n",
+					"        ,addressTown = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressTown ELSE target.addressTown END\r\n",
+					"        ,addressCounty = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCounty ELSE target.addressCounty END\r\n",
+					"        ,postcode = CASE WHEN source.Source_priority <= target.source_priority THEN source.postcode ELSE target.postcode END\r\n",
+					"        ,addressCountry = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCountry ELSE target.addressCountry END\r\n",
+					"        ,organisation = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisation ELSE target.organisation END\r\n",
+					"        ,organisationType = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisationType ELSE target.organisationType END\r\n",
+					"        ,role = CASE WHEN source.Source_priority <= target.source_priority THEN source.role ELSE target.role END\r\n",
+					"        ,telephoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.telephoneNumber  ELSE target.telephoneNumber END\r\n",
+					"        ,otherPhoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.otherPhoneNumber ELSE target.otherPhoneNumber END\r\n",
+					"        ,faxNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.faxNumber ELSE target.faxNumber END\r\n",
+					"        ,emailAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.emailAddress ELSE target.emailAddress END\r\n",
+					"        ,webAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.webAddress ELSE target.webAddress END\r\n",
+					"        ,serviceUserType =   CASE WHEN source.Source_priority <= target.source_priority THEN source.serviceUserType ELSE target.serviceUserType END\r\n",
+					"        ,sourceSystem =   CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSystem ELSE target.sourceSystem END\r\n",
+					"        ,sourceSUID =   CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSUID ELSE target.sourceSUID END\r\n",
+					"        ,source_priority =  CASE WHEN source.Source_priority <= target.source_priority THEN source.Source_priority ELSE target.source_priority END\r\n",
 					"WHEN NOT MATCHED THEN\r\n",
 					"    INSERT (\r\n",
 					"        id\r\n",
@@ -1862,6 +1883,7 @@
 					"        ,serviceUserType\r\n",
 					"        ,sourceSystem\r\n",
 					"        ,sourceSUID\r\n",
+					"        ,source_priority\r\n",
 					"            )\r\n",
 					"    VALUES (\r\n",
 					"        source.id\r\n",
@@ -1886,9 +1908,10 @@
 					"        ,source.serviceUserType\r\n",
 					"        ,source.sourceSystem\r\n",
 					"        ,source.sourceSUID\r\n",
+					"        ,source.source_priority\r\n",
 					"    )"
 				],
-				"execution_count": 91
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -1919,7 +1942,7 @@
 				"source": [
 					"#Could be interest parties or complainants. If unable to match <Gareth to confirm>"
 				],
-				"execution_count": 92
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -2010,7 +2033,7 @@
 					"\r\n",
 					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": 93
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -2045,7 +2068,7 @@
 					"%%pyspark\n",
 					"pip install Faker"
 				],
-				"execution_count": 94
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -2096,7 +2119,7 @@
 					"        table_loc = \"abfss://odw-harmonised@\"+storage_account+'service_user'\n",
 					"        df.write.format(\"delta\").mode(\"overwrite\").save(table_loc)  "
 				],
-				"execution_count": 95
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -2117,7 +2140,7 @@
 					"\r\n",
 					"copy.write.mode(\"overwrite\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_curated_db.service_user\")"
 				],
-				"execution_count": 96
+				"execution_count": 33
 			}
 		]
 	}
