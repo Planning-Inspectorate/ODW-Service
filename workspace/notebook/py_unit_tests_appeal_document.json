@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8b2efa34-13f6-4307-b89d-02e66a6a8445"
+				"spark.autotune.trackingId": "81d07892-fde2-4455-869c-5dad4001e470"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\r\n",
 					"import pprint"
 				],
-				"execution_count": 1
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,26 @@
 					"hrm_table_final: str = 'appeals_document_metadata'\r\n",
 					"curated_table_name: str = 'appeal_document'"
 				],
-				"execution_count": 2
+				"execution_count": 88
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\r\n",
+					"exitCode: int = 0"
+				],
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -141,7 +160,7 @@
 					"    \"horizonFolderId\"\r\n",
 					"  ]"
 				],
-				"execution_count": 10
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +179,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 3
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -183,7 +202,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\r\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 4
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -205,7 +224,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\r\n",
 					"    return spark_schema"
 				],
-				"execution_count": 5
+				"execution_count": 93
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +244,7 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\r\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 6
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
@@ -246,7 +265,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\r\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 7
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -281,7 +300,7 @@
 					"        result.update(extract_field(field))\r\n",
 					"    return result"
 				],
-				"execution_count": 11
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -332,7 +351,7 @@
 					"    else:\r\n",
 					"        return True"
 				],
-				"execution_count": 19
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -361,7 +380,7 @@
 					"\r\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 20
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -419,7 +438,7 @@
 					"    \r\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 21
+				"execution_count": 99
 			},
 			{
 				"cell_type": "markdown",
@@ -454,7 +473,7 @@
 					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\r\n",
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 22
+				"execution_count": 100
 			},
 			{
 				"cell_type": "markdown",
@@ -484,10 +503,67 @@
 					}
 				},
 				"source": [
+					"def differentiate_std_and_hrm(std_table_full, hrm_table_full):\r\n",
+					"    # filter standardised df with non-null message_type and exclude 'Delete' message_type since it doesn't add a new row in hrm\r\n",
+					"    std_df: DataFrame = spark.table(std_table_full)\r\n",
+					"    std_df = std_df.filter((std_df.message_type != 'Delete') & (std_df.message_type.isNotNull()))\r\n",
+					"\r\n",
+					"    hrm_df  = spark.table(hrm_table_full)\r\n",
+					"\r\n",
+					"    # Find rows in the original table that are not in the new table\r\n",
+					"    missing_rows_in_std = hrm_df.select(data_model_columns).subtract(std_df.select(data_model_columns))\r\n",
+					"\r\n",
+					"    # Show the missing rows\r\n",
+					"    display(missing_rows_in_std)\r\n",
+					"\r\n",
+					"    missing_rows_in_hrm = std_df.select(data_model_columns).subtract(hrm_df.select(data_model_columns))\r\n",
+					"    display(missing_rows_in_hrm)"
+				],
+				"execution_count": 103
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
+					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")\r\n",
+					"\r\n",
+					"if standardised_count > harmonised_count:\r\n",
+					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\r\n",
+					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\")\r\n",
+					"    #this is classed as an error\r\n",
+					"    exitCode += 1 "
+				],
+				"execution_count": 104
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\r\n",
 					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
 				],
-				"execution_count": 23
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -556,7 +632,7 @@
 					"display(missing_rows_in_hrm)\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 106
 			},
 			{
 				"cell_type": "markdown",
@@ -587,9 +663,10 @@
 				},
 				"source": [
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\r\n",
-					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
+					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\r\n",
+					"# exitCode += int(not counts_match)"
 				],
-				"execution_count": 25
+				"execution_count": 107
 			},
 			{
 				"cell_type": "markdown",
@@ -639,42 +716,20 @@
 				"source": [
 					"%%sql\r\n",
 					"SELECT\r\n",
-					"    documentId,\r\n",
-					"    COUNT(DISTINCT attachmentdataid)\r\n",
+					"    *\r\n",
 					"FROM\r\n",
 					"    odw_standardised_db.horizon_appeals_document_metadata\r\n",
 					"WHERE\r\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_appeals_document_metadata)\r\n",
-					"GROUP BY\r\n",
-					"    1\r\n",
-					"HAVING\r\n",
-					"    COUNT(DISTINCT attachmentdataid) > 1\r\n",
-					"ORDER BY\r\n",
-					"    2 DESC"
+					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_appeals_document_metadata) and documentid = 22200114\r\n",
+					"    \r\n",
+					"-- GROUP BY\r\n",
+					"--     1\r\n",
+					"-- HAVING\r\n",
+					"--     COUNT(DISTINCT attachmentdataid) > 1\r\n",
+					"-- ORDER BY\r\n",
+					"    -- 2 DESC"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"select attachmentIds FROM [odw_curated_db].[dbo].[nsip_s51_advice] where adviceId = 16347955"
-				],
-				"execution_count": null
+				"execution_count": 78
 			},
 			{
 				"cell_type": "markdown",
@@ -709,78 +764,14 @@
 				"source": [
 					"%%sql\r\n",
 					"SELECT DISTINCT\r\n",
-					"    caseCreatedDate\r\n",
-					"    ,projectName\r\n",
-					"    ,projectstatus\r\n",
-					"    ,examtimetablepublishstatus\r\n",
-					"    ,sector\r\n",
-					"    ,projectType\r\n",
-					"    ,stage\r\n",
-					"    ,caseReference\r\n",
-					"    ,horizoncasenumber\r\n",
-					"    ,projectLocation\r\n",
-					"    ,projectEmailAddress\r\n",
-					"    ,twitteraccountname\r\n",
-					"    ,region\r\n",
-					"    ,easting\r\n",
-					"    ,northing\r\n",
-					"    ,transboundary\r\n",
-					"    ,welshLanguage\r\n",
-					"    ,exasize\r\n",
-					"    ,mapZoomLevel\r\n",
-					"    ,projectDescription\r\n",
-					"    ,sos\r\n",
-					"    ,tene\r\n",
-					"    ,anticipatedDateOfSubmission\r\n",
-					"    ,dateProjectAppearsOnWebsite\r\n",
-					"    ,dateOfDCOAcceptance\r\n",
-					"    ,anticipatedDateOfSubmission\r\n",
-					"    ,dateOfDCOSubmission\r\n",
-					"    ,dateOfRepresentationPeriodOpen\r\n",
-					"    ,dateOfRelevantRepresentationClose\r\n",
-					"    ,dateRRepAppearOnWebsite\r\n",
-					"    ,confirmedStartOfExamination\r\n",
-					"    ,dateTimeExaminationEnds\r\n",
-					"    ,stage4ExtensionToExamCloseDate\r\n",
-					"    ,stage5ExtensionToRecommendationDeadline\r\n",
-					"    ,dateOfRecommendations\r\n",
-					"    ,confirmedDateOfDecision\r\n",
-					"    ,stage5ExtensionToDecisionDeadline\r\n",
-					"    ,dateProjectWithdrawn\r\n",
-					"    ,section46Notification\r\n",
-					"    ,datePINSFirstNotifiedOfProject\r\n",
-					"    ,screeningOpinionSought\r\n",
-					"    ,screeningOpinionIssued\r\n",
-					"    ,scopingOpinionSought\r\n",
-					"    ,scopingOpinionIssued\r\n",
-					"    ,deadlineForAcceptanceDecision\r\n",
-					"    ,dateSection58NoticeReceived\r\n",
-					"    ,preliminaryMeetingStartDate\r\n",
-					"    ,deadlineForCloseOfExamination\r\n",
-					"    ,deadlineForSubmissionOfRecommendation\r\n",
-					"    ,deadlineForDecision\r\n",
-					"    ,jRPeriodEndDate\r\n",
-					"    ,extensionToDateRelevantRepresentationsClose\r\n",
-					"    ,summary\r\n",
-					"    ,promotername\r\n",
-					"    ,applicantfirstname\r\n",
-					"    ,applicantlastname\r\n",
-					"    ,addressLine1\r\n",
-					"    ,addressLine2\r\n",
-					"    ,addressTown\r\n",
-					"    ,addressCounty\r\n",
-					"    ,postcode\r\n",
-					"    ,applicantemailaddress\r\n",
-					"    ,applicantwebaddress\r\n",
-					"    ,applicantphonenumber\r\n",
-					"    ,applicantdescriptionofproject\r\n",
-					"    ,casenodeid\r\n",
+					"    *\r\n",
 					"FROM\r\n",
-					"    odw_standardised_db.horizon_nsip_data\r\n",
+					"    odw_standardised_db.horizon_appeals_document_metadata\r\n",
 					"WHERE\r\n",
-					"     horizoncasenumber = '3222228'"
+					"   \r\n",
+					"     ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_appeals_document_metadata);"
 				],
-				"execution_count": null
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
