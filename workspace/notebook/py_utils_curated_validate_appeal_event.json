@@ -1,5 +1,5 @@
 {
-	"name": "py_utils_curated_validate_nsip_representation",
+	"name": "py_utils_curated_validate_appeal_event",
 	"properties": {
 		"description": "Validation notebook for validating curated layer tables against the json schema.",
 		"folder": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "447ada7c-b0ef-47c2-a858-d2ffae9bc43e"
+				"spark.autotune.trackingId": "39045409-908a-4ed8-b6fe-01627147594b"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"%pip install --quiet --upgrade pip\r\n",
 					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0 git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model"
 				],
-				"execution_count": 12
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -124,7 +124,7 @@
 					"from iso8601 import parse_date, ParseError\r\n",
 					"from pins_data_model import load_schemas"
 				],
-				"execution_count": 13
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -136,7 +136,7 @@
 					}
 				},
 				"source": [
-					"#### Import validation funcitons notebook"
+					"#### Import validation functions notebook"
 				]
 			},
 			{
@@ -155,7 +155,7 @@
 				"source": [
 					"%run utils/data-validation/py_utils_curated_validate_functions"
 				],
-				"execution_count": 14
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -185,14 +185,14 @@
 				},
 				"source": [
 					"SCHEMAS = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
-					"SCHEMA = SCHEMAS[\"nsip-representation.schema.json\"]\r\n",
-					"PRIMARY_KEY = \"caseRef\" \r\n",
+					"SCHEMA = SCHEMAS[\"appeal-event.schema.json\"]\r\n",
+					"PRIMARY_KEY = \"eventId\"\r\n",
 					"DATABASE = \"odw_curated_db\"\r\n",
-					"TABLE = \"nsip_representation\"\r\n",
+					"TABLE = \"appeal_event\"\r\n",
 					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
 					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
-				"execution_count": 15
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -206,30 +206,8 @@
 				"source": [
 					"#### Create dataframe of the data from the table\r\n",
 					"\r\n",
-					"For certain tables it may be necessary to rename a column or two in order to create the array and avoid duplicate field names.\r\n",
-					"\r\n",
-					"It's also necessary to convert None and NaT values to empty strings. A NULL value in SQL is shown as None for strings or NaT for timestamps in pandas so converting to an empty string will match the expected schema as we're validating using a pandas dataframe.\r\n",
-					"\r\n",
-					"The replace() function is used to convert NaT values to None and then these are converted to empty strings using fillna()."
+					"For certain tables it may be necessary to rename a column or two in order to create the array and avoid duplicate field names"
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark.sql(f\"REFRESH TABLE {DATABASE}.{TABLE}\")"
-				],
-				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -248,12 +226,27 @@
 					"df = spark.sql(QUERY)\r\n",
 					"data = df.toPandas()\r\n",
 					"for column in data:\r\n",
-					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)\r\n",
-					"\r\n",
-					"data['attachmentIds'] = data['attachmentIds'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)\r\n",
-					"json_data = data.to_dict(orient='records')"
+					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)"
 				],
-				"execution_count": 17
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"data.head(5)"
+				],
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -283,16 +276,90 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from odw_curated_db.appeal_event where eventID = '3001106-3'"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Erros with validation are due to data not being populated in Horizon but being required in the schema. Data is not due to be migrated at this stage, and checked with Gareth and correct with source system. Given the Appeals team don't plan to do any migration, taking as a non issue"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"validate_data(data=create_json_from_table_flat(data),\r\n",
+					"                        schema = SCHEMA,\r\n",
+					"                        primary_key = PRIMARY_KEY)"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					}
 				},
 				"source": [
 					"%%capture output\r\n",
 					"\r\n",
-					"validate = validate_data(data=json_data, \r\n",
-					"                        schema=SCHEMA,\r\n",
+					"validate = validate_data(data=create_json_from_table_flat(data),\r\n",
+					"                        schema = SCHEMA,\r\n",
 					"                        primary_key = PRIMARY_KEY)"
 				],
-				"execution_count": 18
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"display(output.stdout)"
+				],
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -326,7 +393,7 @@
 					"result = output.stdout\r\n",
 					"print(result)"
 				],
-				"execution_count": 20
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -357,7 +424,7 @@
 				"source": [
 					"write_file_to_storage(path, OUTPUT_FILE, result)"
 				],
-				"execution_count": 21
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -391,7 +458,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(validate)"
 				],
-				"execution_count": 22
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -403,8 +470,7 @@
 					}
 				},
 				"source": [
-					"### Check data points to ensure correct\r\n",
-					"First start with Service Bus"
+					"#### Test service bus"
 				]
 			},
 			{
@@ -426,9 +492,12 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.sb_nsip_representation where caseRef = 'TR0110033' order by ingested_datetime asc"
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_standardised_db.sb_appeal_event"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -449,9 +518,12 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.sb_nsip_representation where caseRef = 'TR0110033' order by IngestionDate asc"
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.sb_appeal_event"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -472,10 +544,12 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.nsip_representation where caseRef = 'TR0110033' order by IngestionDate asc\r\n",
-					""
+					"SELECT\r\n",
+					"   COUNT(*)\r\n",
+					"FROM\r\n",
+					"    odw_standardised_db.sb_appeal_event"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -496,9 +570,173 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_curated_db.nsip_representation where caseRef = 'TR0110033' "
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.sb_appeal_event"
 				],
-				"execution_count": null
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.sb_appeal_event\r\n",
+					"WHERE\r\n",
+					"    IsActive = 'Y'"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_curated_db.Appeal_event"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"     odw_standardised_db.sb_appeal_event"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"     odw_harmonised_db.sb_appeal_event"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"     odw_harmonised_db.sb_appeal_event\r\n",
+					"WHERE\r\n",
+					"    IsActive = 'Y'"
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"      odw_curated_db.Appeal_event\r\n",
+					"    "
+				],
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -510,7 +748,7 @@
 					}
 				},
 				"source": [
-					"Next need to check Horizon data"
+					"#### Test Horizon data feed"
 				]
 			},
 			{
@@ -532,9 +770,14 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_standardised_db.horizon_nsip_relevant_representation where casereference = 'EN060001' and contactid = 1282"
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_standardised_db.horizon_appeals_event\r\n",
+					"WHERE\r\n",
+					"    Ingested_datetime = (SELECT MAX(Ingested_datetime) FROM odw_standardised_db.horizon_appeals_event)"
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -555,9 +798,15 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_harmonised_db.nsip_representation where caseref = 'EN060001' AND representationId = 1282"
+					"SELECT\r\n",
+					"    count(*)\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.sb_appeal_event\r\n",
+					"WHERE\r\n",
+					"    ODTSourceSystem = 'Horizon'\r\n",
+					"    AND IsActive = 'Y'"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -578,9 +827,14 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"REFRESH TABLE odw_curated_db.nsip_representation"
+					"SELECT\r\n",
+					"    COUNT(*)\r\n",
+					"FROM\r\n",
+					"    odw_curated_db.Appeal_event\r\n",
+					"WHERE\r\n",
+					"    eventId NOT IN (SELECT DISTINCT EventId FROM odw_standardised_db.sb_appeal_event) -- Drop records from SB"
 				],
-				"execution_count": null
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -601,9 +855,72 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT * FROM odw_curated_db.nsip_representation where caseRef = 'EN060001' and representationId = 1282"
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_standardised_db.horizon_appeals_event\r\n",
+					"WHERE\r\n",
+					"    CaseNumber = '2218112'\r\n",
+					"    AND Ingested_datetime = (SELECT MAX(Ingested_datetime) FROM odw_standardised_db.horizon_appeals_event)"
 				],
-				"execution_count": null
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_harmonised_db.sb_appeal_event\r\n",
+					"WHERE\r\n",
+					"    ODTSourceSystem = 'Horizon'\r\n",
+					"    AND eventId = '2218112-2'"
+				],
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT\r\n",
+					"    *\r\n",
+					"FROM\r\n",
+					"    odw_curated_db.Appeal_event\r\n",
+					"WHERE\r\n",
+					"    eventId = '2218112-2'"
+				],
+				"execution_count": 31
 			}
 		]
 	}
