@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "74183dbf-a095-49e1-82f2-6319c88d1fed"
+				"spark.autotune.trackingId": "36850f03-11dd-4c48-82ed-90e586335611"
 			}
 		},
 		"metadata": {
@@ -91,97 +91,6 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"-- Build casework_nsip_examination_timetable_dim_new table\n",
-					"-- Gets modified or deleted from source rows\n",
-					"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW casework_nsip_examination_timetable_dim_new \n",
-					"\n",
-					"     AS\n",
-					"\n",
-					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\n",
-					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\n",
-					"\n",
-					"SELECT DISTINCT\n",
-					"    CASE\n",
-					"        WHEN T1.CaseReference IS NULL\n",
-					"        THEN T3.NSIPExaminationTimetableID\n",
-					"        ELSE NULL\n",
-					"    END                             AS NSIPExaminationTimetableID,\n",
-					"    T1.id                           AS ID,\n",
-					"    T1.casereference                AS CaseReference,\n",
-					"    T1.typeofexamination            AS TypeOfExamination,\n",
-					"    T1.name                         AS Name,\n",
-					"    T1.description                  AS Description,\n",
-					"    T1.deadlinestartdatetime        AS DeadlineStartDateTime,\n",
-					"    T1.date                         AS Date,\n",
-					"    T1.location                     AS Location,\n",
-					"    null                            AS EventLineItems,\n",
-					"    \"0\"                             AS Migrated,\n",
-					"    T3.Published                    AS Published,\n",
-					"    \"Horizon\"                       AS ODTSourceSystem,\n",
-					"    T2.SourceSystemID               AS SourceSystemID,\n",
-					"    to_timestamp(T1.expected_from)  AS IngestionDate,\n",
-					"    NULL                            AS ValidTo,\n",
-					"    md5(\n",
-					"        concat(\n",
-					"            IFNULL(T1.id,'.'),\n",
-					"            IFNULL(T1.casereference,'.'),\n",
-					"            IFNULL(T1.typeofexamination,'.'),\n",
-					"            IFNULL(T1.name,'.'),\n",
-					"            IFNULL(T1.description,'.'),\n",
-					"            IFNULL(T1.deadlinestartdatetime,'.'),\n",
-					"            IFNULL(T1.date,'.'),\n",
-					"            IFNULL(T1.location,'.')\n",
-					"        ))                          AS RowID, -- this hash should contain all the defining fields\n",
-					"    'Y'                             AS IsActive,\n",
-					"    T3.IsActive                     AS HistoricIsActive\n",
-					"\n",
-					"FROM odw_standardised_db.horizon_examination_timetable T1\n",
-					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\n",
-					"FULL JOIN odw_harmonised_db.casework_nsip_examination_timetable_dim T3 ON T1.casereference = T3.CaseReference AND T3.IsActive = 'Y'\n",
-					"WHERE\n",
-					"    -- flags new data        \n",
-					"    (CASE\n",
-					"        WHEN T1.casereference = T3.CaseReference AND md5(\n",
-					"            concat(\n",
-					"                IFNULL(T1.id,'.'),\n",
-					"                IFNULL(T1.casereference,'.'),\n",
-					"                IFNULL(T1.typeofexamination,'.'),\n",
-					"                IFNULL(T1.name,'.'),\n",
-					"                IFNULL(T1.description,'.'),\n",
-					"                IFNULL(T1.deadlinestartdatetime,'.'),\n",
-					"                IFNULL(T1.date,'.'),\n",
-					"                IFNULL(T1.location,'.')\n",
-					"            )) <> T3.RowID  -- same row, changed data\n",
-					"        THEN 'Y'\n",
-					"        WHEN T3.CaseReference IS NULL -- new CaseReference\n",
-					"        THEN 'Y'\n",
-					"    ELSE 'N'\n",
-					"    END  = 'Y')\n",
-					"    AND T1.CaseReference IS NOT NULL\n",
-					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_examination_timetable)\n",
-					";"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
 					}
 				},
 				"source": [
@@ -216,6 +125,24 @@
 					"                    \"\"\")"
 				],
 				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"service_bus_data.schema"
+				],
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
