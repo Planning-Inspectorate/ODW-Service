@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5fc2693a-78e4-40c5-a46d-805273fdd42d"
+				"spark.autotune.trackingId": "74183dbf-a095-49e1-82f2-6319c88d1fed"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 29
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,98 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 30
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"-- Build casework_nsip_examination_timetable_dim_new table\n",
+					"-- Gets modified or deleted from source rows\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW casework_nsip_examination_timetable_dim_new \n",
+					"\n",
+					"     AS\n",
+					"\n",
+					"-- gets data that matches of SourceID and flags that it is modified based on a row (md5) hash. Flags as \"NewData\"\n",
+					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    CASE\n",
+					"        WHEN T1.CaseReference IS NULL\n",
+					"        THEN T3.NSIPExaminationTimetableID\n",
+					"        ELSE NULL\n",
+					"    END                             AS NSIPExaminationTimetableID,\n",
+					"    T1.id                           AS ID,\n",
+					"    T1.casereference                AS CaseReference,\n",
+					"    T1.typeofexamination            AS TypeOfExamination,\n",
+					"    T1.name                         AS Name,\n",
+					"    T1.description                  AS Description,\n",
+					"    T1.deadlinestartdatetime        AS DeadlineStartDateTime,\n",
+					"    T1.date                         AS Date,\n",
+					"    T1.location                     AS Location,\n",
+					"    null                            AS EventLineItems,\n",
+					"    \"0\"                             AS Migrated,\n",
+					"    T3.Published                    AS Published,\n",
+					"    \"Horizon\"                       AS ODTSourceSystem,\n",
+					"    T2.SourceSystemID               AS SourceSystemID,\n",
+					"    to_timestamp(T1.expected_from)  AS IngestionDate,\n",
+					"    NULL                            AS ValidTo,\n",
+					"    md5(\n",
+					"        concat(\n",
+					"            IFNULL(T1.id,'.'),\n",
+					"            IFNULL(T1.casereference,'.'),\n",
+					"            IFNULL(T1.typeofexamination,'.'),\n",
+					"            IFNULL(T1.name,'.'),\n",
+					"            IFNULL(T1.description,'.'),\n",
+					"            IFNULL(T1.deadlinestartdatetime,'.'),\n",
+					"            IFNULL(T1.date,'.'),\n",
+					"            IFNULL(T1.location,'.')\n",
+					"        ))                          AS RowID, -- this hash should contain all the defining fields\n",
+					"    'Y'                             AS IsActive,\n",
+					"    T3.IsActive                     AS HistoricIsActive\n",
+					"\n",
+					"FROM odw_standardised_db.horizon_examination_timetable T1\n",
+					"LEFT JOIN odw_harmonised_db.main_sourcesystem_fact T2 ON \"Casework\" = T2.Description AND T2.IsActive = 'Y'\n",
+					"FULL JOIN odw_harmonised_db.casework_nsip_examination_timetable_dim T3 ON T1.casereference = T3.CaseReference AND T3.IsActive = 'Y'\n",
+					"WHERE\n",
+					"    -- flags new data        \n",
+					"    (CASE\n",
+					"        WHEN T1.casereference = T3.CaseReference AND md5(\n",
+					"            concat(\n",
+					"                IFNULL(T1.id,'.'),\n",
+					"                IFNULL(T1.casereference,'.'),\n",
+					"                IFNULL(T1.typeofexamination,'.'),\n",
+					"                IFNULL(T1.name,'.'),\n",
+					"                IFNULL(T1.description,'.'),\n",
+					"                IFNULL(T1.deadlinestartdatetime,'.'),\n",
+					"                IFNULL(T1.date,'.'),\n",
+					"                IFNULL(T1.location,'.')\n",
+					"            )) <> T3.RowID  -- same row, changed data\n",
+					"        THEN 'Y'\n",
+					"        WHEN T3.CaseReference IS NULL -- new CaseReference\n",
+					"        THEN 'Y'\n",
+					"    ELSE 'N'\n",
+					"    END  = 'Y')\n",
+					"    AND T1.CaseReference IS NOT NULL\n",
+					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.horizon_examination_timetable)\n",
+					";"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -95,40 +186,21 @@
 				},
 				"source": [
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
-					"service_bus_data = spark.sql(\"\"\"\r\n",
+					"service_bus_data = spark.sql(f\"\"\"\r\n",
 					"                    SELECT DISTINCT\r\n",
-					"                        NSIPAdviceID\r\n",
-					"                        ,adviceId\r\n",
-					"                        ,adviceReference\r\n",
-					"                        ,caseId\r\n",
+					"                        NSIPExaminationTimetableID\r\n",
 					"                        ,caseReference\r\n",
-					"                        ,title\r\n",
-					"                        ,titleWelsh\r\n",
-					"                        ,from\r\n",
-					"                        ,agent\r\n",
-					"                        ,method\r\n",
-					"                        ,enquiryDate\r\n",
-					"                        ,enquiryDetails\r\n",
-					"                        ,enquiryDetailsWelsh\r\n",
-					"                        ,adviceGivenBy\r\n",
-					"                        ,adviceDate\r\n",
-					"                        ,adviceDetails\r\n",
-					"                        ,adviceDetailsWelsh\r\n",
-					"                        ,status\r\n",
-					"                        ,redactionStatus\r\n",
-					"                        ,attachmentIds\r\n",
+					"                        ,published\r\n",
+					"                        ,events\r\n",
 					"\r\n",
 					"                        -- Start Horizon columns\r\n",
-					"                        ,'Yes' as Section51Advice\r\n",
-					"                        ,CAST(NULL AS String) as EnquirerFirstName\r\n",
-					"                        ,CAST(NULL AS String) as EnquirerLastName\r\n",
-					"                        ,CAST(NULL AS String) as AdviceLastModified\r\n",
-					"                        ,CAST(NULL AS String) as AttachmentCount\r\n",
-					"                        ,CAST(NULL AS String) as AttachmentsLastModified\r\n",
-					"                        ,CAST(NULL AS String) as LastPublishedDate\r\n",
-					"                        ,CAST(NULL AS String) as WelshLanguage\r\n",
-					"                        ,CAST(NULL AS String) as CaseWorkType\r\n",
-					"                        ,CAST(NULL AS String) as AttachmentModifyDate\r\n",
+					"                        ,CAST(NULL AS String) AS ID\r\n",
+					"                        ,CAST(NULL AS String) AS TypeOfExamination\r\n",
+					"                        ,CAST(NULL AS String) AS Name\r\n",
+					"                        ,CAST(NULL AS String) AS Description\r\n",
+					"                        ,CAST(NULL AS String) AS DeadlineStartDateTime\r\n",
+					"                        ,CAST(NULL AS String) AS Date\r\n",
+					"                        ,CAST(NULL AS String) AS Location\r\n",
 					"                        -- End Horizon columns\r\n",
 					"                        \r\n",
 					"                        ,Migrated\r\n",
@@ -139,11 +211,30 @@
 					"                        ,'' as RowID\r\n",
 					"                        ,IsActive\r\n",
 					"                    FROM \r\n",
-					"                        odw_harmonised_db.sb_s51_advice\r\n",
+					"                        {service_bus_table}\r\n",
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 31
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(service_bus_data)"
+				],
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -162,55 +253,113 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\r\n",
 					"horizon_data = spark.sql(f\"\"\"\r\n",
 					"                SELECT DISTINCT \r\n",
-					"                        CAST(NULL AS Long) as NSIPAdviceID\r\n",
-					"                        ,Cast(advicenodeid as integer) as adviceId\r\n",
-					"                        ,adviceReference\r\n",
-					"                        ,Cast(casenodeid as integer) as caseId\r\n",
+					"                        CAST(NULL AS Long) as NSIPExaminationTimetableID\r\n",
 					"                        ,caseReference\r\n",
-					"                        ,title\r\n",
-					"                        ,CAST(NULL AS String) as titleWelsh\r\n",
-					"                        ,concat(enquirerfirstname,' ',enquirerlastname)  as from\r\n",
-					"                        ,enquirerOrganisation as agent\r\n",
-					"                        ,enqirymethod as method\r\n",
-					"                        ,enquiryDate\r\n",
-					"                        ,enquiry as enquiryDetails\r\n",
-					"                        ,CAST(NULL AS String) as enquiryDetailsWelsh\r\n",
-					"                        ,adviceFrom as adviceGivenBy\r\n",
-					"                        ,adviceDate\r\n",
-					"                        ,advice as adviceDetails\r\n",
-					"                        ,CAST(NULL AS String) as adviceDetailsWelsh\r\n",
-					"                        ,adviceStatus as status\r\n",
-					"                        ,null as redactionStatus\r\n",
-					"                        ,attachmentdataID as attachmentIds\r\n",
+					"                        , NULL as published\r\n",
+					"                        ,CAST(NULL AS String) AS events\r\n",
 					"                        \r\n",
 					"                        -- Start Horizon Fields Not in SB\r\n",
-					"                        ,Section51Advice\r\n",
-					"                        ,EnquirerFirstName\r\n",
-					"                        ,EnquirerLastName\r\n",
-					"                        ,AdviceLastModified\r\n",
-					"                        ,AttachmentCount\r\n",
-					"                        ,AttachmentsLastModified\r\n",
-					"                        ,LastPublishedDate\r\n",
-					"                        ,WelshLanguage\r\n",
-					"                        ,CaseWorkType\r\n",
-					"                        ,AttachmentModifyDate\r\n",
+					"                        ,ID\r\n",
+					"                        ,TypeOfExamination\r\n",
+					"                        ,Name\r\n",
+					"                        ,Description\r\n",
+					"                        ,DeadlineStartDateTime\r\n",
+					"                        ,Date\r\n",
+					"                        ,Location\r\n",
 					"                        -- END Horizon Fields Not in SB\r\n",
 					"\r\n",
 					"                        ,\"0\" as Migrated\r\n",
 					"                        ,\"Horizon\" as ODTSourceSystem\r\n",
 					"                        ,NULL AS SourceSystemID\r\n",
-					"                        , to_timestamp(expected_from)  AS IngestionDate\r\n",
-					"                        ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\r\n",
+					"                        ,to_timestamp(expected_from)  AS IngestionDate\r\n",
+					"                        ,CAST(NULL AS String) as ValidTo -- to avoid any null descrepancies\r\n",
 					"                        ,'' as RowID\r\n",
 					"                        ,'Y' as IsActive\r\n",
 					"FROM\r\n",
 					"    {horizon_table} AS Horizon\r\n",
 					"WHERE\r\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \r\n",
+					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
+					"ORDER BY caseReference\r\n",
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 32
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(horizon_data)"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"play_data = horizon_data.limit(10)\n",
+					"# display(horizon_data.groupBy(\"caseReference\").agg(collect_list(\"ID\").alias(\"ID\")))"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(play_data.groupBy(\"caseReference\").agg(collect_list(\"ID\").alias(\"ID\")))"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(play_data)"
+				],
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -227,14 +376,33 @@
 				},
 				"source": [
 					"#Establish aggregated view of attachmentIds\r\n",
-					"horizon_attachement= horizon_data.groupBy(\"adviceid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\r\n",
-					"horizon_data = horizon_data.drop(\"attachmentIds\")\r\n",
-					"horizon_data = horizon_data.join(horizon_attachement, on=\"adviceid\", how=\"inner\")\r\n",
+					"horizon_attachement= horizon_data.groupBy(\"caseReference\").agg(collect_list(\"ID\").alias(\"ID\"))\r\n",
+					"horizon_data = horizon_data.drop(\"ID\")\r\n",
+					"horizon_data = horizon_data.join(horizon_attachement, on=\"caseReference\", how=\"inner\")\r\n",
 					"\r\n",
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 33
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(horizon_data)"
+				],
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
