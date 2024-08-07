@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ec2a61a4-1719-4131-9d8d-2fe41a3e4e17"
+				"spark.autotune.trackingId": "374845ff-394f-46ba-8d1b-e87543c81dec"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"%pip install --quiet --upgrade pip\r\n",
 					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0 git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model"
 				],
-				"execution_count": null
+				"execution_count": 138
 			},
 			{
 				"cell_type": "markdown",
@@ -124,7 +124,7 @@
 					"from iso8601 import parse_date, ParseError\r\n",
 					"from pins_data_model import load_schemas"
 				],
-				"execution_count": null
+				"execution_count": 139
 			},
 			{
 				"cell_type": "markdown",
@@ -136,7 +136,7 @@
 					}
 				},
 				"source": [
-					"#### Import validation functions notebook"
+					"#### Function to validate a list of rows of data."
 				]
 			},
 			{
@@ -153,9 +153,44 @@
 					}
 				},
 				"source": [
-					"%run utils/data-validation/py_utils_curated_validate_functions"
+					"def validate_data(data: list, schema: dict, primary_key: str) -> str:\n",
+					"\n",
+					"    \"\"\"\n",
+					"    Function to validate a list of rows of data.\n",
+					"    Validation includes a format check against ISO-8601.\n",
+					"\n",
+					"    Args:\n",
+					"        data: list\n",
+					"        schema: dictionary\n",
+					"        primary_key: string\n",
+					"\n",
+					"    Returns:\n",
+					"        success: string\n",
+					"        \"Success\" or \"Failed\" for the result of the validation\n",
+					"    \"\"\"\n",
+					"    \n",
+					"    format_checker = FormatChecker()\n",
+					"    format_checker.checks(\"date-time\")(is_iso8601_date_time)\n",
+					"    validator = Draft202012Validator(schema, format_checker=format_checker)\n",
+					"\n",
+					"    success = \"Success\"\n",
+					"\n",
+					"    for index, row in enumerate(data, start=1):\n",
+					"        errors = list(validator.iter_errors(row))\n",
+					"        if errors:\n",
+					"            success = \"Failed\"\n",
+					"            print(f\"{len(errors)} error(s) found in row {index}\")\n",
+					"            key_value = row.get(primary_key)\n",
+					"            print(f\"{primary_key}: {key_value}\")\n",
+					"            for error in errors:\n",
+					"                print(error.message)\n",
+					"                print(\"-\"*100)\n",
+					"            print(\"#\"*100)\n",
+					"            print(\"#\"*100)\n",
+					"\n",
+					"    return success"
 				],
-				"execution_count": null
+				"execution_count": 140
 			},
 			{
 				"cell_type": "markdown",
@@ -192,7 +227,7 @@
 					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
 					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
-				"execution_count": null
+				"execution_count": 141
 			},
 			{
 				"cell_type": "markdown",
@@ -224,16 +259,13 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					"df = spark.sql(QUERY)\r\n",
-					"data = df.toPandas()\r\n",
-					"data.rename(columns={\"attachmentIds\": \"attachmentId\"}, inplace=True)\r\n",
-					"for column in data:\r\n",
-					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)"
+					"spark.sql(f\"REFRESH TABLE {DATABASE}.{TABLE}\")"
 				],
-				"execution_count": null
+				"execution_count": 142
 			},
 			{
 				"cell_type": "code",
@@ -246,12 +278,19 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					"data.head(5)"
+					"df = spark.sql(QUERY)\r\n",
+					"data = df.toPandas()\r\n",
+					"for column in data:\r\n",
+					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)\r\n",
+					"\r\n",
+					"data['attachmentIds'] = data['attachmentIds'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)\r\n",
+					"json_data = data.to_dict(orient='records')"
 				],
-				"execution_count": null
+				"execution_count": 143
 			},
 			{
 				"cell_type": "markdown",
@@ -286,14 +325,11 @@
 				"source": [
 					"%%capture output\r\n",
 					"\r\n",
-					"validate = validate_data(data=create_json_from_table_with_arrays(data, \r\n",
-					"                                                            primary_key=PRIMARY_KEY,\r\n",
-					"                                                            array=\"attachmentIds\", \r\n",
-					"                                                            array_field=\"attachmentId\"), \r\n",
+					"validate = validate_data(data=json_data, \r\n",
 					"                        schema=SCHEMA,\r\n",
 					"                        primary_key = PRIMARY_KEY)"
 				],
-				"execution_count": null
+				"execution_count": 144
 			},
 			{
 				"cell_type": "markdown",
@@ -327,7 +363,7 @@
 					"result = output.stdout\r\n",
 					"print(result)"
 				],
-				"execution_count": null
+				"execution_count": 145
 			},
 			{
 				"cell_type": "markdown",
@@ -358,7 +394,7 @@
 				"source": [
 					"write_file_to_storage(path, OUTPUT_FILE, result)"
 				],
-				"execution_count": null
+				"execution_count": 146
 			},
 			{
 				"cell_type": "markdown",
@@ -392,7 +428,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(validate)"
 				],
-				"execution_count": null
+				"execution_count": 147
 			}
 		]
 	}
