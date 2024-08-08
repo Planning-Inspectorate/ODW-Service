@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "56d523d6-1a34-4808-bb56-9a8c1c2e547b"
+				"spark.autotune.trackingId": "a9f723ef-aadb-46ea-be35-67997a17fea0"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 277
+				"execution_count": 293
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 278
+				"execution_count": 294
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"                            {service_bus_table}\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 279
+				"execution_count": 295
 			},
 			{
 				"cell_type": "code",
@@ -166,7 +166,7 @@
 					"                        ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 280
+				"execution_count": 296
 			},
 			{
 				"cell_type": "code",
@@ -182,17 +182,17 @@
 					}
 				},
 				"source": [
-					"# # grouping the horizon data to create a\n",
-					"# horizon_data = horizon_data.groupBy('NSIPExaminationTimetableID', \"caseReference\", 'published', 'Location', 'Migrated', 'ODTSourceSystem', 'SourceSystemID', 'IngestionDate', 'ValidTo', 'RowID', 'IsActive').agg(\n",
-					"#     collect_list(\n",
-					"#         struct(\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\")\n",
-					"#     ).alias(\"events\")\n",
-					"# )\n",
+					"# grouping the horizon data to create a\n",
+					"horizon_data = horizon_data.groupBy('NSIPExaminationTimetableID', \"caseReference\", 'published', 'Location', 'Migrated', 'ODTSourceSystem', 'SourceSystemID', 'IngestionDate', 'ValidTo', 'RowID', 'IsActive').agg(\n",
+					"    collect_list(\n",
+					"        struct(\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\")\n",
+					"    ).alias(\"events\")\n",
+					")\n",
 					"\n",
-					"# #sort columns into same order as service bus\n",
-					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
+					"#sort columns into same order as service bus\n",
+					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
 				],
-				"execution_count": 281
+				"execution_count": 297
 			},
 			{
 				"cell_type": "code",
@@ -209,22 +209,22 @@
 					"collapsed": false
 				},
 				"source": [
-					"#Establish aggregated view of events\r\n",
-					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\r\n",
-					"horizon_events = horizon_data.groupBy(\"caseReference\").agg(\r\n",
-					"    collect_list(\r\n",
-					"        struct(event_columns)\r\n",
-					"    ).alias(\"events\")\r\n",
-					")\r\n",
+					"# #Establish aggregated view of events\r\n",
+					"# event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\r\n",
+					"# horizon_events = horizon_data.groupBy(\"caseReference\").agg(\r\n",
+					"#     collect_list(\r\n",
+					"#         struct(event_columns)\r\n",
+					"#     ).alias(\"events\")\r\n",
+					"# )\r\n",
 					"\r\n",
-					"horizon_data = horizon_data.drop(*event_columns)\r\n",
-					"horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\r\n",
+					"# horizon_data = horizon_data.drop(*event_columns)\r\n",
+					"# horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\r\n",
 					"\r\n",
-					"#sort columns into same order as service bus\r\n",
-					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\r\n",
+					"# #sort columns into same order as service bus\r\n",
+					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\r\n",
 					""
 				],
-				"execution_count": 282
+				"execution_count": 298
 			},
 			{
 				"cell_type": "code",
@@ -243,7 +243,7 @@
 					"results = service_bus_data.union(horizon_data)\n",
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 283
+				"execution_count": 299
 			},
 			{
 				"cell_type": "markdown",
@@ -296,7 +296,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": null
+				"execution_count": 300
 			},
 			{
 				"cell_type": "code",
@@ -335,7 +335,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 301
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +353,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": null
+				"execution_count": 302
 			},
 			{
 				"cell_type": "code",
@@ -401,7 +401,7 @@
 					"        {spark_table_final}\"\"\")\r\n",
 					"    "
 				],
-				"execution_count": null
+				"execution_count": 303
 			},
 			{
 				"cell_type": "code",
@@ -420,7 +420,7 @@
 					"columns = results.columns\r\n",
 					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": null
+				"execution_count": 304
 			},
 			{
 				"cell_type": "code",
@@ -439,7 +439,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": null
+				"execution_count": 305
 			},
 			{
 				"cell_type": "code",
@@ -452,12 +452,13 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					"display(final_df)"
+					"final_df.schema"
 				],
-				"execution_count": null
+				"execution_count": 309
 			},
 			{
 				"cell_type": "code",
@@ -475,7 +476,7 @@
 				"source": [
 					"# final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": null
+				"execution_count": 307
 			},
 			{
 				"cell_type": "code",
@@ -498,7 +499,7 @@
 					"%%sql\n",
 					"select * from odw_harmonised_db.nsip_exam_timetable where casereference='BC010007' order by ingestiondate"
 				],
-				"execution_count": null
+				"execution_count": 308
 			}
 		]
 	}
