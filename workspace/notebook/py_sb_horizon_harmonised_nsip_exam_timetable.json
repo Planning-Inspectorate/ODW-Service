@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "617a2a83-de92-4a89-945f-a6fd3f6fecb2"
+				"spark.autotune.trackingId": "719973c5-6484-4597-a171-121f3d4a4d73"
 			}
 		},
 		"metadata": {
@@ -94,32 +94,32 @@
 					}
 				},
 				"source": [
-					"# # Get data out of the service bus with additional fields needed for Horizon data\r\n",
-					"# service_bus_data = spark.sql(f\"\"\"\r\n",
-					"#                     SELECT DISTINCT\r\n",
-					"#                         NSIPExaminationTimetableID\r\n",
-					"#                         ,caseReference\r\n",
-					"#                         ,published\r\n",
-					"#                         ,events\r\n",
+					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
+					"service_bus_data = spark.sql(f\"\"\"\r\n",
+					"                    SELECT DISTINCT\r\n",
+					"                        NSIPExaminationTimetableID\r\n",
+					"                        ,caseReference\r\n",
+					"                        ,published\r\n",
+					"                        ,events\r\n",
 					"\r\n",
-					"#                         -- Start Horizon columns\r\n",
-					"#                         ,CAST(NULL AS String) AS Location\r\n",
-					"#                         -- End Horizon columns\r\n",
+					"                        -- Start Horizon columns\r\n",
+					"                        ,CAST(NULL AS String) AS Location\r\n",
+					"                        -- End Horizon columns\r\n",
 					"                        \r\n",
-					"#                         ,Migrated\r\n",
-					"#                         ,ODTSourceSystem\r\n",
-					"#                         ,SourceSystemID\r\n",
-					"#                         ,IngestionDate \r\n",
-					"#                         ,NULLIF(ValidTo, '') AS ValidTo\r\n",
-					"#                         ,'' as RowID\r\n",
-					"#                         ,IsActive\r\n",
-					"#                     FROM \r\n",
-					"#                         {service_bus_table}\r\n",
-					"#                     ORDER BY caseReference\r\n",
+					"                        ,Migrated\r\n",
+					"                        ,ODTSourceSystem\r\n",
+					"                        ,SourceSystemID\r\n",
+					"                        ,IngestionDate \r\n",
+					"                        ,NULLIF(ValidTo, '') AS ValidTo\r\n",
+					"                        ,'' as RowID\r\n",
+					"                        ,IsActive\r\n",
+					"                    FROM \r\n",
+					"                        {service_bus_table}\r\n",
+					"                    ORDER BY caseReference\r\n",
 					"\r\n",
-					"#                     \"\"\")"
+					"                    \"\"\")"
 				],
-				"execution_count": 13
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -214,7 +214,7 @@
 					"\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 50
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -249,11 +249,14 @@
 					}
 				},
 				"source": [
-					"horizon_data_aggregated = horizon_data.groupBy('NSIPExaminationTimetableID', \"caseReference\", 'published', 'Location', 'Migrated', 'ODTSourceSystem', 'SourceSystemID', 'IngestionDate', 'ValidTo', 'RowID', 'IsActive').agg(\n",
+					"horizon_data = horizon_data.groupBy('NSIPExaminationTimetableID', \"caseReference\", 'published', 'Location', 'Migrated', 'ODTSourceSystem', 'SourceSystemID', 'IngestionDate', 'ValidTo', 'RowID', 'IsActive').agg(\n",
 					"    collect_list(\n",
 					"        struct(\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\")\n",
-					"    ).alias(\"properties\")\n",
+					"    ).alias(\"events\")\n",
 					")\n",
+					"\n",
+					"\n",
+					"horizon_data = horizon_data.select(service_bus_data.columns)\n",
 					"\n",
 					"# .select(\n",
 					"#                      col(\"NSIPExaminationTimetableID\"),\n",
@@ -280,7 +283,7 @@
 					"#                      col(\"IsActive\")\n",
 					"#                  )"
 				],
-				"execution_count": 58
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -316,9 +319,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(horizon_data_aggregated.sort('caseReference'))"
+					"display(horizon_data.sort('caseReference'))"
 				],
-				"execution_count": 61
+				"execution_count": 66
 			},
 			{
 				"cell_type": "markdown",
@@ -347,13 +350,13 @@
 					}
 				},
 				"source": [
-					"#Establish aggregated view of attachmentIds\r\n",
-					"horizon_event_lineitems = horizon_data.groupBy(\"eventId\").agg(collect_list(\"eventLineItems\").alias(\"eventLineItems\"))\r\n",
-					"horizon_data = horizon_data.drop(\"eventLineItems\")\r\n",
-					"horizon_data = horizon_data.join(horizon_event_lineitems, on=\"eventId\", how=\"inner\")\r\n",
+					"# #Establish aggregated view of attachmentIds\r\n",
+					"# horizon_event_lineitems = horizon_data.groupBy(\"eventId\").agg(collect_list(\"eventLineItems\").alias(\"eventLineItems\"))\r\n",
+					"# horizon_data = horizon_data.drop(\"eventLineItems\")\r\n",
+					"# horizon_data = horizon_data.join(horizon_event_lineitems, on=\"eventId\", how=\"inner\")\r\n",
 					"\r\n",
-					"#sort columns into same order as service bus\r\n",
-					"horizon_data = horizon_data.select(service_bus_data_flattened.columns)"
+					"# #sort columns into same order as service bus\r\n",
+					"# horizon_data = horizon_data.select(service_bus_data_flattened.columns)"
 				],
 				"execution_count": 33
 			},
@@ -371,9 +374,9 @@
 					}
 				},
 				"source": [
-					"results = service_bus_data_flattened.union(horizon_data)"
+					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 38
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -391,7 +394,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 40
+				"execution_count": 72
 			},
 			{
 				"cell_type": "markdown",
@@ -429,13 +432,13 @@
 					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_exam_timetable_calculations_base\r\n",
 					"AS\r\n",
 					"SELECT  \r\n",
-					"    row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\r\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, eventId asc) AS NSIPExaminationTimetableID\r\n",
-					"    ,eventId\r\n",
+					"    row_number() OVER(PARTITION BY caseReference ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\r\n",
+					"    ,row_number() OVER(ORDER BY IngestionDate asc, caseReference asc) AS NSIPExaminationTimetableID\r\n",
+					"    ,caseReference\r\n",
 					"    ,IngestionDate\r\n",
 					"    ,ValidTo\r\n",
 					"    ,'0' AS Migrated\r\n",
-					"    ,CASE row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC)\r\n",
+					"    ,CASE row_number() OVER(PARTITION BY caseReference ORDER BY IngestionDate DESC)\r\n",
 					"        WHEN 1 THEN\r\n",
 					"            'Y'\r\n",
 					"        ELSE\r\n",
@@ -444,48 +447,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": 47
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    CurrentRow.NSIPExaminationTimetableID\n",
-					"    ,CurrentRow.eventId \n",
-					"    ,CurrentRow.IngestionDate\n",
-					"    ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
-					"    ,CASE\n",
-					"        WHEN raw.eventId IS NOT NULL THEN \n",
-					"            \"1\"\n",
-					"        ELSE \n",
-					"            \"0\"\n",
-					"    END AS Migrated\n",
-					"    ,CurrentRow.IsActive\n",
-					"FROM\n",
-					"    vw_nsip_exam_timetable_calculations_base AS CurrentRow\n",
-					"    LEFT OUTER JOIN vw_nsip_exam_timetable_calculations_base AS NextRow\n",
-					"        ON CurrentRow.eventId = NextRow.eventId\n",
-					"        AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"    LEFT OUTER JOIN (SELECT DISTINCT eventId FROM odw_harmonised_db.sb_nsip_exam_timetable) AS Raw\n",
-					"        ON CurrentRow.eventId = Raw.eventId \n",
-					"    ORDER BY currentRow.ReverseOrderProcessed"
-				],
-				"execution_count": 49
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -504,11 +466,11 @@
 					"df_calcs = spark.sql(\"\"\"\r\n",
 					"                        SELECT\r\n",
 					"                            CurrentRow.NSIPExaminationTimetableID\r\n",
-					"                            ,CurrentRow.eventId \r\n",
+					"                            ,CurrentRow.caseReference \r\n",
 					"                            ,CurrentRow.IngestionDate\r\n",
 					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\r\n",
 					"                            ,CASE\r\n",
-					"                                WHEN raw.eventId IS NOT NULL THEN \r\n",
+					"                                WHEN raw.caseReference IS NOT NULL THEN \r\n",
 					"                                    \"1\"\r\n",
 					"                                ELSE \r\n",
 					"                                    \"0\"\r\n",
@@ -517,14 +479,14 @@
 					"                        FROM\r\n",
 					"                            vw_nsip_exam_timetable_calculations_base AS CurrentRow\r\n",
 					"                            LEFT OUTER JOIN vw_nsip_exam_timetable_calculations_base AS NextRow\r\n",
-					"                                ON CurrentRow.eventId = NextRow.eventId\r\n",
+					"                                ON CurrentRow.caseReference = NextRow.caseReference\r\n",
 					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\r\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT eventId FROM  odw_harmonised_db.sb_nsip_exam_timetable) AS Raw\r\n",
-					"                                ON CurrentRow.eventId = Raw.eventId \r\n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT caseReference FROM  odw_harmonised_db.sb_nsip_exam_timetable) AS Raw\r\n",
+					"                                ON CurrentRow.caseReference = Raw.caseReference \r\n",
 					"                            ORDER BY currentRow.ReverseOrderProcessed\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 48
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -540,10 +502,10 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"eventId\", \"temp_eventId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
+					"df_calcs =df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\r\n",
 					""
 				],
-				"execution_count": 38
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -562,36 +524,12 @@
 				"source": [
 					"results = spark.sql(f\"\"\"\r\n",
 					"                    SELECT DISTINCT NSIPExaminationTimetableID\r\n",
-					"                        ,adviceId\r\n",
-					"                        ,adviceReference\r\n",
-					"                        ,caseId\r\n",
 					"                        ,caseReference\r\n",
-					"                        ,title\r\n",
-					"                        ,titleWelsh\r\n",
-					"                        ,from\r\n",
-					"                        ,agent\r\n",
-					"                        ,method\r\n",
-					"                        ,enquiryDate\r\n",
-					"                        ,enquiryDetails\r\n",
-					"                        ,enquiryDetailsWelsh\r\n",
-					"                        ,adviceGivenBy \r\n",
-					"                        ,adviceDate\r\n",
-					"                        ,adviceDetails\r\n",
-					"                        ,adviceDetailsWelsh\r\n",
-					"                        ,status\r\n",
-					"                        ,redactionStatus\r\n",
-					"                        ,attachmentIds\r\n",
+					"                        ,published\r\n",
+					"                        ,events\r\n",
 					"\r\n",
 					"                        --Start Horizon only fields\r\n",
-					"                        ,Section51Advice\r\n",
-					"                        ,EnquirerFirstName\r\n",
-					"                        ,EnquirerLastName\r\n",
-					"                        ,AdviceLastModified\r\n",
-					"                        ,AttachmentCount\r\n",
-					"                        ,AttachmentsLastModified\r\n",
-					"                        ,LastPublishedDate\r\n",
-					"                        ,WelshLanguage\r\n",
-					"                        ,CaseWorkType\r\n",
+					"                        ,Location\r\n",
 					"                        --End Horizon only fields\r\n",
 					"\r\n",
 					"                        ,Migrated\r\n",
@@ -600,35 +538,11 @@
 					"                        ,ValidTo\r\n",
 					"                        ,MD5(CONCAT(\r\n",
 					"                                    IFNULL(CAST(NSIPExaminationTimetableID AS bigint), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceId AS integer), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceReference AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(caseId AS integer), '.')\r\n",
-					"                                    ,IFNULL(CAST(caseReference AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(title AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(titleWelsh AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(from AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(agent AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(method AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(enquiryDate AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(enquiryDetails AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(enquiryDetailsWelsh AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceGivenBy AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceDate AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceDetails AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(adviceDetailsWelsh AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(status AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(redactionStatus AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(attachmentIds AS String), '.')\r\n",
+					"                                    ,IFNULL(CAST(caseReference AS integer), '.')\r\n",
+					"                                    ,IFNULL(CAST(published AS String), '.')\r\n",
+					"                                    ,IFNULL(CAST(events AS String), '.')\r\n",
 					"\r\n",
-					"                                    ,IFNULL(CAST(Section51Advice AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(EnquirerFirstName AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(EnquirerLastName AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(AdviceLastModified AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(AttachmentCount AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(AttachmentsLastModified AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(LastPublishedDate AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(WelshLanguage AS String), '.')\r\n",
-					"                                    ,IFNULL(CAST(CaseWorkType AS String), '.')\r\n",
+					"                                    ,IFNULL(CAST(Location AS String), '.')\r\n",
 					"\r\n",
 					"                                    ,IFNULL(CAST(Migrated AS String), '.')\r\n",
 					"                                    ,IFNULL(CAST(ODTSourceSystem AS String), '.')\r\n",
@@ -641,7 +555,7 @@
 					"        {spark_table_final}\"\"\")\r\n",
 					"    "
 				],
-				"execution_count": 39
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -661,7 +575,7 @@
 					"\r\n",
 					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 40
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -677,10 +591,10 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_eventId\"] == results[\"eventId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 41
+				"execution_count": 78
 			},
 			{
 				"cell_type": "code",
@@ -699,7 +613,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 42
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -720,9 +634,9 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_harmonised_db.nsip_exam_timetable"
+					"select * from odw_harmonised_db.nsip_exam_timetable where IsActive='Y'"
 				],
-				"execution_count": 41
+				"execution_count": 81
 			}
 		]
 	}
