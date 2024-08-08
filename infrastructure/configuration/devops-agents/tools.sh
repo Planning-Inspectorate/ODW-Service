@@ -29,10 +29,12 @@ sudo apt-get install -y --no-install-recommends \
   libxtst6 \
   lsb-release \
   software-properties-common \
+  unixodbc-dev \
   unzip \
   wget \
   xauth \
   xvfb \
+
   zip
 
 sudo add-apt-repository ppa:git-core/ppa
