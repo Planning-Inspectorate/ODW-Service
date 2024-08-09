@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a9f723ef-aadb-46ea-be35-67997a17fea0"
+				"spark.autotune.trackingId": "0dcd0b6a-357c-4bf8-b0f3-cf24b85e3618"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 293
+				"execution_count": 119
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 294
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"                            {service_bus_table}\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 295
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -166,7 +166,7 @@
 					"                        ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
 					"                \"\"\")"
 				],
-				"execution_count": 296
+				"execution_count": 122
 			},
 			{
 				"cell_type": "code",
@@ -192,7 +192,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
 				],
-				"execution_count": 297
+				"execution_count": 123
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +224,7 @@
 					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\r\n",
 					""
 				],
-				"execution_count": 298
+				"execution_count": 124
 			},
 			{
 				"cell_type": "code",
@@ -243,7 +243,7 @@
 					"results = service_bus_data.union(horizon_data)\n",
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 299
+				"execution_count": 125
 			},
 			{
 				"cell_type": "markdown",
@@ -296,7 +296,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": 300
+				"execution_count": 126
 			},
 			{
 				"cell_type": "code",
@@ -335,7 +335,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 301
+				"execution_count": 127
 			},
 			{
 				"cell_type": "code",
@@ -353,7 +353,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 302
+				"execution_count": 128
 			},
 			{
 				"cell_type": "code",
@@ -401,7 +401,7 @@
 					"        {spark_table_final}\"\"\")\r\n",
 					"    "
 				],
-				"execution_count": 303
+				"execution_count": 129
 			},
 			{
 				"cell_type": "code",
@@ -420,7 +420,7 @@
 					"columns = results.columns\r\n",
 					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 304
+				"execution_count": 130
 			},
 			{
 				"cell_type": "code",
@@ -439,26 +439,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 305
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"final_df.schema"
-				],
-				"execution_count": 309
+				"execution_count": 131
 			},
 			{
 				"cell_type": "code",
@@ -474,9 +455,28 @@
 					}
 				},
 				"source": [
-					"# final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"from pyspark.sql.types import StructType, StructField, StringType, ArrayType, LongType\n",
+					"\n",
+					"event_schema = StructType([\n",
+					"    StructField(\"eventId\", LongType(), True),\n",
+					"    StructField(\"type\", StringType(), True),\n",
+					"    StructField(\"eventTitle\", StringType(), True),\n",
+					"    StructField(\"eventTitleWelsh\", StringType(), True),\n",
+					"    StructField(\"description\", StringType(), True),\n",
+					"    StructField(\"descriptionWelsh\", StringType(), True),\n",
+					"    StructField(\"eventDeadlineStartDate\", StringType(), True),\n",
+					"    StructField(\"date\", StringType(), True),\n",
+					"    StructField('eventLineItems', ArrayType(StructType([\n",
+					"                                                StructField('description', StringType(), True), \n",
+					"                                                StructField('descriptionWelsh', StringType(), True)\n",
+					"                                            ]), True))\n",
+					"])\n",
+					"\n",
+					"array_schema = ArrayType(event_schema)\n",
+					"final_df = final_df.withColumn(\"events\", final_df[\"events\"].cast(array_schema))\n",
+					""
 				],
-				"execution_count": 307
+				"execution_count": 132
 			},
 			{
 				"cell_type": "code",
@@ -489,17 +489,12 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
+					}
 				},
 				"source": [
-					"%%sql\n",
-					"select * from odw_harmonised_db.nsip_exam_timetable where casereference='BC010007' order by ingestiondate"
+					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 308
+				"execution_count": 134
 			}
 		]
 	}
