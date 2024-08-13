@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b815d693-b394-4bc5-97e3-a5a59fdd6312"
+				"spark.autotune.trackingId": "507820d2-c83a-4dfe-aa17-c3e37c2ec0b2"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 87
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\" \n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 88
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +127,7 @@
 					"                        where caseReference = 'BC010006'\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 89
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +146,7 @@
 				"source": [
 					"display(service_bus_data)"
 				],
-				"execution_count": 90
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -165,7 +165,7 @@
 				"source": [
 					"display(horizon_data)"
 				],
-				"execution_count": 91
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
@@ -216,7 +216,7 @@
 					"                        ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \n",
 					"                \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -258,33 +258,9 @@
 					}
 				},
 				"source": [
-					"#Establish aggregated view of attachmentIds\n",
-					"horizon_attachement= horizon_data.groupBy(\"adviceid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\n",
-					"horizon_data = horizon_data.drop(\"attachmentIds\")\n",
-					"horizon_data = horizon_data.join(horizon_attachement, on=\"adviceid\", how=\"inner\")\n",
-					"\n",
-					"#sort columns into same order as service bus\n",
-					"horizon_data = horizon_data.select(service_bus_data.columns)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]"
 				],
-				"execution_count": 75
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -302,7 +278,7 @@
 				"source": [
 					"horizon_events = horizon_data.groupBy(\"caseReference\").agg(collect_list(struct(event_columns)).alias(\"events\"))"
 				],
-				"execution_count": 76
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -320,7 +296,7 @@
 				"source": [
 					"horizon_data = horizon_data.drop(\"events\")"
 				],
-				"execution_count": 77
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -338,7 +314,7 @@
 				"source": [
 					"horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")"
 				],
-				"execution_count": 78
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -356,7 +332,7 @@
 				"source": [
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 79
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -375,7 +351,7 @@
 				"source": [
 					"display(horizon_data)"
 				],
-				"execution_count": 80
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -391,7 +367,7 @@
 					}
 				},
 				"source": [
-					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
+					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
 				],
 				"execution_count": 55
 			},
@@ -412,7 +388,7 @@
 					"results = service_bus_data.union(horizon_data)\n",
 					"# results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 81
+				"execution_count": 107
 			},
 			{
 				"cell_type": "code",
@@ -431,7 +407,7 @@
 				"source": [
 					"display(results)"
 				],
-				"execution_count": 82
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -448,38 +424,19 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(horizon_data)"
-				],
-				"execution_count": 58
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"#Establish aggregated view of events\n",
-					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\n",
-					"horizon_events = horizon_data.groupBy(\"caseReference\").agg(\n",
-					"    collect_list(\n",
-					"        struct(event_columns)\n",
-					"    ).alias(\"events\")\n",
-					")\n",
+					"# #Establish aggregated view of events\n",
+					"# event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\n",
+					"# horizon_events = horizon_data.groupBy(\"caseReference\").agg(\n",
+					"#     collect_list(\n",
+					"#         struct(event_columns)\n",
+					"#     ).alias(\"events\")\n",
+					"# )\n",
 					"\n",
-					"# horizon_data = horizon_data.drop(columns = event_columns)\n",
-					"horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\n",
+					"# # horizon_data = horizon_data.drop(columns = event_columns)\n",
+					"# horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\n",
 					"\n",
-					"#sort columns into same order as service bus\n",
-					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\n",
+					"# #sort columns into same order as service bus\n",
+					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\n",
 					""
 				],
 				"execution_count": 17
@@ -498,10 +455,10 @@
 					}
 				},
 				"source": [
-					"results = service_bus_data.union(horizon_data)\n",
+					"\n",
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 125
+				"execution_count": 110
 			},
 			{
 				"cell_type": "markdown",
@@ -554,7 +511,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": 126
+				"execution_count": 111
 			},
 			{
 				"cell_type": "code",
@@ -593,7 +550,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 127
+				"execution_count": 112
 			},
 			{
 				"cell_type": "code",
@@ -611,7 +568,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 128
+				"execution_count": 113
 			},
 			{
 				"cell_type": "code",
@@ -659,7 +616,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 129
+				"execution_count": 114
 			},
 			{
 				"cell_type": "code",
@@ -678,7 +635,7 @@
 					"columns = results.columns\n",
 					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 130
+				"execution_count": 115
 			},
 			{
 				"cell_type": "code",
@@ -697,7 +654,26 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 131
+				"execution_count": 116
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(final_df)"
+				],
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
