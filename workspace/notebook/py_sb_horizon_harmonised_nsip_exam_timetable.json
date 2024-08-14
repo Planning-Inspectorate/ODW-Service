@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f509b17b-c1c4-4d99-9bd1-0d7623678955"
+				"spark.autotune.trackingId": "77f704e0-20be-4b43-9d7c-f3010a63fa39"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 130
+				"execution_count": 174
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\" \n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": null
+				"execution_count": 175
 			},
 			{
 				"cell_type": "code",
@@ -101,20 +101,6 @@
 					"                            ,caseReference\n",
 					"                            ,published\n",
 					"                            ,events\n",
-					"\n",
-					"                            -- Start Horizon columns\n",
-					"                            ,CAST(NULL AS String) AS Location\n",
-					"                            ,CAST(NULL AS String) AS type\n",
-					"                            ,CAST(NULL AS String) as eventTitle\n",
-					"                            ,CAST(NULL As String) As eventTitleWelsh\n",
-					"                            ,CAST(NULL As String) As description\n",
-					"                            ,CAST(NULL As String) As descriptionWelsh\n",
-					"                            ,NULL AS eventDeadlineStartDate\n",
-					"                            ,NULL as date\n",
-					"                            ,NULL As eventLineItems\n",
-					"\n",
-					"                            -- End Horizon columns\n",
-					"                            \n",
 					"                            ,Migrated\n",
 					"                            ,ODTSourceSystem\n",
 					"                            ,SourceSystemID\n",
@@ -124,48 +110,9 @@
 					"                            ,IsActive\n",
 					"                        FROM \n",
 					"                            {service_bus_table}\n",
-					"                        -- where caseReference = 'BC010006'\n",
 					"                    \"\"\")"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"# display(service_bus_data)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"# display(horizon_data)"
-				],
-				"execution_count": 129
+				"execution_count": 176
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +134,6 @@
 					"                        CAST(NULL AS Long) as NSIPExaminationTimetableID\n",
 					"                        ,caseReference\n",
 					"                        ,NULL as published\n",
-					"                        ,null as events\n",
 					"                        ,CAST(ID AS Integer) As eventId\n",
 					"                        ,typeofexamination As type\n",
 					"                        ,Name As eventTitle\n",
@@ -196,12 +142,6 @@
 					"                        ,CAST(NULL As String) As descriptionWelsh\n",
 					"                        ,DeadlineStartDateTime As eventDeadlineStartDate\n",
 					"                        ,Date As date\n",
-					"                        ,NULL As eventLineItems\n",
-					"\n",
-					"                        -- Start Horizon Fields Not in SB\n",
-					"                        ,Location\n",
-					"                        -- END Horizon Fields Not in SB\n",
-					"\n",
 					"                        ,\"0\" as Migrated\n",
 					"                        ,\"Horizon\" as ODTSourceSystem\n",
 					"                        ,NULL AS SourceSystemID\n",
@@ -211,12 +151,9 @@
 					"                        ,'Y' as IsActive\n",
 					"                    FROM\n",
 					"                        {horizon_table} AS Horizon\n",
-					"                    WHERE\n",
-					"                    -- caseReference = 'BC010006' and \n",
-					"                    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \n",
 					"                \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 177
 			},
 			{
 				"cell_type": "code",
@@ -232,17 +169,70 @@
 					}
 				},
 				"source": [
-					"# # grouping the horizon data to create a\n",
-					"# horizon_data = horizon_data.groupBy('NSIPExaminationTimetableID', \"caseReference\", 'published', 'Location', 'Migrated', 'ODTSourceSystem', 'SourceSystemID', 'IngestionDate', 'ValidTo', 'RowID', 'IsActive').agg(\n",
-					"#     collect_list(\n",
-					"#         struct(\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\")\n",
-					"#     ).alias(\"events\")\n",
-					"# )\n",
+					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
+					"horizon_items = spark.sql(f\"\"\"\n",
+					"                    SELECT DISTINCT \n",
+					"                         CAST(ID AS Integer) As eventId\n",
+					"                        -- Start Horizon Fields Not in SB\n",
+					"                        ,CAST(Location AS String) AS description\n",
+					"                        ,CAST(NULL AS String) AS descriptionWelsh\n",
+					"                        -- END Horizon Fields Not in SB\n",
+					"                        ,to_timestamp(expected_from)  AS IngestionDate\n",
+					"                    FROM\n",
+					"                        {horizon_table} AS Horizon\n",
+					"                \"\"\")"
+				],
+				"execution_count": 178
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#Step 1. Event location isn't in the schema and is dependent on the eventId. We will aggregate this first to product the line items that we then roll up to the case level\n",
+					"eventLineItem_columns = [\"description\", \"descriptionWelsh\"]\n",
+					"event_line_items = horizon_items.groupBy('eventId', 'IngestionDate').agg(collect_list(struct(eventLineItem_columns)).alias('eventLineItems'))\n",
 					"\n",
-					"# #sort columns into same order as service bus\n",
-					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
+					"horizon_data = horizon_data.join(event_line_items, on=[\"eventId\", \"IngestionDate\"], how=\"inner\")"
 				],
-				"execution_count": null
+				"execution_count": 179
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#Step 2. Aggregate up to the event level\n",
+					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\n",
+					"\n",
+					"row_array = horizon_data.groupBy('caseReference', 'IngestionDate').agg(collect_list(struct(event_columns)).alias(\"events\"))\n",
+					"horizon_data = horizon_data.join(row_array, on=[\"caseReference\", \"IngestionDate\"], how=\"inner\")\n",
+					"\n",
+					"#select the same data as service bus and remove duplicates\n",
+					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\n",
+					""
+				],
+				"execution_count": 180
 			},
 			{
 				"cell_type": "code",
@@ -258,81 +248,10 @@
 					}
 				},
 				"source": [
-					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]"
+					"input_data = service_bus_data.union(horizon_data)\n",
+					"input_data.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"horizon_events = horizon_data.groupBy(\"caseReference\").agg(collect_list(struct(event_columns)).alias(\"events\"))"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"horizon_data = horizon_data.drop(\"events\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"horizon_data = horizon_data.select(service_bus_data.columns)"
-				],
-				"execution_count": null
+				"execution_count": 181
 			},
 			{
 				"cell_type": "code",
@@ -351,7 +270,7 @@
 				"source": [
 					"display(horizon_data)"
 				],
-				"execution_count": null
+				"execution_count": 188
 			},
 			{
 				"cell_type": "code",
@@ -364,111 +283,6 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"results = service_bus_data.union(horizon_data)\n",
-					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(results)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"# #Establish aggregated view of events\n",
-					"# event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\", \"eventLineItems\"]\n",
-					"# horizon_events = horizon_data.groupBy(\"caseReference\").agg(\n",
-					"#     collect_list(\n",
-					"#         struct(event_columns)\n",
-					"#     ).alias(\"events\")\n",
-					"# )\n",
-					"\n",
-					"# # horizon_data = horizon_data.drop(columns = event_columns)\n",
-					"# horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\n",
-					"\n",
-					"# #sort columns into same order as service bus\n",
-					"# horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"\n",
-					"Now need to sort internal ids, IsActive flags, and valid_to dates"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
 					},
 					"collapsed": false
 				},
@@ -492,30 +306,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select \n",
-					"* from vw_nsip_exam_timetable_calculations_base\n",
-					"where casereference ='BC010006'"
-				],
-				"execution_count": null
+				"execution_count": 182
 			},
 			{
 				"cell_type": "code",
@@ -552,28 +343,11 @@
 					"                            LEFT OUTER JOIN (SELECT DISTINCT caseReference FROM  odw_harmonised_db.sb_nsip_exam_timetable) AS Raw\n",
 					"                                ON CurrentRow.caseReference = Raw.caseReference \n",
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
-					"                    \"\"\")"
+					"                    \"\"\")\n",
+					"\n",
+					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(df_calcs)"
-				],
-				"execution_count": null
+				"execution_count": 183
 			},
 			{
 				"cell_type": "code",
@@ -589,55 +363,12 @@
 					}
 				},
 				"source": [
-					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(df_calcs)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
 					"results = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT \n",
 					"                        NSIPExaminationTimetableID\n",
 					"                        ,caseReference\n",
 					"                        ,published\n",
 					"                        ,events\n",
-					"\n",
-					"                        --Start Horizon only fields\n",
-					"                        ,Location\n",
-					"                        --End Horizon only fields\n",
-					"\n",
 					"                        ,Migrated\n",
 					"                        ,ODTSourceSystem\n",
 					"                        ,IngestionDate\n",
@@ -647,7 +378,6 @@
 					"                                ,IFNULL(CAST(caseReference AS integer), '.')\n",
 					"                                ,IFNULL(CAST(published AS String), '.')\n",
 					"                                ,IFNULL(CAST(events AS String), '.')\n",
-					"                                ,IFNULL(CAST(Location AS String), '.')\n",
 					"                                ,IFNULL(CAST(Migrated AS String), '.')\n",
 					"                                ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
 					"                                ,IFNULL(CAST(IngestionDate AS String), '.')\n",
@@ -659,44 +389,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(results)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 184
 			},
 			{
 				"cell_type": "code",
@@ -713,84 +406,11 @@
 				},
 				"source": [
 					"columns = results.columns\n",
-					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
+					"results = results.drop(\"NSIPExaminationTimetableID\", \"ValidTo\", \"Migrated\", \"IsActive\")\n",
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(final_df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from pyspark.sql.types import StructType, StructField, StringType, ArrayType, LongType\n",
-					"\n",
-					"event_schema = StructType([\n",
-					"    StructField(\"eventId\", LongType(), True),\n",
-					"    StructField(\"type\", StringType(), True),\n",
-					"    StructField(\"eventTitle\", StringType(), True),\n",
-					"    StructField(\"eventTitleWelsh\", StringType(), True),\n",
-					"    StructField(\"description\", StringType(), True),\n",
-					"    StructField(\"descriptionWelsh\", StringType(), True),\n",
-					"    StructField(\"eventDeadlineStartDate\", StringType(), True),\n",
-					"    StructField(\"date\", StringType(), True),\n",
-					"    StructField('eventLineItems', ArrayType(StructType([\n",
-					"                                                StructField('description', StringType(), True), \n",
-					"                                                StructField('descriptionWelsh', StringType(), True)\n",
-					"                                            ]), True))\n",
-					"])\n",
-					"\n",
-					"array_schema = ArrayType(event_schema)\n",
-					"final_df = final_df.withColumn(\"events\", final_df[\"events\"].cast(array_schema))\n",
-					""
-				],
-				"execution_count": null
+				"execution_count": 185
 			},
 			{
 				"cell_type": "code",
@@ -807,6 +427,24 @@
 				},
 				"source": [
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+				],
+				"execution_count": 186
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
 				],
 				"execution_count": null
 			},
@@ -826,9 +464,9 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select * from odw_harmonised_db.nsip_exam_timetable where isactive='Y'"
+					"SELECT * FROM odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": null
+				"execution_count": 187
 			},
 			{
 				"cell_type": "code",
