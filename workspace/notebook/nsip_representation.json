@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0bdd19f1-9e27-4d95-aacf-c0553ca6e4b7"
+				"spark.autotune.trackingId": "3fe7dcec-91c1-45e1-a2b6-26fd2628ba3c"
 			}
 		},
 		"metadata": {
@@ -114,7 +114,8 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
@@ -133,20 +134,20 @@
 					"    ,RR.redactedBy\n",
 					"    ,RR.redactedNotes\n",
 					"    ,RR.representationFrom\n",
-					"    ,RR.agentcontactid\n",
+					"    ,RR.representedId\n",
 					"    ,RR.representativeId\n",
 					"    ,RR.registerFor\n",
 					"    ,RR.representationType\n",
 					"    ,RR.dateReceived\n",
 					"    ,RR.attachmentIds\n",
 					"FROM \n",
-					"    nsip_project AS project -- Enforce referenctial integrity\n",
+					"    odw_curated_db.nsip_project AS project -- Enforce referenctial integrity\n",
 					"    INNER JOIN odw_harmonised_db.nsip_representation AS RR\n",
-					"        ON project.caseId = RR.caseuniqueid\n",
+					"        ON project.caseId = RR.caseid\n",
 					"WHERE\n",
 					"    RR.ISActive = 'Y'"
 				],
-				"execution_count": null
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -161,8 +162,7 @@
 				},
 				"source": [
 					"%%sql\n",
-					"\n",
-					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_representation\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_representation\n",
 					"AS\n",
 					"SELECT DISTINCT\n",
 					"    RR.representationId\n",
@@ -203,8 +203,8 @@
 					"        ELSE\n",
 					"            RR.representationFrom\n",
 					"    END AS representationFrom\n",
-					"    ,COALESCE(SU.Id, '')AS representedId\n",
-					"    ,COALESCE(SU2.Id, '') AS representativeId\n",
+					"    ,COALESCE(SU2.Id, '')AS representedId\n",
+					"    ,COALESCE(SU.Id, '') AS representativeId\n",
 					"    ,CASE\n",
 					"        WHEN RR.representationFrom = 'An Organisation' THEN\n",
 					"            'ORGANISATION'\n",
@@ -232,53 +232,13 @@
 					"FROM \n",
 					"    odw_harmonised_db.curated_service_user AS SU2 \n",
 					"    INNER JOIN vw_rep_curated AS RR\n",
-					"        ON (SU2.sourceSUID = RR.agentcontactid OR SU2.sourceSUID = RR.representativeId)\n",
-					"        AND SU2.serviceUserType IN ('RepresentationContact', 'Agent')\n",
+					"        ON SU2.sourceSUID = RR.representedId\n",
+					"        AND SU2.serviceUserType = 'RepresentationContact'\n",
 					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user AS SU\n",
-					"        ON SU.sourceSUID = RR.representedId\n",
-					"        AND SU.serviceUserType IN ('Applicant')"
+					"        ON SU.sourceSUID = RR.representativeId\n",
+					"        AND SU.serviceUserType IN ('Agent')"
 				],
-				"execution_count": 3
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT * FROM odw_harmonised_db.curated_service_user"
-				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT caseid, caseuniqueid, * FROM odw_harmonised_db.nsip_representation"
-				],
-				"execution_count": 5
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -309,28 +269,10 @@
 				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
-					"view_df = spark.sql('SELECT * FROM odw_curated_db.vw_nsip_representation')\n",
+					"view_df = spark.sql('SELECT * FROM vw_nsip_representation')\n",
 					"view_df.write.mode('overwrite').saveAsTable('odw_curated_db.nsip_representation')"
 				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 11
 			}
 		]
 	}
