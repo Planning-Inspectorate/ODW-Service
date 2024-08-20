@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f37dbe06-fbfe-47f7-93de-cd0589975461"
+				"spark.autotune.trackingId": "98943873-579f-439b-b626-738ef261f723"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 27
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\" \n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 4
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -112,7 +112,7 @@
 					"                            {service_bus_table}\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 5
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -154,7 +154,7 @@
 					"                    WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
 					"                \"\"\")"
 				],
-				"execution_count": 7
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -173,7 +173,7 @@
 				"source": [
 					"display(horizon_data.filter(\"caseReference = 'EN010120'\"))"
 				],
-				"execution_count": 8
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -192,21 +192,21 @@
 					"#Establish aggregated view of events\n",
 					"event_columns = [\"eventId\", \"type\", \"eventTitle\", \"eventTitleWelsh\", \"description\", \"descriptionWelsh\", \"eventDeadlineStartDate\", \"date\"]\n",
 					"\n",
-					"horizon_events = data.groupBy(\"caseReference\").agg(collect_list(struct(event_columns)).alias(\"events\"))\n",
-					"data = horizon_data.drop(*event_columns)\n",
-					"data = data.join(horizon_events, on=\"caseReference\", how=\"inner\")\n",
+					"horizon_events = horizon_data.groupBy(\"caseReference\").agg(collect_list(struct(event_columns)).alias(\"events\"))\n",
+					"horizon_data = horizon_data.drop(*event_columns)\n",
+					"horizon_data = horizon_data.join(horizon_events, on=\"caseReference\", how=\"inner\")\n",
 					"\n",
 					"# adding eventLineItems column for each event\n",
-					"data = data.withColumn(\"events\",\n",
+					"horizon_data = horizon_data.withColumn(\"events\",\n",
 					"    transform(col(\"events\"),\n",
 					"        lambda event: event.withField(\"eventLineItems\", expr(\"array()\"))\n",
 					"    )\n",
 					")\n",
 					"\n",
 					"#sort columns into same order as service bus\n",
-					"data = data.select(service_bus_data.columns).drop_duplicates()"
+					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
 				],
-				"execution_count": 25
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +225,7 @@
 				"source": [
 					"display(data)"
 				],
-				"execution_count": 26
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -244,7 +244,7 @@
 					"results = service_bus_data.union(horizon_data)\n",
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 21
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -280,7 +280,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": 22
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -321,7 +321,7 @@
 					"\n",
 					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 23
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -363,7 +363,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 24
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -384,7 +384,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 25
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -402,7 +402,32 @@
 				"source": [
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 26
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df_hzn_std = spark.sql(\"select * from odw_standardised_db.horizon_examination_timetable where casereference = 'EN010120' and ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_examination_timetable)\")\n",
+					"df_sb_hrm = spark.sql(\"select * from odw_harmonised_db.sb_nsip_exam_timetable where casereference = 'EN010120'\")\n",
+					"df_hrm = spark.sql(\"select * from odw_harmonised_db.nsip_exam_timetable where casereference = 'EN010120'\")\n",
+					"\n",
+					"display(df_hzn_std)\n",
+					"display(df_sb_hrm)\n",
+					"display(df_hrm)"
+				],
+				"execution_count": 51
 			}
 		]
 	}
