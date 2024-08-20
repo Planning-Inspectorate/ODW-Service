@@ -1,7 +1,6 @@
 {
-	"name": "nsip_applicant_service_user",
+	"name": "entraid_cu",
 	"properties": {
-		"description": "creating a NSIP applicant view of service user.",
 		"folder": {
 			"name": "odw-curated"
 		},
@@ -21,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "324b74a4-e8d2-4fc1-9baf-a962486658d0"
+				"spark.autotune.trackingId": "1cba71e3-01d0-45f9-b4bc-0c8a392a4fbd"
 			}
 		},
 		"metadata": {
@@ -53,38 +52,31 @@
 		},
 		"cells": [
 			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## Table odw_curated_db.nsip_service_user is created"
-				]
-			},
-			{
 				"cell_type": "code",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
 					"microsoft": {
 						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"REFRESH TABLE odw_curated_db.service_user"
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_entraid\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT DISTINCT \n",
+					"    CAST(EA.employeeId AS INTEGER) AS employeeId,\n",
+					"    CAST(EA.id AS STRING) AS id,\n",
+					"    CAST(EA.givenName AS STRING) AS givenName,\n",
+					"    CAST(EA.surname AS STRING) AS surname,\n",
+					"    CAST(EA.userPrincipalName AS STRING) AS userPrincipalNameMigrated\n",
+					"    --CAST(EA.Migrated AS STRING) As Migrated\n",
+					"\n",
+					"\n",
+					"FROM odw_harmonised_db.entraid AS EA\n",
+					"WHERE EA.IsActive = 'Y'"
 				],
 				"execution_count": 1
 			},
@@ -99,48 +91,33 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"collapsed": false
+					}
 				},
 				"source": [
-					"df = spark.sql(\"\"\"\r\n",
-					"    SELECT \r\n",
-					"        id\r\n",
-					"        ,salutation\r\n",
-					"        ,firstName\r\n",
-					"        ,lastName\r\n",
-					"        ,addressLine1\r\n",
-					"        ,addressLine2\r\n",
-					"        ,addressTown\r\n",
-					"        ,addressCounty\r\n",
-					"        ,postcode\r\n",
-					"        ,addressCountry\r\n",
-					"        ,organisation\r\n",
-					"        ,organisationType\r\n",
-					"        ,role\r\n",
-					"        ,telephoneNumber\r\n",
-					"        ,otherPhoneNumber\r\n",
-					"        ,faxNumber\r\n",
-					"        ,emailAddress\r\n",
-					"        ,webAddress\r\n",
-					"        ,serviceUserType\r\n",
-					"        ,caseReference\r\n",
-					"        ,sourceSuid\r\n",
-					"        ,sourceSystem\r\n",
-					"    FROM \r\n",
-					"        odw_curated_db.service_user\r\n",
-					"    WHERE\r\n",
-					"        sourceSystem = 'back-office-applications'\r\n",
-					"        OR\r\n",
-					"            (\r\n",
-					"                sourceSystem IN ( 'Horizon', 'Casework', 'ODT')\r\n",
-					"                AND serviceUserType IN ('Applicant', 'RepresentationContact', 'Agent')\r\n",
-					"            )\"\"\"\r\n",
-					"    )\r\n",
-					"\r\n",
-					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.nsip_service_user\")"
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_entraid\")\r\n",
+					"view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.entraid\")"
 				],
 				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# spark.sql(f\"drop table if exists odw_curated_db.entraid;\")"
+				],
+				"execution_count": 3
 			}
 		]
 	}
