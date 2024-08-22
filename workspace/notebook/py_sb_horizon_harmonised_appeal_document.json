@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "536feb8a-2740-4288-9cb9-d1856a05582e"
+				"spark.autotune.trackingId": "c055cb09-5442-4d98-8e49-7a7af06c9f10"
 			}
 		},
 		"metadata": {
@@ -76,10 +76,10 @@
 				"source": [
 					"service_bus_table = \"odw_harmonised_db.sb_appeal_document\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_appeals_document_metadata\"\n",
-					"aie_extracts_table = \"odw_standardised_db.aie_document_data\"\n",
-					"spark_table_final = \"odw_harmonised_db.appeals_document_metadata\""
+					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
+					"spark_table_final = \"odw_harmonised_db.appeal_document\""
 				],
-				"execution_count": 28
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -148,7 +148,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 30
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -169,17 +169,17 @@
 					"                SELECT DISTINCT \n",
 					"                    CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
 					"                    ,Doc.documentId\n",
-					"                    ,Doc.casenodeid AS caseId\n",
+					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
 					"                    ,Doc.caseReference\n",
-					"                    ,Doc.version\n",
+					"                    ,CAST(Doc.version AS INTEGER) AS version\n",
 					"                    ,Doc.filename as filename\n",
 					"                    ,Doc.filename as originalFilename\n",
-					"                    ,Doc.size\n",
-					"                    --,Aie.mime\n",
-					"                    --,Aie.documentURI\n",
+					"                    ,CAST(Doc.size AS INTEGER) AS size\n",
+					"                    ,Aie.mime\n",
+					"                    ,Aie.documentURI\n",
 					"                    ,CAST(NULL AS String) AS publishedDocumentURI\n",
 					"                    ,Doc.virusCheckStatus\n",
-					"                    --,Aie.fileMD5\n",
+					"                    ,Aie.fileMD5\n",
 					"                    ,Doc.dateCreated\n",
 					"                    ,CAST(NULL AS String) AS dateReceived\n",
 					"                    ,Doc.datePublished\n",
@@ -189,8 +189,8 @@
 					"                    ,Doc.documentType\n",
 					"                    ,Doc.sourceSystem -- set to horizon\n",
 					"                    ,CAST(NULL AS String) AS origin\n",
-					"                    --,Aie.owner\n",
-					"                    --,Aie.author\n",
+					"                    ,Aie.owner\n",
+					"                    ,Aie.author\n",
 					"                    ,Doc.documentDescription AS description\n",
 					"                    ,CAST(NULL AS String) AS caseStage\n",
 					"                    ,Doc.folderid AS horizonFolderId\n",
@@ -216,30 +216,9 @@
 					"                LEFT JOIN {aie_extracts_table} AS Aie ON Doc.DocumentId = Aie.DocumentId\n",
 					"                WHERE\n",
 					"                    Doc.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
-					"                    AND Aie.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {aie_extracts_table})\n",
-					"\n",
 					"            \"\"\")"
 				],
-				"execution_count": 23
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(horizon_data.limit(10))"
-				],
-				"execution_count": 17
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -258,7 +237,7 @@
 					"horizon_data = horizon_data.select(service_bus_data.columns)\n",
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 34
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -276,7 +255,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 35
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -310,26 +289,27 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_s51_advice_calculations_base\n",
-					"AS\n",
-					"SELECT  \n",
-					"    row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, adviceid asc) AS NSIPAdviceID\n",
-					"    ,adviceid\n",
-					"    ,IngestionDate\n",
-					"    ,ValidTo\n",
-					"    ,'0' AS Migrated\n",
-					"    ,CASE row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC)\n",
-					"        WHEN 1 THEN\n",
-					"            'Y'\n",
-					"        ELSE\n",
-					"            'N'\n",
-					"    END AS IsActive                \n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice"
+					"spark.sql(f\"\"\"\n",
+					"    CREATE OR REPLACE TEMPORARY VIEW vw_appeal_document_calculations_base\n",
+					"        AS\n",
+					"        SELECT  \n",
+					"            row_number() OVER(PARTITION BY documentId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"            ,row_number() OVER(ORDER BY IngestionDate asc, documentId asc) AS AppealsDocumentMetadataID\n",
+					"            ,documentId\n",
+					"            ,IngestionDate\n",
+					"            ,ValidTo\n",
+					"            ,'0' AS Migrated\n",
+					"            ,CASE row_number() OVER(PARTITION BY documentId ORDER BY IngestionDate DESC)\n",
+					"                WHEN 1 THEN\n",
+					"                    'Y'\n",
+					"                ELSE\n",
+					"                    'N'\n",
+					"            END AS IsActive                \n",
+					"        FROM\n",
+					"            {spark_table_final}\n",
+					"    \"\"\")"
 				],
-				"execution_count": 36
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -345,30 +325,30 @@
 					}
 				},
 				"source": [
-					"df_calcs = spark.sql(\"\"\"\n",
+					"df_calcs = spark.sql(f\"\"\"\n",
 					"                        SELECT\n",
-					"                            CurrentRow.NSIPAdviceID\n",
-					"                            ,CurrentRow.adviceid \n",
+					"                            CurrentRow.AppealsDocumentMetadataID\n",
+					"                            ,CurrentRow.documentId \n",
 					"                            ,CurrentRow.IngestionDate\n",
 					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
 					"                            ,CASE\n",
-					"                                WHEN raw.adviceid IS NOT NULL THEN \n",
+					"                                WHEN raw.documentId IS NOT NULL THEN \n",
 					"                                    \"1\"\n",
 					"                                ELSE \n",
 					"                                    \"0\"\n",
 					"                            END AS Migrated\n",
 					"                            ,CurrentRow.IsActive\n",
 					"                        FROM\n",
-					"                            vw_nsip_s51_advice_calculations_base AS CurrentRow\n",
-					"                            LEFT OUTER JOIN vw_nsip_s51_advice_calculations_base AS NextRow\n",
-					"                                ON CurrentRow.adviceid = NextRow.adviceid\n",
+					"                            vw_appeal_document_calculations_base AS CurrentRow\n",
+					"                            LEFT OUTER JOIN vw_appeal_document_calculations_base AS NextRow\n",
+					"                                ON CurrentRow.documentId = NextRow.documentId\n",
 					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT adviceid FROM  odw_harmonised_db.sb_s51_advice) AS Raw\n",
-					"                                ON CurrentRow.adviceid = Raw.adviceid \n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT documentId FROM {spark_table_final}) AS Raw\n",
+					"                                ON CurrentRow.documentId = Raw.documentId \n",
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 37
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -384,10 +364,9 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"adviceid\", \"temp_adviceid\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
-					""
+					"df_calcs =df_calcs.withColumnRenamed(\"documentId\", \"temp_documentId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 38
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -405,37 +384,41 @@
 				},
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
-					"                    SELECT DISTINCT NSIPAdviceID\n",
-					"                        ,adviceId\n",
-					"                        ,adviceReference\n",
+					"                    SELECT DISTINCT AppealsDocumentMetadataID\n",
+					"                        ,documentId\n",
 					"                        ,caseId\n",
 					"                        ,caseReference\n",
-					"                        ,title\n",
-					"                        ,titleWelsh\n",
-					"                        ,from\n",
-					"                        ,agent\n",
-					"                        ,method\n",
-					"                        ,enquiryDate\n",
-					"                        ,enquiryDetails\n",
-					"                        ,enquiryDetailsWelsh\n",
-					"                        ,adviceGivenBy \n",
-					"                        ,adviceDate\n",
-					"                        ,adviceDetails\n",
-					"                        ,adviceDetailsWelsh\n",
-					"                        ,status\n",
-					"                        ,redactionStatus\n",
-					"                        ,attachmentIds\n",
+					"                        ,version\n",
+					"                        ,filename\n",
+					"                        ,originalFilename\n",
+					"                        ,size\n",
+					"                        ,mime\n",
+					"                        ,documentURI\n",
+					"                        ,publishedDocumentURI\n",
+					"                        ,virusCheckStatus\n",
+					"                        ,fileMD5\n",
+					"                        ,dateCreated\n",
+					"                        ,dateReceived\n",
+					"                        ,datePublished\n",
+					"                        ,lastModified\n",
+					"                        ,caseType\n",
+					"                        ,redactedStatus\n",
+					"                        ,documentType\n",
+					"                        ,sourceSystem\n",
+					"                        ,origin\n",
+					"                        ,owner\n",
+					"                        ,author\n",
+					"                        ,description\n",
+					"                        ,caseStage\n",
+					"                        ,horizonFolderId\n",
 					"\n",
 					"                        --Start Horizon only fields\n",
-					"                        ,Section51Advice\n",
-					"                        ,EnquirerFirstName\n",
-					"                        ,EnquirerLastName\n",
-					"                        ,AdviceLastModified\n",
-					"                        ,AttachmentCount\n",
-					"                        ,AttachmentsLastModified\n",
-					"                        ,LastPublishedDate\n",
-					"                        ,WelshLanguage\n",
-					"                        ,CaseWorkType\n",
+					"                        ,caseNumber\n",
+					"                        ,caseworkTypeGroup\n",
+					"                        ,caseworkTypeAbbreviation\n",
+					"                        ,versionFilename\n",
+					"                        ,incomingOutgoingExternal\n",
+					"                        ,publishedStatus\n",
 					"                        --End Horizon only fields\n",
 					"\n",
 					"                        ,Migrated\n",
@@ -443,49 +426,54 @@
 					"                        ,IngestionDate\n",
 					"                        ,ValidTo\n",
 					"                        ,MD5(CONCAT(\n",
-					"                                    IFNULL(CAST(NSIPAdviceID AS bigint), '.')\n",
-					"                                    ,IFNULL(CAST(adviceId AS integer), '.')\n",
-					"                                    ,IFNULL(CAST(adviceReference AS String), '.')\n",
-					"                                    ,IFNULL(CAST(caseId AS integer), '.')\n",
-					"                                    ,IFNULL(CAST(caseReference AS String), '.')\n",
-					"                                    ,IFNULL(CAST(title AS String), '.')\n",
-					"                                    ,IFNULL(CAST(titleWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(from AS String), '.')\n",
-					"                                    ,IFNULL(CAST(agent AS String), '.')\n",
-					"                                    ,IFNULL(CAST(method AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDetails AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDetailsWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceGivenBy AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDetails AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDetailsWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(status AS String), '.')\n",
-					"                                    ,IFNULL(CAST(redactionStatus AS String), '.')\n",
-					"                                    ,IFNULL(CAST(attachmentIds AS String), '.')\n",
+					"                                IFNULL(CAST(AppealsDocumentMetadataID AS bigint), '.')\n",
+					"                                ,IFNULL(CAST(documentId AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseId AS integer), '.')\n",
+					"                                ,IFNULL(CAST(caseReference AS String), '.')\n",
+					"                                ,IFNULL(CAST(version AS integer), '.')\n",
+					"                                ,IFNULL(CAST(filename AS String), '.')\n",
+					"                                ,IFNULL(CAST(originalFilename AS String), '.')\n",
+					"                                ,IFNULL(CAST(size AS integer), '.')\n",
+					"                                ,IFNULL(CAST(mime AS String), '.')\n",
+					"                                ,IFNULL(CAST(documentURI AS String), '.')\n",
+					"                                ,IFNULL(CAST(publishedDocumentURI AS String), '.')\n",
+					"                                ,IFNULL(CAST(virusCheckStatus AS String), '.')\n",
+					"                                ,IFNULL(CAST(fileMD5 AS String), '.')\n",
+					"                                ,IFNULL(CAST(dateCreated AS String), '.')\n",
+					"                                ,IFNULL(CAST(dateReceived AS String), '.')\n",
+					"                                ,IFNULL(CAST(datePublished AS String), '.')\n",
+					"                                ,IFNULL(CAST(lastModified AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseType AS String), '.')\n",
+					"                                ,IFNULL(CAST(redactedStatus AS String), '.')\n",
+					"                                ,IFNULL(CAST(documentType AS String), '.')\n",
+					"                                ,IFNULL(CAST(sourceSystem AS String), '.')\n",
+					"                                ,IFNULL(CAST(origin AS String), '.')\n",
+					"                                ,IFNULL(CAST(owner AS String), '.')\n",
+					"                                ,IFNULL(CAST(author AS String), '.')\n",
+					"                                ,IFNULL(CAST(description AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseStage AS String), '.')\n",
+					"                                ,IFNULL(CAST(horizonFolderId AS String), '.')\n",
 					"\n",
-					"                                    ,IFNULL(CAST(Section51Advice AS String), '.')\n",
-					"                                    ,IFNULL(CAST(EnquirerFirstName AS String), '.')\n",
-					"                                    ,IFNULL(CAST(EnquirerLastName AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AdviceLastModified AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AttachmentCount AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AttachmentsLastModified AS String), '.')\n",
-					"                                    ,IFNULL(CAST(LastPublishedDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(WelshLanguage AS String), '.')\n",
-					"                                    ,IFNULL(CAST(CaseWorkType AS String), '.')\n",
-					"\n",
-					"                                    ,IFNULL(CAST(Migrated AS String), '.')\n",
-					"                                    ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
-					"                                    ,IFNULL(CAST(IngestionDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(ValidTo AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseNumber AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseworkTypeGroup AS String), '.')\n",
+					"                                ,IFNULL(CAST(caseworkTypeAbbreviation AS String), '.')\n",
+					"                                ,IFNULL(CAST(versionFilename AS String), '.')\n",
+					"                                ,IFNULL(CAST(incomingOutgoingExternal AS String), '.')\n",
+					"                                ,IFNULL(CAST(publishedStatus AS String), '.')\n",
+					"                                \n",
+					"                                ,IFNULL(CAST(Migrated AS String), '.')\n",
+					"                                ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
+					"                                ,IFNULL(CAST(IngestionDate AS String), '.')\n",
+					"                                ,IFNULL(CAST(ValidTo AS String), '.')\n",
 					"                            )\n",
 					"                        ) AS RowID\n",
 					"                        ,IsActive\n",
-					"    FROM \n",
-					"        {spark_table_final}\"\"\")\n",
+					"                    FROM \n",
+					"                        {spark_table_final}\n",
+					"                \"\"\")\n",
 					"    "
 				],
-				"execution_count": 39
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
@@ -503,9 +491,9 @@
 				"source": [
 					"columns = results.columns\n",
 					"\n",
-					"results = results.drop(\"NSIPAdviceID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
+					"results = results.drop(\"AppealsDocumentMetadataID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 40
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -521,10 +509,10 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_adviceid\"] == results[\"adviceid\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_documentId\"] == results[\"documentId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 41
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -543,30 +531,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 42
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select count(*) from odw_harmonised_db.nsip_s51_advice where isactive='Y'"
-				],
-				"execution_count": 43
+				"execution_count": 60
 			}
 		]
 	}
