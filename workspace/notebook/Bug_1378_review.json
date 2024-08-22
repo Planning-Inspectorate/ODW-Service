@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a1b7d364-6383-4b2b-b9c4-9484d29c68bd"
+				"spark.autotune.trackingId": "a7836586-f379-454d-acf9-ad3135149268"
 			}
 		},
 		"metadata": {
@@ -52,13 +52,274 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Notes\n",
+					"In the service user notebook  \n",
+					"nsip_data.caseId **BECOMES** service_user.caseReference  \n",
+					"odw_harmonised_db.nsip_representation.caseId **BECOMES** service_user.caseReference   \n",
+					"odw_harmonised_db.nsip_representation.caseUniqueId = 3148447. This is a caseId in nsip_data / nsip_project but caseUniqueId for reps is not in the data model schema so isn't in the curated table. So 3148447 appears in the service_user table but not in reps table. Is this correct?"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Horizon standardised table check - nsip_data"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"In this table there is a 1:1 relationship between caseReference and caseNodeId"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select caseReference, caseNodeId, max(ingested_datetime)\n",
+					"from odw_standardised_db.horizon_nsip_data\n",
+					"where caseReference = 'TR020002'\n",
+					"group by caseReference, caseNodeId"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Service bus standardised table check - nsip_project"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"caseId from service bus is the caseNodeId in Horizon"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select caseReference, caseId, applicantId, max(ingested_datetime)\n",
+					"from odw_standardised_db.sb_nsip_project\n",
+					"where caseReference = 'TR020002'\n",
+					"group by caseReference, caseId, applicantId"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Harmonised table check (combined table) - nsip_project"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select caseReference, caseId, caseNodeId, applicantId, sourceSystem, max(IngestionDate)\n",
+					"from odw_harmonised_db.nsip_project\n",
+					"where caseReference = 'TR020002'\n",
+					"group by caseReference, caseId, caseNodeId, applicantId, sourceSystem"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Curated check - nsip_data"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
-					"SELECT * FROM odw_curated_db.nsip_data where caseReference = 'TR020002'"
+					"SELECT * \n",
+					"FROM odw_curated_db.nsip_data \n",
+					"where caseReference = 'TR020002'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select caseReference, sourceSystem, count(*)\n",
+					"from odw_curated_db.service_user\n",
+					"-- where sourceSystem = 'back-office-applications'\n",
+					"where caseReference in ('15360347', '3148447')\n",
+					"group by caseReference, sourceSystem\n",
+					"order by 3 desc"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select *\n",
+					"from odw_curated_db.service_user\n",
+					"-- where sourceSystem = 'back-office-applications'\n",
+					"-- where caseReference in ('15360347', '3148447')\n",
+					"where caseReference = '3148447'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select caseRef, caseId, count(*)\n",
+					"from odw_curated_db.nsip_representation\n",
+					"where caseId in ('15360347', '3148447')\n",
+					"group by caseRef, caseId\n",
+					"order by 3 desc"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select *\n",
+					"from odw_curated_db.nsip_representation\n",
+					"where caseId in ('15360347', '3148447')"
 				],
 				"execution_count": null
 			},
@@ -129,7 +390,7 @@
 					"%%sql\n",
 					"select *\n",
 					"from odw_curated_db.service_user\n",
-					"where caseReference = '15360347'\n",
+					"where caseReference = '3148447'\n",
 					"limit 10"
 				],
 				"execution_count": null
@@ -167,13 +428,101 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select *\n",
+					"from odw_curated_db.nsip_representation\n",
+					"where caseRef = 'TR020002'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select caseRef, caseId, caseUniqueId\n",
+					"from odw_harmonised_db.nsip_representation\n",
+					"where caseUniqueId = '3148447'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select *\n",
+					"from odw_harmonised_db.curated_Service_user\n",
+					"where caseReference = '3148447'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql \n",
+					"select odtsourcesystem, count(*) \n",
+					"from odw_harmonised_db.nsip_s51_advice\n",
+					"where caseReference = 'TR020002'\n",
+					"group by odtsourcesystem"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					}
 				},
 				"source": [
 					"def test_case_exists(case: str) -> bool:\n",
-					"    df = spark.sql(f\"select * from odw_curated_db.nsip_data where caseReference = '{case}'\")\n",
-					"    return df.count() > 0\n",
-					""
+					"    df = spark.sql(f\"select * from odw_curated_db.nsip_data where caseId = '{case}'\")\n",
+					"    return df.count() > 0"
 				],
 				"execution_count": null
 			},
@@ -212,7 +561,7 @@
 				},
 				"source": [
 					"def test_case_exists_in_nsip_representation(case: str) -> bool:\n",
-					"    df = spark.sql(f\"select * from odw_curated_db.nsip_representation where caseRef = '{case}'\")\n",
+					"    df = spark.sql(f\"select * from odw_curated_db.nsip_representation where caseId = '{case}'\")\n",
 					"    return df.count() > 0"
 				],
 				"execution_count": null
@@ -251,7 +600,7 @@
 					}
 				},
 				"source": [
-					"case = 'TR020002'\n",
+					"case = '3148447'\n",
 					"print(f\"Case exists in nsip_data: {test_case_exists(case)}\")\n",
 					"print(f\"Case exists in service user: {test_case_exists_in_service_user(case)}\")\n",
 					"print(f\"Case exists in nsip_representation: {test_case_exists_in_nsip_representation(case)}\")"
