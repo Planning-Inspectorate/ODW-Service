@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2a94d40a-e2ee-45d5-824b-3c9666cdc0a8"
+				"spark.autotune.trackingId": "fc1ef18c-05cf-423e-873c-70ef2d5c74c0"
 			}
 		},
 		"metadata": {
@@ -65,7 +65,10 @@
 					"In the service user notebook  \n",
 					"nsip_data.caseId **BECOMES** service_user.caseReference  \n",
 					"odw_harmonised_db.nsip_representation.caseId **BECOMES** service_user.caseReference   \n",
-					"odw_harmonised_db.nsip_representation.caseUniqueId = 3148447. This is a caseId in nsip_data / nsip_project but caseUniqueId for reps is not in the data model schema so isn't in the curated table. So 3148447 appears in the service_user table but not in reps table. Is this correct?"
+					"odw_harmonised_db.nsip_representation.caseUniqueId = 3148447. This is a caseId in nsip_data / nsip_project but caseUniqueId for reps is not in the data model schema so isn't in the curated table. So 3148447 appears in the service_user table but not in reps table. Is this correct?  \n",
+					"This id is for the initial application which is why 1 record should exist in service user and 0 in reps table.  \n",
+					"\n",
+					"Tests at the bottom have been added to `py_unit_tests_service_user`"
 				]
 			},
 			{
@@ -217,27 +220,6 @@
 					"from odw_harmonised_db.nsip_project\n",
 					"where caseReference = 'TR020002'\n",
 					"group by caseReference, caseId, caseNodeId, applicantId, sourceSystem"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"select caseReference, caseId, caseNodeId, applicantId, sourceSystem, max(IngestionDate)\n",
-					"from odw_harmonised_db.nsip_project\n",
-					"where caseNodeId is not null"
 				],
 				"execution_count": null
 			},
@@ -611,9 +593,9 @@
 					"                    from odw_curated_db.service_user\n",
 					"                    where caseReference in\n",
 					"                    (\n",
-					"                    select distinct caseId \n",
-					"                    from odw_curated_db.nsip_representation\n",
-					"                    where caseRef = '{case}'\n",
+					"                        select distinct caseId \n",
+					"                        from odw_curated_db.nsip_representation\n",
+					"                        where caseRef = '{case}'\n",
 					"                    )\"\"\")\n",
 					"    return df.count() > 0"
 				],
@@ -653,8 +635,10 @@
 					}
 				},
 				"source": [
-					"def test_reps_counts_match(query1: str, query2: str):\n",
-					""
+					"def test_reps_counts_match(query1: str, query2: str) -> tuple:\n",
+					"    df1 = spark.sql(query1)\n",
+					"    df2 = spark.sql(query2)\n",
+					"    return (df1.count() == df2.count(), df1.count(), df2.count())"
 				],
 				"execution_count": null
 			},
@@ -673,9 +657,49 @@
 				},
 				"source": [
 					"case = 'TR020002'\n",
+					"\n",
+					"query1 = f\"\"\"SELECT *\n",
+					"FROM\n",
+					"odw_curated_db.nsip_representation AS reps \n",
+					"INNER JOIN odw_curated_db.service_user AS suser\n",
+					"ON reps.representativeId = suser.id \n",
+					"OR reps.representedId = suser.id\n",
+					"WHERE reps.caseRef = '{case}' \n",
+					"AND sourceSystem IN ('horizon','Horizon')\n",
+					"\"\"\"\n",
+					"\n",
+					"query2 = f\"\"\"\n",
+					"SELECT * \n",
+					"FROM\n",
+					"odw_curated_db.nsip_representation AS reps \n",
+					"INNER JOIN odw_curated_db.service_user AS suser\n",
+					"ON reps.representativeId = suser.id \n",
+					"OR reps.representedId = suser.id\n",
+					"AND suser.caseReference = reps.caseId\n",
+					"WHERE reps.caseRef = '{case}' \n",
+					"AND sourceSystem IN ('horizon','Horizon') \n",
+					"\"\"\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"print(f\"Case exists in nsip_data: {test_case_exists(case)}\")\n",
 					"print(f\"Case exists in service user: {test_case_exists_in_service_user(case)}\")\n",
-					"print(f\"Case exists in nsip_representation: {test_case_exists_in_nsip_representation(case)}\")"
+					"print(f\"Case exists in nsip_representation: {test_case_exists_in_nsip_representation(case)}\")\n",
+					"print(f\"Reps counts match: {test_reps_counts_match(query1, query2)}\")"
 				],
 				"execution_count": null
 			}
