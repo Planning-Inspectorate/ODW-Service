@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a7836586-f379-454d-acf9-ad3135149268"
+				"spark.autotune.trackingId": "539e869c-4012-4626-9729-f8f5caad56d6"
 			}
 		},
 		"metadata": {
@@ -67,6 +67,24 @@
 					"odw_harmonised_db.nsip_representation.caseId **BECOMES** service_user.caseReference   \n",
 					"odw_harmonised_db.nsip_representation.caseUniqueId = 3148447. This is a caseId in nsip_data / nsip_project but caseUniqueId for reps is not in the data model schema so isn't in the curated table. So 3148447 appears in the service_user table but not in reps table. Is this correct?"
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import DataFrame"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -203,6 +221,27 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"select caseReference, caseId, caseNodeId, applicantId, sourceSystem, max(IngestionDate)\n",
+					"from odw_harmonised_db.nsip_project\n",
+					"where caseNodeId is not null"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -272,8 +311,8 @@
 					"select *\n",
 					"from odw_curated_db.service_user\n",
 					"-- where sourceSystem = 'back-office-applications'\n",
-					"-- where caseReference in ('15360347', '3148447')\n",
-					"where caseReference = '3148447'"
+					"where caseReference in ('15360347', '3148447')\n",
+					"-- where caseReference = '3148447'"
 				],
 				"execution_count": null
 			},
@@ -319,7 +358,7 @@
 					"%%sql \n",
 					"select *\n",
 					"from odw_curated_db.nsip_representation\n",
-					"where caseId in ('15360347', '3148447')"
+					"where caseId in ('3148447')"
 				],
 				"execution_count": null
 			},
@@ -411,7 +450,7 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select count(*)\n",
+					"select *\n",
 					"from odw_curated_db.nsip_representation\n",
 					"where caseRef = 'TR020002'"
 				],
@@ -517,11 +556,38 @@
 						"transient": {
 							"deleting": false
 						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select distinct caseReference\n",
+					"from odw_curated_db.service_user\n",
+					"where caseReference in\n",
+					"(\n",
+					"select distinct caseId \n",
+					"from odw_curated_db.nsip_representation\n",
+					"where caseRef = 'TR020002'\n",
+					")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					}
 				},
 				"source": [
 					"def test_case_exists(case: str) -> bool:\n",
-					"    df = spark.sql(f\"select * from odw_curated_db.nsip_data where caseId = '{case}'\")\n",
+					"    df: DataFrame = spark.sql(f\"select * from odw_curated_db.nsip_data where caseReference = '{case}'\")\n",
 					"    return df.count() > 0"
 				],
 				"execution_count": null
@@ -541,7 +607,14 @@
 				},
 				"source": [
 					"def test_case_exists_in_service_user(case: str) -> bool:\n",
-					"    df = spark.sql(f\"select * from odw_curated_db.service_user where caseReference = '{case}'\")\n",
+					"    df: DataFrame = spark.sql(f\"\"\"select distinct caseReference\n",
+					"                    from odw_curated_db.service_user\n",
+					"                    where caseReference in\n",
+					"                    (\n",
+					"                    select distinct caseId \n",
+					"                    from odw_curated_db.nsip_representation\n",
+					"                    where caseRef = '{case}'\n",
+					"                    )\"\"\")\n",
 					"    return df.count() > 0"
 				],
 				"execution_count": null
@@ -561,28 +634,8 @@
 				},
 				"source": [
 					"def test_case_exists_in_nsip_representation(case: str) -> bool:\n",
-					"    df = spark.sql(f\"select * from odw_curated_db.nsip_representation where caseId = '{case}'\")\n",
+					"    df: DataFrame = spark.sql(f\"select * from odw_curated_db.nsip_representation where caseRef = '{case}'\")\n",
 					"    return df.count() > 0"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"REFRESH TABLE odw_curated_db.service_user"
 				],
 				"execution_count": null
 			},
@@ -600,7 +653,45 @@
 					}
 				},
 				"source": [
-					"case = '3148447'\n",
+					"def test_only_one_applicant_in_service_user():\n",
+					"    "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_reps_counts_match(query1: str, query2: str):\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"case = 'TR020002'\n",
 					"print(f\"Case exists in nsip_data: {test_case_exists(case)}\")\n",
 					"print(f\"Case exists in service user: {test_case_exists_in_service_user(case)}\")\n",
 					"print(f\"Case exists in nsip_representation: {test_case_exists_in_nsip_representation(case)}\")"
