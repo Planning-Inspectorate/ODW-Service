@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "28fe8f12-c60d-467f-b7b5-d916749e95b6"
+				"spark.autotune.trackingId": "26501f0a-a22a-47a7-8432-adadddfd024e"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 1
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,7 @@
 					"hrm_table_final: str = 'appeal_document'\n",
 					"curated_table_name: str = 'appeal_document'"
 				],
-				"execution_count": 23
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 3
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +160,7 @@
 					"  \"horizonFolderId\"\n",
 					"]"
 				],
-				"execution_count": 4
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -178,7 +178,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 14
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
@@ -199,7 +199,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 15
+				"execution_count": 68
 			},
 			{
 				"cell_type": "markdown",
@@ -236,7 +236,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 16
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -276,7 +276,7 @@
 					"    #this is classed as an error\n",
 					"    exitCode += 1 "
 				],
-				"execution_count": 24
+				"execution_count": 70
 			},
 			{
 				"cell_type": "markdown",
@@ -310,7 +310,7 @@
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 25
+				"execution_count": 71
 			},
 			{
 				"cell_type": "markdown",
@@ -322,9 +322,55 @@
 					}
 				},
 				"source": [
-					"##### Trace service bus data from standardised to curated\n",
+					"##### Trace service bus data from standardised to harmonised\n",
 					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT * FROM  odw_standardised_db.sb_appeal_document\n",
+					"where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
+					"order by ingested_datetime\n",
+					""
+				],
+				"execution_count": 72
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT * FROM  odw_harmonised_db.sb_appeal_document\n",
+					"where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
+					"order by IngestionDate\n",
+					""
+				],
+				"execution_count": 73
 			},
 			{
 				"cell_type": "markdown",
@@ -351,22 +397,19 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"SELECT DISTINCT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_standardised_db.sb_appeal_document\n",
-					"WHERE\n",
-					"   \n",
-					"     ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.sb_appeal_document);"
+					"*\n",
+					"FROM odw_harmonised_db.appeal_document\n",
+					"\n",
+					"where  documentid = '10847936'\n",
+					"order BY\n",
+					"    ingestiondate DESC"
 				],
-				"execution_count": 37
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -380,88 +423,59 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT DISTINCT\n",
+					"*\n",
+					"FROM odw_standardised_db.horizon_appeals_document_metadata\n",
+					"where documentid = '10847936' and\n",
+					"ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_appeals_document_metadata)\n",
+					"\n",
+					"order by ingested_datetime\n",
+					""
+				],
+				"execution_count": 87
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"###### Check if there is data coming from ODT and Horizon"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					},
 					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
-					"SELECT\n",
-					"    caseCreatedDate\n",
-					"    ,projectName\n",
-					"    ,publishStatus\n",
-					"    ,examTimetablePublishStatus\n",
-					"    ,sector\n",
-					"    ,projectType\n",
-					"    ,stage\n",
-					"    ,caseReference\n",
-					"    ,caseId\n",
-					"    ,projectLocation\n",
-					"    ,projectEmailAddress\n",
-					"    ,twitteraccountname\n",
-					"    ,regions\n",
-					"    ,easting\n",
-					"    ,northing\n",
-					"    ,transboundary\n",
-					"    ,welshLanguage\n",
-					"    ,exasize\n",
-					"    ,mapZoomLevel\n",
-					"    ,projectDescription\n",
-					"    ,secretaryOfState\n",
-					"    ,tene\n",
-					"    ,anticipatedDateOfSubmission\n",
-					"    ,dateProjectAppearsOnWebsite\n",
-					"    ,dateOfDCOAcceptance\n",
-					"    ,anticipatedDateOfSubmission\n",
-					"    ,dateOfDCOSubmission\n",
-					"    ,dateOfRepresentationPeriodOpen\n",
-					"    ,dateOfRelevantRepresentationClose\n",
-					"    ,dateRRepAppearOnWebsite\n",
-					"    ,confirmedStartOfExamination\n",
-					"    ,dateTimeExaminationEnds\n",
-					"    ,stage4ExtensionToExamCloseDate\n",
-					"    ,stage5ExtensionToRecommendationDeadline\n",
-					"    ,dateOfRecommendations\n",
-					"    ,confirmedDateOfDecision\n",
-					"    ,stage5ExtensionToDecisionDeadline\n",
-					"    ,dateProjectWithdrawn\n",
-					"    ,section46Notification\n",
-					"    ,datePINSFirstNotifiedOfProject\n",
-					"    ,screeningOpinionSought\n",
-					"    ,screeningOpinionIssued\n",
-					"    ,scopingOpinionSought\n",
-					"    ,scopingOpinionIssued\n",
-					"    ,deadlineForAcceptanceDecision\n",
-					"    ,dateSection58NoticeReceived\n",
-					"    ,preliminaryMeetingStartDate\n",
-					"    ,deadlineForCloseOfExamination\n",
-					"    ,deadlineForSubmissionOfRecommendation\n",
-					"    ,deadlineForDecision\n",
-					"    ,jRPeriodEndDate\n",
-					"    ,extensionToDateRelevantRepresentationsClose\n",
-					"    --,summary\n",
-					"    ,promotername\n",
-					"    ,applicantfirstname\n",
-					"    ,applicantlastname\n",
-					"    ,addressLine1\n",
-					"    ,addressLine2\n",
-					"    ,addressTown\n",
-					"    ,addressCounty\n",
-					"    ,postcode\n",
-					"    ,applicantemailaddress\n",
-					"    ,applicantwebaddress\n",
-					"    ,applicantphonenumber\n",
-					"    ,applicantdescriptionofproject\n",
-					"    ,casenodeid\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_project\n",
-					"WHERE\n",
-					"     caseid = '3222228'\n",
+					"SELECT DISTINCT\n",
+					"*\n",
+					"FROM odw_harmonised_db.appeal_document\n",
+					"\n",
+					"where  horizonfolderid  is null and sourcesystem = 'ODT'\n",
 					"order BY\n",
 					"    ingestiondate DESC"
 				],
-				"execution_count": null
+				"execution_count": 96
 			},
 			{
 				"cell_type": "markdown",
@@ -494,83 +508,18 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    adviceid\n",
-					"    ,count(*)\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"    ODTSourceSystem = 'Horizon'\n",
-					"GROUP BY\n",
-					"    1\n",
-					"ORDER BY\n",
-					"    2 desc"
+					"df_hzn_std = spark.sql(\"SELECT * from odw_standardised_db.horizon_appeals_document_metadata where documentid = '10847936' and ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_appeals_document_metadata)\")\n",
+					"df_sb_hrm = spark.sql(\"select * from odw_harmonised_db.sb_appeal_document where documentid = '10847936'\")\n",
+					"df_hrm_final = spark.sql(\"select * from odw_harmonised_db.appeal_document where documentid = '10847936'\")\n",
+					"df_cur = spark.sql(\"select * from odw_curated_db.appeal_document where documentid = '10847936'\")\n",
+					"\n",
+					"\n",
+					"display(df_hzn_std)\n",
+					"display(df_sb_hrm)\n",
+					"display(df_hrm_final)\n",
+					"display(df_cur)"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    adviceid\n",
-					"    ,count(*)\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"    ODTSourceSystem = 'ODT'\n",
-					"GROUP BY\n",
-					"    1\n",
-					"ORDER BY\n",
-					"    2 desc"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"     adviceid = '100000913'\n",
-					"order BY\n",
-					"    ingestiondate DESC"
-				],
-				"execution_count": null
+				"execution_count": 97
 			},
 			{
 				"cell_type": "markdown",
@@ -607,9 +556,45 @@
 					"SELECT\n",
 					"    *\n",
 					"FROM\n",
-					"    odw_curated_db.nsip_s51_advice\n",
+					"    odw_curated_db.appeal_document\n",
 					"WHERE\n",
-					"     adviceid = '100000913'"
+					"     documentId = '10847936'"
+				],
+				"execution_count": 99
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"mssparkutils.notebook.exit(exitCode)"
+				],
+				"execution_count": 98
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
 				],
 				"execution_count": null
 			}
