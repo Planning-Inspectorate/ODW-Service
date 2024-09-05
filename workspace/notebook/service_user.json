@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e0400518-1f52-4525-aff2-6b6b938f579c"
+				"spark.autotune.trackingId": "73f2fb50-c600-4375-9361-bc9603492804"
 			}
 		},
 		"metadata": {
@@ -875,89 +875,8 @@
 					}
 				},
 				"source": [
-					"Next, we need to look at s51 records and see if we have any more to map in"
+					"We will not load s51 records as these do not create service user records."
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql -- Add missing records from s51. Commenting out insert as wrong currently\n",
-					"--INSERT INTO odw_harmonised_db.curated_service_user\n",
-					"SELECT DISTINCT\n",
-					"    CAST(NULL AS String) AS id\n",
-					"    ,CAST(NULL AS String) AS salutation\n",
-					"    ,source.EnquirerFirstName AS firstName\n",
-					"    ,source.EnquirerLastName AS lastName\n",
-					"    ,CAST(NULL AS String) AS addressline1\n",
-					"    ,CAST(NULL AS String) AS addressline2\n",
-					"    ,CAST(NULL AS String) AS addressTown\n",
-					"    ,CAST(NULL AS String) AS addressCounty\n",
-					"    ,CAST(NULL AS String) AS postcode\n",
-					"    ,CAST(NULL AS String) AS addressCountry\n",
-					"    ,source.Agent AS organisation\n",
-					"    ,CAST(NULL AS String) AS organisationType\n",
-					"    ,CAST(NULL AS String) AS role\n",
-					"    ,CAST(NULL AS String) AS telephoneNumber\n",
-					"    ,CAST(NULL AS String) AS otherPhoneNumber\n",
-					"    ,CAST(NULL AS String) AS faxNumber\n",
-					"    ,CAST(NULL AS String) AS emailAddress\n",
-					"    ,CAST(NULL AS String) AS webAddress\n",
-					"    ,CASE \n",
-					"        WHEN source.Agent IS NOT NULL THEN\n",
-					"            'Agent'\n",
-					"        ELSE\n",
-					"            'Applicant' \n",
-					"    END AS serviceUserType\n",
-					"    ,source.caseId AS caseReference \n",
-					"    ,source.ODTSourceSystem AS sourceSystem \n",
-					"    ,CAST(source.adviceId AS String) AS sourceSuid\n",
-					"    ,10 AS source_priority\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice AS source\n",
-					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user AS target\n",
-					"        ON source.caseId = target.caseReference\n",
-					"        AND CASE \n",
-					"                WHEN source.Agent IS NOT NULL THEN\n",
-					"                    'Agent'\n",
-					"                ELSE\n",
-					"                    'Applicant' \n",
-					"            END = target.serviceUserType\n",
-					"        AND (\n",
-					"              ( -- separate name elements match\n",
-					"                source.EnquirerFirstName = target.firstName\n",
-					"                AND source.EnquirerLastName = target.lastName\n",
-					"              )  \n",
-					"              OR ( -- combined name elements match\n",
-					"                source.from = target.firstname\n",
-					"                OR source.from = target.lastName\n",
-					"                )   \n",
-					"              OR \n",
-					"              (\n",
-					"                        source.agent = target.firstname\n",
-					"                        OR source.agent = target.lastName\n",
-					"                        OR source.agent = target.organisation\n",
-					"                ) \n",
-					"            )\n",
-					"WHERE\n",
-					"   source.isActive = 'Y'\n",
-					"   AND target.id IS NULL"
-				],
-				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -1504,7 +1423,7 @@
 					"    ,CAST(NULL AS String) AS faxNumber\n",
 					"    ,source.emailaddress AS emailAddress\n",
 					"    ,CAST(NULL AS String) AS webAddress\n",
-					"    ,'Applicant' AS serviceUserType\n",
+					"    ,'RepresentationContact' AS serviceUserType\n",
 					"    ,source.caseRef AS caseReference \n",
 					"    ,source.ODTSourceSystem AS sourceSystem \n",
 					"    ,CAST(representedId AS String) AS sourceSuid\n",
