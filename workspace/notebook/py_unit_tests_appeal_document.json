@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "14264798-6737-470d-a09a-847b8b42fe01"
+				"spark.autotune.trackingId": "f3ebcdc0-4730-4c07-8d69-263b772defe1"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": null
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -99,7 +99,40 @@
 					"hrm_table_final: str = 'appeal_document'\n",
 					"curated_table_name: str = 'appeal_document'"
 				],
-				"execution_count": null
+				"execution_count": 53
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"horizon_std_df = spark.table(f\"{std_db_name}.{horizon_std_table_name}\")\r\n",
+					"aie_std_df = spark.table(f\"{std_db_name}.{aie_std_table_name}\")\r\n",
+					"aie_hrm_df = spark.table(f\"{hrm_db_name}.{aie_hrm_table_name}\")\r\n",
+					"hrm_final_df = spark.table(f\"{hrm_db_name}.{hrm_table_final}\")\r\n",
+					"curated_df = spark.table(f\"{curated_db_name}.{curated_table_name}\")\r\n",
+					"sb_std_df = spark.table(f\"{std_db_name}.{std_table_name}\")\r\n",
+					"sb_hrm_df = spark.table(f\"{hrm_db_name}.{hrm_table_name}\")\r\n",
+					"horizon_documentIds = horizon_std_df.select(\"documentId\")\r\n",
+					"aie_std_documentIds = aie_std_df.select(\"documentId\")\r\n",
+					"aie_hrm_documentIds = aie_hrm_df.select(\"documentId\")\r\n",
+					"hrm_final_documentIds = hrm_final_df.select(\"documentId\")\r\n",
+					"sb_std_documentIds = sb_std_df.select(\"documentId\")\r\n",
+					"sb_hrm_documentIds = sb_hrm_df.select(\"documentId\")\r\n",
+					"curated_documentIds = curated_df.select(\"documentId\")\r\n",
+					"aie_appeals_documentIds = aie_std_documentIds.intersect(horizon_documentIds)\r\n",
+					"aie_appeals_documents_count = aie_appeals_documentIds.count()"
+				],
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -655,20 +688,20 @@
 					}
 				},
 				"source": [
-					"def test_std_to_hrm_no_dropping_records(std_table: str, hrm_table: str) -> bool:\n",
+					"def test_sb_std_to_sb_hrm_no_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\n",
 					"    select documentId\n",
-					"    from {std_db_name}.{std_table}\n",
+					"    from {std_db_name}.{sb_std_table}\n",
 					"    where documentId not in\n",
 					"    (\n",
 					"        select documentId\n",
-					"        from {hrm_db_name}.{hrm_table}\n",
+					"        from {hrm_db_name}.{sb_hrm_table}\n",
 					"    )\n",
 					"    \"\"\")\n",
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -684,10 +717,10 @@
 					}
 				},
 				"source": [
-					"def test_hrm_to_hrm_final_no_dropping_records(hrm_table: str, hrm_table_final: str) -> bool:\n",
+					"def test_sb_hrm_to_hrm_final_no_dropping_records(sb_hrm_table: str, hrm_table_final: str) -> bool:\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\n",
 					"    select documentId\n",
-					"    from {hrm_db_name}.{hrm_table}\n",
+					"    from {hrm_db_name}.{sb_hrm_table}\n",
 					"    where documentId not in\n",
 					"    (\n",
 					"        select documentId\n",
@@ -697,7 +730,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -727,7 +760,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -757,7 +790,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -774,19 +807,10 @@
 				},
 				"source": [
 					"def test_aie_std_to_hrm_no_dropping_records(aie_std_table_name: str, aie_hrm_table_name: str) -> bool:\n",
-					"    df: DataFrame = spark.sql(f\"\"\"\n",
-					"    select documentid\n",
-					"    from {std_db_name}.{aie_std_table_name}\n",
-					"    where documentId not in\n",
-					"    (\n",
-					"        select documentId\n",
-					"        from {hrm_db_name}.{aie_hrm_table_name}\n",
-					"    )\n",
-					"    \"\"\")\n",
-					"\n",
+					"    df: DataFrame = aie_std_documentIds.subtract(aie_hrm_documentIds)\n",
 					"    return df.count() == 0 "
 				],
-				"execution_count": null
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -803,20 +827,33 @@
 				},
 				"source": [
 					"def test_aie_hrm_to_hrm_final_no_dropping_records(aie_hrm_table_name: str, hrm_table_final: str) -> bool:\n",
-					"    df: DataFrame = spark.sql(f\"\"\"\n",
-					"    select documentid\n",
-					"    from {hrm_db_name}.{aie_hrm_table_name}\n",
-					"    where IngestionDate = (select max(IngestionDate) from {hrm_db_name}.{aie_hrm_table_name})\n",
-					"    and documentId not in\n",
-					"    (\n",
-					"        select documentId\n",
-					"        from {hrm_db_name}.{hrm_table_final}\n",
-					"    )\n",
-					"    \"\"\")\n",
-					"\n",
-					"    return df.count() == 0 "
+					"    if aie_appeals_documents_count > 0:\n",
+					"        df: DataFrame = aie_hrm_documentIds.subtract(hrm_final_documentIds)\n",
+					"        return df.count() == 0\n",
+					"    else:\n",
+					"        return True"
 				],
-				"execution_count": null
+				"execution_count": 92
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# def test_1_active_row_in_curated():\r\n",
+					"grouped_df = curated_df.groupby(\"documentId\").count().filter(\"count > 20\").orderBy(\"count\", ascending = False)\r\n",
+					"grouped_df.show()"
+				],
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -834,7 +871,7 @@
 				"source": [
 					"print(f\"Service bus std to hrm no documentIds dropped: {test_std_to_hrm_no_dropping_records(std_table_name, hrm_table_name)}\")"
 				],
-				"execution_count": null
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -852,7 +889,7 @@
 				"source": [
 					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": null
+				"execution_count": 78
 			},
 			{
 				"cell_type": "code",
@@ -870,7 +907,7 @@
 				"source": [
 					"print(f\"hrm table final to curated no documentIds dropped: {test_hrm_to_curated_no_dropping_records(hrm_table_final, curated_table_name)}\")"
 				],
-				"execution_count": null
+				"execution_count": 80
 			},
 			{
 				"cell_type": "code",
@@ -888,7 +925,7 @@
 				"source": [
 					"print(f\"Horizon std table to hrm table final no documentIds dropped: {test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": null
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -906,7 +943,7 @@
 				"source": [
 					"print(f\"AIE std table to hrm table no documentIds dropped: {test_aie_std_to_hrm_no_dropping_records(aie_std_table_name, aie_hrm_table_name)}\")"
 				],
-				"execution_count": null
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -924,7 +961,7 @@
 				"source": [
 					"print(f\"AIE hrm table to hrm table final no documentIds dropped: {test_aie_hrm_to_hrm_final_no_dropping_records(aie_hrm_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": null
+				"execution_count": 93
 			},
 			{
 				"cell_type": "code",
