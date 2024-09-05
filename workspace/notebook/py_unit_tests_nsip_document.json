@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8cd32c7f-c0c1-4613-88fd-ef238f0454b9"
+				"spark.autotune.trackingId": "196e8708-4840-4ab7-be1b-dc434e94384b"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 63
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -91,15 +91,15 @@
 					"std_db_name: str = 'odw_standardised_db'\n",
 					"hrm_db_name: str = 'odw_harmonised_db'\n",
 					"curated_db_name: str = 'odw_curated_db'\n",
-					"horizon_std_table_name: str = \"horizon_appeals_document_metadata\"\n",
+					"horizon_std_table_name: str = \"document_meta_data\"\n",
 					"aie_std_table_name: str = \"aie_document_data\"\n",
 					"aie_hrm_table_name: str = \"aie_document_data\"\n",
 					"std_table_name: str = 'sb_nsip_document'\n",
-					"hrm_table_name: str = 'document_meta_data'\n",
+					"hrm_table_name: str = 'sb_nsip_document'\n",
 					"hrm_table_final: str = 'document_meta_data'\n",
 					"curated_table_name: str = 'nsip_document'"
 				],
-				"execution_count": 64
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +118,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 65
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -134,11 +134,44 @@
 					}
 				},
 				"source": [
-					"data_model_columns = [\n",
+					"data_model_columns = [\"documentId\",\n",
+					"\t\t\"caseId\",\n",
+					"\t\t\"caseRef\",\n",
+					"\t\t\"documentReference\",\n",
+					"\t\t\"version\",\n",
+					"\t\t\"examinationRefNo\",\n",
+					"\t\t\"filename\",\n",
+					"\t\t\"originalFilename\",\n",
+					"\t\t\"size\",\n",
+					"\t\t\"mime\",\n",
+					"\t\t\"documentURI\",\n",
+					"\t\t\"publishedDocumentURI\",\n",
+					"\t\t\"path\",\n",
+					"\t\t\"virusCheckStatus\",\n",
+					"\t\t\"fileMD5\",\n",
+					"\t\t\"dateCreated\",\n",
+					"\t\t\"lastModified\",\n",
+					"\t\t\"caseType\",\n",
+					"\t\t\"redactedStatus\",\n",
+					"\t\t\"publishedStatus\",\n",
+					"\t\t\"datePublished\",\n",
+					"\t\t\"documentType\",\n",
+					"\t\t\"securityClassification\",\n",
+					"\t\t\"sourceSystem\",\n",
+					"\t\t\"origin\",\n",
+					"\t\t\"owner\",\n",
+					"\t\t\"author\",\n",
+					"\t\t\"representative\",\n",
+					"\t\t\"description\",\n",
+					"\t\t\"documentCaseStage\",\n",
+					"\t\t\"filter1\",\n",
+					"\t\t\"filter2\",\n",
+					"\t\t\"horizonFolderId\",\n",
+					"\t\t\"transcriptId\"\n",
 					"\n",
 					"]"
 				],
-				"execution_count": 66
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -156,7 +189,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 67
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -177,7 +210,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 68
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -214,7 +247,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 69
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -254,7 +287,7 @@
 					"    #this is classed as an error\n",
 					"    exitCode += 1 "
 				],
-				"execution_count": 70
+				"execution_count": 23
 			},
 			{
 				"cell_type": "markdown",
@@ -284,11 +317,63 @@
 					}
 				},
 				"source": [
+					"def test_curated_row_count(hrm_table_final: str, curated_table: str, data_model_columns: list) -> tuple[int, int, bool]:\r\n",
+					"    hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"    curated_table_full: str = f\"{curated_db_name}.{curated_table_name}\"\r\n",
+					"    \r\n",
+					"    hrm_df: DataFrame = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").drop_duplicates()\r\n",
+					"    \r\n",
+					"    if data_model_columns:\r\n",
+					"        hrm_df = hrm_df.select(data_model_columns).drop_duplicates()\r\n",
+					"        \r\n",
+					"    hrm_count: int = hrm_df.count()\r\n",
+					"\r\n",
+					"    curated_count: int = spark.table(curated_table_full).count()\r\n",
+					"    \r\n",
+					"    return (hrm_count, curated_count, hrm_count == curated_count)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"hrm_table_full: str = f\"{hrm_db_name}.{hrm_table_final}\"\r\n",
+					"hrm_table_full\r\n",
+					"hrm_df: DataFrame = spark.sql(f\"select * from {hrm_table_full} where IsActive = 'Y'\").drop_duplicates()\r\n",
+					"hrm_df.columns"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name, data_model_columns)\n",
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 71
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -323,9 +408,10 @@
 				},
 				"source": [
 					"%%sql\n",
-					"SELECT * FROM  odw_standardised_db.sb_appeal_document\n",
-					"where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
+					"SELECT * FROM  odw_standardised_db.sb_nsip_document\n",
+					"--where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
 					"order by ingested_datetime\n",
+					"\n",
 					""
 				],
 				"execution_count": 72
@@ -349,8 +435,8 @@
 				},
 				"source": [
 					"%%sql\n",
-					"SELECT * FROM  odw_harmonised_db.sb_appeal_document\n",
-					"where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
+					"SELECT * FROM  odw_harmonised_db.sb_nsip_document\n",
+					"--where documentid = 'fa4b88ff-2f61-4b45-ad11-0e588f21cc65'\n",
 					"order by IngestionDate\n",
 					""
 				],
@@ -415,7 +501,7 @@
 					"*\n",
 					"FROM odw_harmonised_db.appeal_document\n",
 					"\n",
-					"where  documentid = '12471993'\n",
+					"--where  documentid = '12471993'\n",
 					"order BY\n",
 					"    ingestiondate DESC"
 				],
