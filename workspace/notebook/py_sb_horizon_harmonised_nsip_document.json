@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d1ada20c-2958-4b5b-affc-8428d3c5fb62"
+				"spark.autotune.trackingId": "9d964f99-7ba0-49b3-908a-78deff70fe15"
 			}
 		},
 		"metadata": {
@@ -75,11 +75,11 @@
 				},
 				"source": [
 					"service_bus_table = \"odw_harmonised_db.sb_nsip_document\"\n",
-					"horizon_table = \"odw_standardised_db.document_metadata\"\n",
+					"horizon_table = \"odw_standardised_db.document_meta_data\"\n",
 					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
 					"spark_table_final = \"odw_harmonised_db.document_metadata\""
 				],
-				"execution_count": 21
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +102,25 @@
 					"                        limit 10\r\n",
 					"\"\"\")"
 				],
-				"execution_count": 10
+				"execution_count": 27
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -194,16 +212,34 @@
 					}
 				},
 				"source": [
+					"c_sb.columns"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
 					"                    CAST(NULL AS LONG) AS NSIPDocumentId\n",
-					"                    ,Doc.documentId\n",
+					"                    ,Doc.dataId\n",
 					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
 					"                    ,Doc.caseReference\n",
 					"                    ,CAST(Doc.version AS INTEGER) AS version\n",
-					"                    ,Doc.filename as filename\n",
-					"                    ,Doc.filename as originalFilename\n",
+					"                    ,name  as filename\n",
+					"                    ,name  as originalFilename\n",
 					"                    ,CAST(Doc.size AS INTEGER) AS size\n",
 					"                    ,Aie.mime\n",
 					"                    ,Aie.documentURI\n",
@@ -223,14 +259,16 @@
 					"                    ,Aie.author\n",
 					"                    ,Doc.documentDescription AS description\n",
 					"                    ,CAST(NULL AS String) AS caseStage\n",
-					"                    ,Doc.folderid AS horizonFolderId\n",
+					"                    ,Doc.parentid AS horizonFolderId\n",
+					"                    ,Doc.filter1\n",
+					"                    ,Doc.filter2\n",
 					"                    \n",
 					"                    -- Start Horizon Fields Not in SB\n",
 					"                    ,Doc.caseNumber\n",
 					"                    ,Doc.caseworkTypeGroup\n",
 					"                    ,Doc.caseworkTypeAbbreviation\n",
 					"                    ,Doc.versionFilename\n",
-					"                    ,Doc.incomingOutgoingExternal\n",
+					"               \n",
 					"                    ,Doc.publishedStatus\n",
 					"                    -- END Horizon Fields Not in SB\n",
 					"\n",
@@ -248,7 +286,7 @@
 					"                    Doc.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
 					"            \"\"\")"
 				],
-				"execution_count": 4
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
