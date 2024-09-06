@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2ffed6f3-ed84-4c1d-9545-1f3905458980"
+				"spark.autotune.trackingId": "74637655-4651-4f5f-a082-f4e3938a9bcd"
 			}
 		},
 		"metadata": {
@@ -98,7 +98,8 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
 					"service_bus_data = spark.sql(f\"\"\"\r\n",
 					"                    SELECT DISTINCT\r\n",
-					"                        NSIPDocumentID\r\n",
+					"                        MD5(CONCAT(documentId, filename, version)) AS TEMP_PK\r\n",
+					"                        ,NSIPDocumentID\r\n",
 					"                        ,documentId\r\n",
 					"                        ,caseId\r\n",
 					"                        ,caseRef\r\n",
@@ -150,7 +151,7 @@
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 66
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -169,8 +170,15 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
-					"                    CAST(NULL AS LONG) AS NSIPDocumentID\n",
-					"                    ,Doc.dataId as documentId\n",
+					"                    MD5(\n",
+					"                        CONCAT(\n",
+					"                            CAST(Doc.dataId AS INTEGER), \n",
+					"                            Doc.name, \n",
+					"                            CAST(Doc.version AS INTEGER)\n",
+					"                        )\n",
+					"                    ) AS TEMP_PK\n",
+					"                    ,CAST(NULL AS LONG) AS NSIPDocumentID\n",
+					"                    ,CAST(Doc.dataId AS INTEGER) as documentId\n",
 					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
 					"                    ,Doc.caseReference AS caseRef\n",
 					"                    ,Doc.documentReference\n",
@@ -222,7 +230,26 @@
 					"                    Doc.expected_from = (SELECT MAX(expected_from) FROM {horizon_table})\n",
 					"            \"\"\")"
 				],
-				"execution_count": 67
+				"execution_count": 73
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(horizon_data.head(5))"
+				],
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
