@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c1937a8a-e492-4ba0-b93e-2bfcc1493664"
+				"spark.autotune.trackingId": "0c8b304a-eac8-468e-b442-748aa5e89adb"
 			}
 		},
 		"metadata": {
@@ -68,6 +68,7 @@
 					"import json\n",
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql import DataFrame\n",
+					"from pyspark.sql import functions as F\n",
 					"import pprint"
 				],
 				"execution_count": null
@@ -119,6 +120,7 @@
 					"aie_std_df = spark.table(f\"{std_db_name}.{aie_std_table_name}\")\r\n",
 					"aie_hrm_df = spark.table(f\"{hrm_db_name}.{aie_hrm_table_name}\")\r\n",
 					"hrm_final_df = spark.table(f\"{hrm_db_name}.{hrm_table_final}\")\r\n",
+					"hrm_final_df_active = hrm_final_df.filter(\"IsActive = 'Y'\")\r\n",
 					"curated_df = spark.table(f\"{curated_db_name}.{curated_table_name}\")\r\n",
 					"sb_std_df = spark.table(f\"{std_db_name}.{std_table_name}\")\r\n",
 					"sb_hrm_df = spark.table(f\"{hrm_db_name}.{hrm_table_name}\")\r\n",
@@ -849,9 +851,21 @@
 					}
 				},
 				"source": [
-					"def test_1_active_row_in_curated() -> bool:\r\n",
-					"    df = curated_df.groupby(\"documentId\").count().filter(\"count > 1\").orderBy(\"count\", ascending = False)\r\n",
-					"    return df.count() == 0\r\n",
+					"def test_document_row_counts_match(hrm_table_final: str, curated_table_name: str) -> DataFrame:\r\n",
+					"    # Count rows per documentId in harmonised final table\r\n",
+					"    hrm_final_counts = hrm_final_df_active.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"hrm_final_count\"))\r\n",
+					"\r\n",
+					"    # Count rows per documentId in curated table\r\n",
+					"    curated_counts = curated_df.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"curated_count\"))\r\n",
+					"\r\n",
+					"    # Join both tables on documentId to compare the counts\r\n",
+					"    comparison_df = hrm_final_counts.join(curated_counts, \"documentId\", how=\"outer\")\r\n",
+					"\r\n",
+					"    comparison_df = comparison_df.withColumn(\"count_difference\", F.col(\"hrm_final_count\") - F.col(\"curated_count\"))\r\n",
+					"\r\n",
+					"    non_zero_differences = comparison_df.filter(\"count_difference > 0\")\r\n",
+					"\r\n",
+					"    return non_zero_differences.count() == 0\r\n",
 					""
 				],
 				"execution_count": null
@@ -867,10 +881,89 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					"print(f\"Service bus std to hrm no documentIds dropped: {test_std_to_hrm_no_dropping_records(std_table_name, hrm_table_name)}\")"
+					"display(test_document_row_counts_match(hrm_table_final, curated_table_name))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select *\r\n",
+					"from odw_standardised_db.sb_appeal_document\r\n",
+					"where documentId = '169b8160-03ae-45fc-9a5e-68148b02b447'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select documentId, count(*)\r\n",
+					"from odw_harmonised_db.appeal_document\r\n",
+					"where isactive = 'Y'\r\n",
+					"group by documentId\r\n",
+					"having count(*) > 1\r\n",
+					"order by 2 desc"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select count(*)\r\n",
+					"from odw_curated_db.appeal_document\r\n",
+					"where documentId = '29478997'"
 				],
 				"execution_count": null
 			},
@@ -888,7 +981,25 @@
 					}
 				},
 				"source": [
-					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final)}\")"
+					"print(f\"Service bus std to hrm no documentIds dropped: {test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name)}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_sb_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final)}\")"
 				],
 				"execution_count": null
 			},
@@ -978,7 +1089,7 @@
 					}
 				},
 				"source": [
-					"print(f\"Only 1 active row in curated table: {test_1_active_row_in_curated()}\")"
+					"print(f\"Document row counts match for each document in harmonised final to curated: {test_document_row_counts_match(hrm_table_final, curated_table_name)}\")"
 				],
 				"execution_count": null
 			},
