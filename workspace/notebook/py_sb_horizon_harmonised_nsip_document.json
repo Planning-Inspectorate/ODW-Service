@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8af1994d-2b95-4f94-8e08-bb90b2ce5439"
+				"spark.autotune.trackingId": "894e356e-270a-4036-9517-8f76f433472b"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 131
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
 					"spark_table_final = \"odw_harmonised_db.document_metadata\""
 				],
-				"execution_count": 132
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -98,13 +98,13 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
 					"service_bus_data = spark.sql(f\"\"\"\r\n",
 					"                    SELECT DISTINCT\r\n",
-					"                        NSIPDocumentId\r\n",
+					"                        NSIPDocumentID\r\n",
 					"                        ,documentId\r\n",
 					"                        ,caseId\r\n",
-					"                        ,caseRef as caseReference\r\n",
+					"                        ,caseRef\r\n",
 					"                        ,documentReference\r\n",
-					"                        ,examinationRefNo\r\n",
 					"                        ,version\r\n",
+					"                        ,examinationRefNo\r\n",
 					"                        ,filename\r\n",
 					"                        ,originalFilename\r\n",
 					"                        ,size\r\n",
@@ -115,26 +115,26 @@
 					"                        ,virusCheckStatus\r\n",
 					"                        ,fileMD5\r\n",
 					"                        ,dateCreated\r\n",
-					"                        ,datePublished\r\n",
 					"                        ,lastModified\r\n",
 					"                        ,caseType\r\n",
 					"                        ,redactedStatus\r\n",
 					"                        ,publishedStatus\r\n",
+					"                        ,datePublished\r\n",
 					"                        ,documentType\r\n",
 					"                        ,securityClassification\r\n",
 					"                        ,sourceSystem\r\n",
 					"                        ,origin\r\n",
 					"                        ,owner\r\n",
 					"                        ,author\r\n",
-					"                        ,NULL as authorWelsh\r\n",
+					"                        ,authorWelsh\r\n",
 					"                        ,representative\r\n",
 					"                        ,description\r\n",
-					"                        ,NULL as descriptionWelsh\r\n",
+					"                        ,descriptionWelsh\r\n",
 					"                        ,documentCaseStage\r\n",
-					"                        ,horizonFolderId\r\n",
 					"                        ,filter1\r\n",
 					"                        ,filter1Welsh\r\n",
 					"                        ,filter2\r\n",
+					"                        ,horizonFolderId\r\n",
 					"                        ,transcriptId\r\n",
 					"                        \r\n",
 					"                        ,Migrated\r\n",
@@ -166,11 +166,30 @@
 					}
 				},
 				"source": [
+					"df = spark.table(horizon_table)\n",
+					"df.columns"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
-					"                    CAST(NULL AS LONG) AS NSIPDocumentId\n",
-					"                    ,Doc.dataId as documentid\n",
+					"                    CAST(NULL AS LONG) AS NSIPDocumentID\n",
+					"                    ,Doc.dataId as documentId\n",
 					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
 					"                    ,Doc.caseReference\n",
 					"                    ,Doc.documentReference\n",
@@ -296,7 +315,7 @@
 					"        AS\n",
 					"        SELECT  \n",
 					"            row_number() OVER(PARTITION BY documentId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"            ,row_number() OVER(ORDER BY IngestionDate asc, documentId asc) AS NSIPDocumentId\n",
+					"            ,row_number() OVER(ORDER BY IngestionDate asc, documentId asc) AS NSIPDocumentID\n",
 					"            ,documentId\n",
 					"            ,IngestionDate\n",
 					"            ,ValidTo\n",
@@ -329,7 +348,7 @@
 				"source": [
 					"df_calcs = spark.sql(f\"\"\"\n",
 					"                        SELECT\n",
-					"                            CurrentRow.NSIPDocumentId\n",
+					"                            CurrentRow.NSIPDocumentID\n",
 					"                            ,CurrentRow.documentId \n",
 					"                            ,CurrentRow.IngestionDate\n",
 					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
@@ -386,7 +405,7 @@
 				},
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
-					"                    SELECT DISTINCT NSIPDocumentId\n",
+					"                    SELECT DISTINCT NSIPDocumentID\n",
 					"                        ,documentId\n",
 					"                        ,caseId\n",
 					"                        ,caseReference\n",
@@ -428,7 +447,7 @@
 					"                        ,IngestionDate\n",
 					"                        ,ValidTo\n",
 					"                        ,MD5(CONCAT(\n",
-					"                                IFNULL(CAST(NSIPDocumentId AS bigint), '.')\n",
+					"                                IFNULL(CAST(NSIPDocumentID AS bigint), '.')\n",
 					"                                ,IFNULL(CAST(documentId AS String), '.')\n",
 					"                                ,IFNULL(CAST(caseId AS integer), '.')\n",
 					"                                ,IFNULL(CAST(caseReference AS String), '.')\n",
@@ -494,7 +513,7 @@
 				"source": [
 					"columns = results.columns\n",
 					"\n",
-					"results = results.drop(\"NSIPDocumentId\", \"ValidTo\", \"Migrated\", \"IsActive\")"
+					"results = results.drop(\"NSIPDocumentID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
 				"execution_count": 144
 			},
