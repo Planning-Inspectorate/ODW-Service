@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "93b2db12-9061-453e-9d8b-594e11a9c02a"
+				"spark.autotune.trackingId": "36f83d90-05bd-4523-82e9-1b4ef742ba65"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql import DataFrame"
 				],
-				"execution_count": 10
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -87,92 +87,193 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
 					"microsoft": {
 						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_document\n",
-					"\n",
-					"AS\n",
-					"\n",
-					"SELECT DISTINCT \n",
-					"MD.DataId\t                            AS documentId,\n",
-					"MD.CaseNodeId\t                        AS caseId,\n",
-					"DT.caseReference\t                    AS caseRef,\n",
-					"MD.documentReference\t                AS documentReference,\n",
-					"MD.Version                              AS version,\n",
-					"AMD.examinationRefNo\t                AS examinationRefNo,\n",
-					"MD.Name\t                                AS filename,\n",
-					"MD.Name\t                                AS originalFilename,\n",
-					"MD.DataSize\t                            AS size,\n",
-					"AMD.mime\t                            AS mime,\n",
-					"AMD.DocumentURI\t                        AS documentURI,\n",
-					"AMD.DocumentURI\t\t                    AS publishedDocumentURI,\n",
-					"AMD.Path                                AS path,\n",
-					"MD.virusCheckStatus\t                    AS virusCheckStatus,\n",
-					"AMD.fileMd5\t                            AS fileMD5,\n",
-					"MD.CreateDate                   \t    AS dateCreated,\n",
-					"MD.ModifyDate                   \t    AS lastModified,\n",
-					"LOWER(MD.CaseworkType)\t                AS caseType,\n",
-					"CASE\n",
-					"    WHEN AMD.redactedStatus = ' '   \n",
-					"    THEN NULL\n",
-					"    ELSE AMD.redactedStatus                \n",
-					"END                                     AS redactedStatus,\n",
-					"CASE\n",
-					"    WHEN MD.PublishedStatus = 'Depublished'\n",
-					"    THEN 'unpublished'\n",
-					"    ELSE REPLACE(\n",
-					"        LOWER(MD.PublishedStatus),\n",
-					"        ' ',\n",
-					"        '_')\n",
-					"END                  \t                AS publishedStatus,\n",
-					"MD.DatePublished                        AS datePublished,\n",
-					"MD.DocumentType\t                        AS documentType,\n",
-					"CASE\n",
-					"    WHEN AMD.securityClassification = ' '\n",
-					"    THEN NULL\n",
-					"    ELSE AMD.securityClassification\n",
-					"END\t                                    AS securityClassification,\n",
-					"DT.SourceSystem\t                        AS sourceSystem,\n",
-					"CASE\n",
-					"    WHEN AMD.origin  = ' '\n",
-					"    THEN NULL\n",
-					"    ELSE AMD.origin\n",
-					"END\t                                    AS origin,\n",
-					"AMD.owner                               AS owner,\n",
-					"MD.Author\t                            AS author,\n",
-					"NULL                                    AS authorWelsh,\n",
-					"MD.Representative\t                    AS representative,\n",
-					"MD.DocumentDescription\t                AS description,\n",
-					"NULL                                    AS descriptionWelsh,\n",
-					"CASE\n",
-					"    WHEN MD.DocumentCaseStage = \"Developer's Application\"\n",
-					"    THEN 'developers_application'\n",
-					"    WHEN MD.DocumentCaseStage = 'Post decision'\n",
-					"    THEN 'post_decision'\n",
-					"    ELSE LOWER(MD.DocumentCaseStage)\t            \n",
-					"END                                     AS documentCaseStage,\n",
-					"MD.Filter1\t                            AS filter1,\n",
-					"NULL                                    AS filter1Welsh,\n",
-					"MD.Filter2\t                            AS filter2,\n",
-					"MD.ParentID\t                            AS horizonFolderId,\n",
-					"NULL\t                                AS transcriptId\t\n",
-					"\n",
-					"FROM odw_curated_db.nsip_data DT\n",
-					"LEFT JOIN odw_harmonised_db.document_meta_data   AS MD\n",
-					"    ON DT.casereference = MD.caseReference\n",
-					"LEFT JOIN odw_harmonised_db.aie_document_data    AS AMD\n",
-					"    ON MD.DataID = AMD.DocumentID \n",
-					"        AND AMD.Version = MD.Version \n",
-					"        AND AMD.Size = MD.DataSize\n",
-					"WHERE AMD.IsActive = 'Y' \n",
-					"    AND MD.IsActive = 'Y'\n",
+					"%%sql\r\n",
+					"\r\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_document\r\n",
+					"\r\n",
+					"AS\r\n",
+					"\r\n",
+					"SELECT DISTINCT \r\n",
+					"MD.documentId,\r\n",
+					"MD.caseId,\r\n",
+					"DT.caseReference\t                    AS caseRef,\r\n",
+					"MD.documentReference,\r\n",
+					"MD.version,\r\n",
+					"MD.ExaminationRefNo,\r\n",
+					"MD.filename,\r\n",
+					"MD.originalFilename,\r\n",
+					"MD.size,\r\n",
+					"MD.mime,\r\n",
+					"MD.documentURI,\r\n",
+					"MD.publishedDocumentURI,\r\n",
+					"MD.path,\r\n",
+					"MD.VirusCheckStatus,\r\n",
+					"MD.fileMD5,\r\n",
+					"MD.dateCreated,\r\n",
+					"MD.lastModified,\r\n",
+					"LOWER(MD.caseType)\t                AS caseType,\r\n",
+					"CASE\r\n",
+					"    WHEN MD.redactedStatus = ' '   \r\n",
+					"    THEN NULL\r\n",
+					"    ELSE MD.redactedStatus                \r\n",
+					"END                                     AS redactedStatus,\r\n",
+					"CASE\r\n",
+					"    WHEN MD.PublishedStatus = 'Depublished'\r\n",
+					"    THEN 'unpublished'\r\n",
+					"    ELSE REPLACE(\r\n",
+					"        LOWER(MD.PublishedStatus),\r\n",
+					"        ' ',\r\n",
+					"        '_')\r\n",
+					"END                  \t                AS publishedStatus,\r\n",
+					"MD.datePublished,\r\n",
+					"MD.documentType,\r\n",
+					"CASE\r\n",
+					"    WHEN MD.securityClassification = ' '\r\n",
+					"    THEN NULL\r\n",
+					"    ELSE MD.securityClassification\r\n",
+					"END\t                                    AS securityClassification,\r\n",
+					"MD.sourceSystem,\r\n",
+					"CASE\r\n",
+					"    WHEN MD.origin  = ' '\r\n",
+					"    THEN NULL\r\n",
+					"    ELSE MD.origin\r\n",
+					"END\t                                    AS origin,\r\n",
+					"MD.owner,\r\n",
+					"MD.author,\r\n",
+					"MD.authorWelsh,\r\n",
+					"MD.representative,\r\n",
+					"MD.description,\r\n",
+					"MD.descriptionWelsh,\r\n",
+					"CASE\r\n",
+					"    WHEN MD.DocumentCaseStage = \"Developer's Application\"\r\n",
+					"    THEN 'developers_application'\r\n",
+					"    WHEN MD.DocumentCaseStage = 'Post decision'\r\n",
+					"    THEN 'post_decision'\r\n",
+					"    ELSE LOWER(MD.DocumentCaseStage)\t            \r\n",
+					"END                                     AS documentCaseStage,\r\n",
+					"MD.filter1,\r\n",
+					"filter1Welsh,\r\n",
+					"MD.filter2,\r\n",
+					"MD.horizonFolderId,\r\n",
+					"transcriptId\t\r\n",
+					"\r\n",
+					"FROM odw_harmonised_db.nsip_document   AS MD\r\n",
+					"LEFT JOIN  odw_curated_db.nsip_data DT\r\n",
+					"    ON DT.casereference = MD.caseRef\r\n",
+					"-- LEFT JOIN odw_harmonised_db.aie_document_data    AS AMD\r\n",
+					"--     ON MD.DataID = AMD.DocumentID \r\n",
+					"--         AND AMD.Version = MD.Version \r\n",
+					"--         AND AMD.Size = MD.DataSize\r\n",
+					"WHERE MD.IsActive = 'Y' \r\n",
+					"    -- AND MD.IsActive = 'Y'\r\n",
 					";"
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"\n",
+					"%%sql\n",
+					"-- CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_document\n",
+					"\n",
+					"-- AS\n",
+					"\n",
+					"-- SELECT DISTINCT \n",
+					"-- MD.DataId\t                            AS documentId,\n",
+					"-- MD.CaseNodeId\t                        AS caseId,\n",
+					"-- DT.caseReference\t                    AS caseRef,\n",
+					"-- MD.documentReference\t                AS documentReference,\n",
+					"-- MD.Version                              AS version,\n",
+					"-- AMD.examinationRefNo\t                AS examinationRefNo,\n",
+					"-- MD.Name\t                                AS filename,\n",
+					"-- MD.Name\t                                AS originalFilename,\n",
+					"-- MD.DataSize\t                            AS size,\n",
+					"-- AMD.mime\t                            AS mime,\n",
+					"-- AMD.DocumentURI\t                        AS documentURI,\n",
+					"-- AMD.DocumentURI\t\t                    AS publishedDocumentURI,\n",
+					"-- AMD.Path                                AS path,\n",
+					"-- MD.virusCheckStatus\t                    AS virusCheckStatus,\n",
+					"-- AMD.fileMd5\t                            AS fileMD5,\n",
+					"-- MD.CreateDate                   \t    AS dateCreated,\n",
+					"-- MD.ModifyDate                   \t    AS lastModified,\n",
+					"-- LOWER(MD.CaseworkType)\t                AS caseType,\n",
+					"-- CASE\n",
+					"--     WHEN AMD.redactedStatus = ' '   \n",
+					"--     THEN NULL\n",
+					"--     ELSE AMD.redactedStatus                \n",
+					"-- END                                     AS redactedStatus,\n",
+					"-- CASE\n",
+					"--     WHEN MD.PublishedStatus = 'Depublished'\n",
+					"--     THEN 'unpublished'\n",
+					"--     ELSE REPLACE(\n",
+					"--         LOWER(MD.PublishedStatus),\n",
+					"--         ' ',\n",
+					"--         '_')\n",
+					"-- END                  \t                AS publishedStatus,\n",
+					"-- MD.DatePublished                        AS datePublished,\n",
+					"-- MD.DocumentType\t                        AS documentType,\n",
+					"-- CASE\n",
+					"--     WHEN AMD.securityClassification = ' '\n",
+					"--     THEN NULL\n",
+					"--     ELSE AMD.securityClassification\n",
+					"-- END\t                                    AS securityClassification,\n",
+					"-- DT.SourceSystem\t                        AS sourceSystem,\n",
+					"-- CASE\n",
+					"--     WHEN AMD.origin  = ' '\n",
+					"--     THEN NULL\n",
+					"--     ELSE AMD.origin\n",
+					"-- END\t                                    AS origin,\n",
+					"-- AMD.owner                               AS owner,\n",
+					"-- MD.Author\t                            AS author,\n",
+					"-- NULL                                    AS authorWelsh,\n",
+					"-- MD.Representative\t                    AS representative,\n",
+					"-- MD.DocumentDescription\t                AS description,\n",
+					"-- NULL                                    AS descriptionWelsh,\n",
+					"-- CASE\n",
+					"--     WHEN MD.DocumentCaseStage = \"Developer's Application\"\n",
+					"--     THEN 'developers_application'\n",
+					"--     WHEN MD.DocumentCaseStage = 'Post decision'\n",
+					"--     THEN 'post_decision'\n",
+					"--     ELSE LOWER(MD.DocumentCaseStage)\t            \n",
+					"-- END                                     AS documentCaseStage,\n",
+					"-- MD.Filter1\t                            AS filter1,\n",
+					"-- NULL                                    AS filter1Welsh,\n",
+					"-- MD.Filter2\t                            AS filter2,\n",
+					"-- MD.ParentID\t                            AS horizonFolderId,\n",
+					"-- NULL\t                                AS transcriptId\t\n",
+					"\n",
+					"-- FROM odw_curated_db.nsip_data DT\n",
+					"-- LEFT JOIN odw_harmonised_db.document_meta_data   AS MD\n",
+					"--     ON DT.casereference = MD.caseReference\n",
+					"-- LEFT JOIN odw_harmonised_db.aie_document_data    AS AMD\n",
+					"--     ON MD.DataID = AMD.DocumentID \n",
+					"--         AND AMD.Version = MD.Version \n",
+					"--         AND AMD.Size = MD.DataSize\n",
+					"-- WHERE AMD.IsActive = 'Y' \n",
+					"--     AND MD.IsActive = 'Y'\n",
+					"-- ;"
 				],
 				"execution_count": 11
 			},
@@ -205,7 +306,7 @@
 				"source": [
 					"data: DataFrame = spark.sql(\"SELECT * FROM odw_curated_db.vw_nsip_document\")"
 				],
-				"execution_count": 12
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -236,7 +337,7 @@
 				"source": [
 					"schema: StructType = spark.table(\"odw_curated_db.nsip_document\").schema"
 				],
-				"execution_count": 13
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -274,7 +375,7 @@
 					"    ]\n",
 					")"
 				],
-				"execution_count": 14
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -306,7 +407,7 @@
 				"source": [
 					"df.printSchema()"
 				],
-				"execution_count": 15
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -337,7 +438,25 @@
 				"source": [
 					"df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(\"odw_curated_db.nsip_document\")"
 				],
-				"execution_count": 16
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
