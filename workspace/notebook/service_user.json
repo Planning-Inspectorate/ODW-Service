@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e9a4d8ac-6b9f-4cad-98cb-470916db03ac"
+				"spark.autotune.trackingId": "93e14ee1-d04d-47bf-8a1f-20abfd484940"
 			}
 		},
 		"metadata": {
@@ -359,8 +359,478 @@
 					}
 				},
 				"source": [
-					"Looking at the first source we will consider the master service user table from Horizon (casework_case_involvement_dim). Discussions have identified that this is no longer needed."
+					"Looking at the first source we will consider the master service user table from Horizon (casework_case_involvement_dim). Discussions have identified that this is needed only for appeals."
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_casework_raw\r\n",
+					"AS\r\n",
+					"SELECT DISTINCT\r\n",
+					"\tCAST(NULL AS String) AS Id\r\n",
+					"\t,salutation\r\n",
+					"\t,firstName\r\n",
+					"\t,lastName\r\n",
+					"\t,addressLine1\r\n",
+					"\t,addressLine2\r\n",
+					"\t,addressTown\r\n",
+					"\t,addressCounty\r\n",
+					"\t,postcode\r\n",
+					"\t,addressCountry\r\n",
+					"\t,organisation\r\n",
+					"\t,organisationType\r\n",
+					"\t,role\r\n",
+					"\t,telephoneNumber\r\n",
+					"\t,otherPhoneNumber\r\n",
+					"\t,faxNumber\r\n",
+					"\t,emailAddress\r\n",
+					"\t,CAST(NULL AS String) AS webAddress\r\n",
+					"\t,CASE serviceUserType\r\n",
+					"\t\tWHEN 'Apellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\t\tWHEN 'Appellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\t\tWHEN 'tAppellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\tEND AS serviceUserType\r\n",
+					"\t,caseReference\r\n",
+					"\t,'Horizon' AS sourceSystem\r\n",
+					"\t,source.ContactID AS sourceSUID -- prefixes on the ContactID are dropped as these aren't consistent in Horizon and cause matching issues.\\n\",\r\n",
+					"\t,caseInvolvementID\r\n",
+					"\t,2 AS Source_priority\r\n",
+					"FROM\r\n",
+					"\todw_harmonised_db.casework_case_involvement_dim AS source\r\n",
+					"WHERE\r\n",
+					"\tsource.IsActive = 'Y'\r\n",
+					"\tAND CASE serviceUserType\r\n",
+					"\t\tWHEN 'Apellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\t\tWHEN 'Appellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\t\tWHEN 'tAppellant' THEN\r\n",
+					"\t\t\t'Appellant'\r\n",
+					"\tEND IS NOT NULL"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- View for match criteria 1\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_URI_Match\r\n",
+					"AS\r\n",
+					"SELECT\r\n",
+					"\ttarget.Id\r\n",
+					"\t,source.caseInvolvementID\r\n",
+					"FROM\r\n",
+					"\tvw_Horizon_casework_raw AS source\r\n",
+					"\tINNER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
+					"\t\t ON source.CaseReference = target.caseReference\r\n",
+					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
+					"\t\tAND source.sourceSystem = target.sourceSystem\r\n",
+					"\t\tAND source.sourceSUID = target.sourceSUID"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- View for match criteria 2\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_name_Address_Match\r\n",
+					"AS\r\n",
+					"SELECT\r\n",
+					"\ttarget.Id\r\n",
+					"\t,source.caseInvolvementID\r\n",
+					"FROM\r\n",
+					"\tvw_Horizon_casework_raw AS source\r\n",
+					"\tINNER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
+					"\t\tON source.CaseReference = target.caseReference\r\n",
+					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
+					"\t\tAND ( -- Name match\r\n",
+					"\t\t\t\tCONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"\t\t\t\tOR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
+					"\t\t\t\tOR (-- separated name elements. Coalesce to cater for org only matches\r\n",
+					"\t\t\t\t\tCOALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
+					"\t\t\t\t\tAND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
+					"\t\t\t\t)\r\n",
+					"\t\t\t\tOR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
+					"\t\t\t\t\tsource.organisation = target.firstName\r\n",
+					"\t\t\t\t\tAND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
+					"\t\t\t\t\tAND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"\t\t\t\t)\r\n",
+					"\t\t)\r\n",
+					"\t\tAND ( -- Address elements match\\n\",\r\n",
+					"\t\t\tCOALESCE(source.AddressLine1, '') = COALESCE(target.AddressLine1, '')\r\n",
+					"\t\t\tAND COALESCE(source.AddressLine2, '') = COALESCE(target.AddressLine2, '')\r\n",
+					"\t\t\tAND COALESCE(source.addressTown, '') = COALESCE(target.addressTown, '')\r\n",
+					"\t\t\tAND COALESCE(source.addressCounty, '') = COALESCE(target.addressCounty, '')\r\n",
+					"\t\t\tAND COALESCE(source.postcode, '') = COALESCE(target.postcode, '')\r\n",
+					"\t\t\tAND COALESCE(source.organisation, '') = COALESCE(target.organisation, '')\r\n",
+					"\t\t\tAND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
+					"\t\t)"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"---View for match criteria 3\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_name_Tel_Match\r\n",
+					"AS\r\n",
+					"SELECT\r\n",
+					"\ttarget.Id\r\n",
+					"\t,source.caseInvolvementID\r\n",
+					"FROM\r\n",
+					"\tvw_Horizon_casework_raw AS source\r\n",
+					"\tINNER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
+					"\t\tON source.CaseReference = target.caseReference\r\n",
+					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
+					"\t\tAND ( -- Name match\r\n",
+					"\t\t\tCONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"\t\t\tOR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
+					"\t\t\tOR (-- separated name elements. Coalesce to cater for org only matches\r\n",
+					"\t\t\t\tCOALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
+					"\t\t\t\tAND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
+					"\t\t\t\t)\r\n",
+					"\t\t\tOR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
+					"\t\t\t\tsource.organisation = target.firstName\r\n",
+					"\t\t\t\tAND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
+					"\t\t\t\tAND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"\t\t\t)\r\n",
+					"\t\t)\r\n",
+					"\t\tAND ( -- At least one telephone element matches\r\n",
+					"\t\t\tsource.telephoneNumber = target.telephoneNumber\r\n",
+					"\t\t\tOR source.otherPhoneNumber = target.otherPhoneNumber\r\n",
+					"\t\t\tOR source.faxNumber = target.faxNumber\r\n",
+					"\t\t)"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- View for match criteria 4\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_email_match\r\n",
+					"AS\r\n",
+					"SELECT\r\n",
+					"\ttarget.Id\r\n",
+					"\t,source.caseInvolvementID\r\n",
+					"FROM\r\n",
+					"\tvw_Horizon_casework_raw AS source\r\n",
+					"\tINNER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
+					"\t\tON source.CaseReference = target.caseReference\r\n",
+					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
+					"\t\tAND ( -- Name match\r\n",
+					"\t\t\t\tCONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.firstName -- some records have all name components merged into one record\r\n",
+					"\t\t\t\tOR CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) = target.lastName\r\n",
+					"\t\t\t\tOR (-- separated name elements. Coalesce to cater for org only matches\r\n",
+					"\t\t\t\t\tCOALESCE(source.firstName, '') = COALESCE(target.firstName, '')\r\n",
+					"\t\t\t\t\tAND COALESCE(source.lastName, '') = COALESCE(target.lastName, '')\r\n",
+					"\t\t\t\t)\r\n",
+					"\t\t\t\tOR (-- some org records have been put in the first name, but also need to make sure this isn't a name\r\n",
+					"\t\t\t\t\tsource.organisation = target.firstName\r\n",
+					"\t\t\t\t\tAND (source.firstName <> target.firstName  AND source.lastName <> target.lastName)\r\n",
+					"\t\t\t\t\tAND CONCAT(COALESCE(source.firstName, ''), ' ', COALESCE(source.lastName, '')) <> target.firstName\r\n",
+					"\t\t\t\t)\r\n",
+					"\t\t\t)\r\n",
+					"\t\tAND ( -- Email matches\r\n",
+					"\t\t\t\tsource.emailAddress = target.emailAddress\r\n",
+					"\t\t\t)"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"-- View to dedupe results and make sure we have a one to one mapping on upsert\r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_Upsert\r\n",
+					"AS\r\n",
+					"WITH match_results\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"\tSELECT\r\n",
+					"\t\tId\r\n",
+					"\t\t,caseInvolvementID\r\n",
+					"\tFROM\r\n",
+					"\t\tvw_Horizon_URI_Match\r\n",
+					"\tUNION\r\n",
+					"\tSELECT\r\n",
+					"\t\taddress.Id\r\n",
+					"\t\t,address.caseInvolvementID\r\n",
+					"\tFROM\r\n",
+					"\t\tvw_Horizon_name_Address_Match AS address\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_URI_Match AS uri\r\n",
+					"\t\t\tON address.caseInvolvementID = uri.caseInvolvementID\r\n",
+					"\tWHERE\r\n",
+					"\t\turi.caseInvolvementID IS NULL\r\n",
+					"\tUNION\r\n",
+					"\tSELECT\r\n",
+					"\t\ttel.Id\r\n",
+					"\t\t,tel.caseInvolvementID\r\n",
+					"\tFROM\r\n",
+					"\t\tvw_Horizon_name_Tel_Match AS tel\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_name_Address_Match AS address\r\n",
+					"\t\t\tON tel.caseInvolvementID = address.caseInvolvementID\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_URI_Match AS uri\r\n",
+					"\t\t\t\tON tel.caseInvolvementID = uri.caseInvolvementID\r\n",
+					"\tWHERE\r\n",
+					"\t\turi.caseInvolvementID IS NULL\r\n",
+					"\t\tAND address.caseInvolvementID IS NULL\r\n",
+					"\tUNION\r\n",
+					"\tSELECT\r\n",
+					"\t\temail.Id\r\n",
+					"\t\t,email.caseInvolvementID\r\n",
+					"\tFROM\r\n",
+					"\t\tvw_Horizon_email_match AS email\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_name_Tel_Match AS tel\r\n",
+					"\t\t\tON email.caseInvolvementID = tel.caseInvolvementID\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_name_Address_Match AS address\r\n",
+					"\t\t\tON email.caseInvolvementID = address.caseInvolvementID\r\n",
+					"\t\tLEFT OUTER JOIN vw_Horizon_URI_Match AS uri\r\n",
+					"\t\t\t\tON email.caseInvolvementID = uri.caseInvolvementID\r\n",
+					"\tWHERE\r\n",
+					"\t\turi.caseInvolvementID IS NULL\r\n",
+					"\t\tAND address.caseInvolvementID IS NULL\r\n",
+					"\t\tAND tel.caseInvolvementID IS NULL\r\n",
+					"),\r\n",
+					"dedupe\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"\tSELECT\r\n",
+					"\t\tRow_number() OVER(PARTITION BY id ORDER BY CaseInvolvementID DESC) AS MatchID\r\n",
+					"\t\t,Id\r\n",
+					"\t\t,CaseInvolvementID\r\n",
+					"\tFROM\r\n",
+					"\t\tmatch_results\r\n",
+					")\r\n",
+					"SELECT\r\n",
+					"\tdedupe.Id\r\n",
+					"\t,raw.salutation\r\n",
+					"\t,raw.firstName\r\n",
+					"\t,raw.lastName\r\n",
+					"\t,raw.addressline1\r\n",
+					"\t,raw.addressline2\r\n",
+					"\t,raw.addressTown\r\n",
+					"\t,raw.addressCounty\r\n",
+					"\t,raw.postcode\r\n",
+					"\t,raw.addressCountry\r\n",
+					"\t,raw.organisation\r\n",
+					"\t,raw.organisationType\r\n",
+					"\t,raw.role\r\n",
+					"\t,raw.telephoneNumber\r\n",
+					"\t,raw.otherPhoneNumber\r\n",
+					"\t,raw.faxNumber\r\n",
+					"\t,raw.emailAddress\r\n",
+					"\t,raw.webAddress\r\n",
+					"\t,raw.serviceUserType\r\n",
+					"\t,raw.caseReference\r\n",
+					"\t,raw.sourceSystem\r\n",
+					"\t,raw.sourceSUID\r\n",
+					"\t,raw.Source_priority\r\n",
+					"FROM\r\n",
+					"\tvw_Horizon_casework_raw AS raw\r\n",
+					"\tLEFT OUTER JOIN dedupe\r\n",
+					"\t\tON raw.CaseInvolvementID = dedupe.CaseInvolvementID\r\n",
+					"\t\tAND MatchID = 1"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\r\n",
+					"MERGE INTO odw_harmonised_db.curated_service_user AS target\r\n",
+					"USING vw_Horizon_Upsert AS source\r\n",
+					"\tON source.id = target.id\r\n",
+					"\tAND source.caseReference = target.caseReference\r\n",
+					"WHEN MATCHED THEN\r\n",
+					"\tUPDATE\r\n",
+					"\tSET\r\n",
+					"\t\tsalutation = CASE WHEN source.Source_priority <= target.source_priority THEN source.salutation ELSE target.salutation END\r\n",
+					"\t\t,firstName = CASE WHEN source.Source_priority <= target.source_priority THEN source.FirstName ELSE target.FirstName END\r\n",
+					"\t\t,lastName = CASE WHEN source.Source_priority <= target.source_priority THEN source.LastName ELSE target.LastName END\r\n",
+					"\t\t,addressLine1 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine1 ELSE target.addressLine1 END\r\n",
+					"\t\t,AddressLine2 = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressLine2 ELSE target.addressLine2 END\r\n",
+					"\t\t,addressTown = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressTown ELSE target.addressTown END\r\n",
+					"\t\t,addressCounty = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCounty ELSE target.addressCounty END\r\n",
+					"\t\t,postcode = CASE WHEN source.Source_priority <= target.source_priority THEN source.postcode ELSE target.postcode END\r\n",
+					"\t\t,addressCountry = CASE WHEN source.Source_priority <= target.source_priority THEN source.addressCountry ELSE target.addressCountry END\r\n",
+					"\t\t,organisation = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisation ELSE target.organisation END\r\n",
+					"\t\t,organisationType = CASE WHEN source.Source_priority <= target.source_priority THEN source.organisationType ELSE target.organisationType END\r\n",
+					"\t\t,role = CASE WHEN source.Source_priority <= target.source_priority THEN source.role ELSE target.role END\r\n",
+					"\t\t,telephoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.telephoneNumber ELSE target.telephoneNumber END\r\n",
+					"\t\t,otherPhoneNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.otherPhoneNumber ELSE target.otherPhoneNumber END\r\n",
+					"\t\t,faxNumber = CASE WHEN source.Source_priority <= target.source_priority THEN source.faxNumber ELSE target.faxNumber END\r\n",
+					"\t\t,emailAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.emailAddress ELSE target.emailAddress END\r\n",
+					"\t\t,webAddress = CASE WHEN source.Source_priority <= target.source_priority THEN source.webAddress ELSE target.webAddress END\r\n",
+					"\t\t,serviceUserType = CASE WHEN source.Source_priority <= target.source_priority THEN source.serviceUserType ELSE target.serviceUserType END\r\n",
+					"\t\t,sourceSystem = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSystem ELSE target.sourceSystem END\r\n",
+					"\t\t,sourceSUID = CASE WHEN source.Source_priority <= target.source_priority THEN source.sourceSUID ELSE target.sourceSUID END\r\n",
+					"\t\t,source_priority = CASE WHEN source.Source_priority <= target.source_priority THEN source.source_priority ELSE target.source_priority END\r\n",
+					"WHEN NOT MATCHED THEN\r\n",
+					"\tINSERT (\r\n",
+					"\t\tid\r\n",
+					"\t\t,caseReference\r\n",
+					"\t\t,salutation\r\n",
+					"\t\t,firstName\r\n",
+					"\t\t,lastName\r\n",
+					"\t\t,addressLine1\r\n",
+					"\t\t,AddressLine2\r\n",
+					"\t\t,addressTown\r\n",
+					"\t\t,addressCounty\r\n",
+					"\t\t,postcode\r\n",
+					"\t\t,addressCountry\r\n",
+					"\t\t,organisation\r\n",
+					"\t\t,organisationType\r\n",
+					"\t\t,role\r\n",
+					"\t\t,telephoneNumber\r\n",
+					"\t\t,otherPhoneNumber\r\n",
+					"\t\t,faxNumber\r\n",
+					"\t\t,emailAddress\r\n",
+					"\t\t,webAddress\r\n",
+					"\t\t,serviceUserType\r\n",
+					"\t\t,sourceSystem\r\n",
+					"\t\t,sourceSUID\r\n",
+					"\t\t,source_priority\r\n",
+					"\t)\r\n",
+					"\tVALUES (\r\n",
+					"\t\tsource.id\r\n",
+					"\t\t,source.caseReference\r\n",
+					"\t\t,source.salutation\r\n",
+					"\t\t,source.FirstName\r\n",
+					"\t\t,source.lastName\r\n",
+					"\t\t,source.addressLine1\r\n",
+					"\t\t,source.addressLine2\r\n",
+					"\t\t,source.addressTown\r\n",
+					"\t\t,source.addressCounty\r\n",
+					"\t\t,source.postcode\r\n",
+					"\t\t,source.addressCountry\r\n",
+					"\t\t,source.organisation\r\n",
+					"\t\t,source.organisationType\r\n",
+					"\t\t,source.role\r\n",
+					"\t\t,source.telephoneNumber\r\n",
+					"\t\t,source.otherPhoneNumber\r\n",
+					"\t\t,source.faxNumber\r\n",
+					"\t\t,source.emailAddress\r\n",
+					"\t\t,source.webAddress\r\n",
+					"\t\t,source.serviceUserType\r\n",
+					"\t\t,source.sourceSystem\r\n",
+					"\t\t,source.sourceSUID\r\n",
+					"\t\t,source.source_priority\r\n",
+					"\t\t)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
