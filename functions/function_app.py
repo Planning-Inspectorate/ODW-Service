@@ -687,12 +687,17 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
                         ConnectionStringSetting="SqlConnectionString",
                         data_type=DataType.STRING)
 def get_timesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.HttpResponse:
-    with open("timesheets_sql.sql", 'r') as timesheets_query:
-        timesheets_sql = timesheets_query.read()
-        timesheet.set('CommandText', timesheets_sql)
-    rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
-    return func.HttpResponse(
-        json.dumps(rows),
-        status_code=200,
-        mimetype="application/json"
-    )
+    try:
+        with open("timesheets_sql.sql", 'r') as timesheets_query:
+            timesheets_sql = timesheets_query.read()
+            timesheet.set('CommandText', timesheets_sql)
+        rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
