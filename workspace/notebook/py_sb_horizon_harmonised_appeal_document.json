@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "65cfa297-f102-4d15-b643-70677ca6db66"
+				"spark.autotune.trackingId": "351ea25f-83af-47aa-bd92-dd3150411aa7"
 			}
 		},
 		"metadata": {
@@ -77,7 +77,9 @@
 					"service_bus_table = \"odw_harmonised_db.sb_appeal_document\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_appeals_document_metadata\"\n",
 					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
-					"spark_table_final = \"odw_harmonised_db.appeal_document\""
+					"spark_table_final = \"odw_harmonised_db.appeal_document\"\n",
+					"\n",
+					"primary_key = 'TEMP_PK'"
 				],
 				"execution_count": null
 			},
@@ -98,7 +100,8 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\n",
 					"service_bus_data = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT\n",
-					"                        AppealsDocumentMetadataID\n",
+					"                        MD5(CONCAT(documentId, filename, version)) AS {primary_key}\n",
+					"                        ,AppealsDocumentMetadataID\n",
 					"                        ,documentId\n",
 					"                        ,caseId\n",
 					"                        ,caseReference\n",
@@ -167,7 +170,14 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
-					"                    CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
+					"                    MD5(\n",
+					"                        CONCAT(\n",
+					"                            CAST(Doc.documentId AS INTEGER), \n",
+					"                            Doc.filename, \n",
+					"                            CAST(Doc.version AS INTEGER)\n",
+					"                        )\n",
+					"                    ) AS {primary_key}\n",
+					"                    ,CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
 					"                    ,Doc.documentId\n",
 					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
 					"                    ,Doc.caseReference\n",
@@ -325,25 +335,45 @@
 					"#             {spark_table_final}\n",
 					"#     \"\"\")\n",
 					"\n",
+					"# spark.sql(f\"\"\"\n",
+					"# CREATE OR REPLACE TEMPORARY VIEW vw_appeal_document_calculations_base AS\n",
+					"#     SELECT  \n",
+					"#         row_number() OVER(PARTITION BY documentId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed,\n",
+					"#         row_number() OVER(ORDER BY IngestionDate ASC, documentId ASC) AS AppealsDocumentMetadataID,\n",
+					"#         documentId,\n",
+					"#         IngestionDate,\n",
+					"#         ValidTo,\n",
+					"#         '0' AS Migrated,\n",
+					"#         CASE \n",
+					"#             WHEN COUNT(*) OVER (PARTITION BY documentId, IngestionDate) > 1 THEN 'Y'\n",
+					"#             ELSE CASE row_number() OVER (PARTITION BY documentId ORDER BY IngestionDate DESC)\n",
+					"#                     WHEN 1 THEN 'Y'\n",
+					"#                     ELSE 'N'\n",
+					"#                  END\n",
+					"#         END AS IsActive\n",
+					"#         FROM {spark_table_final}\n",
+					"#         \"\"\"\n",
+					"#         )\n",
+					"\n",
 					"spark.sql(f\"\"\"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_appeal_document_calculations_base AS\n",
-					"    SELECT  \n",
-					"        row_number() OVER(PARTITION BY documentId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed,\n",
-					"        row_number() OVER(ORDER BY IngestionDate ASC, documentId ASC) AS AppealsDocumentMetadataID,\n",
-					"        documentId,\n",
-					"        IngestionDate,\n",
-					"        ValidTo,\n",
-					"        '0' AS Migrated,\n",
-					"        CASE \n",
-					"            WHEN COUNT(*) OVER (PARTITION BY documentId, IngestionDate) > 1 THEN 'Y'\n",
-					"            ELSE CASE row_number() OVER (PARTITION BY documentId ORDER BY IngestionDate DESC)\n",
-					"                    WHEN 1 THEN 'Y'\n",
-					"                    ELSE 'N'\n",
-					"                 END\n",
-					"        END AS IsActive\n",
-					"        FROM {spark_table_final}\n",
-					"        \"\"\"\n",
-					"        )\n",
+					"    CREATE OR REPLACE TEMPORARY VIEW vw_appeal_document_calculations_base\n",
+					"        AS\n",
+					"        SELECT  \n",
+					"            row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"            ,row_number() OVER(ORDER BY IngestionDate asc, {primary_key} asc) AS AppealsDocumentMetadataID\n",
+					"            ,{primary_key}\n",
+					"            ,IngestionDate\n",
+					"            ,ValidTo\n",
+					"            ,'0' AS Migrated\n",
+					"            ,CASE row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC)\n",
+					"                WHEN 1 THEN\n",
+					"                    'Y'\n",
+					"                ELSE\n",
+					"                    'N'\n",
+					"            END AS IsActive                \n",
+					"        FROM\n",
+					"            {spark_table_final}\n",
+					"    \"\"\")\n",
 					""
 				],
 				"execution_count": null
@@ -367,7 +397,8 @@
 				},
 				"source": [
 					"%%sql \r\n",
-					"select * from vw_appeal_document_calculations_base where documentId = '17427559'"
+					"select * from vw_appeal_document_calculations_base \r\n",
+					"where TEMP_PK in ('c01e39548431e17ddf1a69c52ff1aa04', '317d946be974e7f32145b2a268932db7')"
 				],
 				"execution_count": null
 			},
@@ -408,31 +439,54 @@
 					"#                             ORDER BY currentRow.ReverseOrderProcessed\n",
 					"#                     \"\"\")\n",
 					"\n",
+					"# df_calcs = spark.sql(f\"\"\"\n",
+					"# SELECT\n",
+					"#     CurrentRow.AppealsDocumentMetadataID,\n",
+					"#     CurrentRow.documentId,\n",
+					"#     CurrentRow.IngestionDate,\n",
+					"#     CASE \n",
+					"#         WHEN CurrentRow.IsActive = 'Y' THEN NULL\n",
+					"#         ELSE COALESCE(NULLIF(CurrentRow.ValidTo, ''), NextRow.IngestionDate)\n",
+					"#     END AS ValidTo,\n",
+					"#     CASE\n",
+					"#         WHEN Raw.documentId IS NOT NULL THEN '1'\n",
+					"#         ELSE '0'\n",
+					"#     END AS Migrated,\n",
+					"#     CurrentRow.IsActive\n",
+					"# FROM\n",
+					"#     vw_appeal_document_calculations_base AS CurrentRow\n",
+					"#     LEFT OUTER JOIN vw_appeal_document_calculations_base AS NextRow\n",
+					"#         ON CurrentRow.documentId = NextRow.documentId\n",
+					"#         AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
+					"#     LEFT OUTER JOIN (SELECT DISTINCT documentId FROM odw_harmonised_db.sb_appeal_document) AS Raw\n",
+					"#         ON CurrentRow.documentId = Raw.documentId\n",
+					"# ORDER BY \n",
+					"#     CurrentRow.ReverseOrderProcessed;\n",
+					"# \"\"\"\n",
+					"# )\n",
+					"\n",
 					"df_calcs = spark.sql(f\"\"\"\n",
-					"SELECT\n",
-					"    CurrentRow.AppealsDocumentMetadataID,\n",
-					"    CurrentRow.documentId,\n",
-					"    CurrentRow.IngestionDate,\n",
-					"    CASE \n",
-					"        WHEN CurrentRow.IsActive = 'Y' THEN NULL\n",
-					"        ELSE COALESCE(NULLIF(CurrentRow.ValidTo, ''), NextRow.IngestionDate)\n",
-					"    END AS ValidTo,\n",
-					"    CASE\n",
-					"        WHEN Raw.documentId IS NOT NULL THEN '1'\n",
-					"        ELSE '0'\n",
-					"    END AS Migrated,\n",
-					"    CurrentRow.IsActive\n",
-					"FROM\n",
-					"    vw_appeal_document_calculations_base AS CurrentRow\n",
-					"    LEFT OUTER JOIN vw_appeal_document_calculations_base AS NextRow\n",
-					"        ON CurrentRow.documentId = NextRow.documentId\n",
-					"        AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"    LEFT OUTER JOIN (SELECT DISTINCT documentId FROM odw_harmonised_db.sb_appeal_document) AS Raw\n",
-					"        ON CurrentRow.documentId = Raw.documentId\n",
-					"ORDER BY \n",
-					"    CurrentRow.ReverseOrderProcessed;\n",
-					"\"\"\"\n",
-					")"
+					"                        SELECT\n",
+					"                            CurrentRow.AppealsDocumentMetadataID\n",
+					"                            ,CurrentRow.{primary_key} \n",
+					"                            ,CurrentRow.IngestionDate\n",
+					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
+					"                            ,CASE\n",
+					"                                WHEN raw.{primary_key} IS NOT NULL THEN \n",
+					"                                    \"1\"\n",
+					"                                ELSE \n",
+					"                                    \"0\"\n",
+					"                            END AS Migrated\n",
+					"                            ,CurrentRow.IsActive\n",
+					"                        FROM\n",
+					"                            vw_appeal_document_calculations_base AS CurrentRow\n",
+					"                            LEFT OUTER JOIN vw_appeal_document_calculations_base AS NextRow\n",
+					"                                ON CurrentRow.{primary_key} = NextRow.{primary_key}\n",
+					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT MD5(CONCAT(documentId, filename, version)) AS {primary_key} FROM  odw_harmonised_db.sb_appeal_document) AS Raw\n",
+					"                                ON CurrentRow.{primary_key} = Raw.{primary_key} \n",
+					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
+					"                    \"\"\")"
 				],
 				"execution_count": null
 			},
@@ -450,7 +504,7 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"documentId\", \"temp_documentId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
+					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
 				"execution_count": null
 			},
@@ -469,7 +523,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(df_calcs.filter(\"documentId = '17427559'\"))"
+					"display(df_calcs.filter(\"temp_TEMP_PK in ('c01e39548431e17ddf1a69c52ff1aa04', '317d946be974e7f32145b2a268932db7')\"))"
 				],
 				"execution_count": null
 			},
@@ -490,6 +544,7 @@
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT AppealsDocumentMetadataID\n",
+					"                        ,{primary_key}\n",
 					"                        ,documentId\n",
 					"                        ,caseId\n",
 					"                        ,caseReference\n",
@@ -615,7 +670,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(results.filter(\"documentId = '17427559'\"))"
+					"display(results.filter(\"TEMP_PK in ('c01e39548431e17ddf1a69c52ff1aa04', '317d946be974e7f32145b2a268932db7')\"))"
 				],
 				"execution_count": null
 			},
@@ -633,9 +688,9 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_documentId\"] == results[\"documentId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
-					"columns_to_consider = [c for c in final_df.columns if c not in [\"AppealsDocumentMetadataID\", \"ValidTo\"]]\n",
-					"final_df = final_df.drop_duplicates(subset=columns_to_consider)"
+					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
+					"# columns_to_consider = [c for c in final_df.columns if c not in [\"AppealsDocumentMetadataID\", \"ValidTo\"]]\n",
+					"final_df = final_df.drop(primary_key).drop_duplicates()"
 				],
 				"execution_count": null
 			},
@@ -654,7 +709,8 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(final_df.filter(\"documentId = '17427559'\"))"
+					"display(final_df.filter(\"documentId = '17427559'\"))\r\n",
+					"# display(final_df)"
 				],
 				"execution_count": null
 			},
