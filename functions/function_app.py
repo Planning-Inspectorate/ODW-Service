@@ -692,7 +692,7 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
 @_app.function_name(name="get_timesheets")
 @_app.route(route="timesheets/{caseType}/{searchCriteria}", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
 @_app.sql_input(arg_name="timesheet",
-                command_text="SELECT TOP (100) * FROM [odw_standardised_db].[dbo].[horizon_s62a_view_cases]",
+                command_text="SELECT TOP (100) * FROM [odw_harmonised_db].[dbo].[s62a_view_cases_dim] WHERE [Name] LIKE '@searchCriteria'",
                 command_type="Text",
                 parameters="@caseType={caseType},@searchCriteria={searchCriteria}",
                 connection_string_setting="SqlConnectionString")
