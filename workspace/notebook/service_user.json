@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "94dfa9a2-82e7-4a78-90cc-6b35e4b7bf0c"
+				"spark.autotune.trackingId": "29a6b4ba-5b0b-4647-ae8b-da58a9c4e52b"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"\n",
 					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 1
+				"execution_count": 74
 			},
 			{
 				"cell_type": "markdown",
@@ -141,8 +141,8 @@
 					}
 				},
 				"source": [
-					"if spark._jsparkSession.catalog().tableExists('odw_harmonised_db', 'sb_service_user'):\n",
-					"    print(\"service_user exists. Moving on to maintaining\")\n",
+					"if spark._jsparkSession.catalog().tableExists('odw_harmonised_db', 'curated_service_user'):\n",
+					"    print(\"sb_service_user exists. Moving on to maintaining\")\n",
 					"else:\n",
 					"    print(\"Need to create table\")\n",
 					"    df = spark.sql(\"\"\"\n",
@@ -180,7 +180,7 @@
 					"    df.write.mode(\"Overwrite\").format('delta').option(\"mergeSchema\", \"true\").saveAsTable(\"odw_harmonised_db.curated_service_user\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -197,20 +197,23 @@
 				},
 				"source": [
 					"if spark._jsparkSession.catalog().tableExists('odw_harmonised_db', 'curated_service_user_URI'):\r\n",
-					"    print(\"service_user exists. Moving on to maintaining\")\r\n",
+					"    print(\"curated_service_user_URI exists. Moving on to maintaining\")\r\n",
 					"else:\r\n",
 					"    print(\"Need to create table\")\r\n",
 					"    df = spark.sql(\"\"\"\r\n",
 					"        CREATE TABLE odw_harmonised_db.curated_service_user_URI\r\n",
 					"        (\r\n",
 					"            ID Integer\r\n",
+					"            ,Entity String\r\n",
 					"            ,SourceSystem String\r\n",
-					"            ,ServiceUserID Integer\r\n",
-					"            ,SourceSystemUID Integer\r\n",
+					"            ,ServiceUserID string \r\n",
+					"            ,SourceSystemUID string \r\n",
+					"            ,ServiceUserType String\r\n",
+					"            ,CaseReference String\r\n",
 					"        )\r\n",
 					"    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 76
 			},
 			{
 				"cell_type": "markdown",
@@ -275,7 +278,7 @@
 					"WHERE\n",
 					"    IsActive = 'Y'"
 				],
-				"execution_count": null
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -377,7 +380,7 @@
 					"    )\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 78
 			},
 			{
 				"cell_type": "markdown",
@@ -458,7 +461,7 @@
 					"\t\t\t'Appellant'\r\n",
 					"\tEND IS NOT NULL"
 				],
-				"execution_count": 118
+				"execution_count": 80
 			},
 			{
 				"cell_type": "code",
@@ -487,13 +490,14 @@
 					"\t,source.caseInvolvementID\r\n",
 					"FROM\r\n",
 					"\tvw_Horizon_casework_raw AS source\r\n",
-					"\tINNER JOIN odw_harmonised_db.curated_service_user AS target\r\n",
+					"\tINNER JOIN odw_harmonised_db.curated_service_user_URI AS target\r\n",
 					"\t\t ON source.CaseReference = target.caseReference\r\n",
 					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
 					"\t\tAND source.sourceSystem = target.sourceSystem\r\n",
-					"\t\tAND source.sourceSUID = target.sourceSUID"
+					"\t\tAND source.sourceSUID = target.SourceSystemUID\r\n",
+					"\t\tAND Target.Entity = 'Horizon - Casework'"
 				],
-				"execution_count": 119
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -548,7 +552,7 @@
 					"\t\t\tAND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
 					"\t\t)"
 				],
-				"execution_count": 120
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -599,7 +603,7 @@
 					"\t\t\tOR source.faxNumber = target.faxNumber\r\n",
 					"\t\t)"
 				],
-				"execution_count": 121
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -648,7 +652,7 @@
 					"\t\t\t\tsource.emailAddress = target.emailAddress\r\n",
 					"\t\t\t)"
 				],
-				"execution_count": 122
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -730,7 +734,7 @@
 					"\tFROM\r\n",
 					"\t\tmatch_results\r\n",
 					")\r\n",
-					"SELECT\r\n",
+					"SELECT DISTINCT\r\n",
 					"\tdedupe.Id\r\n",
 					"\t,raw.salutation\r\n",
 					"\t,raw.firstName\r\n",
@@ -751,16 +755,18 @@
 					"\t,raw.webAddress\r\n",
 					"\t,raw.serviceUserType\r\n",
 					"\t,raw.caseReference\r\n",
-					"\t,raw.sourceSystem\r\n",
-					"\t,raw.sourceSUID\r\n",
+					"\t,CAST(NULL AS String) AS sourceSystem\r\n",
+					"\t,CAST(NULL AS String) AS sourceSUID\r\n",
 					"\t,raw.Source_priority\r\n",
+					"\t,dedupe.MatchID\r\n",
 					"FROM\r\n",
 					"\tvw_Horizon_casework_raw AS raw\r\n",
 					"\tLEFT OUTER JOIN dedupe\r\n",
 					"\t\tON raw.CaseInvolvementID = dedupe.CaseInvolvementID\r\n",
-					"\t\tAND MatchID = 1"
+					"WHERE\r\n",
+					"\tCOALESCE(dedupe.MatchID, 1) = 1"
 				],
-				"execution_count": 123
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -861,7 +867,183 @@
 					"\t\t,source.source_priority\r\n",
 					"\t\t)"
 				],
-				"execution_count": 124
+				"execution_count": 102
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Note: 15236925 seems the start of a reserved range, below that is all Horizon data. Have to assume that the id's on that are created by previous ODW code and that these must be preserved. Aiming to find a gap between the two for new records\r\n",
+					"df = spark.sql(\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                Row_Number() OVER (ORDER BY caseReference ASC) + (SELECT COALESCE(MAX(CAST(id as integer)), 0) FROM odw_harmonised_db.curated_service_user WHERE id < 15236925) AS id\r\n",
+					"                ,salutation\r\n",
+					"                ,firstName\r\n",
+					"                ,lastName\r\n",
+					"                ,addressLine1\r\n",
+					"                ,addressLine2\r\n",
+					"                ,addressTown\r\n",
+					"                ,addressCounty\r\n",
+					"                ,postcode\r\n",
+					"                ,addressCountry\r\n",
+					"                ,organisation\r\n",
+					"                ,organisationType\r\n",
+					"                ,role\r\n",
+					"                ,telephoneNumber\r\n",
+					"                ,otherPhoneNumber\r\n",
+					"                ,faxNumber\r\n",
+					"                ,emailAddress\r\n",
+					"                ,webAddress\r\n",
+					"                ,serviceUserType\r\n",
+					"                ,caseReference\r\n",
+					"                ,sourceSystem\r\n",
+					"                ,sourceSuid\r\n",
+					"                ,source_priority\r\n",
+					"            FROM\r\n",
+					"                odw_harmonised_db.curated_service_user\r\n",
+					"            WHERE\r\n",
+					"                id IS NULL\r\n",
+					"            UNION\r\n",
+					"            SELECT\r\n",
+					"                id\r\n",
+					"                ,salutation\r\n",
+					"                ,firstName\r\n",
+					"                ,lastName\r\n",
+					"                ,addressLine1\r\n",
+					"                ,addressLine2\r\n",
+					"                ,addressTown\r\n",
+					"                ,addressCounty\r\n",
+					"                ,postcode\r\n",
+					"                ,addressCountry\r\n",
+					"                ,organisation\r\n",
+					"                ,organisationType\r\n",
+					"                ,role\r\n",
+					"                ,telephoneNumber\r\n",
+					"                ,otherPhoneNumber\r\n",
+					"                ,faxNumber\r\n",
+					"                ,emailAddress\r\n",
+					"                ,webAddress\r\n",
+					"                ,serviceUserType\r\n",
+					"                ,caseReference\r\n",
+					"                ,sourceSystem\r\n",
+					"                ,sourceSuid\r\n",
+					"                ,source_priority\r\n",
+					"            FROM\r\n",
+					"                odw_harmonised_db.curated_service_user\r\n",
+					"            WHERE\r\n",
+					"                id IS NOT NULL\"\"\"\r\n",
+					"    )\r\n",
+					"\r\n",
+					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
+				],
+				"execution_count": 103
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Now we need to link the records we've inserted back up to source data and add in any new URIs"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"WITH uris\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Horizon - Casework' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_Horizon_name_Address_Match AS MatchView\r\n",
+					"        INNER JOIN vw_Horizon_casework_raw AS raw\r\n",
+					"            ON MatchView.CaseInvolvementID = raw.CaseInvolvementID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Horizon - Casework' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_Horizon_name_Tel_Match AS MatchView\r\n",
+					"        INNER JOIN vw_Horizon_casework_raw AS raw\r\n",
+					"            ON MatchView.CaseInvolvementID = raw.CaseInvolvementID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Horizon - Casework' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_Horizon_email_match AS MatchView\r\n",
+					"        INNER JOIN vw_Horizon_casework_raw AS raw\r\n",
+					"            ON MatchView.CaseInvolvementID = raw.CaseInvolvementID\r\n",
+					")\r\n",
+					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
+					"SELECT\r\n",
+					"   Input.ID\r\n",
+					"   ,Input.Entity\r\n",
+					"   ,Input.sourceSystem\r\n",
+					"   ,Input.ServiceUserID\r\n",
+					"   ,Input.SourceSystemUID\r\n",
+					"   ,Input.serviceUserType\r\n",
+					"   ,Input.caseReference\r\n",
+					"FROM\r\n",
+					"    uris AS Input\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user_URI AS Target\r\n",
+					"        ON Input.Entity = Target.Entity\r\n",
+					"        AND Input.SourceSystem = Target.SourceSystem\r\n",
+					"        AND Input.ServiceUserID = Target.ServiceUserID\r\n",
+					"        AND Input.SourceSystemUID = Target.SourceSystemUID\r\n",
+					"        AND Input.serviceUserType = Target.serviceUserType\r\n",
+					"        AND Input.caseReference = Target.CaseReference\r\n",
+					"WHERE\r\n",
+					"    Target.Entity IS NULL"
+				],
+				"execution_count": 104
 			},
 			{
 				"cell_type": "markdown",
@@ -940,7 +1122,7 @@
 					"WHERE\n",
 					"    isActive = 'Y'"
 				],
-				"execution_count": 125
+				"execution_count": 105
 			},
 			{
 				"cell_type": "markdown",
@@ -1012,7 +1194,7 @@
 					"                AND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\n",
 					"            )"
 				],
-				"execution_count": 126
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -1060,7 +1242,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\n",
 					"            )"
 				],
-				"execution_count": 127
+				"execution_count": 107
 			},
 			{
 				"cell_type": "code",
@@ -1108,7 +1290,7 @@
 					"                source.emailAddress = target.emailAddress\n",
 					"            )"
 				],
-				"execution_count": 128
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -1173,7 +1355,7 @@
 					"    FROM\n",
 					"        base\n",
 					")\n",
-					"SELECT\n",
+					"SELECT DISTINCT\n",
 					"   Dedupe.id\n",
 					"    ,Base.salutation\n",
 					"    ,Base.firstName\n",
@@ -1194,16 +1376,17 @@
 					"    ,Base.webAddress\n",
 					"    ,Base.serviceUserType\n",
 					"    ,Base.caseReference \n",
-					"    ,Base.sourceSystem \n",
-					"    ,Base.sourceSuid\n",
+					"    ,CAST(NULL AS String) AS sourceSystem \n",
+					"    ,CAST(NULL AS String) AS sourceSuid\n",
 					"    ,Base.Source_priority\n",
 					"FROM\n",
 					"    vw_nsip_project AS Base\n",
 					"    LEFT OUTER JOIN Dedupe\n",
 					"        ON Base.NSIPProjectInfoInternalID = Dedupe.NSIPProjectInfoInternalID\n",
-					"        AND Dedupe.Update_row = 1"
+					"WHERE\n",
+					"    COALESCE(Dedupe.Update_row, 1) = 1"
 				],
-				"execution_count": 129
+				"execution_count": 110
 			},
 			{
 				"cell_type": "code",
@@ -1304,7 +1487,170 @@
 					"        ,source.source_priority\n",
 					"    )"
 				],
-				"execution_count": 130
+				"execution_count": 111
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Note: 15236925 seems the start of a reserved range, below that is all Horizon data. Have to assume that the id's on that are created by previous ODW code and that these must be preserved. Aiming to find a gap between the two for new records\r\n",
+					"df = spark.sql(\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                Row_Number() OVER (ORDER BY caseReference ASC) + (SELECT COALESCE(MAX(CAST(id as integer)), 0) FROM odw_harmonised_db.curated_service_user WHERE id < 15236925) AS id\r\n",
+					"                ,salutation\r\n",
+					"                ,firstName\r\n",
+					"                ,lastName\r\n",
+					"                ,addressLine1\r\n",
+					"                ,addressLine2\r\n",
+					"                ,addressTown\r\n",
+					"                ,addressCounty\r\n",
+					"                ,postcode\r\n",
+					"                ,addressCountry\r\n",
+					"                ,organisation\r\n",
+					"                ,organisationType\r\n",
+					"                ,role\r\n",
+					"                ,telephoneNumber\r\n",
+					"                ,otherPhoneNumber\r\n",
+					"                ,faxNumber\r\n",
+					"                ,emailAddress\r\n",
+					"                ,webAddress\r\n",
+					"                ,serviceUserType\r\n",
+					"                ,caseReference\r\n",
+					"                ,sourceSystem\r\n",
+					"                ,sourceSuid\r\n",
+					"                ,source_priority\r\n",
+					"            FROM\r\n",
+					"                odw_harmonised_db.curated_service_user\r\n",
+					"            WHERE\r\n",
+					"                id IS NULL\r\n",
+					"            UNION\r\n",
+					"            SELECT\r\n",
+					"                id\r\n",
+					"                ,salutation\r\n",
+					"                ,firstName\r\n",
+					"                ,lastName\r\n",
+					"                ,addressLine1\r\n",
+					"                ,addressLine2\r\n",
+					"                ,addressTown\r\n",
+					"                ,addressCounty\r\n",
+					"                ,postcode\r\n",
+					"                ,addressCountry\r\n",
+					"                ,organisation\r\n",
+					"                ,organisationType\r\n",
+					"                ,role\r\n",
+					"                ,telephoneNumber\r\n",
+					"                ,otherPhoneNumber\r\n",
+					"                ,faxNumber\r\n",
+					"                ,emailAddress\r\n",
+					"                ,webAddress\r\n",
+					"                ,serviceUserType\r\n",
+					"                ,caseReference\r\n",
+					"                ,sourceSystem\r\n",
+					"                ,sourceSuid\r\n",
+					"                ,source_priority\r\n",
+					"            FROM\r\n",
+					"                odw_harmonised_db.curated_service_user\r\n",
+					"            WHERE\r\n",
+					"                id IS NOT NULL\"\"\"\r\n",
+					"    )\r\n",
+					"\r\n",
+					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
+				],
+				"execution_count": 112
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"WITH uris\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'NSIP project' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_match_nsip_address AS MatchView\r\n",
+					"        INNER JOIN vw_nsip_project AS raw\r\n",
+					"            ON MatchView.NSIPProjectInfoInternalID = raw.NSIPProjectInfoInternalID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'NSIP project' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_match_nsip_Telephone AS MatchView\r\n",
+					"        INNER JOIN vw_nsip_project AS raw\r\n",
+					"            ON MatchView.NSIPProjectInfoInternalID = raw.NSIPProjectInfoInternalID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'NSIP project' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_match_nsip_Email AS MatchView\r\n",
+					"        INNER JOIN vw_nsip_project AS raw\r\n",
+					"            ON MatchView.NSIPProjectInfoInternalID = raw.NSIPProjectInfoInternalID\r\n",
+					")\r\n",
+					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
+					"SELECT\r\n",
+					"   Input.ID\r\n",
+					"   ,Input.Entity\r\n",
+					"   ,Input.sourceSystem\r\n",
+					"   ,Input.ServiceUserID\r\n",
+					"   ,Input.SourceSystemUID\r\n",
+					"   ,Input.serviceUserType\r\n",
+					"   ,Input.caseReference\r\n",
+					"FROM\r\n",
+					"    uris AS Input\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user_URI AS Target\r\n",
+					"        ON Input.Entity = Target.Entity\r\n",
+					"        AND Input.SourceSystem = Target.SourceSystem\r\n",
+					"        AND Input.ServiceUserID = Target.ServiceUserID\r\n",
+					"        AND Input.SourceSystemUID = Target.SourceSystemUID\r\n",
+					"        AND Input.serviceUserType = Target.serviceUserType\r\n",
+					"        AND Input.caseReference = Target.CaseReference\r\n",
+					"WHERE\r\n",
+					"    Target.Entity IS NULL"
+				],
+				"execution_count": 113
 			},
 			{
 				"cell_type": "markdown",
@@ -1439,7 +1785,7 @@
 					"    isActive = 'Y'\n",
 					"    AND representedId IS NOT NULL"
 				],
-				"execution_count": 131
+				"execution_count": 114
 			},
 			{
 				"cell_type": "code",
@@ -1467,13 +1813,14 @@
 					"   ,source.NSIPRepresentaionID\n",
 					"FROM\n",
 					"    vw_rel_reps_raw AS source\n",
-					"    INNER JOIN odw_harmonised_db.curated_service_user AS target\n",
-					"        ON source.CaseReference = target.caseReference\n",
-					"        AND source.serviceUserType = target.serviceUserType\n",
-					"        AND source.sourceSystem = target.sourceSystem\n",
-					"        AND source.sourceSUID = target.sourceSUID"
+					"\tINNER JOIN odw_harmonised_db.curated_service_user_URI AS target\n",
+					"\t\t ON source.CaseReference = target.caseReference\n",
+					"\t\tAND source.serviceUserType = target.serviceUserType\n",
+					"\t\tAND source.sourceSystem = target.sourceSystem\n",
+					"\t\tAND source.sourceSUID = target.SourceSystemUID\n",
+					"\t\tAND Target.Entity = 'Relevant Representation'"
 				],
-				"execution_count": 132
+				"execution_count": 133
 			},
 			{
 				"cell_type": "code",
@@ -1529,7 +1876,7 @@
 					"            )\n",
 					""
 				],
-				"execution_count": 133
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
@@ -1577,7 +1924,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\n",
 					"            )"
 				],
-				"execution_count": 134
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
@@ -1625,7 +1972,7 @@
 					"                source.emailAddress = target.emailAddress\n",
 					"            )"
 				],
-				"execution_count": 135
+				"execution_count": 118
 			},
 			{
 				"cell_type": "code",
@@ -1708,7 +2055,7 @@
 					"        match_results\n",
 					")\n",
 					"\n",
-					"SELECT \n",
+					"SELECT DISTINCT\n",
 					"    dedupe.Id\n",
 					"    ,raw.salutation\n",
 					"    ,raw.firstName\n",
@@ -1729,16 +2076,17 @@
 					"    ,raw.webAddress\n",
 					"    ,raw.serviceUserType\n",
 					"    ,raw.caseReference \n",
-					"    ,raw.sourceSystem\n",
-					"    ,raw.sourceSUID\n",
+					"    ,CAST(NULL AS String) AS sourceSystem\n",
+					"    ,CAST(NULL AS String) AS sourceSUID\n",
 					"    ,raw.Source_priority\n",
 					"FROM\n",
 					"    vw_rel_reps_raw AS raw\n",
 					"    LEFT OUTER JOIN dedupe\n",
 					"        ON raw.NSIPRepresentaionID = dedupe.NSIPRepresentaionID\n",
-					"        AND MatchID = 1"
+					"WHERE\n",
+					"    COALESCE(MatchID, 1) = 1"
 				],
-				"execution_count": 136
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -1839,20 +2187,7 @@
 					"        ,source.source_priority\n",
 					"    )"
 				],
-				"execution_count": 137
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## To do: Need to include Zendesk records"
-				]
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -1868,43 +2203,9 @@
 					}
 				},
 				"source": [
-					"#Could be interest parties or complainants. If unable to match <Gareth to confirm>"
-				],
-				"execution_count": 138
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"Need to set Ids for records we've not seen before"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					" %%sql\r\n",
-					" SELECT\r\n",
+					"#Note: 15236925 seems the start of a reserved range, below that is all Horizon data. Have to assume that the id's on that are created by previous ODW code and that these must be preserved. Aiming to find a gap between the two for new records\r\n",
+					"df = spark.sql(\"\"\"\r\n",
+					"            SELECT\r\n",
 					"                Row_Number() OVER (ORDER BY caseReference ASC) + (SELECT COALESCE(MAX(CAST(id as integer)), 0) FROM odw_harmonised_db.curated_service_user WHERE id < 15236925) AS id\r\n",
 					"                ,salutation\r\n",
 					"                ,firstName\r\n",
@@ -1960,9 +2261,141 @@
 					"            FROM\r\n",
 					"                odw_harmonised_db.curated_service_user\r\n",
 					"            WHERE\r\n",
-					"                id IS NOT NULL"
+					"                id IS NOT NULL\"\"\"\r\n",
+					"    )\r\n",
+					"\r\n",
+					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": 139
+				"execution_count": 122
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"WITH uris\r\n",
+					"AS\r\n",
+					"(\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Relevant Representation' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_rel_reps_name_Address_Match AS MatchView\r\n",
+					"        INNER JOIN vw_rel_reps_raw AS raw\r\n",
+					"            ON MatchView.NSIPRepresentaionID = raw.NSIPRepresentaionID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Relevant Representation' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_rel_reps_name_Tel_Match AS MatchView\r\n",
+					"        INNER JOIN vw_rel_reps_raw AS raw\r\n",
+					"            ON MatchView.NSIPRepresentaionID = raw.NSIPRepresentaionID\r\n",
+					"    UNION\r\n",
+					"    SELECT\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Relevant Representation' AS Entity\r\n",
+					"        ,sourceSystem\r\n",
+					"        ,MatchView.ID AS ServiceUserID\r\n",
+					"        ,sourceSuid AS SourceSystemUID\r\n",
+					"        ,serviceUserType\r\n",
+					"        ,caseReference\r\n",
+					"    FROM\r\n",
+					"        vw_rel_reps_email_match AS MatchView\r\n",
+					"        INNER JOIN vw_rel_reps_raw AS raw\r\n",
+					"            ON MatchView.NSIPRepresentaionID = raw.NSIPRepresentaionID\r\n",
+					")\r\n",
+					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
+					"SELECT\r\n",
+					"   Input.ID\r\n",
+					"   ,Input.Entity\r\n",
+					"   ,Input.sourceSystem\r\n",
+					"   ,Input.ServiceUserID\r\n",
+					"   ,Input.SourceSystemUID\r\n",
+					"   ,Input.serviceUserType\r\n",
+					"   ,Input.caseReference\r\n",
+					"FROM\r\n",
+					"    uris AS Input\r\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.curated_service_user_URI AS Target\r\n",
+					"        ON Input.Entity = Target.Entity\r\n",
+					"        AND Input.SourceSystem = Target.SourceSystem\r\n",
+					"        AND Input.ServiceUserID = Target.ServiceUserID\r\n",
+					"        AND Input.SourceSystemUID = Target.SourceSystemUID\r\n",
+					"        AND Input.serviceUserType = Target.serviceUserType\r\n",
+					"        AND Input.caseReference = Target.CaseReference\r\n",
+					"WHERE\r\n",
+					"    Target.Entity IS NULL\r\n",
+					"order by serviceUserID"
+				],
+				"execution_count": 132
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## To do: Need to include Zendesk records"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Could be interest parties or complainants. If unable to match <Gareth to confirm>"
+				],
+				"execution_count": 138
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Need to set Ids for records we've not seen before"
+				]
 			},
 			{
 				"cell_type": "code",
