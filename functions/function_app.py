@@ -12,6 +12,10 @@ from azure.functions.decorators.core import DataType
 import json
 import os
 
+_STORAGE = ""
+_CONTAINER = ""
+_NAMESPACE = ""
+_NAMESPACE_APPEALS = ""
 
 try:
     _STORAGE = os.environ["MESSAGE_STORAGE_ACCOUNT"]
@@ -20,11 +24,6 @@ try:
     _NAMESPACE_APPEALS = os.environ["SERVICEBUS_NAMESPACE_APPEALS"]
 except:
     print("Warning: Missing Environment Variables")
-    _STORAGE = ""
-    _CONTAINER = ""
-    _NAMESPACE = ""
-    _NAMESPACE_APPEALS = ""
-
 
 _CREDENTIAL = CREDENTIAL
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
@@ -689,7 +688,6 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
             else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
 
-'https://stackoverflow.com/questions/71914897/how-do-i-use-sql-like-value-operator-with-azure-functions-sql-binding'
 @_app.function_name(name="get_timesheets")
 @_app.route(route="timesheets/{caseType}/{searchCriteria}", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
 @_app.sql_input(arg_name="timesheet",
@@ -698,6 +696,10 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
                 parameters="@caseType={caseType},@searchCriteria={searchCriteria}",
                 connection_string_setting="SqlConnectionString")
 def get_timesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.HttpResponse:
+    """
+    We need to use Char(37) to escape the % 
+    https://stackoverflow.com/questions/71914897/how-do-i-use-sql-like-value-operator-with-azure-functions-sql-binding
+    """
     try:
         rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
         return func.HttpResponse(
