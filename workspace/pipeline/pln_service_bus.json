@@ -8,7 +8,19 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Record checking data on service bus",
+						"activity": "Create standardised table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Create harmonised table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Create curated table",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1162,6 +1174,12 @@
 						"dependencyConditions": [
 							"Succeeded"
 						]
+					},
+					{
+						"activity": "nsip document - custom harmonised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
 					}
 				],
 				"policy": {
@@ -1517,6 +1535,191 @@
 							"typeProperties": {
 								"notebook": {
 									"referenceName": "py_sb_horizon_harmonised_nsip_s51_advice",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Create standardised table",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Record checking data on service bus",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "create_table_from_schema",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"db_name": {
+							"value": "odw_standardised_db",
+							"type": "string"
+						},
+						"entity_name": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Create harmonised table",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Record checking data on service bus",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "create_table_from_schema",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"db_name": {
+							"value": "odw_harmonised_db",
+							"type": "string"
+						},
+						"entity_name": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Create curated table",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Record checking data on service bus",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "create_table_from_schema",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"db_name": {
+							"value": "odw_curated_db",
+							"type": "string"
+						},
+						"entity_name": {
+							"value": {
+								"value": "@variables('entity_name')",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "nsip document - custom harmonised",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If New Messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'nsip-document')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Harmonised step for nsip-document",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_sb_horizon_harmonised_nsip_document",
 									"type": "NotebookReference"
 								},
 								"snapshot": true,
