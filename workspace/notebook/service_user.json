@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f76895e7-24f1-4a92-87e4-30be3ae5d424"
+				"spark.autotune.trackingId": "0ac512ca-c2d5-41f4-90e8-c36020bcbe8e"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"\n",
 					"spark.sql(f\"SET MAX_LIMIT = {max_limit}\")"
 				],
-				"execution_count": 41
+				"execution_count": 133
 			},
 			{
 				"cell_type": "markdown",
@@ -180,7 +180,7 @@
 					"    df.write.mode(\"Overwrite\").format('delta').option(\"mergeSchema\", \"true\").saveAsTable(\"odw_harmonised_db.curated_service_user\")\n",
 					""
 				],
-				"execution_count": 42
+				"execution_count": 134
 			},
 			{
 				"cell_type": "code",
@@ -213,7 +213,7 @@
 					"        )\r\n",
 					"    \"\"\")"
 				],
-				"execution_count": 43
+				"execution_count": 135
 			},
 			{
 				"cell_type": "markdown",
@@ -278,7 +278,7 @@
 					"WHERE\n",
 					"    IsActive = 'Y'"
 				],
-				"execution_count": 44
+				"execution_count": 136
 			},
 			{
 				"cell_type": "code",
@@ -380,7 +380,7 @@
 					"    )\n",
 					""
 				],
-				"execution_count": 45
+				"execution_count": 137
 			},
 			{
 				"cell_type": "markdown",
@@ -461,7 +461,7 @@
 					"\t\t\t'Appellant'\r\n",
 					"\tEND IS NOT NULL"
 				],
-				"execution_count": 46
+				"execution_count": 138
 			},
 			{
 				"cell_type": "code",
@@ -486,18 +486,20 @@
 					"CREATE OR REPLACE TEMPORARY VIEW vw_Horizon_URI_Match\r\n",
 					"AS\r\n",
 					"SELECT\r\n",
-					"\ttarget.Id\r\n",
+					"\ttarget.ServiceUserID AS id\r\n",
 					"\t,source.caseInvolvementID\r\n",
 					"FROM\r\n",
 					"\tvw_Horizon_casework_raw AS source\r\n",
-					"\tINNER JOIN odw_harmonised_db.curated_service_user_URI AS target\r\n",
-					"\t\t ON source.CaseReference = target.caseReference\r\n",
+					"\tLEFT OUTER JOIN odw_harmonised_db.curated_service_user_URI AS target\r\n",
+					"\t\tON source.CaseReference = target.caseReference\r\n",
 					"\t\tAND source.serviceUserType = target.serviceUserType\r\n",
 					"\t\tAND source.sourceSystem = target.sourceSystem\r\n",
 					"\t\tAND source.sourceSUID = target.SourceSystemUID\r\n",
-					"\t\tAND Target.Entity = 'Horizon - Casework'"
+					"\t\tAND Target.Entity = 'Horizon - Casework'\r\n",
+					"WHERE\r\n",
+					"\ttarget.ServiceUserID IS NULL"
 				],
-				"execution_count": 47
+				"execution_count": 147
 			},
 			{
 				"cell_type": "code",
@@ -552,7 +554,7 @@
 					"\t\t\tAND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\r\n",
 					"\t\t)"
 				],
-				"execution_count": 48
+				"execution_count": 140
 			},
 			{
 				"cell_type": "code",
@@ -603,7 +605,7 @@
 					"\t\t\tOR source.faxNumber = target.faxNumber\r\n",
 					"\t\t)"
 				],
-				"execution_count": 49
+				"execution_count": 141
 			},
 			{
 				"cell_type": "code",
@@ -652,7 +654,7 @@
 					"\t\t\t\tsource.emailAddress = target.emailAddress\r\n",
 					"\t\t\t)"
 				],
-				"execution_count": 50
+				"execution_count": 142
 			},
 			{
 				"cell_type": "code",
@@ -765,7 +767,7 @@
 					"\t\tON raw.CaseInvolvementID = dedupe.CaseInvolvementID\r\n",
 					"\t\tAND dedupe.MatchID = 1"
 				],
-				"execution_count": 51
+				"execution_count": 143
 			},
 			{
 				"cell_type": "code",
@@ -867,7 +869,7 @@
 					"\t\t,source.source_priority\r\n",
 					"\t\t)"
 				],
-				"execution_count": 52
+				"execution_count": 81
 			},
 			{
 				"cell_type": "code",
@@ -946,7 +948,7 @@
 					"\r\n",
 					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": 53
+				"execution_count": 82
 			},
 			{
 				"cell_type": "markdown",
@@ -1021,6 +1023,38 @@
 					"        vw_Horizon_email_match AS MatchView\r\n",
 					"        INNER JOIN vw_Horizon_casework_raw AS raw\r\n",
 					"            ON MatchView.CaseInvolvementID = raw.CaseInvolvementID\r\n",
+					"    UNION\r\n",
+					"    SELECT -- Need to field to field mapping as poor quality records will not be matched on the criteria above\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'Horizon - Casework' AS Entity\r\n",
+					"        ,raw.sourceSystem\r\n",
+					"        ,Target.ID AS ServiceUserID\r\n",
+					"        ,raw.sourceSuid AS SourceSystemUID\r\n",
+					"        ,raw.serviceUserType\r\n",
+					"        ,raw.caseReference\r\n",
+					"    FROM\r\n",
+					"        odw_harmonised_db.curated_service_user AS Target\r\n",
+					"        INNER JOIN vw_Horizon_casework_raw AS raw\r\n",
+					"            ON COALESCE(Target.salutation, '') = COALESCE(raw.salutation, '')\r\n",
+					"            AND COALESCE(Target.firstName, '') = COALESCE(raw.firstName, '')\r\n",
+					"            AND COALESCE(Target.lastName, '') = COALESCE(raw.lastName, '')\r\n",
+					"            AND COALESCE(Target.addressLine1, '') = COALESCE(raw.addressLine1, '')\r\n",
+					"            AND COALESCE(Target.addressLine2, '') = COALESCE(raw.addressLine2, '')\r\n",
+					"            AND COALESCE(Target.addressTown, '') = COALESCE(raw.addressTown, '')\r\n",
+					"            AND COALESCE(Target.addressCounty, '') = COALESCE(raw.addressCounty, '')\r\n",
+					"            AND COALESCE(Target.postcode, '') = COALESCE(raw.postcode, '')\r\n",
+					"            AND COALESCE(Target.addressCountry, '') = COALESCE(raw.addressCountry, '')\r\n",
+					"            AND COALESCE(Target.organisation, '') = COALESCE(raw.organisation, '')\r\n",
+					"            AND COALESCE(Target.organisationType, '') = COALESCE(raw.organisationType, '')\r\n",
+					"            AND COALESCE(Target.role, '') = COALESCE(raw.role, '')\r\n",
+					"            AND COALESCE(Target.telephoneNumber, '') = COALESCE(raw.telephoneNumber, '')\r\n",
+					"            AND COALESCE(Target.otherPhoneNumber, '') = COALESCE(raw.otherPhoneNumber, '')\r\n",
+					"            AND COALESCE(Target.faxNumber, '') = COALESCE(raw.faxNumber, '')\r\n",
+					"            AND COALESCE(Target.emailAddress, '') = COALESCE(raw.emailAddress, '')\r\n",
+					"            AND COALESCE(Target.webAddress, '') = COALESCE(raw.webAddress, '')\r\n",
+					"            AND COALESCE(Target.serviceUserType, '') = COALESCE(raw.serviceUserType, '')\r\n",
+					"            AND COALESCE(Target.caseReference, '') = COALESCE(raw.caseReference, '')\r\n",
+					"    \r\n",
 					")\r\n",
 					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
 					"SELECT\r\n",
@@ -1043,7 +1077,7 @@
 					"WHERE\r\n",
 					"    Target.Entity IS NULL"
 				],
-				"execution_count": 54
+				"execution_count": 83
 			},
 			{
 				"cell_type": "markdown",
@@ -1122,7 +1156,7 @@
 					"WHERE\n",
 					"    isActive = 'Y'"
 				],
-				"execution_count": 55
+				"execution_count": 84
 			},
 			{
 				"cell_type": "markdown",
@@ -1194,7 +1228,7 @@
 					"                AND CONCAT(COALESCE(source.AddressLine1, ''),COALESCE(source.AddressLine2, ''), COALESCE(source.addressTown, '') , COALESCE(source.addressCounty, ''), COALESCE(source.postcode, ''), COALESCE(source.organisation, '')) <> ''\n",
 					"            )"
 				],
-				"execution_count": 56
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -1242,7 +1276,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\n",
 					"            )"
 				],
-				"execution_count": 57
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -1290,7 +1324,7 @@
 					"                source.emailAddress = target.emailAddress\n",
 					"            )"
 				],
-				"execution_count": 58
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -1385,7 +1419,7 @@
 					"        ON Base.NSIPProjectInfoInternalID = Dedupe.NSIPProjectInfoInternalID\n",
 					"        AND Dedupe.Update_row = 1"
 				],
-				"execution_count": 59
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -1487,7 +1521,7 @@
 					"        ,source.source_priority\n",
 					"    )"
 				],
-				"execution_count": 60
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -1566,7 +1600,7 @@
 					"\r\n",
 					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": 61
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -1628,6 +1662,38 @@
 					"        vw_match_nsip_Email AS MatchView\r\n",
 					"        INNER JOIN vw_nsip_project AS raw\r\n",
 					"            ON MatchView.NSIPProjectInfoInternalID = raw.NSIPProjectInfoInternalID\r\n",
+					"    \r\n",
+					"    UNION\r\n",
+					"    SELECT -- Need to field to field mapping as poor quality records will not be matched on the criteria above\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'NSIP project' AS Entity\r\n",
+					"        ,raw.sourceSystem\r\n",
+					"        ,Target.ID AS ServiceUserID\r\n",
+					"        ,raw.sourceSuid AS SourceSystemUID\r\n",
+					"        ,raw.serviceUserType\r\n",
+					"        ,raw.caseReference\r\n",
+					"    FROM\r\n",
+					"        odw_harmonised_db.curated_service_user AS Target\r\n",
+					"        INNER JOIN vw_nsip_project AS raw\r\n",
+					"            ON COALESCE(Target.salutation, '') = COALESCE(raw.salutation, '')\r\n",
+					"            AND COALESCE(Target.firstName, '') = COALESCE(raw.firstName, '')\r\n",
+					"            AND COALESCE(Target.lastName, '') = COALESCE(raw.lastName, '')\r\n",
+					"            AND COALESCE(Target.addressLine1, '') = COALESCE(raw.addressLine1, '')\r\n",
+					"            AND COALESCE(Target.addressLine2, '') = COALESCE(raw.addressLine2, '')\r\n",
+					"            AND COALESCE(Target.addressTown, '') = COALESCE(raw.addressTown, '')\r\n",
+					"            AND COALESCE(Target.addressCounty, '') = COALESCE(raw.addressCounty, '')\r\n",
+					"            AND COALESCE(Target.postcode, '') = COALESCE(raw.postcode, '')\r\n",
+					"            AND COALESCE(Target.addressCountry, '') = COALESCE(raw.addressCountry, '')\r\n",
+					"            AND COALESCE(Target.organisation, '') = COALESCE(raw.organisation, '')\r\n",
+					"            AND COALESCE(Target.organisationType, '') = COALESCE(raw.organisationType, '')\r\n",
+					"            AND COALESCE(Target.role, '') = COALESCE(raw.role, '')\r\n",
+					"            AND COALESCE(Target.telephoneNumber, '') = COALESCE(raw.telephoneNumber, '')\r\n",
+					"            AND COALESCE(Target.otherPhoneNumber, '') = COALESCE(raw.otherPhoneNumber, '')\r\n",
+					"            AND COALESCE(Target.faxNumber, '') = COALESCE(raw.faxNumber, '')\r\n",
+					"            AND COALESCE(Target.emailAddress, '') = COALESCE(raw.emailAddress, '')\r\n",
+					"            AND COALESCE(Target.webAddress, '') = COALESCE(raw.webAddress, '')\r\n",
+					"            AND COALESCE(Target.serviceUserType, '') = COALESCE(raw.serviceUserType, '')\r\n",
+					"            AND COALESCE(Target.caseReference, '') = COALESCE(raw.caseReference, '')\r\n",
 					")\r\n",
 					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
 					"SELECT\r\n",
@@ -1650,7 +1716,7 @@
 					"WHERE\r\n",
 					"    Target.Entity IS NULL"
 				],
-				"execution_count": 62
+				"execution_count": 91
 			},
 			{
 				"cell_type": "markdown",
@@ -1785,7 +1851,7 @@
 					"    isActive = 'Y'\n",
 					"    AND representedId IS NOT NULL"
 				],
-				"execution_count": 63
+				"execution_count": 92
 			},
 			{
 				"cell_type": "code",
@@ -1809,7 +1875,7 @@
 					"CREATE OR REPLACE TEMPORARY VIEW vw_rel_reps_URI_match\n",
 					"AS\n",
 					"SELECT\n",
-					"    target.Id\n",
+					"    target.ServiceUserID AS id\n",
 					"   ,source.NSIPRepresentaionID\n",
 					"FROM\n",
 					"    vw_rel_reps_raw AS source\n",
@@ -1820,7 +1886,7 @@
 					"\t\tAND source.sourceSUID = target.SourceSystemUID\n",
 					"\t\tAND Target.Entity = 'Relevant Representation'"
 				],
-				"execution_count": 64
+				"execution_count": 93
 			},
 			{
 				"cell_type": "code",
@@ -1876,7 +1942,7 @@
 					"            )\n",
 					""
 				],
-				"execution_count": 65
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
@@ -1924,7 +1990,7 @@
 					"                source.telephoneNumber = target.telephoneNumber\n",
 					"            )"
 				],
-				"execution_count": 66
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -1972,7 +2038,7 @@
 					"                source.emailAddress = target.emailAddress\n",
 					"            )"
 				],
-				"execution_count": 67
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -2086,7 +2152,7 @@
 					"WHERE\n",
 					"    COALESCE(MatchID, 1) = 1"
 				],
-				"execution_count": 68
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -2188,7 +2254,7 @@
 					"        ,source.source_priority\n",
 					"    )"
 				],
-				"execution_count": 69
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -2267,7 +2333,7 @@
 					"\r\n",
 					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": null
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -2329,6 +2395,38 @@
 					"        vw_rel_reps_email_match AS MatchView\r\n",
 					"        INNER JOIN vw_rel_reps_raw AS raw\r\n",
 					"            ON MatchView.NSIPRepresentaionID = raw.NSIPRepresentaionID\r\n",
+					"    \r\n",
+					"    UNION\r\n",
+					"    SELECT -- Need to field to field mapping as poor quality records will not be matched on the criteria above\r\n",
+					"        CAST(NULL AS Integer) AS ID\r\n",
+					"        ,'NSIP project' AS Entity\r\n",
+					"        ,raw.sourceSystem\r\n",
+					"        ,Target.ID AS ServiceUserID\r\n",
+					"        ,raw.sourceSuid AS SourceSystemUID\r\n",
+					"        ,raw.serviceUserType\r\n",
+					"        ,raw.caseReference\r\n",
+					"    FROM\r\n",
+					"        odw_harmonised_db.curated_service_user AS Target\r\n",
+					"        INNER JOIN vw_rel_reps_raw AS raw\r\n",
+					"            ON COALESCE(Target.salutation, '') = COALESCE(raw.salutation, '')\r\n",
+					"            AND COALESCE(Target.firstName, '') = COALESCE(raw.firstName, '')\r\n",
+					"            AND COALESCE(Target.lastName, '') = COALESCE(raw.lastName, '')\r\n",
+					"            AND COALESCE(Target.addressLine1, '') = COALESCE(raw.addressLine1, '')\r\n",
+					"            AND COALESCE(Target.addressLine2, '') = COALESCE(raw.addressLine2, '')\r\n",
+					"            AND COALESCE(Target.addressTown, '') = COALESCE(raw.addressTown, '')\r\n",
+					"            AND COALESCE(Target.addressCounty, '') = COALESCE(raw.addressCounty, '')\r\n",
+					"            AND COALESCE(Target.postcode, '') = COALESCE(raw.postcode, '')\r\n",
+					"            AND COALESCE(Target.addressCountry, '') = COALESCE(raw.addressCountry, '')\r\n",
+					"            AND COALESCE(Target.organisation, '') = COALESCE(raw.organisation, '')\r\n",
+					"            AND COALESCE(Target.organisationType, '') = COALESCE(raw.organisationType, '')\r\n",
+					"            AND COALESCE(Target.role, '') = COALESCE(raw.role, '')\r\n",
+					"            AND COALESCE(Target.telephoneNumber, '') = COALESCE(raw.telephoneNumber, '')\r\n",
+					"            AND COALESCE(Target.otherPhoneNumber, '') = COALESCE(raw.otherPhoneNumber, '')\r\n",
+					"            AND COALESCE(Target.faxNumber, '') = COALESCE(raw.faxNumber, '')\r\n",
+					"            AND COALESCE(Target.emailAddress, '') = COALESCE(raw.emailAddress, '')\r\n",
+					"            AND COALESCE(Target.webAddress, '') = COALESCE(raw.webAddress, '')\r\n",
+					"            AND COALESCE(Target.serviceUserType, '') = COALESCE(raw.serviceUserType, '')\r\n",
+					"            AND COALESCE(Target.caseReference, '') = COALESCE(raw.caseReference, '')\r\n",
 					")\r\n",
 					"INSERT INTO odw_harmonised_db.curated_service_user_URI\r\n",
 					"SELECT\r\n",
@@ -2352,7 +2450,7 @@
 					"    Target.Entity IS NULL\r\n",
 					"order by serviceUserID"
 				],
-				"execution_count": null
+				"execution_count": 100
 			},
 			{
 				"cell_type": "markdown",
@@ -2383,7 +2481,7 @@
 				"source": [
 					"#Could be interest parties or complainants. If unable to match <Gareth to confirm>"
 				],
-				"execution_count": null
+				"execution_count": 101
 			},
 			{
 				"cell_type": "markdown",
@@ -2436,8 +2534,8 @@
 					"                ,webAddress\n",
 					"                ,serviceUserType\n",
 					"                ,caseReference\n",
-					"                ,sourceSystem\n",
-					"                ,sourceSuid\n",
+					"                ,CAST(NULL AS String) AS sourceSystem\n",
+					"                ,CAST(NULL AS String) AS sourceSuid\n",
 					"                ,source_priority\n",
 					"            FROM\n",
 					"                odw_harmonised_db.curated_service_user\n",
@@ -2465,8 +2563,8 @@
 					"                ,webAddress\n",
 					"                ,serviceUserType\n",
 					"                ,caseReference\n",
-					"                ,sourceSystem\n",
-					"                ,sourceSuid\n",
+					"                ,CAST(NULL AS String) AS sourceSystem\n",
+					"                ,CAST(NULL AS String) AS sourceSuid\n",
 					"                ,source_priority\n",
 					"            FROM\n",
 					"                odw_harmonised_db.curated_service_user\n",
@@ -2476,7 +2574,7 @@
 					"\n",
 					"df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").option(\"mergeSchema\", \"true\").format(\"delta\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_harmonised_db.curated_service_user\")"
 				],
-				"execution_count": null
+				"execution_count": 109
 			},
 			{
 				"cell_type": "markdown",
@@ -2511,7 +2609,7 @@
 					"%%pyspark\n",
 					"pip install Faker"
 				],
-				"execution_count": null
+				"execution_count": 110
 			},
 			{
 				"cell_type": "markdown",
@@ -2540,36 +2638,38 @@
 					}
 				},
 				"source": [
+					"\n",
 					"#Need to do an insert into odw_curated and create this as a parquet file\n",
+					"#casting below is done to make sure that the faker step doesn't fail due to incomplete schema from null fields\n",
 					"copy = spark.sql(\"\"\"SELECT  \n",
-					"                        id\n",
-					"                        ,salutation\n",
-					"                        ,firstName\n",
-					"                        ,lastName\n",
-					"                        ,addressLine1\n",
-					"                        ,addressLine2\n",
-					"                        ,addressTown\n",
-					"                        ,addressCounty\n",
-					"                        ,postcode\n",
-					"                        ,addressCountry\n",
-					"                        ,organisation\n",
-					"                        ,organisationType\n",
-					"                        ,role\n",
-					"                        ,telephoneNumber\n",
-					"                        ,otherPhoneNumber\n",
-					"                        ,faxNumber\n",
-					"                        ,emailAddress\n",
-					"                        ,webAddress\n",
-					"                        ,serviceUserType\n",
-					"                        ,caseReference\n",
-					"                        ,sourceSystem\n",
-					"                        ,sourceSuid\n",
+					"                        CAST(id AS Integer) AS id\n",
+					"                        ,CAST(salutation AS String) AS salutation\n",
+					"                        ,CAST(firstName AS String) AS firstName\n",
+					"                        ,CAST(lastName AS String) AS lastName\n",
+					"                        ,CAST(addressLine1 AS String) AS addressLine1\n",
+					"                        ,CAST(addressLine2 AS String) AS addressLine2\n",
+					"                        ,CAST(addressTown AS String) AS addressTown\n",
+					"                        ,CAST(addressCounty AS String) AS addressCounty\n",
+					"                        ,CAST(postcode AS String) AS postcode\n",
+					"                        ,CAST(addressCountry AS String) AS addressCountry\n",
+					"                        ,CAST(organisation AS String) AS organisation\n",
+					"                        ,CAST(organisationType AS String) AS organisationType\n",
+					"                        ,CAST(role AS String) AS role\n",
+					"                        ,CAST(telephoneNumber AS String) AS telephoneNumber\n",
+					"                        ,CAST(otherPhoneNumber AS String) AS otherPhoneNumber\n",
+					"                        ,CAST(faxNumber AS String) AS faxNumber\n",
+					"                        ,CAST(emailAddress AS String) AS emailAddress\n",
+					"                        ,CAST(webAddress AS String) AS webAddress\n",
+					"                        ,CAST(serviceUserType AS String) AS serviceUserType\n",
+					"                        ,CAST(caseReference AS String) AS caseReference\n",
+					"                        ,CAST('' AS String) AS sourceSystem\n",
+					"                        ,CAST('' AS String) AS sourceSuid\n",
 					"                    FROM \n",
 					"                        odw_harmonised_db.curated_service_user\"\"\")\n",
 					"\n",
 					"copy.write.mode(\"overwrite\").partitionBy(\"serviceUserType\").saveAsTable(\"odw_curated_db.service_user\")"
 				],
-				"execution_count": null
+				"execution_count": 125
 			},
 			{
 				"cell_type": "code",
@@ -2587,7 +2687,7 @@
 				"source": [
 					"spark.conf.set(\"spark.sql.execution.arrow.pyspark.enabled\", \"false\")"
 				],
-				"execution_count": null
+				"execution_count": 123
 			},
 			{
 				"cell_type": "code",
@@ -2626,7 +2726,7 @@
 					"        table_loc = \"abfss://odw-curated@\"+storage_account+'service_user'\n",
 					"        df.write.mode(\"overwrite\").partitionBy(\"serviceUserType\").save(table_loc)  "
 				],
-				"execution_count": null
+				"execution_count": 126
 			},
 			{
 				"cell_type": "code",
@@ -2644,7 +2744,7 @@
 				"source": [
 					"spark.conf.set(\"spark.sql.execution.arrow.pyspark.enabled\", \"true\")"
 				],
-				"execution_count": null
+				"execution_count": 132
 			},
 			{
 				"cell_type": "code",
