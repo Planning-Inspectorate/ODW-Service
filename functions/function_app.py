@@ -8,13 +8,23 @@ from servicebus_funcs import get_messages_and_validate, send_to_storage
 from set_environment import current_config, config
 from var_funcs import CREDENTIAL
 from pins_data_model import load_schemas
+from azure.functions.decorators.core import DataType
 import json
 import os
 
-_STORAGE = os.environ["MESSAGE_STORAGE_ACCOUNT"]
-_CONTAINER = os.environ["MESSAGE_STORAGE_CONTAINER"]
-_NAMESPACE = os.environ["ServiceBusConnection__fullyQualifiedNamespace"]
-_NAMESPACE_APPEALS = os.environ["SERVICEBUS_NAMESPACE_APPEALS"]
+_STORAGE = ""
+_CONTAINER = ""
+_NAMESPACE = ""
+_NAMESPACE_APPEALS = ""
+
+try:
+    _STORAGE = os.environ["MESSAGE_STORAGE_ACCOUNT"]
+    _CONTAINER = os.environ["MESSAGE_STORAGE_CONTAINER"]
+    _NAMESPACE = os.environ["ServiceBusConnection__fullyQualifiedNamespace"]
+    _NAMESPACE_APPEALS = os.environ["SERVICEBUS_NAMESPACE_APPEALS"]
+except:
+    print("Warning: Missing Environment Variables")
+
 _CREDENTIAL = CREDENTIAL
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
 _MAX_WAIT_TIME = config["global"]["max_wait_time"]
@@ -676,4 +686,28 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
             func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
             if f"{_VALIDATION_ERROR}" in str(e)
             else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+
+@_app.function_name(name="get_timesheets")
+@_app.route(route="timesheets/{caseType}/{searchCriteria}", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="timesheet",
+                command_text="SELECT TOP (100) * FROM [odw_harmonised_db].[dbo].[s62a_view_cases_dim] WHERE [Name] LIKE Concat(Char(37), @searchCriteria, Char(37))",
+                command_type="Text",
+                parameters="@caseType={caseType},@searchCriteria={searchCriteria}",
+                connection_string_setting="SqlConnectionString")
+def get_timesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.HttpResponse:
+    """
+    We need to use Char(37) to escape the % 
+    https://stackoverflow.com/questions/71914897/how-do-i-use-sql-like-value-operator-with-azure-functions-sql-binding
+    """
+    try:
+        rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
