@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e4fc1c74-1a86-4948-9bdd-3c42bc315cb2"
+				"spark.autotune.trackingId": "05ea4220-9ce1-4e8f-a38f-8acc4f87689a"
 			}
 		},
 		"metadata": {
@@ -79,7 +79,7 @@
 				},
 				"source": [
 					"from pyspark.sql import DataFrame\n",
-					"from pyspark.sql.types import StructType\n",
+					"from pyspark.sql.types import StructType, StructField\n",
 					"from pyspark.sql.functions import *"
 				],
 				"execution_count": 2
@@ -117,17 +117,22 @@
 					}
 				},
 				"source": [
-					"def compare_schemas(schema1: StructType, schema2: StructType) -> tuple:\n",
-					"    fields1 = set((field.name, field.dataType) for field in schema1.fields)\n",
-					"    fields2 = set((field.name, field.dataType) for field in schema2.fields)\n",
+					"def normalize_field(field):\n",
+					"    \"\"\" Normalize field for comparison by ignoring nullable differences. \"\"\"\n",
+					"    return (field.name, field.dataType.simpleString().replace(\"NullableType\", \"\"))\n",
 					"\n",
+					"def compare_schemas(schema1: StructType, schema2: StructType) -> tuple:\n",
+					"    fields1 = set(normalize_field(field) for field in schema1.fields)\n",
+					"    fields2 = set(normalize_field(field) for field in schema2.fields)\n",
+					"    \n",
 					"    in_schema1_not_in_schema2 = fields1 - fields2\n",
 					"    in_schema2_not_in_schema1 = fields2 - fields1\n",
 					"    \n",
 					"    in_schema1_not_in_schema2_sorted = sorted(in_schema1_not_in_schema2, key=lambda x: x[0])\n",
 					"    in_schema2_not_in_schema1_sorted = sorted(in_schema2_not_in_schema1, key=lambda x: x[0])\n",
 					"    \n",
-					"    return in_schema1_not_in_schema2_sorted, in_schema2_not_in_schema1_sorted"
+					"    return in_schema1_not_in_schema2_sorted, in_schema2_not_in_schema1_sorted\n",
+					""
 				],
 				"execution_count": null
 			},
