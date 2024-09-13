@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "361d5f44-b1c1-4fd8-b85c-0afef6810ca4"
+				"spark.autotune.trackingId": "0587149b-6ae3-44b4-acf3-ec46fbcdd21a"
 			}
 		},
 		"metadata": {
@@ -303,6 +303,16 @@
 					}
 				},
 				"source": [
+					"\n",
+					"def is_array_of_struct(field):\n",
+					"    field_type = field.dataType\n",
+					"    return isinstance(field_type, ArrayType) and isinstance(field_type.elementType, StructType)\n",
+					"\n",
+					"\n",
+					"def get_empty_array_of_structs(schema):\n",
+					"    empty_struct = F.struct([F.lit(\"\").cast(field.dataType).alias(field.name) for field in schema.fields])\n",
+					"    return F.array(empty_struct)\n",
+					"\n",
 					"def cast_null_columns(df: DataFrame, schema: StructType) -> DataFrame:\n",
 					"\n",
 					"    \"\"\"\n",
@@ -339,8 +349,14 @@
 					"            try:\n",
 					"                df = df.withColumn(col, F.col(col).cast(schema_dict[col]))\n",
 					"                print(f\"Column '{col}' was cast from {df_schema[col]} to {schema_dict[col]}.\")\n",
-					"            except Exception as e:\n",
-					"                if isinstance(schema_dict[col], ArrayType):\n",
+					"            except:\n",
+					"                if is_array_of_struct(schema[col]):\n",
+					"                    try:\n",
+					"                        df = df.withColumn(col, get_empty_array_of_structs(schema[col].dataType.elementType))\n",
+					"                        print(f\"Column '{col}' was cast from {df_schema[col]} to {schema[col]}.\")\n",
+					"                    except:\n",
+					"                        print(f\"Failed to cast Column '{col}' from {df_schema[col]} to {schema_dict[col]}.\")\n",
+					"                elif isinstance(schema_dict[col], ArrayType):\n",
 					"                    df = df.withColumn(col, array())\n",
 					"                    print(f\"Column '{col}' was cast from {df_schema[col]} to {schema_dict[col]}.\")\n",
 					"                else:\n",
