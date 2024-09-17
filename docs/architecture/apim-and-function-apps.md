@@ -5,7 +5,7 @@
 [DaRT process](#dart-process)  
 [Folder structure example](#folder-structure-example)  
 [Authorisation flow](#authorisation-flow)  
-[MiPINS API](#mipins-api)
+[Timesheet API](#timesheet-api)
 
 ## High level architecture  
 
@@ -149,7 +149,7 @@ sequenceDiagram
 ```
 
 
-# MiPINS API
+# Timesheet API
 ### Goal
 Back Office (ODT) wants to read data from ODW. An API needs to be provided which reads data from specified SQL tables and returns it to the calling process.
 
