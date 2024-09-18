@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2d992c26-8def-4796-b78c-6afd2d711b43"
+				"spark.autotune.trackingId": "9b0a0aee-f8fb-4180-8343-90172a4d087e"
 			}
 		},
 		"metadata": {
@@ -90,6 +90,8 @@
 					"std_db_name: str = 'odw_standardised_db'\r\n",
 					"hrm_db_name: str = 'odw_harmonised_db'\r\n",
 					"curated_db_name: str = 'odw_curated_db'\r\n",
+					"## new curated database\r\n",
+					"curated_db_migration_name: str = 'odw_curated_migration_db'\r\n",
 					"std_table_name: str = 'sb_nsip_project'\r\n",
 					"hrm_table_name: str = 'sb_nsip_project'\r\n",
 					"hrm_table_final: str = 'nsip_project'\r\n",
@@ -180,6 +182,33 @@
 					"    return spark_dataframe"
 				],
 				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
+					"def harmonise_df_hzn(hrm_table: str) -> DataFrame:\r\n",
+					"    df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
+					"    select *\r\n",
+					"    from {hrm_db_name}.{hrm_table_final} tbl_1\r\n",
+					"    where SourceSystem='Horizon'\r\n",
+					"\tand tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db_name}.{hrm_table_final} tbl_2  WHERE tbl_1.caseid = tbl_2.caseid group by caseid)\r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"    return df_harmonise_only_hzn"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -477,6 +506,198 @@
 					}
 				},
 				"source": [
+					"### The below tests are for the curated_migration_db table\r\n",
+					"##### Test 1:  Counts match in harmonised and curated\r\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_counts_hrm_cur(hrm_table: str, cur_table: str) -> tuple[int, int, bool]:   \r\n",
+					"\r\n",
+					"    ## Define harmonise and curated dataframes\r\n",
+					"\r\n",
+					"    df_harmonise_hzn = harmonise_df_hzn(hrm_table)\r\n",
+					"\r\n",
+					"    df_curated:DataFrame =  spark.sql(f\"\"\"\r\n",
+					"    select *\r\n",
+					"    from {curated_db_migration_name}.{curated_table_name}\"\"\")\r\n",
+					"    \r\n",
+					"    ## calculate counts\r\n",
+					"\r\n",
+					"    hrm_count = df_harmonise_hzn.count()\r\n",
+					"    cur_count = df_curated.count()\r\n",
+					"    return (hrm_count, cur_count, hrm_count == cur_count)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"harmonised_count, curated_count, counts_match = test_counts_hrm_cur(hrm_table_final, curated_table_name)\r\n",
+					"print(f\"Harmonised Count: {harmonised_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 2: Check curated layer only has horizon data and unique records (distinct primary ids)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_curated_unique_hzn_only(cur_table: str) -> tuple[bool,int,int,bool]: \r\n",
+					"\r\n",
+					"    df_curated:DataFrame =  spark.sql(f\"\"\"\r\n",
+					"    select *\r\n",
+					"    from {curated_db_migration_name}.{curated_table_name}\"\"\")\r\n",
+					"\r\n",
+					"    count_not_hzn_records: int = df_curated.filter(\"SourceSystem != 'horizon'\").count()\r\n",
+					"\r\n",
+					"    total_count = df_curated.count()\r\n",
+					"\r\n",
+					"    #Count of distinct caseid (primary id)\r\n",
+					"    distinct_count = df_curated.select(\"caseid\").distinct().count()\r\n",
+					"\r\n",
+					"\r\n",
+					"    return (count_not_hzn_records == 0,total_count,distinct_count,total_count == distinct_count)\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"no_horizon_records, total_curated_count, distinct_curated_count,counts_match = test_curated_unique_hzn_only(curated_table_name)\r\n",
+					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\n Distinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 3: Check we are not loosing caseids, only rows, as we are getting the latest ingestionDate"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_table_final: str, curated_table_name: str) -> bool:\r\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
+					"    select caseid\r\n",
+					"    from {hrm_db_name}.{hrm_table_final}\r\n",
+					"    where sourcesystem = 'Horizon'\r\n",
+					"    and caseid not in\r\n",
+					"    (\r\n",
+					"        select caseid\r\n",
+					"        from {curated_db_migration_name}.{curated_table_name}\r\n",
+					"    )\r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"print(f\"Horizon to curated no caseids are dropped: {test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_table_final, curated_table_name)}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"##### Trace service bus data from standardised to curated\r\n",
 					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
 				]
@@ -551,24 +772,6 @@
 					"Order by IngestionDate desc"
 				],
 				"execution_count": 43
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
