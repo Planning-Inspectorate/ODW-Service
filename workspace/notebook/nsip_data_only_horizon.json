@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4ac755ac-9700-4bba-8592-c364eae3a41a"
+				"spark.autotune.trackingId": "6bb54f4b-cf35-4cd3-81d5-e90716393913"
 			}
 		},
 		"metadata": {
@@ -84,7 +84,7 @@
 				},
 				"source": [
 					"%%sql\n",
-					"CREATE OR REPLACE VIEW odw_curated_db.vw_nsip_data_hzn\n",
+					"CREATE OR REPLACE VIEW odw_curated_migration_db.vw_nsip_data_hzn\n",
 					"AS\n",
 					"SELECT\n",
 					"\tProject.caseId\n",
@@ -184,7 +184,7 @@
 					"\tProject.SourceSystem='Horizon'\n",
 					"\tand Project.IngestionDate = (select max(IngestionDate) from odw_harmonised_db.nsip_project tbl_2  WHERE Project.caseid = tbl_2.caseid group by caseid)"
 				],
-				"execution_count": 28
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -222,7 +222,7 @@
 					"where caseid in (3148455,3217867)\r\n",
 					"order by caseid"
 				],
-				"execution_count": 25
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -260,7 +260,7 @@
 					"where SourceSystem='Horizon'  and IngestionDate = (select max(IngestionDate) from odw_harmonised_db.nsip_project tbl_2  WHERE tbl_1.caseid = tbl_2.caseid group by caseid)\r\n",
 					""
 				],
-				"execution_count": 43
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -296,11 +296,11 @@
 					"%%sql\r\n",
 					"SELECT a.caseid\r\n",
 					"FROM odw_harmonised_db.nsip_project a\r\n",
-					"LEFT JOIN odw_curated_db.vw_nsip_data_hzn b ON a.caseid = b.caseid\r\n",
+					"LEFT JOIN odw_curated_migration_db.vw_nsip_data_hzn b ON a.caseid = b.caseid\r\n",
 					"WHERE b.caseid IS NULL and a.sourcesystem = 'Horizon'\r\n",
 					""
 				],
-				"execution_count": 40
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -321,12 +321,12 @@
 				},
 				"source": [
 					"%%sql\r\n",
-					"SELECT COUNT(*)\r\n",
+					"SELECT  COUNT(distinct(caseid)) as c_caseid, count(*) as c_records\r\n",
 					"FROM odw_harmonised_db.nsip_project tbl_1\r\n",
 					"where sourcesystem = 'Horizon'\r\n",
 					""
 				],
-				"execution_count": 37
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -348,10 +348,10 @@
 				"source": [
 					"%%sql\r\n",
 					"SELECT count(*)\r\n",
-					"FROM odw_curated_db.vw_nsip_data_hzn\r\n",
+					"FROM odw_curated_migration_db.vw_nsip_data_hzn\r\n",
 					""
 				],
-				"execution_count": 41
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -386,11 +386,11 @@
 				"source": [
 					"%%sql\r\n",
 					"SELECT caseid, COUNT(*)\r\n",
-					"FROM odw_curated_db.vw_nsip_data_hzn\r\n",
+					"FROM odw_curated_migration_db.vw_nsip_data_hzn\r\n",
 					"GROUP BY caseid\r\n",
 					"HAVING COUNT(*) > 1;"
 				],
-				"execution_count": 29
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -421,10 +421,10 @@
 				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
-					"view_df = spark.sql('SELECT * FROM odw_curated_db.vw_nsip_data_hzn')\n",
-					"view_df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").saveAsTable('odw_curated_db.nsip_data_hzn_only')"
+					"view_df = spark.sql('SELECT * FROM odw_curated_migration_db.vw_nsip_data_hzn')\n",
+					"view_df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").saveAsTable('odw_curated_migration_db.nsip_data_hzn_only')"
 				],
-				"execution_count": 42
+				"execution_count": 8
 			}
 		]
 	}
