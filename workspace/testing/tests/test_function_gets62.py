@@ -10,22 +10,9 @@ def test_function_gets62(credential_name, azure_credential, synapse_endpoint: st
     pipelinename: str = "pln_run_function_app_unit_test"
     
     pipeline_raw_params = {
-        "sparkPool": "pinssynspodw",
-        "pipeline": pipelinename,
-        "sessionOptions": {
-            "driverMemory": "28g",
-            "driverCores": 4,
-            "executorMemory": "28g",
-            "executorCores": 4,
-            "numExecutors": 2,
-            "runAsWorkspaceSystemIdentity": False
-        },
-        "parameters": {
-            "function_name": [
+            "function_name": 
                  "gets62"
-            ]
-        }
-    }
+    }       
     
 
     #run the pipeline
