@@ -39,8 +39,6 @@ def run_and_observe_pipeline(credential_name: str, azure_credential: ClientSecre
 
 def _run_pipeline(credential_name: str, azure_credential: ClientSecretCredential, synapse_endpoint: str, pipeline_name: str, params: dict) -> str:
     print(f'RUNNING PIPELINE {pipeline_name}...\n')
-    pprint.pprint(params)
-    print("banana")
     # Implementation with REST API
     run_pipeline_url = f'{synapse_endpoint}/pipelines/{pipeline_name}/createRun?api-version=2020-12-01'
     access_token = azure_credential.get_token(credential_name)
