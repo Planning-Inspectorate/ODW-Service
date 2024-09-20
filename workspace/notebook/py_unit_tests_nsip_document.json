@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "06686951-9d10-485e-b731-398d2cb1a7b4"
+				"spark.autotune.trackingId": "2d802230-9859-4347-a9b8-db90a4165319"
 			}
 		},
 		"metadata": {
@@ -98,7 +98,12 @@
 					"std_table_name: str = 'sb_nsip_document'\n",
 					"hrm_table_name: str = 'sb_nsip_document'\n",
 					"hrm_table_final: str = 'nsip_document'\n",
-					"curated_table_name: str = 'nsip_document'"
+					"curated_table_name: str = 'nsip_document'\n",
+					"\n",
+					"## new curated database\n",
+					"curated_db_migration_name: str = 'odw_curated_migration_db'\n",
+					"curated_table_migration_name: str = 'nsip_document'\n",
+					"primary_key: str = 'documentid'"
 				],
 				"execution_count": null
 			},
@@ -371,6 +376,103 @@
 					}
 				},
 				"source": [
+					"#### The below tests are for the curated_migration_db table\r\n",
+					"###### Test 1: Counts match in harmonised and curated"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"harmonised_count, curated_count, counts_match = test_counts_hrm_cur(hrm_db_name, hrm_table_final, curated_db_migration_name, curated_table_migration_name, primary_key)\r\n",
+					"print(f\"Harmonised Count: {harmonised_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 2: Check curated layer only has horizon data and unique records (distinct primary ids)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"no_horizon_records, total_curated_count, distinct_curated_count, counts_match = test_curated_unique_hzn_only(curated_db_migration_name, curated_table_migration_name, primary_key)\r\n",
+					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\n Distinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 3: Check we are not loosing caseids, only rows, as we are getting the latest ingestionDate"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"result = test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db_name, hrm_table_final, curated_db_migration_name, curated_table_migration_name, primary_key)\r\n",
+					"print(f\"Horizon to curated no caseids are dropped: {result}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"##### Trace service bus data from standardised to harmonised\n",
 					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
 				]
@@ -540,7 +642,7 @@
 					"\n",
 					"ORDER BY ingested_datetime"
 				],
-				"execution_count": 49
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -564,7 +666,7 @@
 					"SELECT DISTINCT * FROM odw_harmonised_db.aie_document_data WHERE documentId = '15258121' AND IsActive = 'Y';\n",
 					"SELECT DISTINCT * FROM odw_harmonised_db.nsip_document WHERE documentId = '15258121' AND IsActive = 'Y';"
 				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -607,7 +709,7 @@
 					"display(df_hrm_final)\n",
 					"display(df_cur)"
 				],
-				"execution_count": 51
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -674,7 +776,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": 28
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -703,7 +805,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": 29
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -733,7 +835,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": 30
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -763,7 +865,7 @@
 					"\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": 41
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -783,7 +885,7 @@
 					"    df: DataFrame = aie_std_documentIds.subtract(aie_hrm_documentIds)\n",
 					"    return df.count() == 0 "
 				],
-				"execution_count": 32
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -806,7 +908,7 @@
 					"    else:\n",
 					"        return True"
 				],
-				"execution_count": 33
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -839,7 +941,7 @@
 					"    return non_zero_differences.count() == 0\r\n",
 					""
 				],
-				"execution_count": 34
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -858,7 +960,7 @@
 				"source": [
 					"display(test_document_row_counts_match(hrm_table_final, curated_table_name))"
 				],
-				"execution_count": 35
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -876,7 +978,7 @@
 				"source": [
 					"print(f\"Service bus std to hrm no documentIds dropped: {test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name)}\")"
 				],
-				"execution_count": 37
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -894,7 +996,7 @@
 				"source": [
 					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_sb_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": 38
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -912,7 +1014,7 @@
 				"source": [
 					"print(f\"hrm table final to curated no documentIds dropped: {test_hrm_to_curated_no_dropping_records(hrm_table_final, curated_table_name)}\")"
 				],
-				"execution_count": 39
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -930,7 +1032,7 @@
 				"source": [
 					"print(f\"Horizon std table to hrm table final no documentIds dropped: {test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -948,7 +1050,7 @@
 				"source": [
 					"print(f\"AIE std table to hrm table no documentIds dropped: {test_aie_std_to_hrm_no_dropping_records(aie_std_table_name, aie_hrm_table_name)}\")"
 				],
-				"execution_count": 43
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -966,7 +1068,7 @@
 				"source": [
 					"print(f\"AIE hrm table to hrm table final no documentIds dropped: {test_aie_hrm_to_hrm_final_no_dropping_records(aie_hrm_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": 44
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -984,7 +1086,7 @@
 				"source": [
 					"print(f\"Document row counts match for each document in harmonised final to curated: {test_document_row_counts_match(hrm_table_final, curated_table_name)}\")"
 				],
-				"execution_count": 45
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -1007,7 +1109,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_curated_db.nsip_document where caseref in ('TR050004','EN010080', 'EN010082', 'TR030003') order by caseref;"
 				],
-				"execution_count": 53
+				"execution_count": null
 			}
 		]
 	}
