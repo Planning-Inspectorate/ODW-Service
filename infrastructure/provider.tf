@@ -27,14 +27,14 @@ provider "azurerm" {
 
 provider "azurerm" {
   features {}
-  subscription_id = var.odt_subscription_id
-  alias           = "odt"
+  subscription_id            = var.odt_subscription_id
+  alias                      = "odt"
   skip_provider_registration = true
 }
 
 provider "azurerm" {
   features {}
-  subscription_id = var.horizon_subscription_id
-  alias           = "horizon"
+  subscription_id            = var.horizon_subscription_id
+  alias                      = "horizon"
   skip_provider_registration = true
 }
