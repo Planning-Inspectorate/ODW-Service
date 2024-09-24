@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4f35e6bf-1896-42d1-96dc-3576d15252af"
+				"spark.autotune.trackingId": "45fd0569-3136-4ca6-a47a-ce3a8ecf97cb"
 			}
 		},
 		"metadata": {
@@ -330,12 +330,39 @@
 					}
 				},
 				"source": [
+					"## Check which source column exist\r\n",
+					"def check_column_exists(df: DataFrame, col: str) -> str:\r\n",
+					"    if col in df.columns == True:\r\n",
+					"        source = col\r\n",
+					"    else:\r\n",
+					"         source = \"ODTSourcesystem\"\r\n",
+					"    return source"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
 					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str) -> DataFrame:\r\n",
+					"    df = spark.table(f\"{hrm_db}.{hrm_table}\")\r\n",
+					"    column_name = \"Sourcesystem\"\r\n",
+					"    source_column = check_column_exists(df,column_name)\r\n",
 					"    df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
 					"    select *\r\n",
 					"    from {hrm_db}.{hrm_table} tbl_1\r\n",
-					"    where (Lower(SourceSystem)='horizon' or LOWER(ODTSourceSystem)='horizon')\r\n",
+					"    where Lower({source_column})='horizon'\r\n",
 					"\tand tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
 					"    \"\"\")\r\n",
 					"\r\n",
@@ -419,10 +446,13 @@
 				},
 				"source": [
 					"def test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str) -> bool:\r\n",
+					"    df = spark.table(f\"{hrm_db}.{hrm_table}\")\r\n",
+					"    column_name = \"Sourcesystem\"\r\n",
+					"    source_column = check_column_exists(df,column_name)\r\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
 					"                                SELECT {primary_key}\r\n",
 					"                                FROM {hrm_db}.{hrm_table}\r\n",
-					"                                WHERE LOWER(sourcesystem) = 'horizon'\r\n",
+					"                                WHERE LOWER({source_column}) = 'horizon'\r\n",
 					"                                AND {primary_key} NOT IN\r\n",
 					"                                (\r\n",
 					"                                    SELECT {primary_key}\r\n",
