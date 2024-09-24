@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "80f7bd63-f449-4a0c-b43f-8cd6ecf55431"
+				"spark.autotune.trackingId": "84bbd7ca-2ef6-475d-b62c-1f17b30d691b"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 11
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 12
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -107,7 +107,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\n",
 					"    return spark_schema"
 				],
-				"execution_count": 13
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +127,7 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 14
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +168,7 @@
 					"        result.update(extract_field(field))\n",
 					"    return result"
 				],
-				"execution_count": 15
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -219,7 +219,7 @@
 					"    else:\n",
 					"        return True"
 				],
-				"execution_count": 16
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -250,7 +250,7 @@
 					"\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 17
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -281,7 +281,7 @@
 					"    \n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 18
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -314,7 +314,7 @@
 					"    missing_rows_in_hrm = std_df.select(data_model_columns).subtract(hrm_df.select(data_model_columns))\n",
 					"    display(missing_rows_in_hrm)"
 				],
-				"execution_count": 19
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -331,17 +331,17 @@
 				},
 				"source": [
 					"## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
-					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str) -> DataFrame:\r\n",
+					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str, sourceColumn:str = \"SourceSystem\") -> DataFrame:\r\n",
 					"    df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
 					"    select *\r\n",
 					"    from {hrm_db}.{hrm_table} tbl_1\r\n",
-					"    where SourceSystem='Horizon'\r\n",
-					"\tand tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
+					"    where {sourceColumn}='Horizon'\r\n",
+					"    and tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
 					"    \"\"\")\r\n",
 					"\r\n",
 					"    return df_harmonise_only_hzn"
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -357,11 +357,11 @@
 					}
 				},
 				"source": [
-					"def test_counts_hrm_cur(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str) -> tuple[int, int, bool]:   \r\n",
+					"def test_counts_hrm_cur(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str, sourceColumn:str = \"SourceSystem\") -> tuple[int, int, bool]:   \r\n",
 					"\r\n",
 					"    ## Define harmonise and curated dataframes\r\n",
 					"\r\n",
-					"    df_harmonise_hzn = harmonise_df_hzn(hrm_db, hrm_table, primary_key)\r\n",
+					"    df_harmonise_hzn = harmonise_df_hzn(hrm_db, hrm_table, primary_key, sourceColumn)\r\n",
 					"\r\n",
 					"    df_curated: DataFrame =  spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
 					"    \r\n",
@@ -371,7 +371,7 @@
 					"    cur_count = df_curated.count()\r\n",
 					"    return (hrm_count, cur_count, hrm_count == cur_count)"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -391,7 +391,10 @@
 					"\r\n",
 					"    df_curated: DataFrame = spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
 					"\r\n",
-					"    count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\r\n",
+					"    if df_curated.columns['sourceSystem']:\r\n",
+					"        count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\r\n",
+					"    elif df_curated.columns['ODTSourceSystem']:\r\n",
+					"        count_not_hzn_records: int = df_curated.filter(\"ODTSourceSystem != 'horizon' AND ODTSourceSystem != 'Horizon'\").count()\r\n",
 					"\r\n",
 					"    total_count = df_curated.count()\r\n",
 					"\r\n",
@@ -402,7 +405,7 @@
 					"    return (count_not_hzn_records == 0, total_count, distinct_count, total_count == distinct_count)\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -432,7 +435,7 @@
 					"\r\n",
 					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 16
 			}
 		]
 	}
