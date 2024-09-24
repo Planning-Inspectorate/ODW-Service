@@ -7,6 +7,16 @@ variable "application_insights_key" {
   default     = null
 }
 
+variable "connection_strings" {
+  type = list(object({
+    name  = string
+    type  = string
+    value = string
+  }))
+  description = "Environment variables: connection strings"
+  default     = []
+}
+
 variable "environment" {
   type        = string
   description = "The environment name. Used as a tag and in naming the resource group"
