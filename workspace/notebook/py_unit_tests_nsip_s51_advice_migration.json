@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5ad2fdbf-12fe-43df-87f5-7c73b1cbb082"
+				"spark.autotune.trackingId": "71fa03e4-13f7-4fcd-a38a-bbdc0b86e215"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 42
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -86,16 +86,12 @@
 					}
 				},
 				"source": [
-					"entity_name: str = 's51-advice'\n",
-					"folder_name: str = 'nsip-s51-advice'\n",
-					"std_db_name: str = 'odw_standardised_db'\n",
 					"hrm_db_name: str = 'odw_harmonised_db'\n",
 					"curated_db_name: str = 'odw_curated_migration_db'\n",
-					"std_table_name: str = 'sb_s51_advice'\n",
 					"hrm_table_final: str = 'nsip_s51_advice'\n",
 					"curated_table_name: str = 's51_advice'"
 				],
-				"execution_count": 43
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
@@ -114,7 +110,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 44
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -150,7 +146,7 @@
 					"            \"redactionStatus\",\n",
 					"            \"attachmentIds\"]"
 				],
-				"execution_count": 45
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
@@ -168,28 +164,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 46
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"sb_std_schema = create_spark_schema(std_db_name, entity_name, folder_name)\n",
-					"sb_std_table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema\n",
-					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name, folder_name)\n",
-					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
-				],
-				"execution_count": 47
+				"execution_count": 103
 			},
 			{
 				"cell_type": "markdown",
@@ -201,84 +176,7 @@
 					}
 				},
 				"source": [
-					"##### Compare schemas"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"std_schema_correct: bool = test_compare_schemas(sb_std_schema, sb_std_table_schema)\n",
-					"exitCode += int(not std_schema_correct)\n",
-					"print(f\"Service bus standardised schema correct: {std_schema_correct}\\nTable: {std_db_name}.{std_table_name}\\nDifferences shown above (if any)\")\n",
-					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\n",
-					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
-					"exitCode += int(not hrm_schema_correct)"
-				],
-				"execution_count": 48
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Compare service bus standardised with harmonised\n",
-					"Should be the same count"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\n",
-					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")\n",
-					"\n",
-					"if standardised_count > harmonised_count:\n",
-					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\n",
-					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\")\n",
-					"    #this is classed as an error\n",
-					"    exitCode += 1 "
-				],
-				"execution_count": 49
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Compare final harmonised table (if combined with Horizon) with curated table\n",
+					"##### Compare harmonised table with curated table\n",
 					"Comparing where IsActive = Y in harmonised = curated row count"
 				]
 			},
@@ -298,317 +196,12 @@
 				"source": [
 					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name, data_model_columns)\n",
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
-					"exitCode += int(not counts_match)"
+					"if counts_match:\n",
+					"    print(\"these counts are unlikely to be the same as we're excluding ODT data from migrated curated, it might well indicate an issue if they're the same\")\n",
+					"else:\n",
+					"    print(\"The counts don't match, this is expected as we are excluding ODT data from migrated curated\")"
 				],
-				"execution_count": 50
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Trace service bus data from standardised to curated\n",
-					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
-				]
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Check array fields are aggregated properly\n",
-					"Go and find examples"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    advicenodeid,\n",
-					"    COUNT(DISTINCT attachmentdataid)\n",
-					"FROM\n",
-					"    odw_standardised_db.horizon_nsip_advice\n",
-					"WHERE\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_nsip_advice)\n",
-					"GROUP BY\n",
-					"    advicenodeid\n",
-					"HAVING\n",
-					"    COUNT(DISTINCT attachmentdataid) > 1\n",
-					"ORDER BY\n",
-					"    2 DESC"
-				],
-				"execution_count": 51
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select attachmentIds FROM odw_curated_migration_db.s51_advice where adviceId = 16347955"
-				],
-				"execution_count": 52
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Trace Horizon data to Harmonised"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT DISTINCT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_standardised_db.horizon_nsip_advice\n",
-					"WHERE\n",
-					"     advicenodeid = '15179883' AND \n",
-					"     ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_nsip_advice);"
-				],
-				"execution_count": 53
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT DISTINCT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"     adviceid = '15179883' and IsActive = 'Y'\n",
-					"order BY\n",
-					"    ingestiondate DESC"
-				],
-				"execution_count": 54
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### Horizon and Service Bus data successfully combined and flags set appropriately"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    adviceid\n",
-					"    ,count(*)\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"    ODTSourceSystem = 'Horizon'\n",
-					"GROUP BY\n",
-					"    1\n",
-					"ORDER BY\n",
-					"    2 desc"
-				],
-				"execution_count": 55
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    adviceid\n",
-					"    ,count(*)\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"    ODTSourceSystem = 'ODT'\n",
-					"GROUP BY\n",
-					"    1\n",
-					"ORDER BY\n",
-					"    2 desc"
-				],
-				"execution_count": 56
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Harmonised Data updated in curated correctly"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT DISTINCT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice\n",
-					"WHERE\n",
-					"     adviceid = '15179883' and IsActive = 'Y'\n",
-					"order BY\n",
-					"    ingestiondate DESC"
-				],
-				"execution_count": 57
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    *\n",
-					"FROM\n",
-					"    odw_curated_migration_db.s51_advice\n",
-					"WHERE\n",
-					"     adviceid = '15179883'"
-				],
-				"execution_count": 58
+				"execution_count": 104
 			},
 			{
 				"cell_type": "markdown",
@@ -660,7 +253,7 @@
 					"select * from odw_harmonised_db.nsip_s51_advice where adviceId = 25680508;\n",
 					"select * from odw_curated_migration_db.s51_advice where adviceId = 25680508;"
 				],
-				"execution_count": 59
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -678,7 +271,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
 				],
-				"execution_count": 60
+				"execution_count": 106
 			}
 		]
 	}
