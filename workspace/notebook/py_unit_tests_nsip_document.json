@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4d79363b-1029-42c8-9f74-a15161850db7"
+				"spark.autotune.trackingId": "99514a34-195a-497a-8f64-97ace284adc6"
 			}
 		},
 		"metadata": {
@@ -623,7 +623,7 @@
 					}
 				},
 				"source": [
-					"mssparkutils.notebook.exit(exitCode)"
+					"# mssparkutils.notebook.exit(exitCode)"
 				],
 				"execution_count": null
 			},
@@ -998,14 +998,136 @@
 							"deleting": false
 						}
 					},
+					"collapsed": false
+				},
+				"source": [
+					"def test_aie_hrm_to_hrm_final_dropped_records(aie_hrm_table_name: str, hrm_table_final: str) -> bool:\r\n",
+					"    aie_df = spark.sql(f\"\"\"\r\n",
+					"    select *\r\n",
+					"    from {hrm_db_name}.{aie_hrm_table_name}\r\n",
+					"    where documentId not in \r\n",
+					"    (\r\n",
+					"        select documentId\r\n",
+					"        from {hrm_db_name}.{hrm_table_final}\r\n",
+					"    )\r\n",
+					"    \"\"\"\r\n",
+					"    )\r\n",
+					"    return aie_df\r\n",
+					"\r\n",
+					"display(test_aie_hrm_to_hrm_final_dropped_records(aie_hrm_table_name, hrm_table_final))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
 					"microsoft": {
 						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"SELECT * FROM odw_curated_db.nsip_document where caseref in ('TR050004','EN010080', 'EN010082', 'TR030003') order by caseref;"
+					"%%sql\r\n",
+					"select aie.documentId as aie_documentId, aie.filename, aie.documentUri, aie.sourceSystem, hzn.documentId as horizon_documentId\r\n",
+					"from odw_harmonised_db.aie_document_data aie \r\n",
+					"left join odw_standardised_db.horizon_appeals_document_metadata hzn\r\n",
+					"on aie.documentId = hzn.documentId\r\n",
+					"and aie.filename = hzn.filename\r\n",
+					"and aie.version = hzn.version\r\n",
+					"where aie.documentId = '56451559'\r\n",
+					"and aie.IngestionDate = (select max(IngestionDate) from odw_harmonised_db.aie_document_data)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select aie.documentId as aie_documentId, aie.filename, aie.documentUri, hzn.documentId as horizon_documentId\r\n",
+					"from odw_harmonised_db.aie_document_data aie \r\n",
+					"right join odw_standardised_db.horizon_appeals_document_metadata hzn\r\n",
+					"on aie.documentId = hzn.documentId\r\n",
+					"and aie.filename = hzn.filename\r\n",
+					"and aie.version = hzn.version\r\n",
+					"where aie.documentId = '56451559'\r\n",
+					"and aie.IngestionDate = (select max(IngestionDate) from odw_harmonised_db.aie_document_data)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"\r\n",
+					"folder: str = f\"abfss://odw-raw@{storage_account}AIEDocumentData/2024-09-24\"\r\n",
+					"\r\n",
+					"df: DataFrame = (spark.read.format(\"csv\")\r\n",
+					"    .option(\"recursiveFileLookup\", \"true\")\r\n",
+					"    .option(\"pathGlobFilter\", \"*.csv\")\r\n",
+					"    .option(\"header\", \"true\")\r\n",
+					"    .option(\"quote\", '\"')\r\n",
+					"    .option(\"escape\", '\"')\r\n",
+					"    .option(\"encoding\", \"UTF-8\")\r\n",
+					"    .option(\"multiLine\", \"true\")\r\n",
+					"    .option(\"ignoreLeadingWhiteSpace\", \"true\")\r\n",
+					"    .option(\"ignoreTrailingWhiteSpace\", \"true\")\r\n",
+					"    .load(folder))\r\n",
+					"\r\n",
+					"df_with_path: DataFrame = df.withColumn(\"input_file\", F.input_file_name())"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(df_with_path.groupBy(\"input_file\").agg(F.count(\"documentId\").alias(\"records\")).orderBy(\"records\", ascending=False))"
 				],
 				"execution_count": null
 			}
