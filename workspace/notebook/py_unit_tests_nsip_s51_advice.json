@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4845da48-e167-4de1-b7ad-48072978d962"
+				"spark.autotune.trackingId": "2196d15c-bb79-4de3-b81f-1e2556a3a84d"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 152
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -101,7 +101,7 @@
 					"curated_table_migration_name: str = 's51_advice'\n",
 					"primary_key: str = 'adviceId'"
 				],
-				"execution_count": 153
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 154
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -156,7 +156,7 @@
 					"            \"redactionStatus\",\n",
 					"            \"attachmentIds\"]"
 				],
-				"execution_count": 155
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -174,7 +174,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 156
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -195,7 +195,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name, folder_name)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 157
+				"execution_count": 50
 			},
 			{
 				"cell_type": "markdown",
@@ -232,7 +232,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 158
+				"execution_count": 51
 			},
 			{
 				"cell_type": "markdown",
@@ -272,7 +272,7 @@
 					"    #this is classed as an error\n",
 					"    exitCode += 1 "
 				],
-				"execution_count": 159
+				"execution_count": 52
 			},
 			{
 				"cell_type": "markdown",
@@ -306,7 +306,7 @@
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 160
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -334,14 +334,24 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"harmonised_count, curated_count, counts_match = test_counts_hrm_cur(hrm_db_name, hrm_table_final, curated_db_migration_name, curated_table_migration_name, primary_key, \"ODTSourceSystem\")\n",
 					"print(f\"Harmonised Count: {harmonised_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
-					"exitCode += int(not counts_match)"
+					"\n",
+					"#count up the ODT records to see what the difference should be\n",
+					"countDF = spark.sql(f\"SELECT COUNT(*) FROM(SELECT DISTINCT AD.adviceId, AD.adviceReference , AD.caseId, AD.caseReference, AD.title, AD.titleWelsh, AD.from, AD.agent, AD.method, AD.enquiryDate, AD.enquiryDetailsWelsh, AD.adviceGivenBy, AD.adviceDate, AD.status, AD.redactionStatus, AD.ODTSourceSystem, AD.enquiryDetails, AD.adviceDetails, AD.adviceDetailsWelsh, AD.attachmentIds FROM {hrm_db_name}.{hrm_table_final} AS AD WHERE LOWER(AD.ODTSourceSystem) ='odt' and AD.IngestionDate = (select max(IngestionDate) from {hrm_db_name}.{hrm_table_final} tbl_2  WHERE AD.NSIPAdviceID = tbl_2.NSIPAdviceID group by NSIPAdviceID) ) AS thisQuery\")\n",
+					"countODTRecords:int = countDF.head()['count(1)']\n",
+					"print(countODTRecords)\n",
+					"\n",
+					"if harmonised_count == curated_count + countODTRecords:\n",
+					"    print(\"Counts are expected\")\n",
+					"else:\n",
+					"    exitCode += int(not counts_match)"
 				],
-				"execution_count": 161
+				"execution_count": 55
 			},
 			{
 				"cell_type": "markdown",
@@ -374,7 +384,7 @@
 					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\n Distinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 162
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -407,7 +417,7 @@
 					"print(f\"Horizon to curated no caseids are dropped: {result}\")\n",
 					"exitCode += int(not result)"
 				],
-				"execution_count": 163
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -470,7 +480,7 @@
 					"ORDER BY\n",
 					"    2 DESC"
 				],
-				"execution_count": 164
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -493,7 +503,7 @@
 					"%%sql\n",
 					"select attachmentIds FROM odw_curated_db.nsip_s51_advice where adviceId = 16347955"
 				],
-				"execution_count": 165
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -535,7 +545,7 @@
 					"     advicenodeid = '15179883' AND \n",
 					"     ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_nsip_advice);"
 				],
-				"execution_count": 166
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -565,7 +575,7 @@
 					"order BY\n",
 					"    ingestiondate DESC"
 				],
-				"execution_count": 167
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -611,7 +621,7 @@
 					"ORDER BY\n",
 					"    2 desc"
 				],
-				"execution_count": 168
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -644,7 +654,7 @@
 					"ORDER BY\n",
 					"    2 desc"
 				],
-				"execution_count": 169
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -687,7 +697,7 @@
 					"order BY\n",
 					"    ingestiondate DESC"
 				],
-				"execution_count": 170
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -728,7 +738,7 @@
 					"WHERE\n",
 					"     adviceid = '15179883'"
 				],
-				"execution_count": 171
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -767,7 +777,7 @@
 					"select * from odw_harmonised_db.nsip_s51_advice where adviceId = 25680508;\n",
 					"select * from odw_curated_db.nsip_s51_advice where adviceId = 25680508;"
 				],
-				"execution_count": 172
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -785,7 +795,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
 				],
-				"execution_count": 173
+				"execution_count": null
 			}
 		]
 	}
