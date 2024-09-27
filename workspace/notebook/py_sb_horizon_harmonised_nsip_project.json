@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5c999eae-00e6-4432-930d-ef9cd0ca68d4"
+				"spark.autotune.trackingId": "847b8977-5f7c-4e89-ac6a-c10b9375e06b"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 14
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_project\""
 				],
-				"execution_count": 15
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -190,7 +190,7 @@
 					"                        ,CAST(NULL AS String) AS applicantwebaddress\n",
 					"                        ,CAST(NULL AS String) AS applicantphonenumber\n",
 					"                        ,CAST(NULL AS String) AS applicantdescriptionofproject\n",
-					"                        ,CAST(NULL AS String) AS caseNodeId\n",
+					"                       ---  ,CAST(NULL AS String) AS caseNodeId\n",
 					"                        --End Horizon only fields\n",
 					"                        ,TRUE AS migrated\n",
 					"                        ,ODTSourceSystem\n",
@@ -202,7 +202,7 @@
 					"                        {service_bus_table}\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 16
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -222,7 +222,7 @@
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT\n",
 					"                        CAST(NULL AS Long) AS NSIPProjectInfoInternalID\n",
-					"                        ,CAST(Horizon.HorizonCaseNumber AS Int) AS caseid\n",
+					"                        ,CAST(Horizon.caseNodeId AS Int) AS caseid -- HorizonCaseNumber\n",
 					"                        ,Horizon.casereference\n",
 					"                        ,Horizon.projectname\n",
 					"                        ,Horizon.projectNameWelsh AS projectNameWelsh\n",
@@ -312,7 +312,7 @@
 					"                        ,applicantwebaddress\n",
 					"                        ,applicantphonenumber\n",
 					"                        ,applicantdescriptionofproject\n",
-					"                        ,caseNodeId\n",
+					"                       --- ,caseNodeId\n",
 					"                        --End Horizon only fields\n",
 					"                        ,FALSE AS migrated\n",
 					"                        ,'Horizon' AS ODTSourceSystem\n",
@@ -337,7 +337,7 @@
 					"WHERE\n",
 					"    caseId IS NULL -- Need to drop cases that have been migrated, but keep the history from Horizon\n",
 					"GROUP BY\n",
-					"    CAST(Horizon.HorizonCaseNumber AS Int)\n",
+					"    CAST(Horizon.caseNodeId AS Int)\n",
 					"    ,Horizon.casereference\n",
 					"    ,Horizon.projectname\n",
 					"    ,Horizon.projectNameWelsh\n",
@@ -406,11 +406,11 @@
 					"    ,applicantwebaddress\n",
 					"    ,applicantphonenumber\n",
 					"    ,applicantdescriptionofproject\n",
-					"    ,caseNodeId\n",
+					"    ---,caseNodeId\n",
 					"\n",
 					"                \"\"\")"
 				],
-				"execution_count": 17
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -452,7 +452,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 18
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -470,7 +470,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 19
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -489,7 +489,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 20
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -541,7 +541,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_project"
 				],
-				"execution_count": 21
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -676,7 +676,7 @@
 					"        ,applicantwebaddress\n",
 					"        ,applicantphonenumber\n",
 					"        ,applicantdescriptionofproject\n",
-					"        ,caseNodeId\n",
+					"       -- ,caseNodeId\n",
 					"        --End Horizon only fields\n",
 					"        ,migrated\n",
 					"        ,ODTSourceSystem\n",
@@ -781,7 +781,7 @@
 					"                    ,IFNULL(CAST(applicantwebaddress AS String), '.')\n",
 					"                    ,IFNULL(CAST(applicantphonenumber AS String), '.')\n",
 					"                    ,IFNULL(CAST(applicantdescriptionofproject AS String), '.')\n",
-					"                    ,IFNULL(CAST(caseNodeId AS String), '.')\n",
+					"                   --,IFNULL(CAST(caseNodeId AS String), '.')\n",
 					"            )\n",
 					"        ) AS RowID\n",
 					"        ,IsActive\n",
@@ -796,7 +796,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 22
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
