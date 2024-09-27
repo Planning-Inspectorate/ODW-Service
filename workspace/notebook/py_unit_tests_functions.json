@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c5b2c6d4-b686-4c2d-9dbb-b32e32f9756a"
+				"spark.autotune.trackingId": "35563ce6-ab76-423d-b54c-d4ed38381d40"
 			}
 		},
 		"metadata": {
@@ -355,12 +355,14 @@
 					"\n",
 					"    # Find rows in the original table that are not in the new table\n",
 					"    missing_rows_in_std = hrm_df.select(data_model_columns).subtract(std_df.select(data_model_columns))\n",
-					"\n",
-					"    # Show the missing rows\n",
-					"    display(missing_rows_in_std)\n",
+					"    if missing_rows_in_std.count() > 0:\n",
+					"        print(f\"Data in Harmonised not in Standardised: {missing_rows_in_std.count()} rows\")\n",
+					"        display(missing_rows_in_std)\n",
 					"\n",
 					"    missing_rows_in_hrm = std_df.select(data_model_columns).subtract(hrm_df.select(data_model_columns))\n",
-					"    display(missing_rows_in_hrm)"
+					"    if missing_rows_in_hrm.count() > 0:\n",
+					"        print(f\"Data in Standardised not in Harmonised: {missing_rows_in_hrm.count()} rows\")\n",
+					"        display(missing_rows_in_hrm)"
 				],
 				"execution_count": 19
 			},
@@ -439,8 +441,11 @@
 					"\r\n",
 					"    df_curated: DataFrame = spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
 					"\r\n",
-					"    count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\r\n",
-					"\r\n",
+					"    if 'sourceSystem' in df_curated.columns:\r\n",
+					"        count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\r\n",
+					"    else:\r\n",
+					"        count_not_hzn_records = 0\r\n",
+					"        \r\n",
 					"    total_count = df_curated.count()\r\n",
 					"\r\n",
 					"    #Count of distinct caseid (primary id)\r\n",
@@ -496,6 +501,23 @@
 					}
 				},
 				"source": [
+					"def test_hzn_and_curated_count_matched(hzn_table: str, curated_table: str, primary_key: str) -> bool: \n",
+					"    df_hzn: Dataframe = spark.sql(f\"\"\"\n",
+					"                                SELECT DISTINCT {primary_key}\n",
+					"                                FROM odw_standardised_db.{hzn_table}\n",
+					"                                WHERE expected_from = (\n",
+					"                                        SELECT MAX(expected_from)\n",
+					"                                        FROM odw_standardised_db.{hzn_table}\n",
+					"                                    )\n",
+					"                            \"\"\")\n",
+					"\n",
+					"    df_cur: Dataframe = spark.sql(f\"\"\"\n",
+					"                                SELECT DISTINCT {primary_key}\n",
+					"                                FROM odw_curated_migration_db.{curated_table}\n",
+					"                            \"\"\")\n",
+					"\n",
+					"    return df_hzn.count() == df_cur.count()\n",
+					""
 					"def test_sb_std_to_sb_hrm_no_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\n",
 					"    select documentId\n",
@@ -554,6 +576,19 @@
 					}
 				},
 				"source": [
+					"def test_hzn_to_curated_no_record_dropped(hzn_table: str, curated_table: str, primary_key: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"                                SELECT DISTINCT {primary_key}\n",
+					"                                FROM odw_standardised_db.{hzn_table}\n",
+					"                                WHERE expected_from = (\n",
+					"                                        SELECT MAX(expected_from)\n",
+					"                                        FROM odw_standardised_db.{hzn_table}\n",
+					"                                    )\n",
+					"                                AND {primary_key} NOT IN (\n",
+					"                                        SELECT DISTINCT {primary_key}\n",
+					"                                        FROM odw_curated_migration_db.{curated_table}\n",
+					"                                    )\n",
+					"                            \"\"\")\n",
 					"def test_hrm_to_curated_no_dropping_records(hrm_table_final: str, curated_table_name: str) -> bool:\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\n",
 					"    select documentId\n",
@@ -569,6 +604,7 @@
 					"    return df.count() == 0"
 				],
 				"execution_count": null
+
 			},
 			{
 				"cell_type": "code",
