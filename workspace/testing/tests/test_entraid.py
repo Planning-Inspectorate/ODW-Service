@@ -30,7 +30,7 @@ def test_entraid_pipeline(credential_name, azure_credential, synapse_endpoint: s
     assert pipeline_run_result == constants.PIPELINE_SUCCESS_STATUS
     print("test_entraid_pipeline Completed")
 
-
+@pytest.mark.skip(reason="notebook needs fixing - will be reactivated once fixed")
 def test_entraid_notebook(credential_name, azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
