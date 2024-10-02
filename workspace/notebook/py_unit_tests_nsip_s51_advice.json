@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5b70865d-c87b-414d-b3f6-22e44f9511ab"
+				"spark.autotune.trackingId": "e40617db-8c10-41dd-b95b-c7d1d80d7514"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 57
+				"execution_count": 115
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +88,7 @@
 				"source": [
 					"spark.catalog.refreshTable('odw_curated_migration_db.s51_advice')"
 				],
-				"execution_count": 58
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
@@ -112,37 +112,14 @@
 					"std_table_name: str = 'sb_s51_advice'\n",
 					"hrm_table_name: str = 'sb_s51_advice'\n",
 					"hrm_table_final: str = 'nsip_s51_advice'\n",
-					"curated_table_name: str = 'nsip_s51_advice'\n",
+					"curated_table_name: str = 's51_advice'\n",
 					"\n",
 					"## new curated database\n",
 					"curated_db_migration_name: str = 'odw_curated_migration_db'\n",
 					"curated_table_migration_name: str = 's51_advice'\n",
 					"primary_key: str = 'adviceId'"
 				],
-				"execution_count": 59
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"refresh table  odw_harmonised_db.nsip_s51_advice"
-				],
-				"execution_count": 60
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
@@ -161,7 +138,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 61
+				"execution_count": 118
 			},
 			{
 				"cell_type": "code",
@@ -197,7 +174,7 @@
 					"            \"redactionStatus\",\n",
 					"            \"attachmentIds\"]"
 				],
-				"execution_count": 62
+				"execution_count": 119
 			},
 			{
 				"cell_type": "code",
@@ -215,7 +192,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 63
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -236,7 +213,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name, folder_name)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 64
+				"execution_count": 121
 			},
 			{
 				"cell_type": "markdown",
@@ -273,7 +250,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 65
+				"execution_count": 122
 			},
 			{
 				"cell_type": "markdown",
@@ -313,7 +290,7 @@
 					"    #this is classed as an error\n",
 					"    exitCode += 1 "
 				],
-				"execution_count": 66
+				"execution_count": 123
 			},
 			{
 				"cell_type": "markdown",
@@ -347,7 +324,7 @@
 					"print(f\"Harmonised Final Row Count (Where Active = Y): {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 72
+				"execution_count": 124
 			},
 			{
 				"cell_type": "markdown",
@@ -378,49 +355,60 @@
 					}
 				},
 				"source": [
-					"# ## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
-					"# ##SourceColumns are not named consistently across different data types\r\n",
-					"# def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str, sourceColumn:str ) -> DataFrame:\r\n",
-					"#     df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
-					"#     select *\r\n",
-					"#     from {hrm_db}.{hrm_table} tbl_1\r\n",
-					"#     where LOWER({sourceColumn})='horizon'\r\n",
-					"#     and tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
-					"#     \"\"\")\r\n",
+					"## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
+					"##SourceColumns are not named consistently across different data types\r\n",
+					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str, sourceColumn:str ) -> DataFrame:\r\n",
+					"    df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
+					"    Select Distinct   \r\n",
+					"    AD.adviceId,\r\n",
+					"    AD.adviceReference ,\r\n",
+					"    CASE\r\n",
+					"        WHEN AD.caseId = 'None'\r\n",
+					"        THEN CAST(\"-1\" as INT)\r\n",
+					"        ELSE AD.caseId\r\n",
+					"    END                                                     AS caseId,\r\n",
+					"    AD.caseReference,\r\n",
+					"    AD.title,\r\n",
+					"    AD.titleWelsh,\r\n",
+					"    AD.from,\r\n",
+					"    CASE\r\n",
+					"        WHEN LOWER(AD.agent) = 'none'\r\n",
+					"        THEN NULL\r\n",
+					"        ELSE AD.agent\r\n",
+					"    END                                                     AS agent,\r\n",
+					"    CASE \r\n",
+					"        WHEN LOWER(AD.method) = 'none'\r\n",
+					"        THEN NULL\r\n",
+					"        ELSE LOWER(AD.method)\r\n",
+					"        END                                                 AS method,\r\n",
+					"    AD.enquiryDate,\r\n",
+					"    AD.enquiryDetails,\r\n",
+					"    AD.enquiryDetailsWelsh,\r\n",
+					"    AD.adviceGivenBy,\r\n",
+					"    AD.adviceDate,\r\n",
+					"    AD.adviceDetails,\r\n",
+					"    AD.adviceDetailsWelsh,\r\n",
+					"    CASE\r\n",
+					"        WHEN AD.status IN ('Not Checked','unchecked','Depublished')\r\n",
+					"        THEN 'unchecked'\r\n",
+					"        WHEN AD.status = 'Do Not Publish'\r\n",
+					"        THEN 'donotpublish'\r\n",
+					"        ELSE LOWER(AD.status)\r\n",
+					"    END                                                     AS status,\r\n",
+					"    AD.redactionStatus,\r\n",
+					"    AD.attachmentIds\r\n",
 					"\r\n",
-					"#     return df_harmonise_only_hzn"
+					"    from {hrm_db}.{hrm_table} AD\r\n",
+					"    INNER JOIN (\r\n",
+					"            SELECT {primary_key}, MAX(IngestionDate) AS latest_date\r\n",
+					"            FROM {hrm_db}.{hrm_table} AD\r\n",
+					"            WHERE LOWER({sourceColumn}) ='horizon'\r\n",
+					"            GROUP BY {primary_key}) latest \r\n",
+					"            ON AD.{primary_key} = latest.{primary_key} AND AD.IngestionDate = latest.latest_date \"\"\").drop_duplicates()\r\n",
+					"\r\n",
+					"    return df_harmonise_only_hzn"
 				],
-				"execution_count": 69
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_counts_hrm_cur(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str, sourceColumn:str ) -> tuple[int, int, bool]:   \r\n",
-					"\r\n",
-					"#     ## Define harmonise and curated dataframes\r\n",
-					"\r\n",
-					"#     df_harmonise_hzn = harmonise_df_hzn(hrm_db, hrm_table, primary_key, sourceColumn)\r\n",
-					"\r\n",
-					"#     df_curated: DataFrame =  spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
-					"    \r\n",
-					"#     ## calculate counts\r\n",
-					"\r\n",
-					"#     hrm_count = df_harmonise_hzn.count()\r\n",
-					"#     cur_count = df_curated.count()\r\n",
-					"#     return (hrm_count, cur_count, hrm_count == cur_count)"
-				],
-				"execution_count": 70
+				"execution_count": 125
 			},
 			{
 				"cell_type": "code",
@@ -438,29 +426,10 @@
 				},
 				"source": [
 					"harmonised_count, curated_count, counts_match = test_counts_hrm_cur(hrm_db_name, hrm_table_final, curated_db_migration_name, curated_table_migration_name, primary_key, \"ODTSourceSystem\")\n",
-					"print(f\"Harmonised Count (Active or Not): {harmonised_count: ,}\\nMigrated Curated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
-					"\n",
-					"\n",
-					"print(\"Check the counts\")\n",
-					"\n",
-					"\n",
-					"#count up the Horizon records to see what the difference should be\n",
-					"countHorizonDF = spark.sql(f\"SELECT distinct COUNT(*) FROM ( SELECT DISTINCT AD.adviceId, AD.adviceReference , CASE WHEN AD.caseId = 'None' THEN CAST('-1' as INT) ELSE AD.caseId END AS caseId, AD.caseReference, AD.title, AD.titleWelsh, AD.from, CASE WHEN LOWER(AD.agent) = 'none' THEN NULL ELSE AD.agent END AS agent, CASE WHEN LOWER(AD.method) = 'none' THEN NULL ELSE LOWER(AD.method) END AS method, AD.enquiryDate, AD.enquiryDetails, AD.enquiryDetailsWelsh, AD.adviceGivenBy, AD.adviceDate, AD.adviceDetails, AD.adviceDetailsWelsh, CASE WHEN AD.status IN ('Not Checked','unchecked','Depublished') THEN 'unchecked' WHEN AD.status = 'Do Not Publish' THEN 'donotpublish' ELSE LOWER(AD.status) END AS status, AD.redactionStatus, AD.attachmentIds, AD.ODTSourceSystem AS SourceSystem FROM {hrm_db_name}.{hrm_table_final} AS AD INNER JOIN ( SELECT NSIPAdviceID, MAX(IngestionDate) AS latest_date FROM {hrm_db_name}.{hrm_table_final} WHERE LOWER(ODTSourceSystem) ='horizon' GROUP BY NSIPAdviceID ) latest ON AD.NSIPAdviceID = latest.NSIPAdviceID AND AD.IngestionDate = latest.latest_date ) AS HorizonData\")\n",
-					"countHorizonRecords:int = countHorizonDF.head()['count(1)']\n",
-					"print(f\"\\tHorizon Records in Harmonised {countHorizonRecords}\")\n",
-					"\n",
-					"#count up the ODT records \n",
-					"countODTDF = spark.sql(f\"SELECT distinct COUNT(*) FROM ( SELECT DISTINCT AD.adviceId, AD.adviceReference , CASE WHEN AD.caseId = 'None' THEN CAST('-1' as INT) ELSE AD.caseId END AS caseId, AD.caseReference, AD.title, AD.titleWelsh, AD.from, CASE WHEN LOWER(AD.agent) = 'none' THEN NULL ELSE AD.agent END AS agent, CASE WHEN LOWER(AD.method) = 'none' THEN NULL ELSE LOWER(AD.method) END AS method, AD.enquiryDate, AD.enquiryDetails, AD.enquiryDetailsWelsh, AD.adviceGivenBy, AD.adviceDate, AD.adviceDetails, AD.adviceDetailsWelsh, CASE WHEN AD.status IN ('Not Checked','unchecked','Depublished') THEN 'unchecked' WHEN AD.status = 'Do Not Publish' THEN 'donotpublish' ELSE LOWER(AD.status) END AS status, AD.redactionStatus, AD.attachmentIds, AD.ODTSourceSystem AS SourceSystem FROM {hrm_db_name}.{hrm_table_final} AS AD INNER JOIN ( SELECT NSIPAdviceID, MAX(IngestionDate) AS latest_date FROM {hrm_db_name}.{hrm_table_final} WHERE LOWER(ODTSourceSystem) ='odt' GROUP BY NSIPAdviceID ) latest ON AD.NSIPAdviceID = latest.NSIPAdviceID AND AD.IngestionDate = latest.latest_date ) AS ODTData\")\n",
-					"countODTRecords:int = countODTDF.head()['count(1)']\n",
-					"print(f\"\\tODT Records in Harmonised {countODTRecords}\")\n",
-					"\n",
-					"\n",
-					"if harmonised_count == (curated_count + countODTRecords):\n",
-					"    print(\"Counts are expected\")\n",
-					"else:\n",
-					"    exitCode += int(not counts_match)"
+					"print(f\"Harmonised Count horizon records: {harmonised_count: ,}\\nMigrated Curated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
+					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 71
+				"execution_count": 127
 			},
 			{
 				"cell_type": "markdown",
@@ -493,7 +462,7 @@
 					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\n Distinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 34
+				"execution_count": 74
 			},
 			{
 				"cell_type": "markdown",
