@@ -50,7 +50,7 @@ classDiagram
 
     namespace Curated {
 
-        class nsip_s51_advice {
+        class s51_advice {
             NSIPAdviceID: int
         }
     }
