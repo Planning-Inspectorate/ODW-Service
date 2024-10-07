@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "655c7373-6d0a-4af0-8313-b57313b80837"
+				"spark.autotune.trackingId": "30db583c-73f4-44c7-84f7-57ff92f04a24"
 			}
 		},
 		"metadata": {
@@ -65,77 +65,23 @@
 					}
 				},
 				"source": [
-					"def abc():\n",
-					"    return 'test'"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"tags": [
-						"parameters"
-					]
-				},
-				"source": [
-					"folder_path=''\n",
-					"container='odw-raw'"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"# path = f\"abfss://{container}@{storage_account}{folder_path}\""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# print(f\"Attempting to mount storage at path: {path}\")\n",
-					"# mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"def before_sleep(retry_state: RetryCallState):\n",
+					"    print(f\"Retrying after {retry_state.next_action.sleep} seconds...\")\n",
 					"\n",
-					"# def before_sleep(retry_state: RetryCallState):\n",
-					"#     print(f\"Retrying after {retry_state.next_action.sleep} seconds...\")\n",
+					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\n",
+					"def mount_storage(folder: str, container: str = 'odw-raw'):\n",
 					"\n",
-					"# @retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\n",
-					"# def mount_storage():\n",
-					"#     mssparkutils.fs.mount( \n",
-					"#     path, \n",
-					"#     \"/temp_raw\", \n",
-					"#     {\"linkedService\":\"ls_storage\"} \n",
-					"#     )   \n",
+					"    storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"    path = f\"abfss://{container}@{storage_account}{folder_path}\"\n",
 					"\n",
-					"# try:\n",
-					"#     mount_storage()\n",
-					"#     print(\"Mounting storage succeeded\")\n",
-					"# except Exception as e:\n",
-					"#     print(\"Mounting storage failed\")\n",
-					"#     print(e)"
+					"    print(f\"Attempting to mount storage at path: {path}\")\n",
+					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
+					"\n",
+					"    mssparkutils.fs.mount( \n",
+					"    path, \n",
+					"    \"/temp_raw\", \n",
+					"    {\"linkedService\":\"ls_storage\"} \n",
+					"    )   "
 				],
 				"execution_count": null
 			}
