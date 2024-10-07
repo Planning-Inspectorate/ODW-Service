@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "80f7bd63-f449-4a0c-b43f-8cd6ecf55431"
+				"spark.autotune.trackingId": "fbc7c060-0358-4fd1-8b52-47f2484ee82c"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 11
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
 					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
 				],
-				"execution_count": 12
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -107,7 +107,7 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\n",
 					"    return spark_schema"
 				],
-				"execution_count": 13
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +127,55 @@
 					"    spark_dataframe: DataFrame = spark.createDataFrame([], schema=create_spark_schema(db_name, entity_name))\n",
 					"    return spark_dataframe"
 				],
-				"execution_count": 14
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_dataframe(query: str) -> DataFrame:\n",
+					"    return spark.sql(query)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def compare_dataframes(df1: DataFrame, df2: DataFrame, columns: list) -> bool:\n",
+					"    df1_selected = df1.select(columns)\n",
+					"    df2_selected = df2.select(columns)\n",
+					"    \n",
+					"    diff_df = df1_selected.exceptAll(df2_selected).union(df2_selected.exceptAll(df1_selected))\n",
+					"    if diff_df.count() == 0:\n",
+					"        print(\"DataFrames match for the specified columns.\")\n",
+					"        return True\n",
+					"    else:\n",
+					"        print(\"DataFrames do not match for the specified columns.\")\n",
+					"        diff_df.show()\n",
+					"        return False"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +216,7 @@
 					"        result.update(extract_field(field))\n",
 					"    return result"
 				],
-				"execution_count": 15
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -219,7 +267,7 @@
 					"    else:\n",
 					"        return True"
 				],
-				"execution_count": 16
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -250,7 +298,7 @@
 					"\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 17
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -281,7 +329,7 @@
 					"    \n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 18
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -314,7 +362,7 @@
 					"    missing_rows_in_hrm = std_df.select(data_model_columns).subtract(hrm_df.select(data_model_columns))\n",
 					"    display(missing_rows_in_hrm)"
 				],
-				"execution_count": 19
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -331,17 +379,19 @@
 				},
 				"source": [
 					"## Define the harmonise table that only includes horizon data, and the latest record per primary id.\r\n",
-					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str) -> DataFrame:\r\n",
+					"##SourceColumns are not named consistently across different data types\r\n",
+					"\r\n",
+					"def harmonise_df_hzn(hrm_db: str, hrm_table: str, primary_key: str, sourceColumn: str = \"sourceSystem\") -> DataFrame:\r\n",
 					"    df_harmonise_only_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
 					"    select *\r\n",
 					"    from {hrm_db}.{hrm_table} tbl_1\r\n",
-					"    where SourceSystem='Horizon'\r\n",
-					"\tand tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
+					"    where LOWER({sourceColumn})='horizon'\r\n",
+					"    and tbl_1.IngestionDate = (select max(IngestionDate) from {hrm_db}.{hrm_table} tbl_2  WHERE tbl_1.{primary_key} = tbl_2.{primary_key} group by {primary_key})\r\n",
 					"    \"\"\")\r\n",
 					"\r\n",
 					"    return df_harmonise_only_hzn"
 				],
-				"execution_count": null
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -357,11 +407,11 @@
 					}
 				},
 				"source": [
-					"def test_counts_hrm_cur(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str) -> tuple[int, int, bool]:   \r\n",
+					"def test_counts_hrm_cur(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str, sourceColumn: str = \"sourceSystem\") -> tuple[int, int, bool]:   \r\n",
 					"\r\n",
 					"    ## Define harmonise and curated dataframes\r\n",
 					"\r\n",
-					"    df_harmonise_hzn = harmonise_df_hzn(hrm_db, hrm_table, primary_key)\r\n",
+					"    df_harmonise_hzn = harmonise_df_hzn(hrm_db, hrm_table, primary_key, sourceColumn)\r\n",
 					"\r\n",
 					"    df_curated: DataFrame =  spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
 					"    \r\n",
@@ -371,7 +421,7 @@
 					"    cur_count = df_curated.count()\r\n",
 					"    return (hrm_count, cur_count, hrm_count == cur_count)"
 				],
-				"execution_count": null
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -387,11 +437,10 @@
 					}
 				},
 				"source": [
-					"def test_curated_unique_hzn_only(curated_db: str, curated_table: str, primary_key:str) -> tuple[bool,int,int,bool]: \r\n",
+					"def test_curated_unique_hzn_only(curated_db: str, curated_table: str, primary_key: str, sourceColumn: str = \"sourceSystem\") -> tuple[bool,int,int,bool]: \r\n",
 					"\r\n",
 					"    df_curated: DataFrame = spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\r\n",
-					"\r\n",
-					"    count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\r\n",
+					"    count_not_hzn_records: int = df_curated.filter(f\"{sourceColumn} != 'horizon' AND {sourceColumn} != 'Horizon'\").count()\r\n",
 					"\r\n",
 					"    total_count = df_curated.count()\r\n",
 					"\r\n",
@@ -402,6 +451,36 @@
 					"    return (count_not_hzn_records == 0, total_count, distinct_count, total_count == distinct_count)\r\n",
 					""
 				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str, sourceColumn: str = \"sourceSystem\") -> bool:\r\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
+					"                                SELECT {primary_key}\r\n",
+					"                                FROM {hrm_db}.{hrm_table}\r\n",
+					"                                WHERE LOWER({sourceColumn}) = 'horizon'\r\n",
+					"                                AND {primary_key} NOT IN\r\n",
+					"                                (\r\n",
+					"                                    SELECT {primary_key}\r\n",
+					"                                    FROM {curated_db}.{curated_table}\r\n",
+					"                                )\r\n",
+					"                            \"\"\")\r\n",
+					"\r\n",
+					"    return df.count() == 0"
+				],
 				"execution_count": null
 			},
 			{
@@ -418,19 +497,182 @@
 					}
 				},
 				"source": [
-					"def test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str) -> bool:\r\n",
-					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
-					"                                SELECT {primary_key}\r\n",
-					"                                FROM {hrm_db}.{hrm_table}\r\n",
-					"                                WHERE LOWER(sourcesystem) = 'horizon'\r\n",
-					"                                AND {primary_key} NOT IN\r\n",
-					"                                (\r\n",
-					"                                    SELECT {primary_key}\r\n",
-					"                                    FROM {curated_db}.{curated_table}\r\n",
-					"                                )\r\n",
-					"                            \"\"\")\r\n",
-					"\r\n",
+					"def test_sb_std_to_sb_hrm_no_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"    select documentId\n",
+					"    from {std_db_name}.{sb_std_table}\n",
+					"    where documentId not in\n",
+					"    (\n",
+					"        select documentId\n",
+					"        from {hrm_db_name}.{sb_hrm_table}\n",
+					"    )\n",
+					"    \"\"\")\n",
+					"\n",
 					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_sb_hrm_to_hrm_final_no_dropping_records(sb_hrm_table: str, hrm_table_final: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"    select documentId\n",
+					"    from {hrm_db_name}.{sb_hrm_table}\n",
+					"    where documentId not in\n",
+					"    (\n",
+					"        select documentId\n",
+					"        from {hrm_db_name}.{hrm_table_final}\n",
+					"    )\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_hrm_to_curated_no_dropping_records(hrm_table_final: str, curated_table_name: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"    select documentId\n",
+					"    from {hrm_db_name}.{hrm_table_final}\n",
+					"    where IsActive = 'Y'\n",
+					"    and documentId not in\n",
+					"    (\n",
+					"        select documentId\n",
+					"        from {curated_db_name}.{curated_table_name}\n",
+					"    )\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name: str, hrm_table_final: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"    select documentId\n",
+					"    from {std_db_name}.{horizon_std_table_name}\n",
+					"    where ingested_datetime = (select max(ingested_datetime) from {std_db_name}.{horizon_std_table_name})\n",
+					"    and documentId not in\n",
+					"    (\n",
+					"        select documentId\n",
+					"        from {hrm_db_name}.{hrm_table_final}\n",
+					"    )\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_aie_std_to_hrm_no_dropping_records(aie_std_table_name: str, aie_hrm_table_name: str) -> bool:\n",
+					"    df: DataFrame = aie_std_documentIds.subtract(aie_hrm_documentIds)\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_aie_hrm_to_hrm_final_no_dropping_records(aie_hrm_table_name: str, hrm_table_final: str) -> bool:\n",
+					"    if aie_appeals_documents_count > 0:\n",
+					"        df: DataFrame = aie_hrm_documentIds.subtract(hrm_final_documentIds)\n",
+					"        return df.count() == 0\n",
+					"    else:\n",
+					"        return True"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_document_row_counts_match(hrm_table_final: str, curated_table_name: str) -> DataFrame:\n",
+					"    # Count rows per documentId in harmonised final table\n",
+					"    hrm_final_counts: DataFrame = hrm_final_df_active.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"hrm_final_count\"))\n",
+					"\n",
+					"    # Count rows per documentId in curated table\n",
+					"    curated_counts: DataFrame = curated_df.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"curated_count\"))\n",
+					"\n",
+					"    # Join both tables on documentId to compare the counts\n",
+					"    comparison_df: DataFrame = hrm_final_counts.join(curated_counts, \"documentId\", how=\"outer\")\n",
+					"\n",
+					"    comparison_df: DataFrame = comparison_df.withColumn(\"count_difference\", F.col(\"hrm_final_count\") - F.col(\"curated_count\"))\n",
+					"\n",
+					"    non_zero_differences: DataFrame = comparison_df.filter(\"count_difference > 0\")\n",
+					"\n",
+					"    return non_zero_differences.count() == 0"
 				],
 				"execution_count": null
 			}
