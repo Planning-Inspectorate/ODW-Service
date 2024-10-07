@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "30db583c-73f4-44c7-84f7-57ff92f04a24"
+				"spark.autotune.trackingId": "6c30ba24-95fe-42ba-a47a-43e56f943af1"
 			}
 		},
 		"metadata": {
@@ -65,14 +65,40 @@
 					}
 				},
 				"source": [
+					"import subprocess\n",
+					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"tenacity\"])\n",
+					"from tenacity import retry, wait_random_exponential, wait_exponential_jitter, RetryCallState, wait_exponential, stop_after_delay, stop_after_attempt, retry_if_exception"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"def before_sleep(retry_state: RetryCallState):\n",
 					"    print(f\"Retrying after {retry_state.next_action.sleep} seconds...\")\n",
 					"\n",
-					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\n",
+					"@retry(\n",
+					"    wait=wait_exponential(multiplier=2, min=5, max=20),\n",
+					"    stop=stop_after_delay(60) | stop_after_attempt(5),\n",
+					"    before_sleep=before_sleep,\n",
+					"    # retry=retry_if_exception(lambda e: \"MountOperationFailedException\" not in str(e)),  # Don't retry on Path not found exception\n",
+					"    reraise=True\n",
+					")\n",
 					"def mount_storage(folder: str, container: str = 'odw-raw'):\n",
 					"\n",
 					"    storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"    path = f\"abfss://{container}@{storage_account}{folder_path}\"\n",
+					"    path = f\"abfss://{container}@{storage_account}{folder}\"\n",
 					"\n",
 					"    print(f\"Attempting to mount storage at path: {path}\")\n",
 					"    mssparkutils.fs.unmount(\"/temp_raw\") \n",
