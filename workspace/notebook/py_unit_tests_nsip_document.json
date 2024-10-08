@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "22b194a0-3776-43de-8839-a16641ccede2"
+				"spark.autotune.trackingId": "5d3e5906-1c09-473d-a31d-e059b5bf0e77"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,7 @@
 					"from pyspark.sql import functions as F\n",
 					"import pprint"
 				],
-				"execution_count": 51
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +102,7 @@
 					"\n",
 					"## new curated database\n",
 					"std_hzn_table_name: str = 'document_meta_data'\n",
-					"curated_db_migration_name: str = 'odw_curated_migration_db'\n",
+					"curated_migration_db_name: str = 'odw_curated_migration_db'\n",
 					"curated_table_migration_name: str = 'nsip_document'"
 				],
 				"execution_count": 52
@@ -952,6 +952,145 @@
 				},
 				"source": [
 					"print(f\"Document row counts match for each document in harmonised final to curated: {test_document_row_counts_match(hrm_table_final, curated_table_name)}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### The below tests are for the curated_migration_db table\n",
+					"##### Test 1:  Schema match the data model\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"cur_migrated_schema = create_spark_schema(curated_migration_db_name, entity_name)\n",
+					"std_schema_correct: bool = test_compare_schemas(sb_std_schema, sb_std_table_schema)\n",
+					"exitCode += int(not std_schema_correct)\n",
+					"print(f\"Service bus standardised schema correct: {std_schema_correct}\\nTable: {std_db_name}.{std_table_name}\\nDifferences shown above (if any)\")\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 2:  Counts match in horizon standardised and curated\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"counts_match = test_hzn_and_curated_count_matched(std_hzn_table_name, curated_table_migration_name, primary_key)\n",
+					"print(f\"Horizon to Curared - Counts match: {counts_match}\")\n",
+					"exitCode += int(not counts_match)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 2:  Checks if any Primary Key record is dropped from Horizon to Curated\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"rows_dropped = test_hzn_to_curated_no_record_dropped(std_hzn_table_name, curated_table_migration_name, primary_key)\n",
+					"print(f\"Horizon to Curared - No rows dropped: {rows_dropped}\")\n",
+					"exitCode += int(not rows_dropped)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test 3: Check curated layer only has horizon data and unique records (distinct primary ids)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"no_horizon_records, total_curated_count, distinct_curated_count, counts_match = test_curated_unique_hzn_only(curated_migration_db_name, curated_table_migration_name, primary_key)\n",
+					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\nDistinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")\n",
+					"exitCode += int(not no_horizon_records)\n",
+					"exitCode += int(not counts_match)"
 				],
 				"execution_count": null
 			},
