@@ -1,5 +1,5 @@
 {
-	"name": "document_metadata_appeals",
+	"name": "s62a",
 	"properties": {
 		"folder": {
 			"name": "odw-curated"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "70afda65-c433-45f0-9201-50f0fd18f6dd"
+				"spark.autotune.trackingId": "09029cdb-fd73-4390-923c-f7d5c1691ea4"
 			}
 		},
 		"metadata": {
@@ -53,6 +53,15 @@
 		"cells": [
 			{
 				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import DataFrame"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
@@ -62,91 +71,58 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"from pyspark.sql.functions import *\n",
-					"from pyspark.sql.types import *"
-				],
-				"execution_count": 14
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Create a view for the data, joining harmonised tables where necessary"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
+					},
 					"microsoft": {
 						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE OR REPLACE VIEW odw_curated_db.vw_appeal_document\n",
-					"\n",
-					"AS\n",
-					"\n",
-					"SELECT DISTINCT \n",
-					"    documentId,\n",
-					"    caseId,\n",
-					"    caseReference,\n",
-					"    version,\n",
-					"    filename,\n",
-					"    originalFilename,\n",
-					"    size,\n",
-					"    COALESCE(mime, '') AS mime,\n",
-					"    COALESCE(documentURI, '') AS documentURI,\n",
-					"    publishedDocumentURI,\n",
-					"    virusCheckStatus,\n",
-					"    fileMD5,\n",
-					"    dateCreated,\n",
-					"    dateReceived,\n",
-					"    datePublished,\n",
-					"    lastModified,\n",
-					"    CASE\n",
-					"        WHEN caseType = 'Planning Listed Building and Conservation Area Appeal (Y)' THEN 'Y'\n",
-					"        WHEN caseType = 'Lawful Development Certificate Appeal' THEN 'X'\n",
-					"        WHEN caseType = 'Planning Obligation Appeal' THEN 'Q'\n",
-					"        WHEN caseType = 'Commercial (CAS) Appeal' THEN 'Z'\n",
-					"        WHEN caseType = 'Enforcement Listed Building and Conservation Area Appeal' THEN 'F'\n",
-					"        WHEN caseType = 'Advertisement Appeal' THEN 'H'\n",
-					"        WHEN caseType = 'Planning Appeal (A)' THEN 'W'\n",
-					"        WHEN caseType = 'Enforcement Notice Appeal' THEN 'C'\n",
-					"        WHEN caseType = 'Discontinuance Notice Appeal' THEN 'G'\n",
-					"        WHEN caseType = 'Community Infrastructure Levy' THEN 'L'\n",
-					"        WHEN caseType = 'Planning Appeal (W)' THEN 'W'\n",
-					"        WHEN caseType = 'Call-In Application' THEN 'V'\n",
-					"        WHEN caseType = 'Affordable Housing Obligation Appeal' THEN 'S'\n",
-					"        WHEN caseType = 'Householder (HAS) Appeal' THEN 'D'\n",
-					"        ELSE CAST(NULL AS String) \n",
-					"    END\n",
-					"    AS caseType,\n",
-					"    redactedStatus,\n",
-					"    documentType,\n",
-					"    sourceSystem,\n",
-					"    origin,\n",
-					"    owner,\n",
-					"    author,\n",
-					"    description,\n",
-					"    caseStage,\n",
-					"    horizonFolderId\n",
-					"    \n",
-					"FROM odw_harmonised_db.appeal_document\n",
-					"WHERE IsActive = 'Y'"
+					"%%sql\r\n",
+					"\r\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_s62a\r\n",
+					"\r\n",
+					"AS\r\n",
+					"\r\n",
+					"SELECT \r\n",
+					"    C.Name as name\r\n",
+					"    ,C.CaseDataID As caseDataID\r\n",
+					"    ,C.casereference as caseReference      \r\n",
+					"    ,C1.ApplicationType as applicationType\r\n",
+					"    ,C1.ApplicationValidated as applicationValidated\r\n",
+					"    ,C1.Description as description\r\n",
+					"    ,C1.LPA as lpa\r\n",
+					"    ,C1.PermissionSought as permissionSought\r\n",
+					"    ,C1.ProcedureType as procedureType\r\n",
+					"    ,C1.Status as status\r\n",
+					"    ,C2.ApplicantName as applicantName\r\n",
+					"    ,C2.SiteAddress as siteAddress\r\n",
+					"    ,C2.SitePostcode as sitePostcode\r\n",
+					"    ,C2.SiteGridReference as siteGridReference\r\n",
+					"    ,C2.AgentName as agentName\r\n",
+					"    ,C2.AgentAddress as agentAddress\r\n",
+					"    ,C3.DateReceived as dateReceived\r\n",
+					"    ,C3.DateValid as dateValid\r\n",
+					"    ,C3.ConsultationStartDate as consultationStatDate\r\n",
+					"    ,C3.ConsultationEndDate as consultationEndDate\r\n",
+					"    ,C3.TargetDecisionDate as targetDecisionDate\r\n",
+					"    ,C3.DecisionDate as decisionDate\r\n",
+					"    ,C3.DecisionType as decisionType\r\n",
+					"    ,C4.AppointedPerson as appointedPerson\r\n",
+					"    ,C4.CaseAdministrator as caseAdministrator\r\n",
+					"    ,C4.CaseLeader as caseLeader\r\n",
+					"    ,C4.CaseOfficer as caseOfficer\r\n",
+					"    ,C4.EIAOfficer as eiaOfficer\r\n",
+					"    ,C4.LegalOfficer as legalOfficer\r\n",
+					"FROM odw_harmonised_db.s62a_view_cases_dim C \r\n",
+					"    left join odw_harmonised_db.s62a_view_case_basic_data_dim C1 on C.CaseDataID = C1.CaseDataID AND C1.IsActive = 'Y'\r\n",
+					"    left join odw_harmonised_db.s62a_view_case_extended_data_dim C2 on C.CaseDataID = C2.CaseDataID AND C2.IsActive = 'Y'\r\n",
+					"    left join odw_harmonised_db.s62a_view_case_dates_dim C3 on C.CaseDataID = C3.CaseDataID AND C3.IsActive = 'Y'\r\n",
+					"    left join odw_harmonised_db.s62a_view_case_officers_dim C4 on C.CaseDataID = C4.CaseDataID AND C4.IsActive = 'Y'\r\n",
+					"WHERE C.IsActive = 'Y'\r\n",
+					""
 				],
-				"execution_count": 16
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -175,9 +151,9 @@
 					}
 				},
 				"source": [
-					"data: DataFrame = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeal_document\")"
+					"data: DataFrame = spark.sql(\"SELECT * FROM odw_curated_db.vw_s62a\")"
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -206,9 +182,9 @@
 					}
 				},
 				"source": [
-					"schema: StructType = spark.table(\"odw_curated_db.appeal_document\").schema"
+					"schema: StructType = spark.table(\"odw_curated_db.s62a\").schema"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -220,8 +196,8 @@
 					}
 				},
 				"source": [
-					"##### Cast all field data types in the data to the data types from the curated table schema\n",
-					"\n",
+					"##### Cast all field data types in the data to the data types from the curated table schema\r\n",
+					"\r\n",
 					"This is necessary because the view generated above is joining harmonised tables, many of which are sourced from Horizon and will have a different schema to the final table and fields will have different data types. Therefore, taking the curated schema as defined in thr data model and casting all fields correctly, ensures accuracy."
 				]
 			},
@@ -239,14 +215,14 @@
 					}
 				},
 				"source": [
-					"df: DataFrame = data.select(\n",
-					"    *[\n",
-					"        col(field.name).cast(field.dataType).alias(field.name)\n",
-					"        for field in schema.fields\n",
-					"    ]\n",
+					"df: DataFrame = data.select(\r\n",
+					"    *[\r\n",
+					"        col(field.name).cast(field.dataType).alias(field.name)\r\n",
+					"        for field in schema.fields\r\n",
+					"    ]\r\n",
 					")"
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -277,7 +253,7 @@
 				"source": [
 					"df.printSchema()"
 				],
-				"execution_count": 20
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -306,9 +282,9 @@
 					}
 				},
 				"source": [
-					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeal_document\")"
+					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.s62a\")"
 				],
-				"execution_count": 21
+				"execution_count": null
 			}
 		]
 	}
