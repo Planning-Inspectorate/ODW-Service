@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "73a1e947-45f9-40e2-a5ca-419b90cb9e0c"
+				"spark.autotune.trackingId": "9ff2a366-a242-4ba3-bc7b-d6efb70dbf08"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -75,15 +75,30 @@
 				},
 				"source": [
 					"# service bus source\n",
-					"service_bus_table = \"odw_harmonised_db.sb_s51_advice\"\n",
+					"service_bus_table = \"odw_harmonised_db.sb_service_user\"\n",
 					"\n",
 					"# horizon sources\n",
-					"appeal_casework_appellant_table = \"odw_standardised_db.horizon_nsip_advice\"\n",
+					"hzn_service_user_table = \"odw_standardised_db.horizon_case_involvement\"\n",
+					"hzn_nsip_project_table = \"odw_standardised_db.horizon_nsip_data\"\n",
+					"hzn_nsip_representation_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\n",
 					"\n",
 					"# target table\n",
-					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\""
+					"spark_table_final = \"odw_harmonised_db.service_user\""
 				],
-				"execution_count": 2
+				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Extract Service Bus data"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -100,55 +115,44 @@
 				},
 				"source": [
 					"# Get data out of the service bus with additional fields needed for Horizon data\n",
-					"service_bus_data = spark.sql(\"\"\"\n",
-					"                    SELECT DISTINCT\n",
-					"                        NSIPAdviceID\n",
-					"                        ,adviceId\n",
-					"                        ,adviceReference\n",
-					"                        ,caseId\n",
-					"                        ,caseReference\n",
-					"                        ,title\n",
-					"                        ,titleWelsh\n",
-					"                        ,from\n",
-					"                        ,agent\n",
-					"                        ,method\n",
-					"                        ,enquiryDate\n",
-					"                        ,enquiryDetails\n",
-					"                        ,enquiryDetailsWelsh\n",
-					"                        ,adviceGivenBy\n",
-					"                        ,adviceDate\n",
-					"                        ,adviceDetails\n",
-					"                        ,adviceDetailsWelsh\n",
-					"                        ,status\n",
-					"                        ,redactionStatus\n",
-					"                        ,attachmentIds\n",
-					"\n",
-					"                        -- Start Horizon columns\n",
-					"                        ,'Yes' as Section51Advice\n",
-					"                        ,CAST(NULL AS String) as EnquirerFirstName\n",
-					"                        ,CAST(NULL AS String) as EnquirerLastName\n",
-					"                        ,CAST(NULL AS String) as AdviceLastModified\n",
-					"                        ,CAST(NULL AS String) as AttachmentCount\n",
-					"                        ,CAST(NULL AS String) as AttachmentsLastModified\n",
-					"                        ,CAST(NULL AS String) as LastPublishedDate\n",
-					"                        ,CAST(NULL AS String) as WelshLanguage\n",
-					"                        ,CAST(NULL AS String) as CaseWorkType\n",
-					"                        ,CAST(NULL AS String) as AttachmentModifyDate\n",
-					"                        -- End Horizon columns\n",
-					"                        \n",
-					"                        ,Migrated\n",
-					"                        ,ODTSourceSystem\n",
-					"                        ,SourceSystemID\n",
-					"                        ,IngestionDate \n",
-					"                        ,NULLIF(ValidTo, '') AS ValidTo\n",
-					"                        ,'' as RowID\n",
-					"                        ,IsActive\n",
-					"                    FROM \n",
-					"                        odw_harmonised_db.sb_s51_advice\n",
-					"\n",
-					"                    \"\"\")"
+					"service_bus_data = spark.sql(f\"\"\"\n",
+					"    SELECT DISTINCT\n",
+					"        ServiceUserID\n",
+					"        ,id\n",
+					"        ,salutation\n",
+					"        ,firstname\n",
+					"        ,lastname\n",
+					"        ,addressline1\n",
+					"        ,addressline2\n",
+					"        ,addressTown\n",
+					"        ,addressCounty\n",
+					"        ,postcode\n",
+					"        ,addressCountry\n",
+					"        ,organisation\n",
+					"        ,organisationType\n",
+					"        ,role\n",
+					"        ,telephoneNumber\n",
+					"        ,otherPhoneNumber\n",
+					"        ,faxNumber\n",
+					"        ,emailAddress\n",
+					"        ,webAddress\n",
+					"        ,serviceUserType\n",
+					"        ,caseReference\n",
+					"        ,sourceSystem\n",
+					"        ,sourceSuid\n",
+					"        \n",
+					"        ,Migrated\n",
+					"        ,ODTSourceSystem\n",
+					"        ,SourceSystemID\n",
+					"        ,IngestionDate \n",
+					"        ,NULLIF(ValidTo, '') AS ValidTo\n",
+					"        ,'' as RowID\n",
+					"        ,IsActive\n",
+					"    FROM \n",
+					"        {service_bus_table}\n",
+					"    \"\"\")"
 				],
-				"execution_count": 3
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -164,69 +168,265 @@
 					}
 				},
 				"source": [
-					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
-					"horizon_data = spark.sql(f\"\"\"\n",
-					"                SELECT DISTINCT \n",
-					"                        CAST(NULL AS Long) as NSIPAdviceID\n",
-					"                        ,Cast(advicenodeid as integer) as adviceId\n",
-					"                        ,adviceReference\n",
-					"                        ,Cast(casenodeid as integer) as caseId\n",
-					"                        ,caseReference\n",
-					"                        ,title\n",
-					"                        ,CAST(NULL AS String) as titleWelsh\n",
-					"                        ,concat(enquirerfirstname,' ',enquirerlastname)  as from\n",
-					"                        ,enquirerOrganisation as agent\n",
-					"                        ,enqirymethod as method\n",
-					"                        ,enquiryDate\n",
-					"                        ,enquiry as enquiryDetails\n",
-					"                        ,CAST(NULL AS String) as enquiryDetailsWelsh\n",
-					"                        ,adviceFrom as adviceGivenBy\n",
-					"                        ,adviceDate\n",
-					"                        ,advice as adviceDetails\n",
-					"                        ,CAST(NULL AS String) as adviceDetailsWelsh\n",
-					"                        ,adviceStatus as status\n",
-					"                        ,null as redactionStatus\n",
-					"                        ,attachmentdataID as attachmentIds\n",
-					"                        \n",
-					"                        -- Start Horizon Fields Not in SB\n",
-					"                        ,Section51Advice\n",
-					"                        ,EnquirerFirstName\n",
-					"                        ,EnquirerLastName\n",
-					"                        ,AdviceLastModified\n",
-					"                        ,AttachmentCount\n",
-					"                        ,AttachmentsLastModified\n",
-					"                        ,LastPublishedDate\n",
-					"                        ,WelshLanguage\n",
-					"                        ,CaseWorkType\n",
-					"                        ,AttachmentModifyDate\n",
-					"                        -- END Horizon Fields Not in SB\n",
-					"\n",
-					"                        ,\"0\" as Migrated\n",
-					"                        ,\"Horizon\" as ODTSourceSystem\n",
-					"                        ,NULL AS SourceSystemID\n",
-					"                        , to_timestamp(expected_from)  AS IngestionDate\n",
-					"                        ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
-					"                        ,'' as RowID\n",
-					"                        ,'Y' as IsActive\n",
-					"FROM\n",
-					"    {horizon_table} AS Horizon\n",
-					"    LEFT OUTER JOIN \n",
-					"        (   SELECT\n",
-					"                adviceId\n",
-					"                ,MIN(IngestionDate) AS ingested\n",
-					"            FROM\n",
-					"                {service_bus_table} AS Service_Bus\n",
-					"            GROUP BY\n",
-					"                adviceId\n",
-					"        ) AS First_seen\n",
-					"        ON Horizon.advicenodeid = First_seen.adviceId\n",
-					"        AND Horizon.ingested_datetime >= First_seen.ingested\n",
-					"WHERE\n",
-					"    First_seen.adviceId IS NULL -- Need to drop cases that have been migrated, but keep the history from Horizon\n",
-					"\n",
-					"                \"\"\")"
+					"service_bus_data.count()"
 				],
-				"execution_count": 4
+				"execution_count": 20
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Extract Horizon Data"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Appeals Case work (Appellant)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"appeal_casework_appellant_data = spark.sql(f\"\"\"\n",
+					"    SELECT DISTINCT \n",
+					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        ,CAST(ContactId AS String) as id\n",
+					"        ,Cast(Title AS String) as salutation\n",
+					"        ,Cast(FirstName AS String) as firstName\n",
+					"        ,Cast(LastName AS String) as lastName\n",
+					"        ,Cast(Address1 AS String) as addressLine1\n",
+					"        ,Cast(Address2 AS String) as addressLine2\n",
+					"        ,Cast(City AS String) as addressTown\n",
+					"        ,Cast(County AS String) as addressCounty\n",
+					"        ,Cast(PostCode AS String) as postcode\n",
+					"        ,Cast(Country AS String) as addressCountry\n",
+					"        ,Cast(OrganisationName AS String) as organisation\n",
+					"        ,Cast(OrganisationTypeName AS String) as organisationType\n",
+					"        ,Cast(NULL AS String) as role\n",
+					"        ,Cast(TelephoneOffice AS String) as telephoneNumber\n",
+					"        ,Cast(TelephoneMobile AS String) as otherPhoneNumber\n",
+					"        ,Cast(Fax AS String) as faxNumber\n",
+					"        ,Cast(Email AS String) as emailAddress\n",
+					"        ,Cast(NULL AS String) as webAddress\n",
+					"        ,Cast('Appellant' AS String) as serviceUserType\n",
+					"        ,Cast(case_number AS String) as caseReference\n",
+					"        ,Cast('Horizon' AS String) as sourceSystem\n",
+					"        ,Cast(ContactID AS String) as sourceSuid\n",
+					"\n",
+					"        ,\"0\" as Migrated\n",
+					"        ,\"Horizon\" as ODTSourceSystem\n",
+					"        ,NULL AS SourceSystemID\n",
+					"        , to_timestamp(expected_from)  AS IngestionDate\n",
+					"        ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
+					"        ,'' as RowID\n",
+					"        ,'Y' as IsActive\n",
+					"    FROM\n",
+					"        {hzn_service_user_table}\n",
+					"    WHERE\n",
+					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_service_user_table})\n",
+					"        AND typeOfInvolvement IN ('Appellant', 'tAppellant', 'Apellant')\n",
+					"\"\"\")"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"appeal_casework_appellant_data.count()"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Appeals Case work (Agent)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"appeal_casework_agent_data = spark.sql(f\"\"\"\n",
+					"    SELECT DISTINCT \n",
+					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        ,CAST(ContactId AS String) as id\n",
+					"        ,Cast(Title AS String) as salutation\n",
+					"        ,Cast(FirstName AS String) as firstName\n",
+					"        ,Cast(LastName AS String) as lastName\n",
+					"        ,Cast(Address1 AS String) as addressLine1\n",
+					"        ,Cast(Address2 AS String) as addressLine2\n",
+					"        ,Cast(City AS String) as addressTown\n",
+					"        ,Cast(County AS String) as addressCounty\n",
+					"        ,Cast(PostCode AS String) as postcode\n",
+					"        ,Cast(Country AS String) as addressCountry\n",
+					"        ,Cast(OrganisationName AS String) as organisation\n",
+					"        ,Cast(OrganisationTypeName AS String) as organisationType\n",
+					"        ,Cast(NULL AS String) as role\n",
+					"        ,Cast(TelephoneOffice AS String) as telephoneNumber\n",
+					"        ,Cast(TelephoneMobile AS String) as otherPhoneNumber\n",
+					"        ,Cast(Fax AS String) as faxNumber\n",
+					"        ,Cast(Email AS String) as emailAddress\n",
+					"        ,Cast(NULL AS String) as webAddress\n",
+					"        ,Cast('Appellant' AS String) as serviceUserType\n",
+					"        ,Cast(case_number AS String) as caseReference\n",
+					"        ,Cast('Horizon' AS String) as sourceSystem\n",
+					"        ,Cast(ContactID AS String) as sourceSuid\n",
+					"\n",
+					"        ,\"0\" as Migrated\n",
+					"        ,\"Horizon\" as ODTSourceSystem\n",
+					"        ,NULL AS SourceSystemID\n",
+					"        , to_timestamp(expected_from)  AS IngestionDate\n",
+					"        ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
+					"        ,'' as RowID\n",
+					"        ,'Y' as IsActive\n",
+					"    FROM\n",
+					"        {hzn_service_user_table}\n",
+					"    WHERE\n",
+					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_service_user_table})\n",
+					"        AND typeOfInvolvement = 'Agent'\n",
+					"\"\"\")"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"appeal_casework_agent_data.count()"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### NSIP Project"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"appeal_casework_agent_data = spark.sql(f\"\"\"\n",
+					"                SELECT DISTINCT \n",
+					"                    CAST(NULL AS Long) as ServiceUserID\n",
+					"                    ,CAST(ContactId AS String) as id\n",
+					"                    ,Cast(Title AS String) as salutation\n",
+					"                    ,Cast(FirstName AS String) as firstName\n",
+					"                    ,Cast(LastName AS String) as lastName\n",
+					"                    ,Cast(Address1 AS String) as addressLine1\n",
+					"                    ,Cast(Address2 AS String) as addressLine2\n",
+					"                    ,Cast(City AS String) as addressTown\n",
+					"                    ,Cast(County AS String) as addressCounty\n",
+					"                    ,Cast(PostCode AS String) as postcode\n",
+					"                    ,Cast(Country AS String) as addressCountry\n",
+					"                    ,Cast(OrganisationName AS String) as organisation\n",
+					"                    ,Cast(OrganisationTypeName AS String) as organisationType\n",
+					"                    ,Cast(NULL AS String) as role\n",
+					"                    ,Cast(TelephoneOffice AS String) as telephoneNumber\n",
+					"                    ,Cast(TelephoneMobile AS String) as otherPhoneNumber\n",
+					"                    ,Cast(Fax AS String) as faxNumber\n",
+					"                    ,Cast(Email AS String) as emailAddress\n",
+					"                    ,Cast(NULL AS String) as webAddress\n",
+					"                    ,Cast('Appellant' AS String) as serviceUserType\n",
+					"                    ,Cast(case_number AS String) as caseReference\n",
+					"                    ,Cast('Horizon' AS String) as sourceSystem\n",
+					"                    ,Cast(ContactID AS String) as sourceSuid\n",
+					"\n",
+					"                    ,\"0\" as Migrated\n",
+					"                    ,\"Horizon\" as ODTSourceSystem\n",
+					"                    ,NULL AS SourceSystemID\n",
+					"                    , to_timestamp(expected_from)  AS IngestionDate\n",
+					"                    ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
+					"                    ,'' as RowID\n",
+					"                    ,'Y' as IsActive\n",
+					"                FROM\n",
+					"                    {hzn_service_user_table}\n",
+					"                WHERE\n",
+					"                    expected_from = (SELECT MAX(expected_from) FROM {hzn_service_user_table})\n",
+					"                    AND typeOfInvolvement = 'Agent'\n",
+					"            \"\"\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
