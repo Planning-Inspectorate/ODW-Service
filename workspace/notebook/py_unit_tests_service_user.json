@@ -20,12 +20,12 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e2613ea6-d011-4c9f-9c1d-ad46a2ab5dd3"
+				"spark.autotune.trackingId": "6c9220a6-b1f9-4386-81e5-d9555aa57bbe"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": false,
+			"enableDebugMode": true,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -71,7 +71,26 @@
 					"import pprint\n",
 					"from pyspark.sql.functions import col"
 				],
-				"execution_count": 1
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
+					"exitCode: int = 0"
+				],
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -88,131 +107,16 @@
 				},
 				"source": [
 					"entity_name: str = 'service-user'\n",
+					"\n",
 					"std_db_name: str = 'odw_standardised_db'\n",
 					"hrm_db_name: str = 'odw_harmonised_db'\n",
 					"curated_db_name: str = 'odw_curated_db'\n",
+					"curated_migration_db_name: str = 'odw_curated_migration_db'\n",
+					"\n",
 					"std_table_name: str = 'sb_service_user'\n",
 					"hrm_table_name: str = 'sb_service_user'\n",
 					"hrm_table_final: str = 'service_user'\n",
-					"curated_table_name: str = 'service_user'"
-				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT count (*) FROM\n",
-					"odw_curated_db.nsip_representation AS reps \n",
-					"INNER JOIN nsip_service_user AS suser\n",
-					"ON reps.representativeId = suser.id \n",
-					"OR reps.representedId = suser.id\n",
-					"WHERE caseRef = 'TR020002' \n",
-					"AND sourceSystem IN ('horizon','Horizon')\n",
-					"AND suser.caseReference = '3148447' "
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT count(*) FROM odw_harmonised_db.service_user where isactive='Y'\n",
-					"and caseReference = 'TR020002' and serviceusertype in ('Applicant', 'RepresentationContact')"
-				],
-				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT * FROM odw_curated_db.nsip_project\n",
-					"where caseReference = 'TR020002'limit 10;\n",
-					"\n",
-					"\n",
-					"SELECT count(*) FROM odw_harmonised_db.service_user where isactive='Y'\n",
-					"and caseReference = 'TR020002'limit 10;"
-				],
-				"execution_count": 8
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT * FROM odw_curated_db.nsip_data\n",
-					"where caseReference = 'TR020002'limit 10"
+					"curated_migration_table_name: str = 'nsip_service_user'"
 				],
 				"execution_count": null
 			},
@@ -230,124 +134,9 @@
 					}
 				},
 				"source": [
-					"unit tests"
+					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
 				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT caseReference, COUNT(*) AS applicant_count\n",
-					"FROM odw_harmonised_db.service_user\n",
-					"WHERE IsActive = 'Y' AND serviceUserType = 'Applicant'\n",
-					"GROUP BY caseReference\n",
-					"HAVING COUNT(*) > 1;\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT p.caseReference\n",
-					"FROM odw_curated_db.nsip_project p\n",
-					"LEFT JOIN odw_harmonised_db.service_user u ON p.caseReference = u.caseReference\n",
-					"WHERE u.caseReference IS NULL AND u.IsActive = 'Y' AND u.serviceUserType = 'Applicant';"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					}
-				},
-				"source": [
-					"%%sql\n",
-					"select count(*) from odw_harmonised_db.service_user where CaseReference= 'EN010004' and Isactive='Y' and serviceUserTypeInternal='RepresentationContactRepresented';\n",
-					"select count(*) from odw_harmonised_db.service_user where CaseReference= 'EN010044' and Isactive='Y' and serviceUserTypeInternal='RepresentationContactRepresented';\n",
-					"select count(*) from odw_harmonised_db.service_user where CaseReference= 'EN010080' and Isactive='Y' and serviceUserTypeInternal='RepresentationContactRepresented';\n",
-					"select count(*) from odw_harmonised_db.service_user where CaseReference= 'TR040004' and Isactive='Y' and serviceUserTypeInternal='RepresentationContactRepresented';"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
-				],
-				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -366,9 +155,222 @@
 					"sb_std_schema = create_spark_schema(std_db_name, entity_name)\n",
 					"sb_std_table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema\n",
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\n",
-					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
+					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema\n",
+					"curated_schema = create_spark_schema(curated_migration_db_name, entity_name)\n",
+					"curated_table_schema = spark.table(f\"{curated_migration_db_name}.{curated_migration_table_name}\").schema"
 				],
-				"execution_count": 8
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Compare schemas"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"std_schema_correct: bool = test_compare_schemas(sb_std_schema, sb_std_table_schema)\n",
+					"exitCode += int(not std_schema_correct)\n",
+					"print(f\"Service bus standardised schema correct: {std_schema_correct}\\nTable: {std_db_name}.{std_table_name}\\nDifferences shown above (if any)\")\n",
+					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\n",
+					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
+					"exitCode += int(not hrm_schema_correct)\n",
+					"cur_schema_correct: bool = test_compare_schemas(curated_schema, curated_table_schema)\n",
+					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_migration_db_name}.{curated_migration_table_name}\\nDifferences shown above (if any)\")\n",
+					"exitCode += int(not cur_schema_correct)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Unit Tests from Requirements\n",
+					"https://pins-ds.atlassian.net/wiki/spaces/ODW/pages/1797488641/Requirements+-+Service+User+Migration"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### There should be a single applicant for every project.  "
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Check if there are multiple applicants for a single project\n",
+					"def test_single_applicant_per_project():\n",
+					"    df = spark.sql(f\"\"\"\n",
+					"        SELECT caseReference, COUNT(*) AS applicant_count\n",
+					"        FROM odw_curated_migration_db.nsip_service_user\n",
+					"        WHERE serviceUserType = 'Applicant'\n",
+					"        GROUP BY caseReference\n",
+					"        HAVING COUNT(*) > 1;\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": 56
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Verify that every project has an applicant\n",
+					"def test_project_with_no_applicant():\n",
+					"    df = spark.sql(f\"\"\"\n",
+					"        SELECT p.caseReference\n",
+					"        FROM odw_curated_db.nsip_project p\n",
+					"        LEFT JOIN odw_curated_migration_db.nsip_service_user u \n",
+					"            ON p.caseReference = u.caseReference\n",
+					"        WHERE u.caseReference IS NULL AND u.serviceUserType = 'Applicant';\n",
+					"    \"\"\")\n",
+					"    \n",
+					"    return df.count() == 0"
+				],
+				"execution_count": 55
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if test_single_applicant_per_project():\n",
+					"    print('PASS: There is a single applicant per project')\n",
+					"else:\n",
+					"    exitCode += 1  \n",
+					"\n",
+					"if test_project_with_no_applicant(): \n",
+					"    print('PASS: Each project has an applicant')\n",
+					"else:\n",
+					"    exitCode += 1  "
+				],
+				"execution_count": 57
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The count of Representations for each case must be the following in dev/test\n",
+					"- EN010004: 6410\n",
+					"- EN010044: 618\n",
+					"- EN010080: 154\n",
+					"- TR040004: 39"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_EN010004 = spark.sql(\"select * from odw_harmonised_db.service_user where CaseReference= 'EN010004' and Isactive='Y' and serviceUserTypeInternal='RepresentationContact_Represented'\")\n",
+					"df_EN010044 = spark.sql(\"select * from odw_harmonised_db.service_user where CaseReference= 'EN010044' and Isactive='Y' and serviceUserTypeInternal='RepresentationContact_Represented'\")\n",
+					"df_EN010080 = spark.sql(\"select * from odw_harmonised_db.service_user where CaseReference= 'EN010080' and Isactive='Y' and serviceUserTypeInternal='RepresentationContact_Represented'\")\n",
+					"df_TR040004 = spark.sql(\"select * from odw_harmonised_db.service_user where CaseReference= 'TR040004' and Isactive='Y' and serviceUserTypeInternal='RepresentationContact_Represented'\")\n",
+					"\n",
+					"if df_EN010004.count() == 6410 and df_EN010044.count() == 618 and df_EN010080.count() == 154 and df_TR040004.count() == 39:\n",
+					"    print('PASS: Expected count of representations match')\n",
+					"else:\n",
+					"    exitCode += 1"
+				],
+				"execution_count": 58
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -391,7 +393,7 @@
 					"    hrm_count: int = spark.table(hrm_table_full).count()\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -414,7 +416,7 @@
 					"    hrm_count: int = spark.table(hrm_table_full).filter([sourceSystem] == \"Casework\").count()\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -437,7 +439,7 @@
 					"    hrm_count: int = spark.table(hrm_table_full).filter(col(\"sourceSystem\") == \"back-office-applications\").count()\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -460,7 +462,7 @@
 					"    hrm_count: int = spark.table(hrm_table_full).filter(col(\"sourceSystem\") == \"back-office-appeals\").count()\n",
 					"    return (std_count, hrm_count, std_count == hrm_count)"
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -483,7 +485,7 @@
 					"    curated_count: int = spark.table(curated_table_full).count()\n",
 					"    return (hrm_count, curated_count, hrm_count == curated_count)"
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -524,7 +526,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.curated_service_user"
 				],
-				"execution_count": 87
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -568,7 +570,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.curated_service_user"
 				],
-				"execution_count": 88
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -607,7 +609,7 @@
 					"FROM\n",
 					"    odw_standardised_db.sb_service_user"
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -635,7 +637,7 @@
 					"WHERE\n",
 					"    id = 100010068"
 				],
-				"execution_count": 47
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -664,7 +666,7 @@
 					"    id = 100010068\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -692,7 +694,7 @@
 					"WHERE\n",
 					"    id = 100010068"
 				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -730,7 +732,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.curated_service_user WHERE source_priority = 2"
 				],
-				"execution_count": 52
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -753,7 +755,7 @@
 					"%%sql\n",
 					"SELECT * from odw_harmonised_db.casework_case_involvement_dim where ContactID = 'P_2003' and ingestionDate = (SELECT MAX(IngestionDate) FROM odw_harmonised_db.casework_case_involvement_dim)"
 				],
-				"execution_count": 57
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -776,7 +778,7 @@
 					"%%sql\n",
 					"SELECT count(*) from odw_harmonised_db.casework_case_involvement_dim where ContactID = 'P_2003' and ingestionDate = (SELECT MAX(IngestionDate) FROM odw_harmonised_db.casework_case_involvement_dim)"
 				],
-				"execution_count": 58
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -799,7 +801,7 @@
 					"%%sql\n",
 					"SELECT COUNT(*) from odw_harmonised_db.curated_service_user where sourceSuid = 'P_2003'"
 				],
-				"execution_count": 62
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -822,7 +824,7 @@
 					"%%sql\n",
 					"SELECT * from odw_harmonised_db.casework_case_involvement_dim where ContactID = 'P_2003' and ingestionDate = (SELECT MAX(IngestionDate) FROM odw_harmonised_db.casework_case_involvement_dim) and CaseReference = 3004527"
 				],
-				"execution_count": 63
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -845,7 +847,7 @@
 					"%%sql\n",
 					"SELECT * from odw_harmonised_db.curated_service_user where sourceSuid = 'P_2003' and CaseReference = 3004527"
 				],
-				"execution_count": 64
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -881,7 +883,7 @@
 					"%%sql\n",
 					"SELECT caseReference, count(*) FROM odw_harmonised_db.nsip_s51_advice where IsActive = 'Y' Group by caseReference"
 				],
-				"execution_count": 67
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -904,7 +906,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.nsip_s51_advice WHERE isActive = 'Y' and caseReference='EN010067'"
 				],
-				"execution_count": 69
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -927,7 +929,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.curated_service_user WHERE caseReference = 15357831"
 				],
-				"execution_count": 86
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -963,7 +965,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.nsip_project where caseid = '3148289'"
 				],
-				"execution_count": 94
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -986,7 +988,7 @@
 					"%%sql\n",
 					"SELECT * FROM odw_harmonised_db.curated_service_user where caseReference = '3148289' and ServiceUserType = 'Applicant'"
 				],
-				"execution_count": 93
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -1027,7 +1029,7 @@
 					"WHERE\n",
 					"    caseId = '3148289'"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -1210,6 +1212,68 @@
 					"print(f\"Case exists in service user: {test_case_exists_in_service_user(case)}\")\n",
 					"print(f\"Case exists in nsip_representation: {test_case_exists_in_nsip_representation(case)}\")\n",
 					"print(f\"Reps counts match: {test_reps_counts_match(query1, query2)}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT count (*) FROM\n",
+					"odw_curated_db.nsip_representation AS reps \n",
+					"INNER JOIN odw_curated_db.nsip_service_user AS suser\n",
+					"ON reps.representativeId = suser.id \n",
+					"OR reps.representedId = suser.id\n",
+					"WHERE caseRef = 'TR020002' \n",
+					"\n",
+					"-- should be 53\n",
+					"-- https://pins-ds.atlassian.net/browse/THEODW-1319?focusedCommentId=74458"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT count (*) FROM\n",
+					"odw_curated_db.nsip_representation AS reps \n",
+					"INNER JOIN odw_curated_db.nsip_service_user AS suser\n",
+					"ON reps.representativeId = suser.id \n",
+					"OR reps.representedId = suser.id\n",
+					"WHERE caseRef = 'TR020002' \n",
+					"AND sourceSystem IN ('horizon','Horizon')\n",
+					"AND suser.caseReference = '3148447' \n",
+					"\n",
+					"-- should be 53\n",
+					"-- https://pins-ds.atlassian.net/browse/THEODW-1319?focusedCommentId=74458"
 				],
 				"execution_count": null
 			}
