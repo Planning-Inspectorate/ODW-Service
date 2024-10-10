@@ -1,7 +1,0 @@
-NOTEBOOK_SUCCESS_STATUS:str = "Succeeded"
-PIPELINE_SUCCESS_STATUS:str = "Succeeded"
-NOTEBOOK_EXIT_CODE_SUCCESS:str = '0'
-SYNAPSE_ENDPOINT_ENVIRONMENT_VARIABLE:str = "SYNAPSE_ENDPOINT"
-SYNAPSE_ENDPOINT_DEFAULT:str = "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/"
-CREDENTIAL_ENVIRONMENT_NAME:str = "CREDENTIAL_NAME"
-CREDENTIAL_ENVIRONMENT_DEFAULT:str = "https://dev.azuresynapse.net/.default"
