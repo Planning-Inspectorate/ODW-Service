@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bd59e523-4013-4634-aa99-b7093bd431e9"
+				"spark.autotune.trackingId": "c806106e-3e3e-4ea3-8fc2-93bfd8a8e7b9"
 			}
 		},
 		"metadata": {
@@ -283,7 +283,8 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"serviceUserType = 'Agent'\n",
@@ -367,7 +368,8 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"serviceUserType = 'Applicant'\n",
@@ -423,7 +425,7 @@
 					"print(nsip_project_applicant_data.count())\n",
 					"display(nsip_project_applicant_data.head(10))"
 				],
-				"execution_count": 151
+				"execution_count": 158
 			},
 			{
 				"cell_type": "markdown",
@@ -449,7 +451,8 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"serviceUserType = 'RepresentationContact'\n",
@@ -483,7 +486,7 @@
 					"        ,Cast(EmailAddress AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
 					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
-					"        ,Cast('{serviceUserType}_Represented' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}_Represented' AS String) as serviceUserTypeInternal\n",
 					"        ,Cast(CaseReference AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as sourceSuid\n",
@@ -505,7 +508,7 @@
 					"print(relevant_reps_represented_data.count())\n",
 					"display(relevant_reps_represented_data.head(10))"
 				],
-				"execution_count": 126
+				"execution_count": 160
 			},
 			{
 				"cell_type": "markdown",
@@ -531,7 +534,8 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"serviceUserType = 'RepresentationContact'\n",
@@ -565,7 +569,7 @@
 					"        ,Cast(Agent_EmailAddress AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
 					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
-					"        ,Cast('{serviceUserType}_Agent' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}_Agent' AS String) as serviceUserTypeInternal\n",
 					"        ,Cast(CaseReference AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as Agent_ContactID\n",
@@ -587,7 +591,7 @@
 					"print(relevant_reps_agent_data.count())\n",
 					"display(relevant_reps_agent_data.head(10))"
 				],
-				"execution_count": 127
+				"execution_count": 161
 			},
 			{
 				"cell_type": "markdown",
@@ -641,6 +645,24 @@
 					}
 				},
 				"source": [
+					"268658"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
 				"execution_count": 129
@@ -671,30 +693,28 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_service_user_calculations_base\n",
-					"AS\n",
-					"SELECT  \n",
-					"    row_number() OVER(PARTITION BY id ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, id asc) AS ServiceUserID\n",
-					"    ,id\n",
-					"    ,IngestionDate\n",
-					"    ,ValidTo\n",
-					"    ,'0' AS Migrated\n",
-					"    ,CASE row_number() OVER(PARTITION BY id ORDER BY IngestionDate DESC)\n",
-					"        WHEN 1 THEN\n",
-					"            'Y'\n",
-					"        ELSE\n",
-					"            'N'\n",
-					"    END AS IsActive                \n",
-					"FROM\n",
-					"    odw_harmonised_db.service_user"
+					"spark.sql(f\"\"\"\n",
+					"    CREATE OR REPLACE TEMPORARY VIEW vw_service_user_calculations_base\n",
+					"        AS\n",
+					"        SELECT  \n",
+					"            row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"            ,row_number() OVER(ORDER BY IngestionDate asc, {primary_key} asc) AS ServiceUserID\n",
+					"            ,{primary_key}\n",
+					"            ,IngestionDate\n",
+					"            ,ValidTo\n",
+					"            ,'0' AS Migrated\n",
+					"            ,CASE row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC)\n",
+					"                WHEN 1 THEN\n",
+					"                    'Y'\n",
+					"                ELSE\n",
+					"                    'N'\n",
+					"            END AS IsActive                \n",
+					"        FROM\n",
+					"            {spark_table_final}\n",
+					"    \"\"\")"
 				],
 				"execution_count": 130
 			},
@@ -712,28 +732,28 @@
 					}
 				},
 				"source": [
-					"df_calcs = spark.sql(\"\"\"\n",
-					"                        SELECT\n",
-					"                            CurrentRow.ServiceUserID\n",
-					"                            ,CurrentRow.id \n",
-					"                            ,CurrentRow.IngestionDate\n",
-					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
-					"                            ,CASE\n",
-					"                                WHEN raw.id IS NOT NULL THEN \n",
-					"                                    \"1\"\n",
-					"                                ELSE \n",
-					"                                    \"0\"\n",
-					"                            END AS Migrated\n",
-					"                            ,CurrentRow.IsActive\n",
-					"                        FROM\n",
-					"                            vw_service_user_calculations_base AS CurrentRow\n",
-					"                            LEFT OUTER JOIN vw_service_user_calculations_base AS NextRow\n",
-					"                                ON CurrentRow.id = NextRow.id\n",
-					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT id FROM  odw_harmonised_db.sb_service_user) AS Raw\n",
-					"                                ON CurrentRow.id = Raw.id \n",
-					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
-					"                    \"\"\")"
+					"df_calcs = spark.sql(f\"\"\"\n",
+					"    SELECT\n",
+					"        CurrentRow.ServiceUserID\n",
+					"        ,CurrentRow.{primary_key} \n",
+					"        ,CurrentRow.IngestionDate\n",
+					"        ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
+					"        ,CASE\n",
+					"            WHEN raw.{primary_key} IS NOT NULL THEN \n",
+					"                \"1\"\n",
+					"            ELSE \n",
+					"                \"0\"\n",
+					"        END AS Migrated\n",
+					"        ,CurrentRow.IsActive\n",
+					"    FROM\n",
+					"        vw_service_user_calculations_base AS CurrentRow\n",
+					"        LEFT OUTER JOIN vw_service_user_calculations_base AS NextRow\n",
+					"            ON CurrentRow.{primary_key} = NextRow.{primary_key}\n",
+					"            AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
+					"        LEFT OUTER JOIN (SELECT DISTINCT MD5(CONCAT(id, caseReference, serviceUserType)) AS {primary_key} FROM {service_bus_table}) AS Raw\n",
+					"            ON CurrentRow.{primary_key} = Raw.{primary_key} \n",
+					"        ORDER BY currentRow.ReverseOrderProcessed\n",
+					"\"\"\")"
 				],
 				"execution_count": 131
 			},
@@ -751,8 +771,7 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"id\", \"temp_id\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
-					""
+					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
 				"execution_count": 132
 			},
@@ -772,7 +791,9 @@
 				},
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
-					"    SELECT DISTINCT ServiceUserID\n",
+					"    SELECT DISTINCT\n",
+					"        {primary_key}\n",
+					"        ,ServiceUserID\n",
 					"        ,id\n",
 					"        ,salutation\n",
 					"        ,firstname\n",
@@ -861,8 +882,8 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_id\"] == results[\"id\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
-					"final_df = final_df.drop_duplicates()"
+					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
+					"final_df = final_df.drop(primary_key).drop_duplicates()"
 				],
 				"execution_count": 136
 			},
@@ -898,7 +919,6 @@
 					}
 				},
 				"source": [
-					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
 				"execution_count": 138
