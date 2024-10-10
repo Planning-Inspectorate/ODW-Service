@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0211ad2f-1a6b-4599-b908-3e9e7a4d7beb"
+				"spark.autotune.trackingId": "bd59e523-4013-4634-aa99-b7093bd431e9"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 96
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -83,9 +83,13 @@
 					"hzn_nsip_representation_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\n",
 					"\n",
 					"# target table\n",
-					"spark_table_final = \"odw_harmonised_db.service_user\""
+					"spark_table_final = \"odw_harmonised_db.service_user\"\n",
+					"\n",
+					"# define a composite PK to be able to uniquely identify a service user from different source systems\n",
+					"# this can be a combination of id, caseReference, and serviceUserType\n",
+					"primary_key = 'TEMP_PK'"
 				],
-				"execution_count": null
+				"execution_count": 152
 			},
 			{
 				"cell_type": "markdown",
@@ -114,10 +118,10 @@
 					}
 				},
 				"source": [
-					"# Get data out of the service bus with additional fields needed for Horizon data\n",
 					"service_bus_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT\n",
-					"        ServiceUserID\n",
+					"        MD5(CONCAT(id, caseReference, serviceUserType)) AS {primary_key}\n",
+					"        ,ServiceUserID\n",
 					"        ,id\n",
 					"        ,salutation\n",
 					"        ,firstname\n",
@@ -151,9 +155,12 @@
 					"        ,IsActive\n",
 					"    FROM \n",
 					"        {service_bus_table}\n",
-					"    \"\"\")"
+					"    \"\"\")\n",
+					"\n",
+					"print(service_bus_data.count())\n",
+					"display(service_bus_data.head(10))"
 				],
-				"execution_count": null
+				"execution_count": 154
 			},
 			{
 				"cell_type": "markdown",
@@ -192,12 +199,22 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
+					"serviceUserType = 'Appellant'\n",
+					"\n",
 					"appeal_casework_appellant_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT \n",
-					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        MD5(\n",
+					"            CONCAT(\n",
+					"                COALESCE(CAST(ContactId AS String), ''), \n",
+					"                COALESCE(CAST(case_number AS String), ''), \n",
+					"                '{serviceUserType}'\n",
+					"            )\n",
+					"        ) AS {primary_key}\n",
+					"        ,CAST(NULL AS Long) as ServiceUserID\n",
 					"        ,CAST(ContactId AS String) as id\n",
 					"        ,Cast(Title AS String) as salutation\n",
 					"        ,Cast(FirstName AS String) as firstName\n",
@@ -216,8 +233,8 @@
 					"        ,Cast(Fax AS String) as faxNumber\n",
 					"        ,Cast(Email AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
-					"        ,Cast('Appellant' AS String) as serviceUserType\n",
-					"        ,Cast('Appellant' AS String) as serviceUserTypeInternal\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserTypeInternal\n",
 					"        ,Cast(case_number AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as sourceSuid\n",
@@ -235,9 +252,12 @@
 					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_service_user_table})\n",
 					"        AND ContactId IS NOT NULL\n",
 					"        AND typeOfInvolvement IN ('Appellant', 'tAppellant', 'Apellant')\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"print(appeal_casework_appellant_data.count())\n",
+					"display(appeal_casework_appellant_data.head(10))"
 				],
-				"execution_count": null
+				"execution_count": 156
 			},
 			{
 				"cell_type": "markdown",
@@ -266,9 +286,18 @@
 					}
 				},
 				"source": [
+					"serviceUserType = 'Agent'\n",
+					"\n",
 					"appeal_casework_agent_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT \n",
-					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        MD5(\n",
+					"            CONCAT(\n",
+					"                COALESCE(CAST(ContactId AS String), ''), \n",
+					"                COALESCE(CAST(case_number AS String), ''), \n",
+					"                '{serviceUserType}'\n",
+					"            )\n",
+					"        ) AS {primary_key}\n",
+					"        ,CAST(NULL AS Long) as ServiceUserID\n",
 					"        ,CAST(ContactId AS String) as id\n",
 					"        ,Cast(Title AS String) as salutation\n",
 					"        ,Cast(FirstName AS String) as firstName\n",
@@ -287,8 +316,8 @@
 					"        ,Cast(Fax AS String) as faxNumber\n",
 					"        ,Cast(Email AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
-					"        ,Cast('Agent' AS String) as serviceUserType\n",
-					"        ,Cast('Agent' AS String) as serviceUserTypeInternal\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserTypeInternal\n",
 					"        ,Cast(case_number AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as sourceSuid\n",
@@ -306,9 +335,13 @@
 					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_service_user_table})\n",
 					"        AND ContactId IS NOT NULL\n",
 					"        AND typeOfInvolvement = 'Agent'\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"\n",
+					"print(appeal_casework_agent_data.count())\n",
+					"display(appeal_casework_agent_data.head(10))"
 				],
-				"execution_count": null
+				"execution_count": 157
 			},
 			{
 				"cell_type": "markdown",
@@ -337,9 +370,18 @@
 					}
 				},
 				"source": [
+					"serviceUserType = 'Applicant'\n",
+					"\n",
 					"nsip_project_applicant_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT \n",
-					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        MD5(\n",
+					"            CONCAT(\n",
+					"                COALESCE(CAST(caseNodeId AS String), ''), \n",
+					"                COALESCE(CAST(CaseReference AS String), ''), \n",
+					"                '{serviceUserType}'\n",
+					"            )\n",
+					"        ) AS {primary_key}\n",
+					"        ,CAST(NULL AS Long) as ServiceUserID\n",
 					"        ,CAST(caseNodeId AS String) as id\n",
 					"        ,Cast(NULL AS String) as salutation\n",
 					"        ,Cast(ApplicantFirstName AS String) as firstName\n",
@@ -358,8 +400,8 @@
 					"        ,Cast(NULL AS String) as faxNumber\n",
 					"        ,Cast(ApplicantEmailAddress AS String) as emailAddress\n",
 					"        ,Cast(ApplicantWebAddress AS String) as webAddress\n",
-					"        ,Cast('Applicant' AS String) as serviceUserType\n",
-					"        ,Cast('Applicant' AS String) as serviceUserTypeInternal\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserTypeInternal\n",
 					"        ,Cast(CaseReference AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(caseNodeId AS String) as sourceSuid\n",
@@ -376,9 +418,12 @@
 					"    WHERE\n",
 					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_nsip_project_table})\n",
 					"        AND caseNodeId IS NOT NULL\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"print(nsip_project_applicant_data.count())\n",
+					"display(nsip_project_applicant_data.head(10))"
 				],
-				"execution_count": 69
+				"execution_count": 151
 			},
 			{
 				"cell_type": "markdown",
@@ -407,9 +452,18 @@
 					}
 				},
 				"source": [
+					"serviceUserType = 'RepresentationContact'\n",
+					"\n",
 					"relevant_reps_represented_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT \n",
-					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        MD5(\n",
+					"            CONCAT(\n",
+					"                COALESCE(CAST(ContactId AS String), ''), \n",
+					"                COALESCE(CAST(CaseReference AS String), ''), \n",
+					"                '{serviceUserType}'\n",
+					"            )\n",
+					"        ) AS {primary_key}\n",
+					"        ,CAST(NULL AS Long) as ServiceUserID\n",
 					"        ,CAST(ContactId AS String) as id\n",
 					"        ,Cast(NULL AS String) as salutation\n",
 					"        ,Cast(NULL AS String) as firstName\n",
@@ -428,8 +482,8 @@
 					"        ,Cast(NULL AS String) as faxNumber\n",
 					"        ,Cast(EmailAddress AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
-					"        ,Cast('RepresentationContact' AS String) as serviceUserType\n",
-					"        ,Cast('RepresentationContactRepresented' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}_Represented' AS String) as serviceUserType\n",
 					"        ,Cast(CaseReference AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as sourceSuid\n",
@@ -446,9 +500,12 @@
 					"    WHERE\n",
 					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_nsip_representation_table})\n",
 					"        AND ContactID IS NOT NULL\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"print(relevant_reps_represented_data.count())\n",
+					"display(relevant_reps_represented_data.head(10))"
 				],
-				"execution_count": 70
+				"execution_count": 126
 			},
 			{
 				"cell_type": "markdown",
@@ -477,9 +534,18 @@
 					}
 				},
 				"source": [
+					"serviceUserType = 'RepresentationContact'\n",
+					"\n",
 					"relevant_reps_agent_data = spark.sql(f\"\"\"\n",
 					"    SELECT DISTINCT \n",
-					"        CAST(NULL AS Long) as ServiceUserID\n",
+					"        MD5(\n",
+					"            CONCAT(\n",
+					"                COALESCE(CAST(AgentContactId AS String), ''), \n",
+					"                COALESCE(CAST(CaseReference AS String), ''), \n",
+					"                '{serviceUserType}'\n",
+					"            )\n",
+					"        ) AS {primary_key}\n",
+					"        ,CAST(NULL AS Long) as ServiceUserID\n",
 					"        ,CAST(AgentContactId AS String) as id\n",
 					"        ,Cast(NULL AS String) as salutation\n",
 					"        ,Cast(NULL AS String) as firstName\n",
@@ -498,8 +564,8 @@
 					"        ,Cast(NULL AS String) as faxNumber\n",
 					"        ,Cast(Agent_EmailAddress AS String) as emailAddress\n",
 					"        ,Cast(NULL AS String) as webAddress\n",
-					"        ,Cast('RepresentationContact' AS String) as serviceUserType\n",
-					"        ,Cast('RepresentationContactAgent' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}' AS String) as serviceUserType\n",
+					"        ,Cast('{serviceUserType}_Agent' AS String) as serviceUserType\n",
 					"        ,Cast(CaseReference AS String) as caseReference\n",
 					"        ,Cast('Horizon' AS String) as sourceSystem\n",
 					"        ,Cast(ContactID AS String) as Agent_ContactID\n",
@@ -516,9 +582,12 @@
 					"    WHERE\n",
 					"        expected_from = (SELECT MAX(expected_from) FROM {hzn_nsip_representation_table})\n",
 					"        AND AgentContactId IS NOT NULL\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"print(relevant_reps_agent_data.count())\n",
+					"display(relevant_reps_agent_data.head(10))"
 				],
-				"execution_count": 71
+				"execution_count": 127
 			},
 			{
 				"cell_type": "markdown",
@@ -556,7 +625,7 @@
 					"            \n",
 					"print(results.count())"
 				],
-				"execution_count": 72
+				"execution_count": 128
 			},
 			{
 				"cell_type": "code",
@@ -574,7 +643,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 73
+				"execution_count": 129
 			},
 			{
 				"cell_type": "markdown",
@@ -627,7 +696,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.service_user"
 				],
-				"execution_count": 74
+				"execution_count": 130
 			},
 			{
 				"cell_type": "code",
@@ -666,7 +735,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 75
+				"execution_count": 131
 			},
 			{
 				"cell_type": "code",
@@ -685,7 +754,7 @@
 					"df_calcs =df_calcs.withColumnRenamed(\"id\", \"temp_id\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
 					""
 				],
-				"execution_count": 76
+				"execution_count": 132
 			},
 			{
 				"cell_type": "code",
@@ -738,7 +807,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 77
+				"execution_count": 133
 			},
 			{
 				"cell_type": "code",
@@ -758,7 +827,25 @@
 					"\n",
 					"results = results.drop(\"ServiceUserID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 78
+				"execution_count": 134
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.count()"
+				],
+				"execution_count": 135
 			},
 			{
 				"cell_type": "code",
@@ -777,7 +864,25 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_id\"] == results[\"id\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 79
+				"execution_count": 136
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.count()"
+				],
+				"execution_count": 137
 			},
 			{
 				"cell_type": "code",
@@ -796,7 +901,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 80
+				"execution_count": 138
 			},
 			{
 				"cell_type": "code",
@@ -812,13 +917,61 @@
 					},
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"select count(*) from odw_harmonised_db.service_user"
 				],
-				"execution_count": null
+				"execution_count": 139
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select distinct * from odw_harmonised_db.service_user where id = 'O_1172' and isactive='Y'"
+				],
+				"execution_count": 145
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select id, caseReference, serviceUserType, count(*) from odw_harmonised_db.service_user where isactive='Y'\n",
+					"    group by id, caseReference, serviceUserType having count(*) > 1"
+				],
+				"execution_count": 148
 			},
 			{
 				"cell_type": "code",
@@ -841,7 +994,7 @@
 					"%%sql\n",
 					"select count(*) from odw_harmonised_db.service_user where isactive='Y'"
 				],
-				"execution_count": 81
+				"execution_count": 140
 			}
 		]
 	}
