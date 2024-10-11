@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7148310c-b430-4de2-bd17-b2010b4dfe3b"
+				"spark.autotune.trackingId": "355ecfef-be15-44f2-ad77-9ef3bd774ed0"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					"from pyspark.sql import functions as F\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -92,7 +92,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 21
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"hrm_table_final: str = 'service_user'\n",
 					"curated_migration_table_name: str = 'nsip_service_user'"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -138,7 +138,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 69
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -161,7 +161,7 @@
 					"curated_schema = create_spark_schema(curated_migration_db_name, entity_name)\n",
 					"curated_table_schema = spark.table(f\"{curated_migration_db_name}.{curated_migration_table_name}\").schema"
 				],
-				"execution_count": 76
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -201,7 +201,7 @@
 					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_migration_db_name}.{curated_migration_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not cur_schema_correct)"
 				],
-				"execution_count": 77
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -241,7 +241,7 @@
 					"    #this is classed as an error\n",
 					"    exitCode += 1 "
 				],
-				"execution_count": 81
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -281,6 +281,225 @@
 						"transient": {
 							"deleting": false
 						}
+					}
+				},
+				"source": [
+					"df = spark.sql(\"\"\"\n",
+					"    SELECT \n",
+					"        SU.id\n",
+					"        ,SU.salutation\n",
+					"        ,SU.firstName\n",
+					"        ,SU.lastName\n",
+					"        ,SU.addressLine1\n",
+					"        ,SU.addressLine2\n",
+					"        ,SU.addressTown\n",
+					"        ,SU.addressCounty\n",
+					"        ,SU.postcode\n",
+					"        ,SU.addressCountry\n",
+					"        ,SU.organisation\n",
+					"        ,SU.organisationType\n",
+					"        ,SU.role\n",
+					"        ,SU.telephoneNumber\n",
+					"        ,SU.otherPhoneNumber\n",
+					"        ,SU.faxNumber\n",
+					"        ,SU.emailAddress\n",
+					"        ,SU.webAddress\n",
+					"        ,SU.serviceUserType\n",
+					"        ,SU.caseReference\n",
+					"        ,SU.sourceSystem\n",
+					"        ,SU.sourceSuid\n",
+					"    FROM odw_harmonised_db.service_user SU\n",
+					"\n",
+					"    INNER JOIN (\n",
+					"\n",
+					"        SELECT id, MAX(IngestionDate) AS latest_date\n",
+					"        FROM odw_harmonised_db.service_user\n",
+					"        WHERE LOWER(sourceSystem) = 'horizon'\n",
+					"        GROUP BY id\n",
+					"        \n",
+					"    ) latest ON SU.id = latest.id AND SU.IngestionDate = latest.latest_date   \n",
+					"\n",
+					"    -- RIGHT JOIN odw_curated_db.nsip_project AS NP  ON SU.caseReference = NP.caseReference\n",
+					"\n",
+					"    WHERE LOWER(SU.ODTSourceSystem) = 'horizon'\n",
+					"    AND SU.serviceUserType IN ('Applicant', 'RepresentationContact', 'Agent');\n",
+					"\"\"\")\n",
+					"\n",
+					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_migration_db.nsip_service_user\")"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select distinct casereference from odw_curated_migration_db.nsip_service_user where serviceUserType='Applicant'"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_curated_db.nsip_project"
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_curated_migration_db.nsip_service_user"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# no project is deleted from horizon"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"do representations later , first build the service user for applicants to unblock them."
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"need to create a curated table from odw_harmonised_service_user where sourceSystem is hzn and service user type in Applicant, RepresentationContact "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# -- joining with curated  nsip project is gonna drop records because it's not a migration table hence IsActive = 'Y' is applied on it?"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# -- join odw_curated_migration_db.nsip_service_user with nsip project where project.casereference != null \n",
+					"# for refrential integrity if only one service user type is required"
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					},
 					"collapsed": false
 				},
@@ -302,7 +521,7 @@
 					"else:\n",
 					"    exitCode += 1  "
 				],
-				"execution_count": 56
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -325,7 +544,8 @@
 					"        FROM odw_curated_db.nsip_project p\n",
 					"        LEFT JOIN odw_curated_migration_db.nsip_service_user u \n",
 					"            ON p.caseReference = u.caseReference\n",
-					"        WHERE u.caseReference IS NULL AND u.serviceUserType = 'Applicant';\n",
+					"        WHERE u.caseReference IS NULL \n",
+					"        -- AND u.serviceUserType = 'Applicant';\n",
 					"    \"\"\")\n",
 					"\n",
 					"    return df.count() == 0\n",
@@ -333,9 +553,10 @@
 					"if test_project_with_no_applicant(): \n",
 					"    print('PASS: Each project has an applicant')\n",
 					"else:\n",
+					"    print('FAIL: Each project has an applicant')\n",
 					"    exitCode += 1  "
 				],
-				"execution_count": 55
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
