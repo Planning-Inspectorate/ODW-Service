@@ -1,0 +1,166 @@
+{
+	"name": "nsip_representation_migration",
+	"properties": {
+		"folder": {
+			"name": "odw-curated/migration"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "de43654f-4f76-443e-ac52-a84d1b48bf83"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_migration_db.vw_nsip_representation\n",
+					"AS\n",
+					"SELECT DISTINCT\n",
+					"    RR.representationId\n",
+					"    ,RR.referenceId\n",
+					"    ,RR.examinationLibraryRef\n",
+					"    ,COALESCE(RR.caseRef, '') AS caseRef\n",
+					"    ,RR.caseId\n",
+					"    ,CASE\n",
+					"        WHEN RR.status = 'New' OR RR.status = 'In Progress' THEN\n",
+					"            'awaiting_review'\n",
+					"        WHEN RR.status = 'Complete' THEN\n",
+					"            'valid'\n",
+					"        WHEN RR.status = 'Do Not Publish' THEN\n",
+					"            'invalid'\n",
+					"        ELSE \n",
+					"            LOWER(RR.status)\n",
+					"    END AS status\n",
+					"    ,COALESCE(RR.originalRepresentation, '') AS originalRepresentation\n",
+					"    ,RR.redacted\n",
+					"    ,RR.redactedRepresentation\n",
+					"    ,RR.redactedBy\n",
+					"    ,RR.redactedNotes\n",
+					"    ,CASE\n",
+					"        WHEN su2.serviceUserType = 'Agent' THEN\n",
+					"            'AGENT'\n",
+					"        WHEN RR.representationFrom = 'An Organisation' THEN \n",
+					"            'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Members of the Public/Businesses' and SU2.Organisation IS NOT NULL THEN\n",
+					"            'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Members of the Public/Businesses' THEN\n",
+					"            'PERSON'\n",
+					"        WHEN RR.representationFrom = 'Another Individual or Organisation' and SU2.Organisation IS NOT NULL THEN\n",
+					"             'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Another Individual or Organisation' THEN\n",
+					"            'PERSON'\n",
+					"        WHEN RR.representationFrom = 'Myself' THEN\n",
+					"            'PERSON'\n",
+					"        ELSE\n",
+					"            RR.representationFrom\n",
+					"    END AS representationFrom\n",
+					"    ,COALESCE(SU.Id, '')AS representedId\n",
+					"    ,COALESCE(SU2.Id, '') AS representativeId\n",
+					"    ,CASE\n",
+					"        WHEN RR.representationFrom = 'An Organisation' THEN\n",
+					"            'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Members of the Public/Businesses' and SU.Organisation IS NOT NULL THEN\n",
+					"            'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Members of the Public/Businesses'THEN\n",
+					"            'PERSON'\n",
+					"        WHEN RR.representationFrom = 'Another Individual or Organisation' and SU.Organisation IS NOT NULL THEN \n",
+					"            'ORGANISATION'\n",
+					"        WHEN RR.representationFrom = 'Another Individual or Organisation' THEN\n",
+					"            'PERSON'\n",
+					"        WHEN RR.representationFrom = 'Myself' THEN\n",
+					"            'PERSON'\n",
+					"        ELSE\n",
+					"            RR.registerFor\n",
+					"    END AS registerFor\n",
+					"    ,CASE\n",
+					"        WHEN RR.representationType = 'Other Statutory Consultees' THEN\n",
+					"            'Statutory Consultees'\n",
+					"        ELSE\n",
+					"            RR.representationType\n",
+					"        END AS representationType\n",
+					"        ,RR.dateReceived\n",
+					"        ,RR.attachmentIds\n",
+					"FROM \n",
+					"        odw_harmonised_db.curated_service_user AS SU2\n",
+					"        INNER JOIN odw_harmonised_db.nsip_representation AS RR\n",
+					"            ON (SU2.sourceSUID = RR.agentcontactid OR SU2.sourceSUID = RR.representativeId)\n",
+					"            AND SU2.serviceUserType IN ('RepresentationContact', 'Agent')\n",
+					"            AND RR.ISActive = 'Y'\n",
+					"        LEFT OUTER JOIN odw_harmonised_db.curated_service_user AS SU\n",
+					"            ON SU.sourceSUID = RR.representedId\n",
+					"            AND SU.serviceUserType IN ('Applicant')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"view_df = spark.sql('SELECT * FROM odw_curated_migration_db.vw_nsip_representation')\n",
+					"view_df.write.mode('overwrite').saveAsTable('odw_curated_migration_db.nsip_representation')"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
