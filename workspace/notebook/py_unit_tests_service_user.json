@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "355ecfef-be15-44f2-ad77-9ef3bd774ed0"
+				"spark.autotune.trackingId": "5aa3b9b2-c2c0-4257-a51f-bfa067e4e632"
 			}
 		},
 		"metadata": {
@@ -118,7 +118,7 @@
 					"std_table_name: str = 'sb_service_user'\n",
 					"hrm_table_name: str = 'sb_service_user'\n",
 					"hrm_table_final: str = 'service_user'\n",
-					"curated_migration_table_name: str = 'nsip_service_user'"
+					"curated_migration_table_name: str = 'service_user'"
 				],
 				"execution_count": 3
 			},
@@ -284,134 +284,6 @@
 					}
 				},
 				"source": [
-					"df = spark.sql(\"\"\"\n",
-					"    SELECT \n",
-					"        SU.id\n",
-					"        ,SU.salutation\n",
-					"        ,SU.firstName\n",
-					"        ,SU.lastName\n",
-					"        ,SU.addressLine1\n",
-					"        ,SU.addressLine2\n",
-					"        ,SU.addressTown\n",
-					"        ,SU.addressCounty\n",
-					"        ,SU.postcode\n",
-					"        ,SU.addressCountry\n",
-					"        ,SU.organisation\n",
-					"        ,SU.organisationType\n",
-					"        ,SU.role\n",
-					"        ,SU.telephoneNumber\n",
-					"        ,SU.otherPhoneNumber\n",
-					"        ,SU.faxNumber\n",
-					"        ,SU.emailAddress\n",
-					"        ,SU.webAddress\n",
-					"        ,SU.serviceUserType\n",
-					"        ,SU.caseReference\n",
-					"        ,SU.sourceSystem\n",
-					"        ,SU.sourceSuid\n",
-					"    FROM odw_harmonised_db.service_user SU\n",
-					"\n",
-					"    INNER JOIN (\n",
-					"\n",
-					"        SELECT id, MAX(IngestionDate) AS latest_date\n",
-					"        FROM odw_harmonised_db.service_user\n",
-					"        WHERE LOWER(sourceSystem) = 'horizon'\n",
-					"        GROUP BY id\n",
-					"        \n",
-					"    ) latest ON SU.id = latest.id AND SU.IngestionDate = latest.latest_date   \n",
-					"\n",
-					"    -- RIGHT JOIN odw_curated_db.nsip_project AS NP  ON SU.caseReference = NP.caseReference\n",
-					"\n",
-					"    WHERE LOWER(SU.ODTSourceSystem) = 'horizon'\n",
-					"    AND SU.serviceUserType IN ('Applicant', 'RepresentationContact', 'Agent');\n",
-					"\"\"\")\n",
-					"\n",
-					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_migration_db.nsip_service_user\")"
-				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select distinct casereference from odw_curated_migration_db.nsip_service_user where serviceUserType='Applicant'"
-				],
-				"execution_count": 20
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select count(*) from odw_curated_db.nsip_project"
-				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"select count(*) from odw_curated_migration_db.nsip_service_user"
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"# no project is deleted from horizon"
 				],
 				"execution_count": null
@@ -484,7 +356,7 @@
 					}
 				},
 				"source": [
-					"# -- join odw_curated_migration_db.nsip_service_user with nsip project where project.casereference != null \n",
+					"# -- join odw_curated_migration_db.service_user with nsip project where project.casereference != null \n",
 					"# for refrential integrity if only one service user type is required"
 				],
 				"execution_count": 11
@@ -508,7 +380,7 @@
 					"def test_single_applicant_per_project():\n",
 					"    df = spark.sql(f\"\"\"\n",
 					"        SELECT caseReference, COUNT(*) AS applicant_count\n",
-					"        FROM odw_curated_migration_db.nsip_service_user\n",
+					"        FROM odw_curated_migration_db.service_user\n",
 					"        WHERE serviceUserType = 'Applicant'\n",
 					"        GROUP BY caseReference\n",
 					"        HAVING COUNT(*) > 1;\n",
@@ -521,7 +393,7 @@
 					"else:\n",
 					"    exitCode += 1  "
 				],
-				"execution_count": 9
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -541,11 +413,11 @@
 					"def test_project_with_no_applicant():\n",
 					"    df = spark.sql(f\"\"\"\n",
 					"        SELECT p.caseReference\n",
-					"        FROM odw_curated_db.nsip_project p\n",
-					"        LEFT JOIN odw_curated_migration_db.nsip_service_user u \n",
+					"        FROM odw_curated_migration_db.nsip_project p\n",
+					"        LEFT JOIN odw_curated_migration_db.service_user u \n",
 					"            ON p.caseReference = u.caseReference\n",
 					"        WHERE u.caseReference IS NULL \n",
-					"        -- AND u.serviceUserType = 'Applicant';\n",
+					"            AND p.caseReference IS NOT NULL ;\n",
 					"    \"\"\")\n",
 					"\n",
 					"    return df.count() == 0\n",
@@ -556,7 +428,7 @@
 					"    print('FAIL: Each project has an applicant')\n",
 					"    exitCode += 1  "
 				],
-				"execution_count": 30
+				"execution_count": 50
 			},
 			{
 				"cell_type": "markdown",
@@ -829,7 +701,7 @@
 					"%%sql\n",
 					"SELECT count (*) FROM\n",
 					"odw_curated_db.nsip_representation AS reps \n",
-					"INNER JOIN odw_curated_db.nsip_service_user AS suser\n",
+					"INNER JOIN odw_curated_db.service_user AS suser\n",
 					"ON reps.representativeId = suser.id \n",
 					"OR reps.representedId = suser.id\n",
 					"WHERE caseRef = 'TR020002' \n",
@@ -859,7 +731,7 @@
 					"%%sql\n",
 					"SELECT count (*) FROM\n",
 					"odw_curated_db.nsip_representation AS reps \n",
-					"INNER JOIN odw_curated_db.nsip_service_user AS suser\n",
+					"INNER JOIN odw_curated_db.service_user AS suser\n",
 					"ON reps.representativeId = suser.id \n",
 					"OR reps.representedId = suser.id\n",
 					"WHERE caseRef = 'TR020002' \n",
