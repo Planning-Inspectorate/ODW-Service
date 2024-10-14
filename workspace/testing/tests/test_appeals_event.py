@@ -3,7 +3,7 @@ import pipelineutils
 import constants
 import warnings
 
-def test_appeal_document_notebook(credential_name, azure_credential, synapse_endpoint: str):
+def test_appeal_event_notebook(credential_name, azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
@@ -58,7 +58,7 @@ def test_appeal_document_notebook(credential_name, azure_credential, synapse_end
     print("Notebook response *" +str(exitMessage) +"*")
     assert notebook_run_result == constants.NOTEBOOK_SUCCESS_STATUS 
     assert exitMessage == constants.NOTEBOOK_EXIT_CODE_SUCCESS
-    print("test_appeal_document Completed")
+    print("test_appeal_event Completed")
 
 @pytest.fixture(autouse=True)
 def run_before_and_after_tests():
