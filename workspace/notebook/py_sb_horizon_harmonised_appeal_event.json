@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "81c3ea39-c17a-4fa8-affd-3256e4a7e4fd"
+				"spark.autotune.trackingId": "10dc9e87-a44c-426d-b0fc-6701c17da47f"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 6
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_appeals_event\"\n",
 					"spark_table_final = \"odw_harmonised_db.appeal_event\""
 				],
-				"execution_count": 7
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -95,7 +95,7 @@
 				},
 				"source": [
 					"# Get data out of the service bus with additional fields needed for Horizon data\n",
-					"service_bus_data = spark.sql(\"\"\"\n",
+					"service_bus_data = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT\n",
 					"                            eventId\n",
 					"                            ,caseReference\n",
@@ -120,30 +120,11 @@
 					"                            ,RowID\n",
 					"                            ,IsActive\n",
 					"                            ,'Insert' AS UpdateMode\n",
-					"                    FROM \n",
-					"                        odw_harmonised_db.sb_appeal_event\n",
+					"                    FROM {service_bus_table} AS Horizon)\n",
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 9
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"service_bus_data"
-				],
-				"execution_count": 10
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -182,10 +163,12 @@
 					"                        ,9 AS SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
 					"                        ,ingested_datetime AS IngestionDate\n",
 					"                        ,NULL AS ValidTo\n",
-					"    {horizon_table} AS Horizon\n",
-					"                \"\"\")"
+					"                        ,'' as RowID\n",
+					"                        ,'Y' as IsActive\n",
+					"                FROM {horizon_table} AS Horizon\n",
+					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 4
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -201,15 +184,12 @@
 					}
 				},
 				"source": [
-					"#Establish aggregated view of attachmentIds\n",
-					"horizon_attachement= horizon_data.groupBy(\"adviceid\").agg(collect_list(\"attachmentIds\").alias(\"attachmentIds\"))\n",
-					"horizon_data = horizon_data.drop(\"attachmentIds\")\n",
-					"horizon_data = horizon_data.join(horizon_attachement, on=\"adviceid\", how=\"inner\")\n",
+					"\n",
 					"\n",
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 5
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
