@@ -57,6 +57,13 @@ variables:
     value: 'pins-synw-odw-dev-uks'
   ${{ if eq(parameters.source_workspace, 'Secondary') }}:
     value: 'pins-synw-odw-dev-ukw'
+- name: synapseTriggers 
+  ${{ if eq(parameters.environment , 'Dev') }}: 
+    value: 'tr_daily_weekdays_1500,tr_backup_daily,tr_weekly' 
+  ${{ if eq(parameters.environment , 'Test') }}:
+    value: 'tr_daily_weekdays_1500,tr_backup_daily,tr_weekly' 
+  ${{ if eq(parameters.environment , 'Prod') }}: 
+    value: 'tr_daily_7days_2100,tr_backup_daily,tr_weekly'
 
 pr: none
 
@@ -304,31 +311,13 @@ stages:
 
             # Re-enable triggers in the target Synapse Workspace
             - task: AzureSynapseWorkspace.synapsecicd-deploy.toggle-trigger.toggle-triggers-dev@2
-              condition: and(succeededOrFailed(), eq('${{ parameters.environment }}', 'Dev'))
-              displayName: 'Enable Synapse Triggers - Dev'
+              condition: succeededOrFailed()
+              displayName: 'Enable Synapse Triggers'
               inputs:
                 azureSubscription: ${{ variables.armServiceConnectionName }}
                 ResourceGroupName: $(data_resource_group_name)
                 WorkspaceName: $(synapse_workspace_name)
-                Triggers: 'tr_daily_weekdays_1500,tr_backup_daily,tr_weekly'
-
-            - task: AzureSynapseWorkspace.synapsecicd-deploy.toggle-trigger.toggle-triggers-dev@2
-              condition: and(succeededOrFailed(), eq('${{ parameters.environment }}', 'Test'))
-              displayName: 'Enable Synapse Triggers - Test'
-              inputs:
-                azureSubscription: ${{ variables.armServiceConnectionName }}
-                ResourceGroupName: $(data_resource_group_name)
-                WorkspaceName: $(synapse_workspace_name)
-                Triggers: 'tr_daily_weekdays_1500,tr_backup_daily,tr_weekly'
-
-            - task: AzureSynapseWorkspace.synapsecicd-deploy.toggle-trigger.toggle-triggers-dev@2
-              condition: and(succeededOrFailed(), eq('${{ parameters.environment }}', 'Prod'))
-              displayName: 'Enable Synapse Triggers - Prod'
-              inputs:
-                azureSubscription: ${{ variables.armServiceConnectionName }}
-                ResourceGroupName: $(data_resource_group_name)
-                WorkspaceName: $(synapse_workspace_name)
-                Triggers: 'tr_daily_7days_2100,tr_backup_daily,tr_weekly'
+                Triggers: ${{ variables.synapseTriggers }}
 
             # Synapse post deployment pipeline to run
             - task: liprec.vsts-publish-adf.trigger-adf-pipeline.trigger-adf-pipeline@2
