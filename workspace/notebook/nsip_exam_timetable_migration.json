@@ -1,8 +1,9 @@
 {
-	"name": "py_utils_service_user_tests",
+	"name": "nsip_exam_timetable_migration",
 	"properties": {
+		"description": "please refer to the NSIP Entity Message Topic Requirements  documentation",
 		"folder": {
-			"name": "utils"
+			"name": "odw-curated/migration"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "447f89cd-bd55-4465-ac9e-4f14965927ac"
+				"spark.autotune.trackingId": "2a085cd6-bb3e-4847-ae7a-37ba982a679c"
 			}
 		},
 		"metadata": {
@@ -52,24 +53,6 @@
 		},
 		"cells": [
 			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from notebookutils import mssparkutils"
-				],
-				"execution_count": 2
-			},
-			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -79,20 +62,7 @@
 					}
 				},
 				"source": [
-					"## First need to test service_user"
-				]
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### Test_1: Rerunning the same data does not increase counts"
+					"## View odw_curated_migration_db.vw_nsip_exam_timetable is created"
 				]
 			},
 			{
@@ -113,10 +83,45 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"DROP TABLE IF EXISTS odw_curated_db.service_user"
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_migration_db.vw_nsip_exam_timetable\n",
+					"\n",
+					"    AS\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"\n",
+					"    tbl.caseReference,\n",
+					"    tbl.published,\n",
+					"    tbl.events\n",
+					"\n",
+					"FROM odw_harmonised_db.nsip_exam_timetable tbl\n",
+					"    \n",
+					"INNER JOIN (\n",
+					"\n",
+					"    SELECT caseReference, MAX(IngestionDate) AS latest_date\n",
+					"    FROM odw_harmonised_db.nsip_exam_timetable\n",
+					"    WHERE LOWER(ODTSourceSystem) = 'horizon'\n",
+					"    GROUP BY caseReference\n",
+					"\n",
+					") latest ON tbl.caseReference = latest.caseReference AND tbl.IngestionDate = latest.latest_date   \n",
+					" \n",
+					"WHERE LOWER(tbl.ODTSourceSystem) = 'horizon';"
 				],
-				"execution_count": 3
+				"execution_count": 12
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Table odw_curated_db.nsip_exam_timetable spark table is created"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -132,73 +137,12 @@
 					}
 				},
 				"source": [
-					"# Run service_user notebook"
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"view_df = spark.sql('SELECT * FROM odw_curated_migration_db.vw_nsip_exam_timetable')\n",
+					"view_df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").saveAsTable('odw_curated_migration_db.nsip_exam_timetable')"
 				],
-				"execution_count": 6
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT COUNT(*) FROM odw_curated_db.service_user"
-				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#Run again"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\r\n",
-					"SELECT COUNT(*) FROM odw_curated_db.service_user"
-				],
-				"execution_count": 11
+				"execution_count": 13
 			}
 		]
 	}
