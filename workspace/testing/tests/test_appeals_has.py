@@ -3,7 +3,7 @@ import pipelineutils
 import constants
 import warnings
 
-def test_appeal_event_notebook(credential_name, azure_credential, synapse_endpoint: str):
+def test_appeal_appeals_has(credential_name, azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
