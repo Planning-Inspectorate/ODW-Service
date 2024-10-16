@@ -8,7 +8,7 @@ def test_appeal_appeals_has(credential_name, azure_credential, synapse_endpoint:
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
     # run the testing notebook
-    notebookname: str = "py_unit_tests_appeals_has"
+    notebookname: str = "py_unit_tests_has_appeals"
     
     notebook_raw_params = {
         "sparkPool": "pinssynspodw",
