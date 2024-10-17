@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "40b77ead-804c-4a44-b40f-8e4b1557ae2a"
+				"spark.autotune.trackingId": "7cc38d27-16d0-4b82-a25f-62e16d37e7bc"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -182,7 +182,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -201,7 +201,7 @@
 				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\r\n",
 					"horizon_data = spark.sql(f\"\"\"\r\n",
-					"                SELECT DISTINCT\r\n",
+					"                    SELECT DISTINCT\r\n",
 					"                        CAST(NULL AS Long) AS NSIPRepresentaionID\r\n",
 					"                        ,CAST(relevantrepid AS integer) AS representationId\r\n",
 					"                        ,CONCAT(COALESCE(casereference, ''), \"-\", COALESCE(relevantrepid, '')) AS referenceId\r\n",
@@ -266,19 +266,21 @@
 					"                        ,ValidTo\r\n",
 					"                        ,'' AS RowID\r\n",
 					"                        ,IsActive\r\n",
-					"FROM\r\n",
-					"    {horizon_table} AS Horizon\r\n",
-					"    INNER JOIN odw_harmonised_db.main_sourcesystem_fact AS source \r\n",
-					"        ON source.Description = \"Casework\"\r\n",
-					"        AND source.IsActive = 'Y'\r\n",
-					"WHERE\r\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
-					"    AND caseReference IS NOT NULL\r\n",
+					"                        \r\n",
+					"                    FROM\r\n",
+					"                        {horizon_table} AS Horizon\r\n",
+					"                        INNER JOIN odw_harmonised_db.main_sourcesystem_fact AS source \r\n",
+					"                            ON source.Description = \"Casework\"\r\n",
+					"                            AND source.IsActive = 'Y'\r\n",
+					"                    WHERE\r\n",
+					"                        ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
+					"                        AND caseReference IS NOT NULL\r\n",
+					"                        AND casenodeid != 0 -- https://pins-ds.atlassian.net/browse/APPLICS-1075\r\n",
 					"\r\n",
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -303,7 +305,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -321,7 +323,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -340,7 +342,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -392,7 +394,7 @@
 					"FROM\r\n",
 					"    odw_harmonised_db.nsip_representation"
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -414,7 +416,7 @@
 					"#  select * from vw_nsip_relevant_representation_calculations_base\r\n",
 					"#  where representationid = 100006295"
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -452,7 +454,7 @@
 					"                                ON CurrentRow.representationId = Raw.representationId \r\n",
 					"                                ORDER BY currentRow.ReverseOrderProcessed\"\"\")"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -473,7 +475,7 @@
 					"# df_df = df_calcs.filter(col(\"representationId\")==100006295)\r\n",
 					"# display(df_df)"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -623,7 +625,7 @@
 					"                        {spark_table_final} AS Target\"\"\")\r\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -642,7 +644,7 @@
 					"columns = results.columns\n",
 					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -663,7 +665,7 @@
 					"\r\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 14
+				"execution_count": null
 			}
 		]
 	}
