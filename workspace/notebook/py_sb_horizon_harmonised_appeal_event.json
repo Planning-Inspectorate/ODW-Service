@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6ee38eb5-cb22-43aa-8484-892091901bab"
+				"spark.autotune.trackingId": "fa461985-abec-4949-9e67-37693fc64ab7"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 17
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_appeals_event\"\n",
 					"spark_table_final = \"odw_harmonised_db.appeal_event\""
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -123,7 +123,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -167,7 +167,7 @@
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 12
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -188,7 +188,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 13
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -206,7 +206,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 14
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +225,7 @@
 				"source": [
 					"display(results)"
 				],
-				"execution_count": 16
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -278,23 +278,23 @@
 				},
 				"source": [
 					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_s51_advice_calculations_base\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event_calculations_base\n",
 					"AS\n",
 					"SELECT  \n",
-					"    row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, adviceid asc) AS NSIPAdviceID\n",
-					"    ,adviceid\n",
+					"    row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"    ,row_number() OVER(ORDER BY IngestionDate asc, eventId asc) AS ---- to be added\n",
+					"    ,eventId\n",
 					"    ,IngestionDate\n",
 					"    ,ValidTo\n",
 					"    ,'0' AS Migrated\n",
-					"    ,CASE row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC)\n",
+					"    ,CASE row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC)\n",
 					"        WHEN 1 THEN\n",
 					"            'Y'\n",
 					"        ELSE\n",
 					"            'N'\n",
 					"    END AS IsActive                \n",
 					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice"
+					"   odw_harmonised_db.appeal_event"
 				],
 				"execution_count": 8
 			},
@@ -314,24 +314,24 @@
 				"source": [
 					"df_calcs = spark.sql(\"\"\"\n",
 					"                        SELECT\n",
-					"                            CurrentRow.NSIPAdviceID\n",
-					"                            ,CurrentRow.adviceid \n",
+					"                            CurrentRow.NSIPAdviceID ---- to changed\n",
+					"                            ,CurrentRow.eventId \n",
 					"                            ,CurrentRow.IngestionDate\n",
 					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
 					"                            ,CASE\n",
-					"                                WHEN raw.adviceid IS NOT NULL THEN \n",
+					"                                WHEN raw.eventId IS NOT NULL THEN \n",
 					"                                    \"1\"\n",
 					"                                ELSE \n",
 					"                                    \"0\"\n",
 					"                            END AS Migrated\n",
 					"                            ,CurrentRow.IsActive\n",
 					"                        FROM\n",
-					"                            vw_nsip_s51_advice_calculations_base AS CurrentRow\n",
-					"                            LEFT OUTER JOIN vw_nsip_s51_advice_calculations_base AS NextRow\n",
-					"                                ON CurrentRow.adviceid = NextRow.adviceid\n",
+					"                            vw_appeal_event_calculations_base AS CurrentRow\n",
+					"                            LEFT OUTER JOIN vw_appeal_event_calculations_base AS NextRow\n",
+					"                                ON CurrentRow.eventId = NextRow.eventId\n",
 					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT adviceid FROM  odw_harmonised_db.sb_s51_advice) AS Raw\n",
-					"                                ON CurrentRow.adviceid = Raw.adviceid \n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT eventId FROM  odw_harmonised_db.sb_appeal_event) AS Raw\n",
+					"                                ON CurrentRow.eventId = Raw.eventId \n",
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
@@ -351,10 +351,23 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"adviceid\", \"temp_adviceid\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
+					"df_calcs =df_calcs.withColumnRenamed(\"eventId\", \"temp_eventId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
 					""
 				],
 				"execution_count": 10
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"to be done the below!!"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -371,85 +384,85 @@
 					"collapsed": false
 				},
 				"source": [
-					"results = spark.sql(f\"\"\"\n",
-					"                    SELECT DISTINCT NSIPAdviceID\n",
-					"                        ,adviceId\n",
-					"                        ,adviceReference\n",
-					"                        ,caseId\n",
-					"                        ,caseReference\n",
-					"                        ,title\n",
-					"                        ,titleWelsh\n",
-					"                        ,from\n",
-					"                        ,agent\n",
-					"                        ,method\n",
-					"                        ,enquiryDate\n",
-					"                        ,enquiryDetails\n",
-					"                        ,enquiryDetailsWelsh\n",
-					"                        ,adviceGivenBy \n",
-					"                        ,adviceDate\n",
-					"                        ,adviceDetails\n",
-					"                        ,adviceDetailsWelsh\n",
-					"                        ,status\n",
-					"                        ,redactionStatus\n",
-					"                        ,attachmentIds\n",
+					"# results = spark.sql(f\"\"\"\n",
+					"#                     SELECT DISTINCT NSIPAdviceID\n",
+					"#                         ,adviceId\n",
+					"#                         ,adviceReference\n",
+					"#                         ,caseId\n",
+					"#                         ,caseReference\n",
+					"#                         ,title\n",
+					"#                         ,titleWelsh\n",
+					"#                         ,from\n",
+					"#                         ,agent\n",
+					"#                         ,method\n",
+					"#                         ,enquiryDate\n",
+					"#                         ,enquiryDetails\n",
+					"#                         ,enquiryDetailsWelsh\n",
+					"#                         ,adviceGivenBy \n",
+					"#                         ,adviceDate\n",
+					"#                         ,adviceDetails\n",
+					"#                         ,adviceDetailsWelsh\n",
+					"#                         ,status\n",
+					"#                         ,redactionStatus\n",
+					"#                         ,attachmentIds\n",
 					"\n",
-					"                        --Start Horizon only fields\n",
-					"                        ,Section51Advice\n",
-					"                        ,EnquirerFirstName\n",
-					"                        ,EnquirerLastName\n",
-					"                        ,AdviceLastModified\n",
-					"                        ,AttachmentCount\n",
-					"                        ,AttachmentsLastModified\n",
-					"                        ,LastPublishedDate\n",
-					"                        ,WelshLanguage\n",
-					"                        ,CaseWorkType\n",
-					"                        --End Horizon only fields\n",
+					"#                         --Start Horizon only fields\n",
+					"#                         ,Section51Advice\n",
+					"#                         ,EnquirerFirstName\n",
+					"#                         ,EnquirerLastName\n",
+					"#                         ,AdviceLastModified\n",
+					"#                         ,AttachmentCount\n",
+					"#                         ,AttachmentsLastModified\n",
+					"#                         ,LastPublishedDate\n",
+					"#                         ,WelshLanguage\n",
+					"#                         ,CaseWorkType\n",
+					"#                         --End Horizon only fields\n",
 					"\n",
-					"                        ,Migrated\n",
-					"                        ,ODTSourceSystem\n",
-					"                        ,IngestionDate\n",
-					"                        ,ValidTo\n",
-					"                        ,MD5(CONCAT(\n",
-					"                                    IFNULL(CAST(NSIPAdviceID AS bigint), '.')\n",
-					"                                    ,IFNULL(CAST(adviceId AS integer), '.')\n",
-					"                                    ,IFNULL(CAST(adviceReference AS String), '.')\n",
-					"                                    ,IFNULL(CAST(caseId AS integer), '.')\n",
-					"                                    ,IFNULL(CAST(caseReference AS String), '.')\n",
-					"                                    ,IFNULL(CAST(title AS String), '.')\n",
-					"                                    ,IFNULL(CAST(titleWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(from AS String), '.')\n",
-					"                                    ,IFNULL(CAST(agent AS String), '.')\n",
-					"                                    ,IFNULL(CAST(method AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDetails AS String), '.')\n",
-					"                                    ,IFNULL(CAST(enquiryDetailsWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceGivenBy AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDetails AS String), '.')\n",
-					"                                    ,IFNULL(CAST(adviceDetailsWelsh AS String), '.')\n",
-					"                                    ,IFNULL(CAST(status AS String), '.')\n",
-					"                                    ,IFNULL(CAST(redactionStatus AS String), '.')\n",
-					"                                    ,IFNULL(CAST(attachmentIds AS String), '.')\n",
+					"#                         ,Migrated\n",
+					"#                         ,ODTSourceSystem\n",
+					"#                         ,IngestionDate\n",
+					"#                         ,ValidTo\n",
+					"#                         ,MD5(CONCAT(\n",
+					"#                                     IFNULL(CAST(NSIPAdviceID AS bigint), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceId AS integer), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceReference AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(caseId AS integer), '.')\n",
+					"#                                     ,IFNULL(CAST(caseReference AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(title AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(titleWelsh AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(from AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(agent AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(method AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(enquiryDate AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(enquiryDetails AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(enquiryDetailsWelsh AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceGivenBy AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceDate AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceDetails AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(adviceDetailsWelsh AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(status AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(redactionStatus AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(attachmentIds AS String), '.')\n",
 					"\n",
-					"                                    ,IFNULL(CAST(Section51Advice AS String), '.')\n",
-					"                                    ,IFNULL(CAST(EnquirerFirstName AS String), '.')\n",
-					"                                    ,IFNULL(CAST(EnquirerLastName AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AdviceLastModified AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AttachmentCount AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AttachmentsLastModified AS String), '.')\n",
-					"                                    ,IFNULL(CAST(LastPublishedDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(WelshLanguage AS String), '.')\n",
-					"                                    ,IFNULL(CAST(CaseWorkType AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(Section51Advice AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(EnquirerFirstName AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(EnquirerLastName AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(AdviceLastModified AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(AttachmentCount AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(AttachmentsLastModified AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(LastPublishedDate AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(WelshLanguage AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(CaseWorkType AS String), '.')\n",
 					"\n",
-					"                                    ,IFNULL(CAST(Migrated AS String), '.')\n",
-					"                                    ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
-					"                                    ,IFNULL(CAST(IngestionDate AS String), '.')\n",
-					"                                    ,IFNULL(CAST(ValidTo AS String), '.')\n",
-					"                            )\n",
-					"                        ) AS RowID\n",
-					"                        ,IsActive\n",
-					"    FROM \n",
-					"        {spark_table_final}\"\"\")\n",
+					"#                                     ,IFNULL(CAST(Migrated AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(IngestionDate AS String), '.')\n",
+					"#                                     ,IFNULL(CAST(ValidTo AS String), '.')\n",
+					"#                             )\n",
+					"#                         ) AS RowID\n",
+					"#                         ,IsActive\n",
+					"#     FROM \n",
+					"#         {spark_table_final}\"\"\")\n",
 					"    "
 				],
 				"execution_count": 11
@@ -531,7 +544,7 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select count(*) from odw_harmonised_db.nsip_s51_advice where isactive='Y'"
+					"-- select count(*) from odw_harmonised_db.nsip_s51_advice where isactive='Y'"
 				],
 				"execution_count": 15
 			}
