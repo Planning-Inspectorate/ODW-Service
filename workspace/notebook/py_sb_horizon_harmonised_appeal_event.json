@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "60228b93-9a87-47d6-b5b9-faf9d2c65c72"
+				"spark.autotune.trackingId": "48026058-bf87-46ef-8775-4b5fe2b71924"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 2
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_appeals_event\"\n",
 					"spark_table_final = \"odw_harmonised_db.appeal_event\""
 				],
-				"execution_count": 3
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,8 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\n",
 					"service_bus_data = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT\n",
-					"                            eventId\n",
+					"                            AppealsEventId\n",
+					"                            ,eventId\n",
 					"                            ,caseReference\n",
 					"                            ,eventType\n",
 					"                            ,eventName\n",
@@ -123,7 +124,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 4
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -142,7 +143,8 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
-					"                        CONCAT(casenumber, '-',eventId) AS eventId\n",
+					"                        '' as AppealsEventId\n",
+					"                        ,CONCAT(casenumber, '-',eventId) AS eventId\n",
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
 					"                        ,eventName\n",
@@ -167,7 +169,7 @@
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 5
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
@@ -188,7 +190,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 6
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -206,7 +208,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 7
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +227,7 @@
 				"source": [
 					"display(results)"
 				],
-				"execution_count": 8
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -243,7 +245,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 7
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -282,7 +284,7 @@
 					"AS\n",
 					"SELECT  \n",
 					"    row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, eventId asc) AS ---- to be added\n",
+					"    ,row_number() OVER(ORDER BY IngestionDate asc, eventId asc) AS AppealsEventId\n",
 					"    ,eventId\n",
 					"    ,IngestionDate\n",
 					"    ,ValidTo\n",
@@ -296,7 +298,7 @@
 					"FROM\n",
 					"   odw_harmonised_db.appeal_event"
 				],
-				"execution_count": 8
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -314,10 +316,10 @@
 				"source": [
 					"df_calcs = spark.sql(\"\"\"\n",
 					"                        SELECT\n",
-					"                            CurrentRow.NSIPAdviceID ---- to changed\n",
+					"                            CurrentRow.AppealsEventId \n",
 					"                            ,CurrentRow.eventId \n",
 					"                            ,CurrentRow.IngestionDate\n",
-					"                            ,COALESCE(NULLIF(CurrentRow.ValidTo,''), NextRow.IngestionDate) AS ValidTo\n",
+					"                            ,NextRow.IngestionDate AS ValidTo \n",
 					"                            ,CASE\n",
 					"                                WHEN raw.eventId IS NOT NULL THEN \n",
 					"                                    \"1\"\n",
@@ -335,7 +337,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 9
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -354,7 +356,7 @@
 					"df_calcs =df_calcs.withColumnRenamed(\"eventId\", \"temp_eventId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 60
 			},
 			{
 				"cell_type": "markdown",
@@ -384,88 +386,58 @@
 					"collapsed": false
 				},
 				"source": [
-					"# results = spark.sql(f\"\"\"\n",
-					"#                     SELECT DISTINCT NSIPAdviceID\n",
-					"#                         ,adviceId\n",
-					"#                         ,adviceReference\n",
-					"#                         ,caseId\n",
-					"#                         ,caseReference\n",
-					"#                         ,title\n",
-					"#                         ,titleWelsh\n",
-					"#                         ,from\n",
-					"#                         ,agent\n",
-					"#                         ,method\n",
-					"#                         ,enquiryDate\n",
-					"#                         ,enquiryDetails\n",
-					"#                         ,enquiryDetailsWelsh\n",
-					"#                         ,adviceGivenBy \n",
-					"#                         ,adviceDate\n",
-					"#                         ,adviceDetails\n",
-					"#                         ,adviceDetailsWelsh\n",
-					"#                         ,status\n",
-					"#                         ,redactionStatus\n",
-					"#                         ,attachmentIds\n",
-					"\n",
-					"#                         --Start Horizon only fields\n",
-					"#                         ,Section51Advice\n",
-					"#                         ,EnquirerFirstName\n",
-					"#                         ,EnquirerLastName\n",
-					"#                         ,AdviceLastModified\n",
-					"#                         ,AttachmentCount\n",
-					"#                         ,AttachmentsLastModified\n",
-					"#                         ,LastPublishedDate\n",
-					"#                         ,WelshLanguage\n",
-					"#                         ,CaseWorkType\n",
-					"#                         --End Horizon only fields\n",
-					"\n",
-					"#                         ,Migrated\n",
-					"#                         ,ODTSourceSystem\n",
-					"#                         ,IngestionDate\n",
-					"#                         ,ValidTo\n",
-					"#                         ,MD5(CONCAT(\n",
-					"#                                     IFNULL(CAST(NSIPAdviceID AS bigint), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceId AS integer), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceReference AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(caseId AS integer), '.')\n",
-					"#                                     ,IFNULL(CAST(caseReference AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(title AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(titleWelsh AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(from AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(agent AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(method AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(enquiryDate AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(enquiryDetails AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(enquiryDetailsWelsh AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceGivenBy AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceDate AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceDetails AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(adviceDetailsWelsh AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(status AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(redactionStatus AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(attachmentIds AS String), '.')\n",
-					"\n",
-					"#                                     ,IFNULL(CAST(Section51Advice AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(EnquirerFirstName AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(EnquirerLastName AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(AdviceLastModified AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(AttachmentCount AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(AttachmentsLastModified AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(LastPublishedDate AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(WelshLanguage AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(CaseWorkType AS String), '.')\n",
-					"\n",
-					"#                                     ,IFNULL(CAST(Migrated AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(IngestionDate AS String), '.')\n",
-					"#                                     ,IFNULL(CAST(ValidTo AS String), '.')\n",
-					"#                             )\n",
-					"#                         ) AS RowID\n",
-					"#                         ,IsActive\n",
-					"#     FROM \n",
-					"#         {spark_table_final}\"\"\")\n",
+					"results = spark.sql(f\"\"\"\n",
+					"                    SELECT DISTINCT AppealsEventId\n",
+					"                        ,eventId\n",
+					"                        ,caseReference\n",
+					"                        ,eventType\n",
+					"                        ,eventName\n",
+					"                        ,eventstatus\n",
+					"                        ,isUrgent\n",
+					"                        ,eventPublished\n",
+					"                        ,eventStartDatetime\n",
+					"                        ,eventEndDatetime\n",
+					"                        ,notificationOfSitevisit\n",
+					"                        ,AddressLine1\n",
+					"                        ,AddressLine2\n",
+					"                        ,AddressTown\n",
+					"                        ,AddressCounty\n",
+					"                        ,AddressPostcode\n",
+					"                        ,Migrated\n",
+					"                        ,ODTSourceSystem\n",
+					"                        ,SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
+					"                        ,IngestionDate\n",
+					"                        ,ValidTo\n",
+					"                        ,MD5(CONCAT(\n",
+					"                                    IFNULL(CAST(AppealsEventId AS bigint), '.')\n",
+					"                                    ,IFNULL(CAST(eventId AS string), '.')\n",
+					"                                    ,IFNULL(CAST(caseReference AS String), '.')\n",
+					"                                    ,IFNULL(CAST(eventType AS String), '.')\n",
+					"                                    ,IFNULL(CAST(eventName AS String), '.')\n",
+					"                                    ,IFNULL(CAST(eventstatus AS String), '.')\n",
+					"                                    ,IFNULL(CAST(isUrgent AS TINYINT), '.')\n",
+					"                                    ,IFNULL(CAST(eventPublished AS TINYINT), '.')\n",
+					"                                    ,IFNULL(CAST(eventStartDatetime AS String), '.')\n",
+					"                                    ,IFNULL(CAST(eventEndDatetime AS String), '.')\n",
+					"                                    ,IFNULL(CAST(notificationOfSitevisit AS String), '.')\n",
+					"                                    ,IFNULL(CAST(AddressLine1 AS String), '.')\n",
+					"                                    ,IFNULL(CAST(AddressLine2 AS String), '.')\n",
+					"                                    ,IFNULL(CAST(AddressTown AS String), '.')\n",
+					"                                    ,IFNULL(CAST(AddressCounty AS String), '.')\n",
+					"                                    ,IFNULL(CAST(AddressPostcode AS String), '.')\n",
+					"                                    ,IFNULL(CAST(Migrated AS String), '.')\n",
+					"                                    ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
+					"                                    ,IFNULL(CAST(IngestionDate AS String), '.')\n",
+					"                                    ,IFNULL(CAST(ValidTo AS String), '.')\n",
+					"                                    ,IFNULL(CAST(IsActive AS String), '.')\n",
+					"                            )\n",
+					"                        ) AS RowID\n",
+					"                        ,IsActive\n",
+					"    FROM \n",
+					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 11
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -483,9 +455,9 @@
 				"source": [
 					"columns = results.columns\n",
 					"\n",
-					"results = results.drop(\"NSIPAdviceID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
+					"results = results.drop(\"AppealsEventId\", \"ValidTo\",\"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 12
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -501,10 +473,10 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_adviceid\"] == results[\"adviceid\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
+					"final_df = results.join(df_calcs, (df_calcs[\"temp_eventId\"] == results[\"eventId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 13
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -523,7 +495,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 14
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -544,9 +516,9 @@
 				},
 				"source": [
 					"%%sql\n",
-					"-- select count(*) from odw_harmonised_db.nsip_s51_advice where isactive='Y'"
+					"select count(*) from odw_harmonised_db.appeal_event where isactive='Y'"
 				],
-				"execution_count": 15
+				"execution_count": 66
 			}
 		]
 	}
