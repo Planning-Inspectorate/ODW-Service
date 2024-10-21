@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "24bb4bfc-adb8-4660-a572-a9d601bae634"
+				"spark.autotune.trackingId": "3b06937c-ea7d-479a-8ab9-ba38b6c73db5"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 62
+				"execution_count": 119
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"spark_table_final = \"odw_harmonised_db.appeal_event\"\n",
 					"primary_key = \"eventId\""
 				],
-				"execution_count": 63
+				"execution_count": 120
 			},
 			{
 				"cell_type": "code",
@@ -103,17 +103,17 @@
 					"                            ,caseReference\n",
 					"                            ,eventType\n",
 					"                            ,eventName\n",
-					"                            ,eventstatus\n",
+					"                            ,eventstatus as eventStatus\n",
 					"                            ,isUrgent\n",
 					"                            ,NULLIF(eventPublished, 'None') AS eventPublished\n",
 					"                            ,eventStartDatetime\n",
 					"                            ,eventEndDatetime\n",
 					"                            ,NULLIF(notificationOfSitevisit, 'None') AS notificationOfSitevisit\n",
-					"                            ,AddressLine1\n",
-					"                            ,AddressLine2\n",
-					"                            ,AddressTown\n",
-					"                            ,AddressCounty\n",
-					"                            ,AddressPostcode\n",
+					"                            ,AddressLine1 as addressLine1\n",
+					"                            ,AddressLine2 as addressLine2\n",
+					"                            ,AddressTown as addressTown\n",
+					"                            ,AddressCounty as addressCounty\n",
+					"                            ,AddressPostcode as addressPostcode\n",
 					"                            ,Migrated\n",
 					"                            ,ODTSourceSystem\n",
 					"                            ,SourceSystemID \n",
@@ -125,7 +125,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 64
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -149,17 +149,17 @@
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
 					"                        ,eventName\n",
-					"                        ,eventstatus\n",
+					"                        ,eventStatus\n",
 					"                        ,isUrgent\n",
 					"                        ,eventPublished\n",
 					"                        ,eventStartDatetime\n",
 					"                        ,eventEndDatetime\n",
 					"                        ,notificationOfSitevisit\n",
-					"                        ,AddressLine1\n",
-					"                        ,AddressLine2\n",
-					"                        ,AddressTown\n",
-					"                        ,AddressCounty\n",
-					"                        ,AddressPostcode\n",
+					"                        ,AddressLine1 as addressLine1\n",
+					"                        ,AddressLine2 as addressLine2\n",
+					"                        ,AddressTown as addressTown\n",
+					"                        ,AddressCounty as addressCounty\n",
+					"                        ,AddressPostcode as addressPostcode\n",
 					"                        ,0 AS Migrated\n",
 					"                        ,'Horizon' AS ODTSourceSystem\n",
 					"                        ,9 AS SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
@@ -170,7 +170,26 @@
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 65
+				"execution_count": 122
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(horizon_data)"
+				],
+				"execution_count": 126
 			},
 			{
 				"cell_type": "code",
@@ -186,12 +205,10 @@
 					}
 				},
 				"source": [
-					"\n",
-					"\n",
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 66
+				"execution_count": 127
 			},
 			{
 				"cell_type": "code",
@@ -209,7 +226,26 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 67
+				"execution_count": 128
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(results)"
+				],
+				"execution_count": 129
 			},
 			{
 				"cell_type": "code",
@@ -227,7 +263,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 68
+				"execution_count": 110
 			},
 			{
 				"cell_type": "markdown",
@@ -259,8 +295,7 @@
 				},
 				"source": [
 					"spark.sql(f\"\"\"\n",
-					"        CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event_calculations_base\n",
-					"        AS\n",
+					"        CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event_calculations_base AS\n",
 					"        SELECT  \n",
 					"        row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
 					"        ,row_number() OVER(ORDER BY IngestionDate asc, {primary_key} asc) AS AppealsEventId\n",
@@ -278,7 +313,7 @@
 					"        {spark_table_final}\n",
 					"        \"\"\")"
 				],
-				"execution_count": 70
+				"execution_count": 111
 			},
 			{
 				"cell_type": "code",
@@ -317,7 +352,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 71
+				"execution_count": 112
 			},
 			{
 				"cell_type": "code",
@@ -335,20 +370,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 72
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"to be done the below!!"
-				]
+				"execution_count": 113
 			},
 			{
 				"cell_type": "code",
@@ -372,17 +394,17 @@
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
 					"                        ,eventName\n",
-					"                        ,eventstatus\n",
+					"                        ,eventStatus\n",
 					"                        ,isUrgent\n",
 					"                        ,eventPublished\n",
 					"                        ,eventStartDatetime\n",
 					"                        ,eventEndDatetime\n",
 					"                        ,notificationOfSitevisit\n",
-					"                        ,AddressLine1\n",
-					"                        ,AddressLine2\n",
-					"                        ,AddressTown\n",
-					"                        ,AddressCounty\n",
-					"                        ,AddressPostcode\n",
+					"                        ,addressLine1\n",
+					"                        ,addressLine2\n",
+					"                        ,addressTown\n",
+					"                        ,addressCounty\n",
+					"                        ,addressPostcode \n",
 					"                        ,Migrated\n",
 					"                        ,ODTSourceSystem\n",
 					"                        ,SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
@@ -394,17 +416,17 @@
 					"                                    ,IFNULL(CAST(caseReference AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventType AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventName AS String), '.')\n",
-					"                                    ,IFNULL(CAST(eventstatus AS String), '.')\n",
+					"                                    ,IFNULL(CAST(eventStatus AS String), '.')\n",
 					"                                    ,IFNULL(CAST(isUrgent AS TINYINT), '.')\n",
 					"                                    ,IFNULL(CAST(eventPublished AS TINYINT), '.')\n",
 					"                                    ,IFNULL(CAST(eventStartDatetime AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventEndDatetime AS String), '.')\n",
 					"                                    ,IFNULL(CAST(notificationOfSitevisit AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AddressLine1 AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AddressLine2 AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AddressTown AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AddressCounty AS String), '.')\n",
-					"                                    ,IFNULL(CAST(AddressPostcode AS String), '.')\n",
+					"                                    ,IFNULL(CAST(addressLine1 AS String), '.')\n",
+					"                                    ,IFNULL(CAST(addressLine2 AS String), '.')\n",
+					"                                    ,IFNULL(CAST(addressTown AS String), '.')\n",
+					"                                    ,IFNULL(CAST(addressCounty AS String), '.')\n",
+					"                                    ,IFNULL(CAST(addressPostcode AS String), '.')\n",
 					"                                    ,IFNULL(CAST(Migrated AS String), '.')\n",
 					"                                    ,IFNULL(CAST(ODTSourceSystem AS String), '.')\n",
 					"                                    ,IFNULL(CAST(IngestionDate AS String), '.')\n",
@@ -417,7 +439,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 73
+				"execution_count": 114
 			},
 			{
 				"cell_type": "code",
@@ -437,7 +459,7 @@
 					"\n",
 					"results = results.drop(\"AppealsEventId\", \"ValidTo\",\"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 75
+				"execution_count": 115
 			},
 			{
 				"cell_type": "code",
@@ -456,7 +478,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 76
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
@@ -475,7 +497,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 78
+				"execution_count": 117
 			},
 			{
 				"cell_type": "code",
@@ -498,7 +520,7 @@
 					"%%sql\n",
 					"select * from odw_harmonised_db.appeal_event where isactive='Y'"
 				],
-				"execution_count": 79
+				"execution_count": 118
 			},
 			{
 				"cell_type": "code",
