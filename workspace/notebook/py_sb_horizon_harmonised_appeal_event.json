@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d731ff3d-5e3b-4781-b8fe-30e849881171"
+				"spark.autotune.trackingId": "24bb4bfc-adb8-4660-a572-a9d601bae634"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 19
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"spark_table_final = \"odw_harmonised_db.appeal_event\"\n",
 					"primary_key = \"eventId\""
 				],
-				"execution_count": 27
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -125,7 +125,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 30
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -170,7 +170,7 @@
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 31
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -191,7 +191,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 32
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -209,26 +209,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 33
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(results)"
-				],
-				"execution_count": 34
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
@@ -246,7 +227,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 35
+				"execution_count": 68
 			},
 			{
 				"cell_type": "markdown",
@@ -297,7 +278,7 @@
 					"        {spark_table_final}\n",
 					"        \"\"\")"
 				],
-				"execution_count": 36
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -336,7 +317,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 37
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -354,7 +335,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 38
+				"execution_count": 72
 			},
 			{
 				"cell_type": "markdown",
@@ -385,7 +366,8 @@
 				},
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
-					"                    SELECT DISTINCT AppealsEventId\n",
+					"                    SELECT DISTINCT \n",
+					"                        AppealsEventId\n",
 					"                        ,{primary_key}\n",
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
@@ -435,7 +417,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 39
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -455,7 +437,7 @@
 					"\n",
 					"results = results.drop(\"AppealsEventId\", \"ValidTo\",\"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 40
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -472,9 +454,9 @@
 				},
 				"source": [
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
-					"final_df = final_df.drop(primary_key).drop_duplicates()"
+					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 41
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -493,7 +475,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 42
+				"execution_count": 78
 			},
 			{
 				"cell_type": "code",
@@ -514,9 +496,9 @@
 				},
 				"source": [
 					"%%sql\n",
-					"select count(*) from odw_harmonised_db.appeal_event where isactive='Y'"
+					"select * from odw_harmonised_db.appeal_event where isactive='Y'"
 				],
-				"execution_count": null
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
