@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "48026058-bf87-46ef-8775-4b5fe2b71924"
+				"spark.autotune.trackingId": "d731ff3d-5e3b-4781-b8fe-30e849881171"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 50
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -76,9 +76,10 @@
 				"source": [
 					"service_bus_table = \"odw_harmonised_db.sb_appeal_event\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_appeals_event\"\n",
-					"spark_table_final = \"odw_harmonised_db.appeal_event\""
+					"spark_table_final = \"odw_harmonised_db.appeal_event\"\n",
+					"primary_key = \"eventId\""
 				],
-				"execution_count": 51
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -104,10 +105,10 @@
 					"                            ,eventName\n",
 					"                            ,eventstatus\n",
 					"                            ,isUrgent\n",
-					"                            ,eventPublished\n",
+					"                            ,NULLIF(eventPublished, 'None') AS eventPublished\n",
 					"                            ,eventStartDatetime\n",
 					"                            ,eventEndDatetime\n",
-					"                            ,notificationOfSitevisit\n",
+					"                            ,NULLIF(notificationOfSitevisit, 'None') AS notificationOfSitevisit\n",
 					"                            ,AddressLine1\n",
 					"                            ,AddressLine2\n",
 					"                            ,AddressTown\n",
@@ -124,7 +125,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 52
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +170,7 @@
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": 53
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -190,7 +191,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 54
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -208,7 +209,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 55
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -227,7 +228,7 @@
 				"source": [
 					"display(results)"
 				],
-				"execution_count": 56
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -245,7 +246,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 57
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -273,32 +274,30 @@
 							"deleting": false
 						}
 					},
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event_calculations_base\n",
-					"AS\n",
-					"SELECT  \n",
-					"    row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, eventId asc) AS AppealsEventId\n",
-					"    ,eventId\n",
-					"    ,IngestionDate\n",
-					"    ,ValidTo\n",
-					"    ,'0' AS Migrated\n",
-					"    ,CASE row_number() OVER(PARTITION BY eventId ORDER BY IngestionDate DESC)\n",
+					"spark.sql(f\"\"\"\n",
+					"        CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event_calculations_base\n",
+					"        AS\n",
+					"        SELECT  \n",
+					"        row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"        ,row_number() OVER(ORDER BY IngestionDate asc, {primary_key} asc) AS AppealsEventId\n",
+					"        ,{primary_key}\n",
+					"        ,IngestionDate\n",
+					"        ,ValidTo\n",
+					"        ,'0' AS Migrated\n",
+					"        ,CASE row_number() OVER(PARTITION BY {primary_key} ORDER BY IngestionDate DESC)\n",
 					"        WHEN 1 THEN\n",
 					"            'Y'\n",
 					"        ELSE\n",
 					"            'N'\n",
-					"    END AS IsActive                \n",
-					"FROM\n",
-					"   odw_harmonised_db.appeal_event"
+					"        END AS IsActive                \n",
+					"        FROM\n",
+					"        {spark_table_final}\n",
+					"        \"\"\")"
 				],
-				"execution_count": 58
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -314,14 +313,14 @@
 					}
 				},
 				"source": [
-					"df_calcs = spark.sql(\"\"\"\n",
+					"df_calcs = spark.sql(f\"\"\"\n",
 					"                        SELECT\n",
 					"                            CurrentRow.AppealsEventId \n",
-					"                            ,CurrentRow.eventId \n",
+					"                            ,CurrentRow.{primary_key}  \n",
 					"                            ,CurrentRow.IngestionDate\n",
 					"                            ,NextRow.IngestionDate AS ValidTo \n",
 					"                            ,CASE\n",
-					"                                WHEN raw.eventId IS NOT NULL THEN \n",
+					"                                WHEN raw.{primary_key}  IS NOT NULL THEN \n",
 					"                                    \"1\"\n",
 					"                                ELSE \n",
 					"                                    \"0\"\n",
@@ -330,14 +329,14 @@
 					"                        FROM\n",
 					"                            vw_appeal_event_calculations_base AS CurrentRow\n",
 					"                            LEFT OUTER JOIN vw_appeal_event_calculations_base AS NextRow\n",
-					"                                ON CurrentRow.eventId = NextRow.eventId\n",
+					"                                ON CurrentRow.{primary_key}  = NextRow.{primary_key} \n",
 					"                                AND CurrentRow.ReverseOrderProcessed - 1 = NextRow.ReverseOrderProcessed\n",
-					"                            LEFT OUTER JOIN (SELECT DISTINCT eventId FROM  odw_harmonised_db.sb_appeal_event) AS Raw\n",
-					"                                ON CurrentRow.eventId = Raw.eventId \n",
+					"                            LEFT OUTER JOIN (SELECT DISTINCT eventId as {primary_key} FROM  odw_harmonised_db.sb_appeal_event) AS Raw\n",
+					"                                ON CurrentRow.{primary_key}  = Raw.{primary_key}  \n",
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 59
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -353,10 +352,9 @@
 					}
 				},
 				"source": [
-					"df_calcs =df_calcs.withColumnRenamed(\"eventId\", \"temp_eventId\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")\n",
-					""
+					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 60
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -388,7 +386,7 @@
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT AppealsEventId\n",
-					"                        ,eventId\n",
+					"                        ,{primary_key}\n",
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
 					"                        ,eventName\n",
@@ -437,7 +435,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 61
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -457,7 +455,7 @@
 					"\n",
 					"results = results.drop(\"AppealsEventId\", \"ValidTo\",\"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 62
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -473,10 +471,10 @@
 					}
 				},
 				"source": [
-					"final_df = results.join(df_calcs, (df_calcs[\"temp_eventId\"] == results[\"eventId\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
-					"final_df = final_df.drop_duplicates()"
+					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
+					"final_df = final_df.drop(primary_key).drop_duplicates()"
 				],
-				"execution_count": 63
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -495,7 +493,7 @@
 					"\n",
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 64
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -518,7 +516,25 @@
 					"%%sql\n",
 					"select count(*) from odw_harmonised_db.appeal_event where isactive='Y'"
 				],
-				"execution_count": 66
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
