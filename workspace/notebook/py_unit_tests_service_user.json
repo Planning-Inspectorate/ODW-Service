@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9055b16a-0bac-4830-b591-d87ea38d712b"
+				"spark.autotune.trackingId": "bfe124b8-8e1c-4777-b0f9-d25c960d0675"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					"from pyspark.sql import functions as F\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -92,7 +92,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -123,7 +123,7 @@
 					"service_user_appeal_table: str = 'appeal_service_user'\n",
 					"service_user_migration_table: str = 'service_user'"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -141,7 +141,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +169,7 @@
 					"curated_migration_schema = create_spark_schema(curated_migration_db_name, entity_name)\n",
 					"curated_migration_table_schema = spark.table(f\"{curated_migration_db_name}.{service_user_migration_table}\").schema"
 				],
-				"execution_count": 20
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -211,13 +211,12 @@
 					"exitCode += int(not cur_schema_correct)\n",
 					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_db_name}.{service_user_appeal_table}\\nDifferences shown above (if any)\")\n",
 					"\n",
-					"print (exitCode)\n",
 					"# note - 21-10-24 this code was previously commented out, when run it is finding a column that isn't in the schema so need to check if it's the correct way to make the schema for the migration table \n",
 					"#cur_migration_schema_correct: bool = test_compare_schemas(curated_migration_schema, curated_migration_table_schema)\n",
 					"#print(f\"Curated migration schema correct: {cur_migration_schema_correct}\\nTable: {curated_migration_db_name}.{service_user_migration_table}\\nDifferences shown above (if any)\")\n",
 					"#exitCode += int(not cur_migration_schema_correct)"
 				],
-				"execution_count": 21
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -255,10 +254,9 @@
 					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\n",
 					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\", [])\n",
 					"    #this is classed as an error\n",
-					"    exitCode += 1\n",
-					"print (exitCode)"
+					"    exitCode += 1"
 				],
-				"execution_count": 22
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -277,35 +275,9 @@
 					"if test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name, 'id'):\n",
 					"   pass\n",
 					"else:\n",
-					"    exitCode += 1\n",
-					"print (exitCode)\n",
-					"\n",
-					"primary_key = 'id'\n",
-					"\n",
-					"df: DataFrame = spark.sql(f\"\"\"\n",
-					"    select {primary_key}\n",
-					"    from {std_db_name}.{std_table_name}\n",
-					"    where {primary_key} not in\n",
-					"    (\n",
-					"        select {primary_key}\n",
-					"        from {hrm_db_name}.{hrm_table_name}\n",
-					"    )\n",
-					"    \"\"\")\n",
-					"    \n",
-					"dropped_records = df.collect()  \n",
-					"num_dropped_records = len(dropped_records)\n",
-					"\n",
-					"if dropped_records:\n",
-					"    print(f\"Number of dropped records: {num_dropped_records}\")\n",
-					"    print(\"Dropped records:\")\n",
-					"    for record in dropped_records:\n",
-					"        print(record)\n",
-					"    \n",
-					"print (len(dropped_records) == 0)\n",
-					"\n",
-					""
+					"    exitCode += 1"
 				],
-				"execution_count": 23
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -324,34 +296,9 @@
 					"if test_sb_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final, 'id'):\n",
 					"    pass\n",
 					"else:\n",
-					"    exitCode += 1\n",
-					"print (exitCode)\n",
-					"\n",
-					"#check what's being dropped\n",
-					"primary_key = 'id'\n",
-					"\n",
-					"df: DataFrame = spark.sql(f\"\"\"\n",
-					"    select {primary_key}\n",
-					"    from {hrm_db_name}.{hrm_table_name}\n",
-					"    where {primary_key} not in\n",
-					"    (\n",
-					"        select {primary_key}\n",
-					"        from {hrm_db_name}.{hrm_table_final}\n",
-					"    )\n",
-					"    \"\"\")\n",
-					"    \n",
-					"dropped_records = df.collect()  \n",
-					"num_dropped_records = len(dropped_records)\n",
-					"\n",
-					"if dropped_records:\n",
-					"    print(f\"Number of dropped records: {num_dropped_records}\")\n",
-					"    print(\"Dropped records:\")\n",
-					"    for record in dropped_records:\n",
-					"        print(record)\n",
-					"    \n",
-					"print (len(dropped_records) == 0)"
+					"    exitCode += 1"
 				],
-				"execution_count": 24
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -370,34 +317,9 @@
 					"if test_hrm_to_curated_no_dropping_records(hrm_table_final, service_user_appeal_table, 'id'):\n",
 					"    pass\n",
 					"else:\n",
-					"    exitCode += 1\n",
-					"print (exitCode)\n",
-					"\n",
-					"#check what's being dropped\n",
-					"primary_key = 'id'\n",
-					"\n",
-					"df: DataFrame = spark.sql(f\"\"\"\n",
-					"    select {primary_key}\n",
-					"    from {hrm_db_name}.{hrm_table_final}\n",
-					"    where {primary_key} not in\n",
-					"    (\n",
-					"        select {primary_key}\n",
-					"        from {curated_db_name}.{service_user_appeal_table}\n",
-					"    )\n",
-					"    \"\"\")\n",
-					"    \n",
-					"dropped_records = df.collect()  \n",
-					"num_dropped_records = len(dropped_records)\n",
-					"\n",
-					"if dropped_records:\n",
-					"    print(f\"Number of dropped records: {num_dropped_records}\")\n",
-					"    print(\"Dropped records:\")\n",
-					"    for record in dropped_records:\n",
-					"        print(record)\n",
-					"    \n",
-					"print (len(dropped_records) == 0)"
+					"    exitCode += 1"
 				],
-				"execution_count": 25
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -416,10 +338,9 @@
 					"if test_curated_unique_hzn_only(curated_db_name, service_user_appeal_table, 'id'):\n",
 					"    pass\n",
 					"else:\n",
-					"    exitCode += 1\n",
-					"print (exitCode)"
+					"    exitCode += 1"
 				],
-				"execution_count": 26
+				"execution_count": 43
 			},
 			{
 				"cell_type": "markdown",
@@ -480,7 +401,7 @@
 					"else:\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 27
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -515,7 +436,7 @@
 					"    print('FAIL: Each project has an applicant')\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 28
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -563,7 +484,7 @@
 					"    print('FAIL: Expected count of representations match')\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 29
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -581,7 +502,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
 				],
-				"execution_count": 30
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
