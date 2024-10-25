@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "30a4dfa6-63ce-4d3d-9eba-b3e76e5927cb"
+				"spark.autotune.trackingId": "bedbb9c7-095f-4849-a477-827fc2a14f38"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 191
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -79,7 +79,7 @@
 					"spark_table_final = \"odw_harmonised_db.appeal_event\"\n",
 					"primary_key = \"eventId\""
 				],
-				"execution_count": 192
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -125,7 +125,7 @@
 					"\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 193
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -138,13 +138,12 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"collapsed": false
+					}
 				},
 				"source": [
-					"display(service_bus_data)"
+					"service_bus_data.printSchema()"
 				],
-				"execution_count": 194
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -163,16 +162,16 @@
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
 					"horizon_data = spark.sql(f\"\"\"\n",
 					"                SELECT DISTINCT \n",
-					"                        '' as AppealsEventId\n",
+					"                        CAST(NULL AS LONG) as AppealsEventId\n",
 					"                        ,CONCAT(casenumber, '-',eventId) AS eventId\n",
 					"                        ,caseReference\n",
 					"                        ,eventType\n",
 					"                        ,eventName\n",
 					"                        ,eventStatus\n",
-					"                        ,isUrgent\n",
-					"                        ,eventPublished\n",
-					"                        ,eventStartDatetime\n",
-					"                        ,eventEndDatetime\n",
+					"                        ,CAST(NULL AS BOOLEAN) as isUrgent\n",
+					"                        ,CAST(NULL AS BOOLEAN) as eventPublished\n",
+					"                        ,CAST(NULL AS String) as eventStartDatetime\n",
+					"                        ,CAST(NULL AS String)  as eventEndDatetime\n",
 					"                        ,notificationOfSitevisit\n",
 					"                        ,AddressLine1 as addressLine1\n",
 					"                        ,AddressLine2 as addressLine2\n",
@@ -183,13 +182,13 @@
 					"                        ,'Horizon' AS ODTSourceSystem\n",
 					"                        ,9 AS SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
 					"                        ,ingested_datetime AS IngestionDate\n",
-					"                        ,NULL AS ValidTo\n",
+					"                        ,CAST(NULL AS String) AS ValidTo\n",
 					"                        ,'' as RowID\n",
 					"                        ,'Y' as IsActive\n",
 					"                FROM {horizon_table} AS Horizon\n",
 					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -202,13 +201,12 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"collapsed": false
+					}
 				},
 				"source": [
-					"display(horizon_data)"
+					"horizon_data.printSchema()"
 				],
-				"execution_count": null
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -244,25 +242,6 @@
 				},
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(results)"
 				],
 				"execution_count": null
 			},
@@ -455,8 +434,8 @@
 					"                                    ,IFNULL(CAST(eventType AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventName AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventStatus AS String), '.')\n",
-					"                                    ,IFNULL(CAST(isUrgent AS TINYINT), '.')\n",
-					"                                    ,IFNULL(CAST(eventPublished AS TINYINT), '.')\n",
+					"                                    ,IFNULL(CAST(isUrgent AS BOOLEAN), '.')\n",
+					"                                    ,IFNULL(CAST(eventPublished AS BOOLEAN), '.')\n",
 					"                                    ,IFNULL(CAST(eventStartDatetime AS String), '.')\n",
 					"                                    ,IFNULL(CAST(eventEndDatetime AS String), '.')\n",
 					"                                    ,IFNULL(CAST(notificationOfSitevisit AS String), '.')\n",
