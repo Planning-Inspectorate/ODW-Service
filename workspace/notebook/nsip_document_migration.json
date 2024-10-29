@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fdb2a44e-d2b7-4e66-8e91-f0fa7411fe07"
+				"spark.autotune.trackingId": "c0f60f29-feb6-402b-a187-6e02f08b8fb0"
 			}
 		},
 		"metadata": {
@@ -209,110 +209,6 @@
 					"view_df.write.mode(\"overwrite\").saveAsTable('odw_curated_migration_db.nsip_document')"
 				],
 				"execution_count": 5
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"service_bus_table = \"odw_harmonised_db.sb_appeal_document\"\n",
-					"horizon_table = \"odw_standardised_db.horizon_appeals_document_metadata\"\n",
-					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
-					"spark_table_final = \"odw_harmonised_db.appeal_document\"\n",
-					"\n",
-					"primary_key = 'TEMP_PK'"
-				],
-				"execution_count": 6
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
-					"horizon_data = spark.sql(f\"\"\"\n",
-					"                SELECT DISTINCT \n",
-					"                    MD5(\n",
-					"                        CONCAT(\n",
-					"                            COALESCE(Doc.documentId, ''), \n",
-					"                            COALESCE(Doc.filename, ''), \n",
-					"                            COALESCE(CAST(Doc.version AS INTEGER), ''),\n",
-					"                            COALESCE(Aie.documentURI, '')\n",
-					"                        )\n",
-					"                    ) AS {primary_key}\n",
-					"                    ,CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
-					"                    ,Doc.documentId\n",
-					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
-					"                    ,Doc.caseReference\n",
-					"                    ,CAST(Doc.version AS INTEGER) AS version\n",
-					"                    ,Doc.filename as filename\n",
-					"                    ,Doc.filename as originalFilename\n",
-					"                    ,CAST(Doc.size AS INTEGER) AS size\n",
-					"                    ,Aie.mime\n",
-					"                    ,Aie.documentURI\n",
-					"                    ,CAST(NULL AS String) AS publishedDocumentURI\n",
-					"                    ,Doc.virusCheckStatus\n",
-					"                    ,Aie.fileMD5\n",
-					"                    ,Doc.dateCreated\n",
-					"                    ,CAST(NULL AS String) AS dateReceived\n",
-					"                    ,Doc.datePublished\n",
-					"                    ,Doc.lastModified\n",
-					"                    ,Doc.caseworkType as caseType\n",
-					"                    ,Doc.redactedStatus\n",
-					"                    ,Doc.documentType\n",
-					"                    ,Doc.sourceSystem -- set to horizon\n",
-					"                    ,CAST(NULL AS String) AS origin\n",
-					"                    ,Aie.owner\n",
-					"                    ,Aie.author\n",
-					"                    ,Doc.documentDescription AS description\n",
-					"                    ,CAST(NULL AS String) AS caseStage\n",
-					"                    ,Doc.folderid AS horizonFolderId\n",
-					"                    \n",
-					"                    -- Start Horizon Fields Not in SB\n",
-					"                    ,Doc.caseNumber\n",
-					"                    ,Doc.caseworkTypeGroup\n",
-					"                    ,Doc.caseworkTypeAbbreviation\n",
-					"                    ,Doc.versionFilename\n",
-					"                    ,Doc.incomingOutgoingExternal\n",
-					"                    ,Doc.publishedStatus\n",
-					"                    -- END Horizon Fields Not in SB\n",
-					"\n",
-					"                    ,\"0\" as Migrated\n",
-					"                    ,\"Horizon\" as ODTSourceSystem\n",
-					"                    ,NULL AS SourceSystemID\n",
-					"                    , to_timestamp(Doc.expected_from)  AS IngestionDate\n",
-					"                    ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
-					"                    ,'' as RowID\n",
-					"                    ,'Y' as IsActive\n",
-					"                FROM\n",
-					"                    {horizon_table} AS Doc\n",
-					"                LEFT JOIN {aie_extracts_table} AS Aie\n",
-					"                    ON Doc.documentId = Aie.documentid\n",
-					"                    AND Doc.version = Aie.version\n",
-					"                    AND Doc.size = Aie.size\n",
-					"                WHERE\n",
-					"                    Doc.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
-					"            \"\"\")"
-				],
-				"execution_count": 7
 			}
 		]
 	}
