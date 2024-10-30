@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6f935ca6-8a7e-4481-aefc-54927dccd328"
+				"spark.autotune.trackingId": "de84093d-909e-4583-bafd-3bd21b7c0b7b"
 			}
 		},
 		"metadata": {
@@ -83,9 +83,9 @@
 					]
 				},
 				"source": [
-					"entity_name = ''"
+					"entity_name = 'appeal-event'"
 				],
-				"execution_count": 15
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -112,7 +112,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 4
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +130,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": 5
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
@@ -169,7 +169,7 @@
 					"if not definition:\n",
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")"
 				],
-				"execution_count": 6
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -210,7 +210,7 @@
 					"hrm_incremental_key: str = definition[\"Harmonised_Incremental_Key\"]\n",
 					"entity_primary_key: str = definition[\"Entity_Primary_Key\"]"
 				],
-				"execution_count": 7
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -255,7 +255,7 @@
 					"    df: DataFrame = df.withColumn(\"IsActive\", lit('Y').cast(\"string\"))\n",
 					"    df: DataFrame = df.withColumn(hrm_incremental_key, lit(None).cast(LongType()))\n",
 					"    df: DataFrame = df.withColumn(\"IngestionDate\", col(\"message_enqueued_time_utc\").cast(\"string\"))\n",
-					"    df: DataFrame = df.withColumn(\"message_id\", lit('').cast(\"string\"))\n",
+					"    #df: DataFrame = df.withColumn(\"message_id\", lit('').cast(\"string\"))\n",
 					"    # drop standardised columns from DataFrame\n",
 					"    df: DataFrame = df.drop(\"message_enqueued_time_utc\")\n",
 					"    # df: DataFrame = df.drop(\"message_id\")\n",
@@ -264,7 +264,7 @@
 					"    \n",
 					"    return df"
 				],
-				"execution_count": 8
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -289,7 +289,44 @@
 					"\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": 9
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"dt= spark.sql(f\"SELECT * FROM {std_db}.{std_table}\")"
+				],
+				"execution_count": 54
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(dt)"
+				],
+				"execution_count": 56
 			},
 			{
 				"cell_type": "markdown",
@@ -338,9 +375,47 @@
 					}
 				},
 				"source": [
+					"latest_ingestion_t = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT message_id FROM {hrm_db}.{hrm_table})ORDER BY message_enqueued_time_utc\")\r\n",
+					""
+				],
+				"execution_count": 57
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(latest_ingestion_t)"
+				],
+				"execution_count": 58
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"def get_latest_ingested_data() -> tuple:\n",
-					"    #latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT message_id FROM {hrm_db}.{hrm_table})ORDER BY message_enqueued_time_utc\")\n",
-					"    latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE CAST(ingested_datetime AS Date) = (SELECT MAX(CAST(ingested_datetime AS Date)) FROM {std_db}.{std_table}) ORDER BY message_enqueued_time_utc\")\n",
+					"    latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT message_id FROM {hrm_db}.{hrm_table})ORDER BY message_enqueued_time_utc\")\n",
+					"    #latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE CAST(ingested_datetime AS Date) = (SELECT MAX(CAST(ingested_datetime AS Date)) FROM {std_db}.{std_table}) ORDER BY message_enqueued_time_utc\")\n",
 					"    if latest_ingestion.count() == 0:\n",
 					"        mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\n",
 					"\n",
@@ -360,7 +435,7 @@
 					"            delete_df,\n",
 					"            target_df)"
 				],
-				"execution_count": 30
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -378,7 +453,7 @@
 				"source": [
 					"latest_ingestion, create_df, update_df, delete_df, target_df = get_latest_ingested_data()"
 				],
-				"execution_count": 31
+				"execution_count": 61
 			},
 			{
 				"cell_type": "markdown",
@@ -412,7 +487,25 @@
 					"update_df: DataFrame = update_df.drop(\"message_type\").select(target_df.columns)\n",
 					"delete_df: DataFrame = delete_df.drop(\"message_type\").select(target_df.columns)"
 				],
-				"execution_count": 37
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"latest_ingestion.printSchema()"
+				],
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -430,7 +523,7 @@
 				"source": [
 					"compare_and_merge_schema(latest_ingestion, f\"{hrm_db}.{hrm_table}\")"
 				],
-				"execution_count": 38
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -459,9 +552,28 @@
 					}
 				},
 				"source": [
-					"spark.sql(f\"REFRESH TABLE {hrm_db}.{hrm_table}\")"
+					"x = spark.sql(f\" select * from {hrm_db}.{hrm_table} limit 10\")"
 				],
-				"execution_count": 39
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(x)"
+				],
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -484,7 +596,7 @@
 					"update_df: DataFrame = update_df.drop(\"message_type\").select(target_df.columns)\r\n",
 					"delete_df: DataFrame = delete_df.drop(\"message_type\").select(target_df.columns)"
 				],
-				"execution_count": 40
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -506,7 +618,7 @@
 					"print(f\"Delete: {delete_df.count()}\")\r\n",
 					"print(f\"Target: {target_df.count()}\")"
 				],
-				"execution_count": 41
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -547,7 +659,7 @@
 					"if target_df.count() > 0:\r\n",
 					"    target_df = target_df.dropDuplicates().orderBy(\"IngestionDate\")"
 				],
-				"execution_count": 42
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -569,7 +681,7 @@
 					"print(f\"Delete: {delete_df.count()}\")\r\n",
 					"print(f\"Target: {target_df.count()}\")"
 				],
-				"execution_count": 43
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -603,7 +715,7 @@
 					"\n",
 					"print(f\"New rows: {create_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 44
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -684,7 +796,7 @@
 					"\n",
 					"print(f\"Updated rows: {update_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 45
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -722,7 +834,25 @@
 					"\n",
 					"print(f\"Deleted rows: {delete_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
-				"execution_count": 46
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -755,7 +885,7 @@
 					"columns_to_consider = [c for c in target_df.columns if c not in [hrm_incremental_key, \"ValidTo\"]]\n",
 					"target_df = target_df.orderBy(hrm_incremental_key).dropDuplicates(subset=columns_to_consider).orderBy(\"IngestionDate\")"
 				],
-				"execution_count": 47
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -787,7 +917,25 @@
 				"source": [
 					"apply_df_to_table(target_df, hrm_db, hrm_table)"
 				],
-				"execution_count": 48
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
