@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "72f17043-0d30-4007-a186-eceb1f5854d4"
+				"spark.autotune.trackingId": "76eb70e2-7302-44b5-af17-307e3246235b"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 13
+				"execution_count": 116
 			},
 			{
 				"cell_type": "code",
@@ -78,7 +78,7 @@
 					"horizon_table = \"odw_standardised_db.horizon_examination_timetable\" \n",
 					"spark_table_final = \"odw_harmonised_db.nsip_exam_timetable\""
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -99,7 +99,13 @@
 					"                        SELECT DISTINCT\n",
 					"                            NSIPExaminationTimetableID\n",
 					"                            ,caseReference\n",
-					"                            ,published\n",
+					"                            ,CASE\n",
+					"                                When SBT.published ='null' THEN NULL\n",
+					"                                WHEN SBT.published = 'true' THEN TRUE\n",
+					"                                WHEN SBT.published = 'false' THEN FALSE\n",
+					"                                WHEN SBT.published = 'undefined' THEN FALSE\n",
+					"                                ELSE FALSE\n",
+					"                            End as published\n",
 					"                            ,events\n",
 					"                            ,Migrated\n",
 					"                            ,ODTSourceSystem\n",
@@ -109,10 +115,10 @@
 					"                            ,'' as RowID\n",
 					"                            ,IsActive\n",
 					"                        FROM \n",
-					"                            {service_bus_table}\n",
+					"                            {service_bus_table} AS SBT\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -138,6 +144,7 @@
 					"                            WHEN hnd.ExamTimetablePublishStatus = 'Published' THEN TRUE\n",
 					"                            WHEN hnd.ExamTimetablePublishStatus = 'Not Published' THEN FALSE\n",
 					"                            WHEN hnd.ExamTimetablePublishStatus = 'Ready to Publish' THEN FALSE\n",
+					"                            ELSE FALSE\n",
 					"                        END as published\n",
 					"                        ,CAST(Horizon.ID AS Integer) As eventId\n",
 					"                        ,Horizon.typeofexamination As type\n",
@@ -163,7 +170,7 @@
 					"                    WHERE Horizon.ingested_datetime = (SELECT MAX(Horizon.ingested_datetime) FROM {horizon_table} AS Horizon)\n",
 					"                \"\"\")"
 				],
-				"execution_count": 16
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -196,7 +203,7 @@
 					"#sort columns into same order as service bus\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns).drop_duplicates()"
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -215,7 +222,7 @@
 					"results = service_bus_data.unionByName(horizon_data,allowMissingColumns=True)\n",
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -254,7 +261,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_exam_timetable"
 				],
-				"execution_count": 19
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -295,7 +302,7 @@
 					"\n",
 					"df_calcs = df_calcs.withColumnRenamed(\"caseReference\", \"temp_caseReference\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 20
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -337,7 +344,7 @@
 					"        {spark_table_final}\"\"\")\n",
 					"    "
 				],
-				"execution_count": 21
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -358,7 +365,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[\"temp_caseReference\"] == results[\"caseReference\"]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
 					"final_df = final_df.drop_duplicates()"
 				],
-				"execution_count": 22
+				"execution_count": 97
 			},
 			{
 				"cell_type": "code",
@@ -376,7 +383,7 @@
 				"source": [
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 23
+				"execution_count": 98
 			}
 		]
 	}
