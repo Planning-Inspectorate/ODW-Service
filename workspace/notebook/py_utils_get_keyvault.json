@@ -1,8 +1,9 @@
 {
-	"name": "lake database query",
+	"name": "py_utils_get_keyvault",
 	"properties": {
+		"description": "Gets the keyvault base url from the linked service and constructs the full url for an API call.",
 		"folder": {
-			"name": "MiPINS-data-copy"
+			"name": "utils"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -16,17 +17,16 @@
 			"executorMemory": "28g",
 			"executorCores": 4,
 			"numExecutors": 2,
-			"runAsWorkspaceSystemIdentity": false,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5c96e116-ba30-432c-9c37-4ed201b8615f"
+				"spark.autotune.trackingId": "94f26c2e-9103-4e3a-909d-9ff9699292d5"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": false,
+			"enableDebugMode": true,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -41,25 +41,20 @@
 				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net",
-					"authHeader": null
+					"authResource": "https://dev.azuresynapse.net"
 				},
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
-				"extraHeader": null
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
 					"nteract": {
 						"transient": {
 							"deleting": false
@@ -67,10 +62,8 @@
 					}
 				},
 				"source": [
-					"### parameters \r\n",
-					"tablename=\"dim_date\""
-				],
-				"execution_count": 27
+					"##### Contructs the keyvault url from the secret name and api version to get a keyvault secret"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -89,34 +82,23 @@
 					]
 				},
 				"source": [
-					"sourcerowcount = 5"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def obtain_lakedb_rowcount(tablename):\r\n",
-					"    from pyspark.sql import SparkSession\r\n",
-					"    spark = SparkSession.builder.getOrCreate()\r\n",
-					"    from notebookutils import mssparkutils\r\n",
-					"\r\n",
-					"    df=spark.sql(f\"select count(*) as no_of_rows FROM odw_curated_db.{tablename}\")\r\n",
-					"    count = df.collect()[0][0]\r\n",
-					"    mssparkutils.notebook.exit(tablename + 'source rows:' + str(sourcerowcount) + 'lake db rows:' + str(count))\r\n",
-					""
+					"secret_name = ''"
 				],
-				"execution_count": 37
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Documentation here. Use the api version in the documentation.  \r\n",
+					"https://learn.microsoft.com/en-us/rest/api/keyvault/secrets/get-secret/get-secret?view=rest-keyvault-secrets-7.4&tabs=HTTP"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -132,8 +114,72 @@
 					}
 				},
 				"source": [
-					"obtain_lakedb_rowcount(tablename)"
-				]
+					"api_version = '7.4'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from notebookutils import mssparkutils"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"keyvault_connection_string = mssparkutils.credentials.getFullConnectionString('ls_kv')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"base_url = keyvault_connection_string.split(\"=\")[1].split(\";\")[0]\r\n",
+					"base_url"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"url = f\"{base_url}secrets/{secret_name}?api-version={api_version}\"\r\n",
+					"mssparkutils.notebook.exit(url)"
+				],
+				"execution_count": null
 			}
 		]
 	}
