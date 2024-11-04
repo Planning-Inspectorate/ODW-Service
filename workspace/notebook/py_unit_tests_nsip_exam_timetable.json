@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2f1d9888-a80e-4428-8cf3-d9ea33f3b21b"
+				"spark.autotune.trackingId": "6b8d6518-31c4-42ac-acb8-a1dedfb43e26"
 			}
 		},
 		"metadata": {
@@ -281,7 +281,9 @@
 					}
 				},
 				"source": [
-					"**<u>NOTE:</u> We might have some discrepancies between harmonised and curated as when we created the curated layer for the exam timetable we have to make sure the case reference that existsin nsip prject, exists in exam timetable.**"
+					"**<u>NOTE:</u> We might have some discrepancies between harmonised and curated as when we created the curated layer for the exam timetable we have to make sure the case reference that exists in nsip project, exists in exam timetable.**  \r\n",
+					"\r\n",
+					"Removing this test for now as it's not comparing like for like"
 				]
 			},
 			{
@@ -298,9 +300,9 @@
 					}
 				},
 				"source": [
-					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name, data_model_columns)\n",
-					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
-					"exitCode += int(not counts_match)"
+					"# harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name, data_model_columns)\n",
+					"# print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
+					"# exitCode += int(not counts_match)"
 				],
 				"execution_count": null
 			},
@@ -591,7 +593,7 @@
 				},
 				"source": [
 					"counts_match = test_hzn_and_curated_count_matched(std_hzn_table_name, curated_migration_table_name, primary_key)\n",
-					"print(f\"Horizon to Curared - Counts match: {counts_match}\")\n",
+					"print(f\"Horizon to Curated - Counts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
 				"execution_count": null
@@ -625,20 +627,25 @@
 				},
 				"source": [
 					"df_hzn: DataFrame = spark.sql(f\"\"\"\r\n",
-					"                                SELECT DISTINCT et.{primary_key}\r\n",
-					"                                FROM odw_standardised_db.{std_hzn_table_name} et\r\n",
-					"                                inner join odw_standardised_db.horizon_nsip_data nd\r\n",
-					"                                on et.caseReference = nd.caseReference\r\n",
-					"                                WHERE et.expected_from = (\r\n",
-					"                                        SELECT MAX(expected_from)\r\n",
-					"                                        FROM odw_standardised_db.{std_hzn_table_name}\r\n",
-					"                                    )\r\n",
-					"                            \"\"\")\r\n",
+					"                            SELECT DISTINCT t1.{primary_key}\r\n",
+					"                            FROM odw_standardised_db.{std_hzn_table_name} t1\r\n",
+					"                            INNER JOIN odw_standardised_db.horizon_nsip_data t2\r\n",
+					"                            ON t1.caseReference = t2.caseReference\r\n",
+					"                            WHERE t1.expected_from = (\r\n",
+					"                                    SELECT MAX(expected_from)\r\n",
+					"                                    FROM odw_standardised_db.{std_hzn_table_name}\r\n",
+					"                                )\r\n",
+					"                            AND t2.expected_from = (\r\n",
+					"                                    SELECT MAX(expected_from)\r\n",
+					"                                    FROM odw_standardised_db.horizon_nsip_data\r\n",
+					"                                )\r\n",
+					"                        \"\"\")\r\n",
 					"\r\n",
 					"df_cur: DataFrame = spark.sql(f\"\"\"\r\n",
-					"                                SELECT DISTINCT {primary_key}\r\n",
-					"                                FROM odw_curated_migration_db.{curated_migration_table_name}\r\n",
-					"                            \"\"\")\r\n",
+					"                            SELECT DISTINCT {primary_key}\r\n",
+					"                            FROM odw_curated_migration_db.{curated_migration_table_name}\r\n",
+					"                        \"\"\")\r\n",
+					"\r\n",
 					"\r\n",
 					"missing = df_hzn.subtract(df_cur)\r\n",
 					"display(missing)"
@@ -674,7 +681,7 @@
 				},
 				"source": [
 					"rows_dropped = test_hzn_to_curated_no_record_dropped(std_hzn_table_name, curated_migration_table_name, primary_key)\n",
-					"print(f\"Horizon to Curared - No rows dropped: {rows_dropped}\")\n",
+					"print(f\"Horizon to Curated - No rows dropped: {rows_dropped}\")\n",
 					"exitCode += int(not rows_dropped)"
 				],
 				"execution_count": null
