@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f6dfc6fe-cacc-41d2-a99f-07c523073e0d"
+				"spark.autotune.trackingId": "9c9787dd-d6e0-42ca-acfc-09a239fbe80c"
 			}
 		},
 		"metadata": {
@@ -909,16 +909,15 @@
 					}
 				},
 				"source": [
-					"def test_sb_std_to_sb_hrm_no_message_id_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\r\n",
+					"def test_sb_std_to_hrm_no_message_id_dropped(std_table: str, hrm_table: str) -> bool:\r\n",
 					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
-					"    select message_id\r\n",
-					"    from {std_db_name}.{sb_std_table}\r\n",
-					"    where {primary_key} not in\r\n",
-					"    (\r\n",
-					"        select MessageID\r\n",
-					"        from {hrm_db_name}.{sb_hrm_table}\r\n",
-					"    )\r\n",
-					"    \"\"\")\r\n",
+					"                        SELECT *\r\n",
+					"                        FROM {std_table}\r\n",
+					"                        WHERE message_id NOT IN (\r\n",
+					"                            SELECT MessageID\r\n",
+					"                            FROM {hrm_table}\r\n",
+					"                        )\r\n",
+					"                    \"\"\")\r\n",
 					"\r\n",
 					"    return df.count() == 0\r\n",
 					""
@@ -939,10 +938,20 @@
 					}
 				},
 				"source": [
-					"if test_sb_std_to_sb_hrm_no_message_id_dropping_records(std_table_name, hrm_table_name):\r\n",
-					"    pass  \r\n",
-					"else:\r\n",
-					"    exitCode += 1"
+					"def test_sb_std_to_hrm_no_active_deleted_record(std_table: str, hrm_table: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"                        SELECT *\n",
+					"                        FROM {hrm_table}\n",
+					"                        WHERE MessageID IN (\n",
+					"                            SELECT message_id\n",
+					"                            FROM {std_table}\n",
+					"                            WHERE message_type = 'Delete'\n",
+					"                        )\n",
+					"                        AND IsActive != 'N'\n",
+					"                    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0\n",
+					""
 				],
 				"execution_count": null
 			}
