@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "68c5b678-d4b0-4ff6-b6ac-db4515ed012c"
+				"spark.autotune.trackingId": "054e8e38-ecf8-46da-b8ae-7251ddbc7cc6"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,7 @@
 					"from pyspark.sql import functions as F\n",
 					"import pprint"
 				],
-				"execution_count": 38
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -135,122 +135,6 @@
 					"aie_appeals_documents_count = aie_appeals_documentIds.count()"
 				],
 				"execution_count": 40
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"Message_id tests"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def test_sb_std_to_sb_hrm_no_message_id_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\r\n",
-					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
-					"    select message_id\r\n",
-					"    from {std_db_name}.{sb_std_table}\r\n",
-					"    where message_id not in\r\n",
-					"    (\r\n",
-					"        select MessageID\r\n",
-					"        from {hrm_db_name}.{sb_hrm_table}\r\n",
-					"    )\r\n",
-					"    \"\"\")\r\n",
-					"\r\n",
-					"    return df.count() == 0\r\n",
-					""
-				],
-				"execution_count": 16
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"def test_sb_std_to_sb_hrm__message_id_has_N_active_flag(sb_std_table: str, sb_hrm_table: str) -> bool:\r\n",
-					"    df_std: DataFrame = spark.sql(f\"\"\"\r\n",
-					"    SELECT  message_id FROM {std_db_name}.{sb_std_table}\r\n",
-					"    where message_type = 'Delete'\r\n",
-					"    \"\"\")\r\n",
-					"\r\n",
-					"    df_hrm: DataFrame = spark.sql(f\"\"\"\r\n",
-					"    SELECT  message_id FROM {std_db_name}.{sb_std_table}\r\n",
-					"    where message_type = 'Delete' and message_id  in (select MessageId from  {hrm_db_name}.{sb_hrm_table} where isactive = 'N' and MessageId is not null)\r\n",
-					"    \"\"\")\r\n",
-					"\r\n",
-					"    return df_std.count() == df_hrm.count()"
-				],
-				"execution_count": 68
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"if test_sb_std_to_sb_hrm__message_id_has_N_active_flag(std_table_name, hrm_table_name):\r\n",
-					"    pass\r\n",
-					"    print(\"All deleted message_ids in standardised table have isActive = 'N' in harmonised table.\")\r\n",
-					"else:\r\n",
-					"    exitCode += 1"
-				],
-				"execution_count": 70
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"if test_sb_std_to_sb_hrm_no_message_id_dropping_records(std_table_name, hrm_table_name):\r\n",
-					"    pass\r\n",
-					"    print(\"No dropping message_ids from standardised to harmonised\")\r\n",
-					"else:\r\n",
-					"    exitCode += 1"
-				],
-				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -332,7 +216,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 42
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -738,6 +622,48 @@
 					"    exitCode += 1"
 				],
 				"execution_count": 65
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if test_sb_std_to_hrm_no_message_id_dropped(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\"):\n",
+					"    pass\n",
+					"else:\n",
+					"    exitCode += 1"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if test_sb_std_to_hrm_no_active_deleted_record(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\"):\n",
+					"    pass\n",
+					"else:\n",
+					"    exitCode += 1"
+				],
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
