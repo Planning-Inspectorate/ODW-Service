@@ -1,8 +1,8 @@
 {
-	"name": "appeal_event",
+	"name": "THEODW-1461-message_id",
 	"properties": {
 		"folder": {
-			"name": "odw-curated"
+			"name": "Releases/3.0.3"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2d792bf2-581b-4660-9932-257094ffc24e"
+				"spark.autotune.trackingId": "afc57fbf-14fe-432f-94bb-977724361bf7"
 			}
 		},
 		"metadata": {
@@ -54,21 +54,17 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
+					"microsoft": {
+						"language": "sparksql"
 					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
+					"collapsed": false
 				},
 				"source": [
-					"from pyspark.sql.functions import *\r\n",
-					"from pyspark.sql.types import *"
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_appeal_document\n",
+					"ADD COLUMN message_id STRING"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -88,44 +84,11 @@
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\r\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_appeal_event \r\n",
-					"AS\r\n",
-					"SELECT\r\n",
-					"    eventId\r\n",
-					"    ,caseReference\r\n",
-					"    ,eventType\r\n",
-					"    ,eventName\r\n",
-					"    ,eventStatus\r\n",
-					"    ,IsUrgent\r\n",
-					"    ,eventPublished\r\n",
-					"    ,eventStartDateTime\r\n",
-					"    ,eventEndDateTime\r\n",
-					"    ,notificationOfSitevisit\r\n",
-					"    ,addressLine1\r\n",
-					"    ,addressLine2\r\n",
-					"    ,addressTown\r\n",
-					"    ,addressCounty\r\n",
-					"    ,addressPostcode\r\n",
-					"FROM\r\n",
-					"    odw_harmonised_db.appeal_event\r\n",
-					"WHERE\r\n",
-					"    IsActive = 'Y'"
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_appeal_event\n",
+					"ADD COLUMN message_id STRING"
 				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Create a DataFrame of the data from the view"
-				]
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -138,144 +101,234 @@
 						"transient": {
 							"deleting": false
 						}
-					}
-				},
-				"source": [
-					"data: DataFrame = spark.sql(\"SELECT * FROM vw_appeal_event\")"
-				],
-				"execution_count": 3
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Specify the schema for the data, taken from the curated table which has already been created in advance from the data model"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
 					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"schema: StructType = spark.table(\"odw_curated_db.appeal_event\").schema"
-				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Cast all field data types in the data to the data types from the curated table schema\r\n",
-					"\r\n",
-					"This is necessary because the view generated above is joining harmonised tables, many of which are sourced from Horizon and will have a different schema to the final table and fields will have different data types. Therefore, taking the curated schema as defined in thr data model and casting all fields correctly, ensures accuracy."
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df: DataFrame = data.select(\r\n",
-					"    *[\r\n",
-					"        col(field.name).cast(field.dataType).alias(field.name)\r\n",
-					"        for field in schema.fields\r\n",
-					"    ]\r\n",
-					")"
-				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Print the schema as a visual check"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"df.printSchema()"
-				],
-				"execution_count": 6
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Write the data to the curated table"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
+					"microsoft": {
+						"language": "sparksql"
 					},
 					"collapsed": false
 				},
 				"source": [
-					"df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeal_event\")"
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_appeal_has\n",
+					"ADD COLUMN message_id STRING"
 				],
-				"execution_count": 7
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_folder\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_document\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_exam_timetable\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_project\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_project_update\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_representation\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_nsip_subscription\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_s51_advice\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 37
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"ALTER TABLE odw_harmonised_db.sb_service_user\n",
+					"ADD COLUMN message_id STRING"
+				],
+				"execution_count": 38
 			}
 		]
 	}
