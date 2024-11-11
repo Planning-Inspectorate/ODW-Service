@@ -1,3 +1,16 @@
+variables:
+- name: sourceFolder
+  value: '$(System.DefaultWorkingDirectory)/workspace'
+
+- name: target_folder
+  value: '$(Build.ArtifactStagingDirectory)'
+
+- name: storage_account_name
+  value: $(DATA_LAKE_STORAGE)
+
+- name: storage_container
+  value: 'test'
+
 pr: none
 
 trigger: none
@@ -7,9 +20,58 @@ pool: 'pins-agent-pool-odw-dev-uks'
 stages:
   - stage: Build
     displayName: Build Code
+
     jobs:
     - job: Build
+
       steps:
-      - checkout: feat/ci-cd-testing
-      - task: ArchiveFiles@2
-        displayName: Archive files
+      - checkout: self
+
+      - task: PowerShell@2
+        inputs:
+          targetType: 'inline'
+          script: |
+            # Check out the main branch
+            git fetch origin main
+            git checkout main
+
+            # Get back to the original branch
+            git checkout $(Build.SourceBranchName)
+
+            # List added files compared to the main branch
+            $addedFiles = git diff --name-only --diff-filter=A origin/main..$(Build.SourceBranchName) -- workspace/
+
+            # Write to a file for archiving
+            $addedFiles | Out-File added_files_list.txt
+
+            # Show the contents of the file in the console
+            Write-Output "Files added in $(Build.SourceBranchName) compared to main:"
+            Get-Content added_files_list.txt
+
+      # - task: CopyFiles@2
+      #   displayName: 'Copy files to staging directory'
+      #   inputs:
+      #     SourceFolder: '$(source_folder)'
+      #     Contents: '**'
+      #     TargetFolder: '$(target_folder)'
+
+      # - script: |
+      #     echo 'Listing files...'
+      #     ls -R '$(Build.ArtifactStagingDirectory)'
+
+      #   displayName: 'Listing files...'
+
+      # - task: AzureCLI@2
+      #   displayName: 'Send to Azure storage'
+      #   inputs:
+      #     azureSubscription: '$(armServiceConnectionName)'
+      #     scriptType: 'bash'
+      #     scriptLocation: 'inlineScript'
+      #     inlineScript: |
+      #       az storage blob upload-batch \
+      #       --account-name $(storage_account_name) \
+      #       --destination $(storage_container) \
+      #       --source $(Build.ArtifactStagingDirectory) \
+      #       --pattern '*' \
+      #       --overwrite true \
+      #       --auth-mode login
