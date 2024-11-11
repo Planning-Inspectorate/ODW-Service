@@ -85,30 +85,26 @@ stages:
           targetPath: '$(Build.ArtifactStagingDirectory)'  # Folder containing the archived files
 
 
-      # - task: CopyFiles@2
-      #   displayName: 'Copy files to staging directory'
-      #   inputs:
-      #     SourceFolder: '$(source_folder)'
-      #     Contents: '**'
-      #     TargetFolder: '$(target_folder)'
+  - stage: Deploy
+    displayName: Deploy
+    dependsOn: Build
+    jobs:
+    - deployment: Deploy
+      displayName: Deploy Synapse
+      environment: Test
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: ExtractFiles@1
+              displayName: Extract Synapse files
+              inputs: 
+                archiveFilePatterns: '$(Pipeline.Workspace)\json-files\**\*.zip'
+                destinationFolder: '$(Pipeline.Workspace)\extracted'
+                cleanDestinationFolder: true
+                overwriteExistingFiles: false
 
-      # - script: |
-      #     echo 'Listing files...'
-      #     ls -R '$(Build.ArtifactStagingDirectory)'
-
-      #   displayName: 'Listing files...'
-
-      # - task: AzureCLI@2
-      #   displayName: 'Send to Azure storage'
-      #   inputs:
-      #     azureSubscription: '$(armServiceConnectionName)'
-      #     scriptType: 'bash'
-      #     scriptLocation: 'inlineScript'
-      #     inlineScript: |
-      #       az storage blob upload-batch \
-      #       --account-name $(storage_account_name) \
-      #       --destination $(storage_container) \
-      #       --source $(Build.ArtifactStagingDirectory) \
-      #       --pattern '*' \
-      #       --overwrite true \
-      #       --auth-mode login
+            - script: |
+                echo 'Listing files...'
+                ls -R '$(Pipeline.Workspace)\extracted'
+              displayName: Listing extracted files
