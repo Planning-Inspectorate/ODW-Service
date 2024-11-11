@@ -50,17 +50,26 @@ stages:
             Get-Content added_files_list.txt
 
             foreach ($file in $addedFiles) {
-            $sourcePath = "$PSScriptRoot/$file"
-            $destinationPath = "$(Build.ArtifactStagingDirectory)/$file"
-            # Ensure the destination directory exists
-            New-Item -ItemType Directory -Path (Split-Path -Path $destinationPath) -Force -ErrorAction SilentlyContinue
-            # Copy the file
-            Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+              $sourcePath = "$(Build.SourcesDirectory)/$file"  # Correct source path relative to repository root
+              $destinationPath = "$(Build.ArtifactStagingDirectory)/$file"
+              
+              # Ensure the destination directory exists
+              New-Item -ItemType Directory -Path (Split-Path -Path $destinationPath) -Force -ErrorAction SilentlyContinue
+              
+              # Copy the file
+              if (Test-Path $sourcePath) {
+                  Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+              } else {
+                  Write-Output "Source file not found: $sourcePath"
+              }
             }
 
             # List the files in the artifact staging directory to confirm they've been copied
             Write-Output "Files in $(Build.ArtifactStagingDirectory):"
             Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)"
+
+
+
 
       # - task: CopyFiles@2
       #   displayName: 'Copy files to staging directory'
