@@ -45,17 +45,42 @@ stages:
             git checkout feat/ci-cd-testing
 
             # List added files compared to the main branch
-            $addedFiles = git diff --name-only --diff-filter=A origin/main..origin/feat/ci-cd-testing -- workspace/ |
+            $createdFiles = git diff --name-only --diff-filter=A origin/main..origin/feat/ci-cd-testing -- workspace/ |
                           Where-Object { $_ -match '\.json$' }
 
+            # List modified files compared to the main branch
+            $modifiedFiles = git diff --name-only --diff-filter=M origin/main..origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
+
+            # List renamed files compared to the main branch
+            $renamedFiles = git diff --name-only --diff-filter=R origin/main..origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
+
+            # List deleted files compared to the main branch
+            $deletedFiles = git diff --name-only --diff-filter=D origin/main..origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
+
+
             # Write to a file for archiving
-            $addedFiles | Out-File added_files_list.txt
+            $createdFiles | Out-File created_files.txt
+            $modifiedFiles | Out-File modified_files.txt
+            $renamedFiles | Out-File renamed_files.txt
+            $deletedFiles | Out-File deleted_files.txt
 
             # Show the contents of the file in the console
-            Write-Output "Files added in feat/ci-cd-testing compared to main:"
-            Get-Content added_files_list.txt
+            Write-Output "Created files:"
+            Get-Content created_files.txt
 
-            foreach ($file in $addedFiles) {
+            Write-Output "Modified files:"
+            Get-Content modified_files.txt
+
+            Write-Output "Renamed files:"
+            Get-Content renamed_files.txt
+
+            Write-Output "Deleted files:"
+            Get-Content deleted_files.txt
+
+            foreach ($file in $modifiedFiles) {
               $sourcePath = "$(Build.SourcesDirectory)/$file"  # Correct source path relative to repository root
               $destinationPath = "$(Build.ArtifactStagingDirectory)/$file"
               
