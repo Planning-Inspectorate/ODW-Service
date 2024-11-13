@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4084a0eb-f358-4953-a0b6-dbcceee60b83"
+				"spark.autotune.trackingId": "ccaf164d-08fd-4e28-956a-0275df27228f"
 			}
 		},
 		"metadata": {
@@ -68,30 +68,26 @@
 				"source": [
 					"%pip install opencensus-ext-azure"
 				],
-				"execution_count": 31
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"import logging\r\n",
 					"from opencensus.ext.azure.log_exporter import AzureLogHandler\r\n",
+					"\r\n",
 					"logger = logging.getLogger()\r\n",
 					"logger.setLevel(logging.INFO)\r\n",
+					"if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
+					"    pass\r\n",
+					"else:\r\n",
+					"    key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
+					"    logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
 					"\r\n",
 					"def logInfo(msg):\r\n",
-					"        if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"            pass\r\n",
-					"        else:\r\n",
-					"            key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"            logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
 					"        logger.info(msg)\r\n",
 					"\r\n",
 					"def logError(msg):\r\n",
-					"        if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"            pass\r\n",
-					"        else:\r\n",
-					"            key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"            logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
 					"        logger.error(msg)        \r\n",
 					"\r\n",
 					"def logging_to_appins(func):\r\n",
@@ -103,17 +99,6 @@
 					"    @functools.wraps(func)\r\n",
 					"    def wrapper(*args, **kwargs):\r\n",
 					"        from notebookutils import mssparkutils\r\n",
-					"\r\n",
-					"        import logging\r\n",
-					"        from opencensus.ext.azure.log_exporter import AzureLogHandler\r\n",
-					"        \r\n",
-					"        logger = logging.getLogger()\r\n",
-					"        logger.setLevel(logging.INFO)\r\n",
-					"        if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"            pass\r\n",
-					"        else:\r\n",
-					"            key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"            logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
 					"            \r\n",
 					"        args_repr = [repr(a) for a in args]\r\n",
 					"        kwargs_repr = [f\"{k}={v!r}\" for k, v in kwargs.items()]\r\n",
@@ -131,7 +116,7 @@
 					"            raise e\r\n",
 					"    return wrapper"
 				],
-				"execution_count": 32
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -153,13 +138,13 @@
 					"\n",
 					"try:\n",
 					"    #this should appear in the logs because it's got a decorator on it\n",
-					"    logInfo(\"Running Function\")\n",
+					"    logger.info(\"Running test\")\n",
 					"    test()\n",
 					"except:\n",
-					"    logError(\"Caught error\")\n",
+					"    logger.error(\"Caught error\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -180,13 +165,13 @@
 					"\n",
 					"try:\n",
 					"    #this shouldn't appear in the logs because it's not got a decorator on it\n",
-					"    logInfo(\"Running Function\")\n",
+					"    logger.info(\"Running test2\")\n",
 					"    test2()\n",
 					"except:\n",
-					"    logError(\"Caught error\")\n",
+					"    logger.error(\"Caught error\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -208,12 +193,12 @@
 					"\n",
 					"try:\n",
 					"    #this should appear in the logs because it's got a decorator on it\n",
-					"    logInfo(\"Running Function\")\n",
+					"    logger.info(\"Running test3\")\n",
 					"    test3()\n",
 					"except:\n",
-					"    logError(\"Caught error\")"
+					"    logger.error(\"Caught error\")"
 				],
-				"execution_count": null
+				"execution_count": 50
 			}
 		]
 	}
