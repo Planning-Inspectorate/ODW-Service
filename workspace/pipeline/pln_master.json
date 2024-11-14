@@ -303,8 +303,8 @@
 							"value": "@variables('warning_colour')",
 							"type": "Expression"
 						},
-						"enabled_entities": {
-							"value": "@variables('enabled_entities')",
+						"horizon_feed": {
+							"value": "@variables('horizon_feed')",
 							"type": "Expression"
 						}
 					}
@@ -433,8 +433,8 @@
 				}
 			},
 			{
-				"name": "Get service bus feeds",
-				"type": "SynapseNotebook",
+				"name": "Service bus loads",
+				"type": "ForEach",
 				"dependsOn": [
 					{
 						"activity": "Record moving on to loading service bus data",
@@ -449,437 +449,53 @@
 						]
 					}
 				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_utils_get_service_bus_feeds",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"sparkPool": {
-						"referenceName": "pinssynspodw",
-						"type": "BigDataPoolReference"
-					},
-					"conf": {
-						"spark.dynamicAllocation.enabled": true
-					}
-				}
-			},
-			{
-				"name": "Service bus loads",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "Get service bus feeds",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@json(activity('Get service bus feeds').output.status.Output.result.exitValue)",
+						"value": "@variables('service_bus_feed')",
 						"type": "Expression"
 					},
 					"isSequential": false,
 					"activities": [
 						{
-							"name": "Get config",
-							"type": "SynapseNotebook",
-							"dependsOn": [
-								{
-									"activity": "Random wait to allow parallelism",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"notebook": {
-									"referenceName": "py_utils_get_pipeline_config",
-									"type": "NotebookReference"
-								},
-								"parameters": {
-									"system_name": {
-										"value": "Service bus",
-										"type": "string"
-									},
-									"Object": {
-										"value": {
-											"value": "@string(item())",
-											"type": "Expression"
-										},
-										"type": "string"
-									}
-								},
-								"snapshot": true,
-								"sparkPool": {
-									"referenceName": "pinssynspodw",
-									"type": "BigDataPoolReference"
-								},
-								"conf": {
-									"spark.dynamicAllocation.enabled": true
-								}
-							}
-						},
-						{
-							"name": "Check if item enabled",
-							"type": "IfCondition",
-							"dependsOn": [
-								{
-									"activity": "Get config",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"userProperties": [],
-							"typeProperties": {
-								"expression": {
-									"value": "@equals(activity('Get config').output.status.Output.result.exitValue, '[True]')",
-									"type": "Expression"
-								},
-								"ifFalseActivities": [
-									{
-										"name": "Record relevant reps warning",
-										"type": "SynapseNotebook",
-										"dependsOn": [
-											{
-												"activity": "Get entity_name_1",
-												"dependencyConditions": [
-													"Succeeded"
-												]
-											}
-										],
-										"policy": {
-											"timeout": "0.12:00:00",
-											"retry": 0,
-											"retryIntervalInSeconds": 30,
-											"secureOutput": false,
-											"secureInput": false
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"notebook": {
-												"referenceName": "py_utils_log_stage",
-												"type": "NotebookReference"
-											},
-											"parameters": {
-												"Stage": {
-													"value": "Warning",
-													"type": "string"
-												},
-												"PipelineName": {
-													"value": {
-														"value": "@concat(replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''), ' ', pipeline().Pipeline)",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"PipelineRunID": {
-													"value": {
-														"value": "@pipeline().RunId",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"Inserts": {
-													"value": "0",
-													"type": "int"
-												},
-												"Updates": {
-													"value": "0",
-													"type": "int"
-												},
-												"Deletes": {
-													"value": "0",
-													"type": "int"
-												},
-												"ErrorMessage": {
-													"value": {
-														"value": "@concat('Service bus item disabled: ', replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''))",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"StatusMessage": {
-													"value": "Warning",
-													"type": "string"
-												},
-												"PipelineTriggerID": {
-													"value": {
-														"value": "@pipeline().TriggerId",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"PipelineTriggerName": {
-													"value": {
-														"value": "@pipeline().TriggerName",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"PipelineTriggerType": {
-													"value": {
-														"value": "@pipeline().TriggerType",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"PipelineTriggeredbyPipelineName": {
-													"value": {
-														"value": "@pipeline()?.TriggeredByPipelineName",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"PipelineTriggeredbyPipelineRunID": {
-													"value": {
-														"value": "@pipeline()?.TriggeredByPipelineRunId",
-														"type": "Expression"
-													},
-													"type": "string"
-												},
-												"ActivityType": {
-													"value": "Pipeline",
-													"type": "string"
-												}
-											},
-											"snapshot": true,
-											"sparkPool": {
-												"referenceName": "pinssynspodw",
-												"type": "BigDataPoolReference"
-											},
-											"conf": {
-												"spark.dynamicAllocation.enabled": true,
-												"spark.dynamicAllocation.minExecutors": null,
-												"spark.dynamicAllocation.maxExecutors": null
-											},
-											"numExecutors": null
-										}
-									},
-									{
-										"name": "Send service bus warning",
-										"type": "ExecutePipeline",
-										"dependsOn": [
-											{
-												"activity": "Get entity_name_1",
-												"dependencyConditions": [
-													"Succeeded"
-												]
-											}
-										],
-										"policy": {
-											"secureInput": true
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"pipeline": {
-												"referenceName": "pln_utl_Send_Teams_Message",
-												"type": "PipelineReference"
-											},
-											"waitOnCompletion": true,
-											"parameters": {
-												"dataFactorySubscription": {
-													"value": "@variables('subscription_id')",
-													"type": "Expression"
-												},
-												"dataFactoryResourceGroup": {
-													"value": "@variables('resource_group')",
-													"type": "Expression"
-												},
-												"pipelineRunId": {
-													"value": "@pipeline().RunId",
-													"type": "Expression"
-												},
-												"teamsWebhookUrl": {
-													"value": "@variables('webhook_url')",
-													"type": "Expression"
-												},
-												"activityName": {
-													"value": "@pipeline().Pipeline",
-													"type": "Expression"
-												},
-												"activityMessage": {
-													"value": "@concat('Service bus ',replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', '') ,': Data load disabled')",
-													"type": "Expression"
-												},
-												"activityDuration": {
-													"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
-													"type": "Expression"
-												},
-												"activityStatus": "Warning",
-												"Colour": {
-													"value": "@variables('warning_colour')",
-													"type": "Expression"
-												},
-												"Image": {
-													"value": "@variables('warning_image')",
-													"type": "Expression"
-												},
-												"Message_title": "ODW - Master pipeline Warning",
-												"Message_subtitle": {
-													"value": "@concat('Loading ',replace(replace(activity('Get entity_name_1').output.status.Output.result.exitValue, '[''', ''), ''']', ''),' from the service bus is disabled. Any messages in the subscription have not been loaded.')",
-													"type": "Expression"
-												}
-											}
-										}
-									},
-									{
-										"name": "Get entity_name_1",
-										"type": "SynapseNotebook",
-										"dependsOn": [],
-										"policy": {
-											"timeout": "0.12:00:00",
-											"retry": 0,
-											"retryIntervalInSeconds": 30,
-											"secureOutput": false,
-											"secureInput": false
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"notebook": {
-												"referenceName": "py_utils_get_service_bus_config",
-												"type": "NotebookReference"
-											},
-											"parameters": {
-												"system_name": {
-													"value": "Service bus",
-													"type": "string"
-												},
-												"Object": {
-													"value": {
-														"value": "@string(item())",
-														"type": "Expression"
-													},
-													"type": "string"
-												}
-											},
-											"snapshot": true,
-											"sparkPool": {
-												"referenceName": "pinssynspodw",
-												"type": "BigDataPoolReference"
-											},
-											"conf": {
-												"spark.dynamicAllocation.enabled": true
-											}
-										}
-									}
-								],
-								"ifTrueActivities": [
-									{
-										"name": "Get entity_name",
-										"type": "SynapseNotebook",
-										"dependsOn": [],
-										"policy": {
-											"timeout": "0.12:00:00",
-											"retry": 0,
-											"retryIntervalInSeconds": 30,
-											"secureOutput": false,
-											"secureInput": false
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"notebook": {
-												"referenceName": "py_utils_get_service_bus_config",
-												"type": "NotebookReference"
-											},
-											"parameters": {
-												"system_name": {
-													"value": "Service bus",
-													"type": "string"
-												},
-												"Object": {
-													"value": {
-														"value": "@string(item())",
-														"type": "Expression"
-													},
-													"type": "string"
-												}
-											},
-											"snapshot": true,
-											"sparkPool": {
-												"referenceName": "pinssynspodw",
-												"type": "BigDataPoolReference"
-											},
-											"conf": {
-												"spark.dynamicAllocation.enabled": true
-											}
-										}
-									},
-									{
-										"name": "Execute Pipeline",
-										"type": "ExecutePipeline",
-										"dependsOn": [
-											{
-												"activity": "Get entity_name",
-												"dependencyConditions": [
-													"Succeeded"
-												]
-											}
-										],
-										"policy": {
-											"secureInput": false
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"pipeline": {
-												"referenceName": "pln_service_bus",
-												"type": "PipelineReference"
-											},
-											"waitOnCompletion": true,
-											"parameters": {
-												"entity_name_input": {
-													"value": "@activity('Get entity_name').output.status.Output.result.exitValue",
-													"type": "Expression"
-												}
-											}
-										}
-									}
-								]
-							}
-						},
-						{
-							"name": "Random wait to allow parallelism",
-							"type": "SynapseNotebook",
+							"name": "Random wait to allow parallelism_copy4",
+							"type": "Wait",
 							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": {
+									"value": "@rand(0, 10)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Execute Pipeline_copy1",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Random wait to allow parallelism_copy4",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
 								"secureInput": false
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"notebook": {
-									"referenceName": "py_utils_random_sleep",
-									"type": "NotebookReference"
+								"pipeline": {
+									"referenceName": "pln_service_bus",
+									"type": "PipelineReference"
 								},
-								"snapshot": true,
-								"conf": {
-									"spark.dynamicAllocation.enabled": null,
-									"spark.dynamicAllocation.minExecutors": null,
-									"spark.dynamicAllocation.maxExecutors": null
-								},
-								"numExecutors": null
+								"waitOnCompletion": true,
+								"parameters": {
+									"entity_name_input": {
+										"value": "@item()",
+										"type": "Expression"
+									}
+								}
 							}
 						}
 					]
@@ -2306,6 +1922,10 @@
 						"warning_colour": {
 							"value": "@variables('warning_colour')",
 							"type": "Expression"
+						},
+						"horizon_feed": {
+							"value": "@variables('horizon_feed')",
+							"type": "Expression"
 						}
 					}
 				}
@@ -2512,6 +2132,9 @@
 			},
 			"horizon_feed": {
 				"type": "Array"
+			},
+			"wat": {
+				"type": "String"
 			}
 		},
 		"folder": {
