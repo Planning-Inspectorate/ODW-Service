@@ -1590,7 +1590,13 @@
 						]
 					},
 					{
-						"activity": "Set enabled entities",
+						"activity": "Set Horizon feed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Service Bus feed",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -2322,32 +2328,8 @@
 				}
 			},
 			{
-				"name": "Set enabled entities",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Get enabled entities",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "enabled_entities",
-					"value": {
-						"value": "@activity('Get enabled entities').output.value",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Get enabled entities",
-				"description": "Get the enabled entities from master pipeline config",
+				"name": "Get Service Bus feed",
+				"description": "Get the enabled service bus feed from master pipeline config",
 				"type": "Lookup",
 				"dependsOn": [
 					{
@@ -2368,7 +2350,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT * FROM odw_config_db.dbo.main_pipeline_config \nWHERE is_enabled = 1",
+						"sqlReaderQuery": "SELECT STRING_AGG(entity_name, ', ') AS entities\nFROM [odw_config_db].[dbo].[main_pipeline_config]\nWHERE is_enabled = 1\nAND System_name = 'Service bus'",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -2377,6 +2359,88 @@
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Set Service Bus feed",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get Service Bus feed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "entities",
+					"value": {
+						"value": "@split(activity('Get Service Bus feed').output.value[0].entities, ',')\n\n",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get Horizon feed",
+				"description": "Get the enabled horizon feed from master pipeline config",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Send starting teams notification",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT STRING_AGG(Object, ', ') AS entities\nFROM [odw_config_db].[dbo].[main_pipeline_config]\nWHERE is_enabled = 1\nAND System_name = 'Horizon'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_odw_master_config",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Set Horizon feed",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get Horizon feed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "entities",
+					"value": {
+						"value": "@split(activity('Get Horizon feed').output.value[0].entities, ',')\n\n",
+						"type": "Expression"
+					}
 				}
 			}
 		],
