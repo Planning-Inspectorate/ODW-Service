@@ -1580,13 +1580,13 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Send starting teams notification",
+						"activity": "Record pipeline starting",
 						"dependencyConditions": [
 							"Succeeded"
 						]
 					},
 					{
-						"activity": "Record pipeline starting",
+						"activity": "Set enabled entities",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -2316,6 +2316,64 @@
 						"type": "Expression"
 					}
 				}
+			},
+			{
+				"name": "Set enabled entities",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get enabled entities",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "enabled_entities",
+					"value": {
+						"value": "@activity('Get enabled entities').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get enabled entities",
+				"description": "Get the enabled entities from master pipeline config",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Send starting teams notification",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT * FROM odw_config_db.dbo.main_pipeline_config \nWHERE is_enabled = 1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_odw_master_config",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
 			}
 		],
 		"variables": {
@@ -2380,6 +2438,9 @@
 			"Key_Vault_API": {
 				"type": "String",
 				"defaultValue": "?api-version=7.0"
+			},
+			"enabled_entities": {
+				"type": "Array"
 			}
 		},
 		"folder": {
