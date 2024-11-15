@@ -59,55 +59,64 @@ stages:
             git fetch origin main
             
             # git checkout '$(source_branch)'
-            Write-Output "Listing remote branches..."
-            git branch -r
+            # Write-Output "Listing remote branches..."
+            # git branch -r
             # List added files compared to the main branch
             Write-Output "Doing the git diff..."
             $createdFiles = git diff --name-only --diff-filter=A origin/main...origin/feat/ci-cd-testing -- workspace/ |
                           Where-Object { $_ -match '\.json$' }
 
-            # # List modified files compared to the main branch
-            # $modifiedFiles = git diff --name-only --diff-filter=M '$(target_branch)'..'$(source_branch)' -- workspace/ |
-            #               Where-Object { $_ -match '\.json$' }
+            # List modified files compared to the main branch
+            $modifiedFiles = git diff --name-only --diff-filter=M origin/main...origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
 
-            # # List renamed files compared to the main branch
-            # $renamedFiles = git diff --name-only --diff-filter=R '$(target_branch)'..'$(source_branch)' -- workspace/ |
-            #               Where-Object { $_ -match '\.json$' }
+            # List renamed files compared to the main branch
+            $renamedFiles = git diff --name-only --diff-filter=R origin/main...origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
 
-            # # List deleted files compared to the main branch
-            # $deletedFiles = git diff --name-only --diff-filter=D '$(target_branch)'..'$(source_branch)' -- workspace/ |
-            #               Where-Object { $_ -match '\.json$' }
+            # List deleted files compared to the main branch
+            $deletedFiles = git diff --name-only --diff-filter=D origin/main...origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
 
 
             # Write to a file for archiving
-            # $createdFiles | Out-File created_files.txt
-            # $modifiedFiles | Out-File modified_files.txt
-            # $renamedFiles | Out-File renamed_files.txt
-            # $deletedFiles | Out-File deleted_files.txt
+            $createdFiles | Out-File created_files.txt
+            $modifiedFiles | Out-File modified_files.txt
+            $renamedFiles | Out-File renamed_files.txt
+            $deletedFiles | Out-File deleted_files.txt
 
-            # $createdAndModifiedFiles = Get-Content $createdFiles + Get-Content $modifiedFiles
-            # $createdAndModifiedFiles | Out-File createdAndModifiedFiles.txt
+            $createdAndModifiedFiles = Get-Content $createdFiles + Get-Content $modifiedFiles
+            $createdAndModifiedFiles | Out-File createdAndModifiedFiles.txt
 
-            # # Show the contents of the file in the console
-            # Write-Output "Created files:"
-            # Get-Content created_files.txt
+            # Show the contents of the file in the console
+            Write-Output "Created files:"
+            Get-Content created_files.txt
 
-            # Write-Output "Modified files:"
-            # Get-Content modified_files.txt
+            Write-Output "Modified files:"
+            Get-Content modified_files.txt
 
-            # Write-Output "Renamed files:"
-            # Get-Content renamed_files.txt
+            Write-Output "Renamed files:"
+            Get-Content renamed_files.txt
 
-            # Write-Output "Deleted files:"
-            # Get-Content deleted_files.txt
+            Write-Output "Deleted files:"
+            Get-Content deleted_files.txt
 
-            # Write-Output "All created and modified files:"
-            # Get-Content createdAndModifiedFiles.txt
+            Write-Output "All created and modified files:"
+            Get-Content createdAndModifiedFiles.txt
 
+            # Check for renamed files
             # if ($renamedFiles) {
-            #   Write-Error "Pipeline failed due to renamed files detected. Renamed files:"
-            #   $renamedFiles | ForEach-Object { Write-Error $_ }
-            #   exit 1
+            #     Write-Error "Pipeline failed due to renamed files detected. Renamed files:"
+                
+            #     # Log each renamed file
+            #   $renamedFiles | ForEach-Object {
+            #       Write-Error $_
+            #   }
+
+            #     # Exit the script with an error code
+            #     exit 1
+            # } else {
+            #     Write-Output "No renamed files detected."
             # }
 
             # foreach ($file in $createdAndModifiedFiles) {
@@ -130,20 +139,20 @@ stages:
             # Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)"
 
       # Task to archive the JSON files in the Artifact Staging Directory
-      - task: ArchiveFiles@2
-        inputs:
-          rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'  # Folder containing the JSON files
-          includeRootFolder: false  # Optional: Set to false to avoid including the root directory in the archive
-          archiveType: 'zip'  # Specify the archive type (zip)
-          archiveFile: '$(Build.ArtifactStagingDirectory)/json_files.zip'  # Path for the resulting archive
-          replaceExistingArchive: true  # Optional: Set to true to overwrite any existing archive
+      # - task: ArchiveFiles@2
+      #   inputs:
+      #     rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'  # Folder containing the JSON files
+      #     includeRootFolder: false  # Optional: Set to false to avoid including the root directory in the archive
+      #     archiveType: 'zip'  # Specify the archive type (zip)
+      #     archiveFile: '$(Build.ArtifactStagingDirectory)/json_files.zip'  # Path for the resulting archive
+      #     replaceExistingArchive: true  # Optional: Set to true to overwrite any existing archive
 
-      # Task to publish the artifact
-      - task: PublishBuildArtifacts@1
-        inputs:
-          artifactName: 'json_files'  # Name of the artifact
-          publishLocation: 'Container'  # Specifies that the artifact is published to the pipeline
-          targetPath: '$(Build.ArtifactStagingDirectory)'  # Folder containing the archived files
+      # # Task to publish the artifact
+      # - task: PublishBuildArtifacts@1
+      #   inputs:
+      #     artifactName: 'json_files'  # Name of the artifact
+      #     publishLocation: 'Container'  # Specifies that the artifact is published to the pipeline
+      #     targetPath: '$(Build.ArtifactStagingDirectory)'  # Folder containing the archived files
 
   - stage: Deploy
     displayName: Deploy
