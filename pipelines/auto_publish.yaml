@@ -58,20 +58,17 @@ stages:
             Write-Output "Fetching origin main..."
             git fetch origin main
             
-            # git checkout '$(source_branch)'
-            # Write-Output "Listing remote branches..."
-            # git branch -r
-            # List added files compared to the main branch
             Write-Output "Doing the git diff..."
             $createdOrModifiedFiles = git diff --name-only --diff-filter=AM origin/main...origin/feat/ci-cd-testing -- workspace/ |
                           Where-Object { $_ -match '\.json$' }
 
-            # List renamed files compared to the main branch
             $renamedFiles = git diff --name-only --diff-filter=R origin/main...origin/feat/ci-cd-testing -- workspace/ |
                           Where-Object { $_ -match '\.json$' }
 
-            # List deleted files compared to the main branch
             $deletedFiles = git diff --name-only --diff-filter=D origin/main...origin/feat/ci-cd-testing -- workspace/ |
+                          Where-Object { $_ -match '\.json$' }
+
+            $allFiles = git diff --name-only origin/main...origin/feat/ci-cd-testing -- workspace/ |
                           Where-Object { $_ -match '\.json$' }
 
 
@@ -79,6 +76,7 @@ stages:
             $createdOrModifiedFiles | Out-File created_modified_files.txt
             $renamedFiles | Out-File renamed_files.txt
             $deletedFiles | Out-File deleted_files.txt
+            $allFiles | Out-File all_files.txt
 
             # Show the contents of the file in the console
             Write-Output "Created or modified files:"
@@ -89,6 +87,9 @@ stages:
 
             Write-Output "Deleted files:"
             Get-Content deleted_files.txt
+
+            Write-Output "All files"
+            Get-Content all_files.txt
 
             # Check for renamed files
             # if ($renamedFiles) {
@@ -105,24 +106,24 @@ stages:
             #     Write-Output "No renamed files detected."
             # }
 
-            # foreach ($file in $createdAndModifiedFiles) {
-            #   $sourcePath = "$(Build.SourcesDirectory)/$file"  # Correct source path relative to repository root
-            #   $destinationPath = "$(Build.ArtifactStagingDirectory)/$file"
+            foreach ($file in $allFiles) {
+              $sourcePath = "$(Build.SourcesDirectory)/$file"  # Correct source path relative to repository root
+              $destinationPath = "$(Build.ArtifactStagingDirectory)/$file"
               
-            #   # Ensure the destination directory exists
-            #   New-Item -ItemType Directory -Path (Split-Path -Path $destinationPath) -Force -ErrorAction SilentlyContinue
+              # Ensure the destination directory exists
+              New-Item -ItemType Directory -Path (Split-Path -Path $destinationPath) -Force -ErrorAction SilentlyContinue
               
-            #   # Copy the file
-            #   if (Test-Path $sourcePath) {
-            #       Copy-Item -Path $sourcePath -Destination $destinationPath -Force
-            #   } else {
-            #       Write-Output "Source file not found: $sourcePath"
-            #   }
-            # }
+              # Copy the file
+              if (Test-Path $sourcePath) {
+                  Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+              } else {
+                  Write-Output "Source file not found: $sourcePath"
+              }
+            }
 
-            # # List the files in the artifact staging directory to confirm they've been copied
-            # Write-Output "Files in $(Build.ArtifactStagingDirectory):"
-            # Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)"
+            # List the files in the artifact staging directory to confirm they've been copied
+            Write-Output "Files in $(Build.ArtifactStagingDirectory):"
+            Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)"
 
       # Task to archive the JSON files in the Artifact Staging Directory
       # - task: ArchiveFiles@2
