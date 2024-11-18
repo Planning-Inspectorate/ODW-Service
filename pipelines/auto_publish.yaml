@@ -15,14 +15,23 @@ variables:
   value: 'ODW DEV - Infrastructure'
 
 - name: source_branch
-  value: 'feat/ci-cd-testing'
+  value: $(System.PullRequest.SourceBranch)
 
 - name: target_branch
-  value: 'main'
+  value: $(System.PullRequest.TargetBranch)
 
-pr: none
+- name: pull_request_id
+  value: $(System.PullRequest.PullRequestId)
 
-trigger: none
+pr:
+  branches:
+    include:
+      - main
+
+trigger:
+  branches:
+    exclude:
+      - "*"
 
 pool: 'pins-agent-pool-odw-dev-uks'
 
@@ -40,17 +49,29 @@ resources:
     ref: refs/heads/$(target_branch)
 
 stages:
+
   - stage: Build
     displayName: Build Code
 
     jobs:
+
     - job: Build
 
       steps:
+      
+      - script: |
+          echo "Source branch: $(source_branch)"
+          echo "Target branch: $(target_branch)"
+          echo "Pull request id: $(pull_request_id)"
+          
+        displayName: Print variables
+        
       - checkout: source
         fetchDepth: 0
+        displayName: Checkout source branch
 
       - task: PowerShell@2
+        displayName: Git diff and copy to target folder
         inputs:
           targetType: 'inline'
           script: |
@@ -116,6 +137,7 @@ stages:
             Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)"
 
       - task: ArchiveFiles@2
+        displayName: Zip the files
         inputs:
           rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
           includeRootFolder: false
@@ -124,6 +146,7 @@ stages:
           replaceExistingArchive: true 
 
       - task: PublishBuildArtifacts@1
+        displayName: Publish artifact
         inputs:
           artifactName: 'synapse_changes'  
           publishLocation: 'Container'
@@ -134,7 +157,7 @@ stages:
     dependsOn: Build
     jobs:
     - deployment: Deploy
-      displayName: Deploy Synapse
+      displayName: Deploy Synapse Changes
       environment: Dev
       strategy:
         runOnce:
