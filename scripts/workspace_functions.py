@@ -1,11 +1,12 @@
 """
-Functions to interact with Azure Synapse
+Functions to interact with Azure Synapse objects
 """
 import os
 import json
 import asyncio
 import timeit
 import sys
+import glob
 
 # to track coroutine allocation for event loop handling
 # an issue when running in Jupyter notebooks only
@@ -72,14 +73,10 @@ def create_or_update_notebook(notebook: str) -> dict:
     return response.json()
 
 
-def get_objects_from_branch(object_type: str) -> list | str:
+async def list_json_files(object_type: str) -> list[str]:
     """
-    Function to get all objects from the main branch.
-    Fetches the names of all the json files from the folders in the workspace folder.
+    List all JSON file names in the folder corresponding to the object_type asynchronously.
     """
-
-    json_files = []
-
     script_dir = os.path.dirname(__file__)
     object_path = os.path.join(script_dir, f"../workspace/{object_type}")
 
@@ -87,14 +84,18 @@ def get_objects_from_branch(object_type: str) -> list | str:
         print(f"Error: The folder {object_path} does not exist.")
         return []
 
-    json_files.extend([file for file in os.listdir(object_path)])
+    # Use asyncio.to_thread to run the blocking operation in a separate thread
+    json_files = await asyncio.to_thread(glob.glob, os.path.join(object_path, "*.json"))
 
-    return f"{len(json_files)} {object_type}"
+    # Extract file names (just the name, not the full path, and remoe the .json extension to accurately compare with the workspace names)
+    file_names = [os.path.splitext(os.path.basename(file))[0] for file in json_files]
+
+    return file_names
 
 
 async def fetch_objects(
     session: aiohttp.ClientSession, workspace_url: str, object_type: str
-) -> str:
+) -> list[str]:
     """
     Fetch all objects of a given type with pagination.
     """
@@ -107,10 +108,26 @@ async def fetch_objects(
             object_list.extend(obj["name"] for obj in response_json.get("value", []))
             url = response_json.get("nextLink")
 
-    return f"{len(object_list)} {object_type}"
+    return object_list
 
 
-async def main():
+def compare_lists(fetched_objects: list, json_files: list) -> tuple:
+    """
+    Compare two lists (fetched_objects and json_files) and return the missing items from each list.
+    """
+
+    set_objects = set(fetched_objects)
+    set_json_files = set(json_files)
+
+    # Find items in fetched_objects but not in json_files
+    missing_from_json_files = set_objects - set_json_files
+    # Find items in json_files but not in fetched_objects
+    missing_from_fetched_objects = set_json_files - set_objects
+
+    return missing_from_json_files, missing_from_fetched_objects
+
+
+async def main() -> None:
     """
     Main function to list all objects concurrently using asyncio.
     """
@@ -123,19 +140,50 @@ async def main():
         "triggers",
     ]
 
+    object_data = {}
+
     async with aiohttp.ClientSession(headers=_headers) as session:
         tasks = [
             fetch_objects(session, _SYNAPSE_ENDPOINT, object_type)
             for object_type in object_types
         ]
 
+        # remove the last letter 's' for the folder names
+        json_folders = [folder[:-1] for folder in object_types]
+
+        tasks += [list_json_files(folder) for folder in json_folders]
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for object_type, result in zip(object_types, results):
-            if isinstance(result, Exception):
-                print(f"Error fetching {object_type}: {result}")
+        fetched_objects = results[
+            : len(object_types)
+        ]  # First set of results: fetched objects
+        json_files = results[len(object_types) :]  # Second set of results: JSON files
+
+        for idx, object_type in enumerate(object_types):
+            object_data[object_type] = {
+                "fetched_objects": fetched_objects[idx],
+                "json_files": json_files[idx],
+            }
+
+        for object_type in object_types:
+            fetched = object_data[object_type]["fetched_objects"]
+            files = object_data[object_type]["json_files"]
+            missing_from_json, missing_from_objects = compare_lists(fetched, files)
+
+            print(f"Comparing {object_type}:")
+
+            if missing_from_json:
+                print(f"In workspace but not in main branch: {missing_from_json}")
             else:
-                print(result)
+                print("No items missing from main branch.")
+
+            if missing_from_objects:
+                print(f"In main branch but not in workspace: {missing_from_objects}")
+            else:
+                print("No items missing from workspace.")
+
+            print()
 
 
 def run_main():
@@ -162,20 +210,3 @@ if __name__ == "__main__":
             nest_asyncio.apply()
             loop = asyncio.get_event_loop()
             loop.run_until_complete(main())
-
-# def main():
-#     """
-#     Main function for fetching folder contents
-#     """
-#     object_types = ['dataset',
-#                'linkedService',
-#                'notebook',
-#                'pipeline',
-#                'sqlScript',
-#                'trigger']
-
-#     for object_type in object_types:
-#         pprint.pprint(get_objects_from_branch(object_type))
-
-# if __name__ == "__main__":
-#     main()
