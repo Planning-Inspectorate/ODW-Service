@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c77222e6-9f4a-491b-b836-127552c645c2"
+				"spark.autotune.trackingId": "1be01104-3ec5-4009-b209-80049209e04c"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 1
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -95,7 +95,7 @@
 					"hrm_table_name: str = 'entraid'\n",
 					"curated_table_name: str = 'entraid'"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -114,7 +114,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -132,7 +132,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -153,7 +153,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name, None, False)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 5
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -190,7 +190,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 6
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -220,12 +220,61 @@
 					}
 				},
 				"source": [
+					"def entraid_test_sb_std_to_sb_hrm_no_dropping_records(sb_std_table: str, sb_hrm_table: str, primary_key: str) -> bool:\r\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\r\n",
+					"    select {primary_key}\r\n",
+					"    from {std_db_name}.{sb_std_table}\r\n",
+					"    where {primary_key} not in\r\n",
+					"    (\r\n",
+					"        select {primary_key}\r\n",
+					"        from {hrm_db_name}.{sb_hrm_table}\r\n",
+					"    )\r\n",
+					"    \"\"\")\r\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if entraid_test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name, 'Id'):\r\n",
+					"   print(\"Test passed: No records were dropped.\")\r\n",
+					"else:\r\n",
+					"    exitCode += 1"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"if test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name, 'Id'):\r\n",
 					"   print(\"Test passed: No records were dropped.\")\r\n",
 					"else:\r\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 16
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
