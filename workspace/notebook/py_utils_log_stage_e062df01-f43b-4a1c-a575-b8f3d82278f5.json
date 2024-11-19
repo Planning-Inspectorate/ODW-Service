@@ -1,0 +1,486 @@
+{
+	"name": "py_utils_log_stage_e062df01-f43b-4a1c-a575-b8f3d82278f5",
+	"properties": {
+		"description": "Generic notebook for logging a step",
+		"folder": {
+			"name": "utils/main"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "ee24d75d-5893-4147-ad30-18df8db4cfd5"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Setup parameters. This is done in a notebook so the same interface can be used across both pipelines and notebooks"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"Stage=\"Start\" #Valid values are Start, OnProgress, Fail, Warning, and Completion\r\n",
+					"PipelineName = \"pln_horizon\"\r\n",
+					"PipelineRunID = \"5a550e61-0382-4ac8-b8eb-af731741b756\"\r\n",
+					"Inserts = 0\r\n",
+					"Updates = 0\r\n",
+					"Deletes = 0\r\n",
+					"ErrorMessage = ''\r\n",
+					"StatusMessage = 'Loading relevant reps'\r\n",
+					"PipelineTriggerID = ''\r\n",
+					"PipelineTriggerName = ''\r\n",
+					"PipelineTriggerType = ''\r\n",
+					"PipelineTriggeredbyPipelineName = ''\r\n",
+					"PipelineTriggeredbyPipelineRunID = ''\r\n",
+					"PipelineExecutionTimeInSec = ''\r\n",
+					"StartTime1 = ''\r\n",
+					"EndTime1 = ''\r\n",
+					"ActivityType = 'Pipeline'"
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import subprocess\n",
+					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"tenacity\"])\n",
+					"from tenacity import retry, wait_random_exponential, wait_exponential_jitter, RetryCallState, wait_exponential, stop_after_delay, stop_after_attempt"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": [
+						"parameters_overwritten"
+					]
+				},
+				"source": [
+					"# This cell is generated from runtime parameters. Learn more: https://go.microsoft.com/fwlink/?linkid=2161015\n",
+					"Stage = \"OnProgress\"\n",
+					"PipelineName = \"pln_horizon\"\n",
+					"PipelineRunID = \"5c119b47-3d87-4f95-8e56-3514fd1bb5e4\"\n",
+					"Inserts = 0\n",
+					"Updates = 0\n",
+					"Deletes = 0\n",
+					"ErrorMessage = \"\"\n",
+					"StatusMessage = \"Loading nsip project\"\n",
+					"PipelineTriggerID = \"480761d0-e6ae-4f37-8975-7a1aefc04f71\"\n",
+					"PipelineTriggerName = \"480761d0-e6ae-4f37-8975-7a1aefc04f71\"\n",
+					"PipelineTriggerType = \"PipelineActivity\"\n",
+					"PipelineTriggeredbyPipelineName = \"pln_master\"\n",
+					"PipelineTriggeredbyPipelineRunID = \"f3e6795d-1f3c-4ed5-bc04-552a44dc5d65\"\n",
+					"ActivityType = \"Pipeline\"\n",
+					""
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Import necessary libraries\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"import pyspark.sql.functions\r\n",
+					"import time\r\n",
+					"from random import randint"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def before_sleep(retry_state: RetryCallState):\n",
+					"    print(f\"Retrying after {retry_state.next_action.sleep} seconds...\")"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Create function to retry in the event of a read or parallel writes. We don't want a one off clash causing the pipeline to fail.\r\n",
+					"@retry(wait=wait_exponential(multiplier=2, min=3, max=10), stop=stop_after_attempt(5), before_sleep=before_sleep,reraise=True)\r\n",
+					"def save_to_delta_with_retry(df, table_name, max_retries):\r\n",
+					"    # Attempt to save the DataFrame to the Delta table\r\n",
+					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(table_name)\r\n",
+					"    print(f\"Data saved successfully to {table_name}\")"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Create a SparkSession\r\n",
+					"session = SparkSession.builder.appName(\"Execute_Load\").getOrCreate()\r\n",
+					"\r\n",
+					"#Remove reserved characters\r\n",
+					"if PipelineName is not None:  \r\n",
+					"    PipelineName = PipelineName.replace('\"', '')\r\n",
+					"\r\n",
+					"if ErrorMessage is not None:   \r\n",
+					"    ErrorMessage = ErrorMessage.replace('\"', '')\r\n",
+					"\r\n",
+					"if StatusMessage is not None: \r\n",
+					"    StatusMessage = StatusMessage.replace('\"', '')\r\n",
+					"\r\n",
+					"if PipelineTriggerName is not None: \r\n",
+					"    PipelineTriggerName = PipelineTriggerName.replace('\"', '')\r\n",
+					"\r\n",
+					"if PipelineTriggeredbyPipelineName is not None: \r\n",
+					"    PipelineTriggeredbyPipelineName = PipelineTriggeredbyPipelineName.replace('\"', '')"
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Log based on stage of the process as necessary"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#If we're dealing with a start of a process we only need to set the start time. The status message is hard coded to ensure this is always consistent\r\n",
+					"if f'{Stage}' == \"Start\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,\"{PipelineName}\" AS PipelineName                \r\n",
+					"                ,\"{PipelineRunID}\" AS PipelineRunID\r\n",
+					"                ,current_timestamp() AS StartTime\r\n",
+					"                ,NULL AS EndTime\r\n",
+					"                ,NULL AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,\"{ErrorMessage}\" AS ErrorMessage\r\n",
+					"                ,\"Starting process\" AS StatusMessage\r\n",
+					"                ,\"{PipelineTriggerID}\" AS PipelineTriggerID\r\n",
+					"                ,\"{PipelineTriggerName}\" AS PipelineTriggerName\r\n",
+					"                ,\"{PipelineTriggerType}\" AS PipelineTriggerType\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineName}\" AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineRunID}\" AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,\"{PipelineExecutionTimeInSec}\" AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,\"\" AS EndTime1\r\n",
+					"                ,\"{ActivityType}\" AS ActivityType\r\n",
+					"            \"\"\"\r\n",
+					"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 1)"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#If we're dealing with an onprogress, we will use the status message to post additional info as necessary\r\n",
+					"if f'{Stage}' == \"OnProgress\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,\"{PipelineName}\" AS PipelineName                \r\n",
+					"                ,\"{PipelineRunID}\" AS PipelineRunID\r\n",
+					"                ,current_timestamp() AS StartTime\r\n",
+					"                ,NULL AS EndTime\r\n",
+					"                ,NULL AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,\"{ErrorMessage}\" AS ErrorMessage\r\n",
+					"                ,\"{StatusMessage}\" AS StatusMessage\r\n",
+					"                ,\"{PipelineTriggerID}\" AS PipelineTriggerID\r\n",
+					"                ,\"{PipelineTriggerName}\" AS PipelineTriggerName\r\n",
+					"                ,\"{PipelineTriggerType}\" AS PipelineTriggerType\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineName}\" AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineRunID}\" AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,\"{PipelineExecutionTimeInSec}\" AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,\"\" AS EndTime1\r\n",
+					"                ,\"{ActivityType}\" AS ActivityType\r\n",
+					"            \"\"\"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 1)"
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#If we're dealing with a warning we'll set the start and end time to be the same as nothing has executed\r\n",
+					"if f'{Stage}' == \"Warning\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,\"{PipelineName}\" AS PipelineName                \r\n",
+					"                ,\"{PipelineRunID}\" AS PipelineRunID\r\n",
+					"                ,current_timestamp() AS StartTime\r\n",
+					"                ,current_timestamp() AS EndTime\r\n",
+					"                ,NULL AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,\"{ErrorMessage}\" AS ErrorMessage\r\n",
+					"                ,\"{StatusMessage}\" AS StatusMessage\r\n",
+					"                ,\"{PipelineTriggerID}\" AS PipelineTriggerID\r\n",
+					"                ,\"{PipelineTriggerName}\" AS PipelineTriggerName\r\n",
+					"                ,\"{PipelineTriggerType}\" AS PipelineTriggerType\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineName}\" AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineRunID}\" AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,\"{PipelineExecutionTimeInSec}\" AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,\"\" AS EndTime1\r\n",
+					"                ,\"{ActivityType}\" AS ActivityType\r\n",
+					"            \"\"\"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#If we're dealing with a warning we'll set the start and end time to be the same as nothing has executed\r\n",
+					"if f'{Stage}' == \"Fail\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,\"{PipelineName}\" AS PipelineName                \r\n",
+					"                ,\"{PipelineRunID}\" AS PipelineRunID\r\n",
+					"                ,current_timestamp() AS StartTime\r\n",
+					"                ,current_timestamp() AS EndTime\r\n",
+					"                ,NULL AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,\"{ErrorMessage}\" AS ErrorMessage\r\n",
+					"                ,\"{StatusMessage}\" AS StatusMessage\r\n",
+					"                ,\"{PipelineTriggerID}\" AS PipelineTriggerID\r\n",
+					"                ,\"{PipelineTriggerName}\" AS PipelineTriggerName\r\n",
+					"                ,\"{PipelineTriggerType}\" AS PipelineTriggerType\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineName}\" AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineRunID}\" AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,\"{PipelineExecutionTimeInSec}\" AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,\"\" AS EndTime1\r\n",
+					"                ,\"{ActivityType}\" AS ActivityType\r\n",
+					"            \"\"\"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#If we're dealing with a warning we'll set the start and end time to be the same as nothing has executed\r\n",
+					"if f'{Stage}' == \"Completion\":\r\n",
+					"    sql =   f\"\"\"\r\n",
+					"            SELECT\r\n",
+					"                (SELECT IFNULL(MAX(LogId), 0) FROM Logging.PIPELINE_LOGS) + 1 AS LogId\r\n",
+					"                ,PipelineName                \r\n",
+					"                ,PipelineRunID\r\n",
+					"                ,StartTime\r\n",
+					"                ,current_timestamp() AS EndTime\r\n",
+					"                ,cast(current_timestamp()-StartTime AS int) AS DurationSeconds\r\n",
+					"                ,{Inserts} AS Inserts\r\n",
+					"                ,{Updates} AS Updates\r\n",
+					"                ,{Deletes} AS Deletes\r\n",
+					"                ,\"{ErrorMessage}\" AS ErrorMessage\r\n",
+					"                ,\"Complete: {StatusMessage}\" AS StatusMessage\r\n",
+					"                ,\"{PipelineTriggerID}\" AS PipelineTriggerID\r\n",
+					"                ,\"{PipelineTriggerName}\" AS PipelineTriggerName\r\n",
+					"                ,\"{PipelineTriggerType}\" AS PipelineTriggerType\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineName}\" AS PipelineTriggeredbyPipelineName\r\n",
+					"                ,\"{PipelineTriggeredbyPipelineRunID}\" AS PipelineTriggeredbyPipelineRunID\r\n",
+					"                ,\"{PipelineExecutionTimeInSec}\" AS PipelineExecutionTimeInSec\r\n",
+					"                ,CAST(current_timestamp() AS varchar(8000)) AS StartTime1\r\n",
+					"                ,\"\" AS EndTime1\r\n",
+					"                ,\"{ActivityType}\" AS ActivityType\r\n",
+					"            FROM\r\n",
+					"                logging.pipeline_logs\r\n",
+					"            WHERE\r\n",
+					"                PipelineRunID = \"{PipelineRunID}\"\r\n",
+					"                AND ActivityType = \"Pipeline\"\r\n",
+					"                AND StatusMessage = \"{StatusMessage}\"\r\n",
+					"            \"\"\"\r\n",
+					"    df = session.sql(sql)\r\n",
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
+				],
+				"execution_count": 21
+			}
+		]
+	}
+}
