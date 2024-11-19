@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "53b66fa4-ea74-4cf0-bd8f-c1a130090e3b"
+				"spark.autotune.trackingId": "52f68a40-937c-4924-a061-dcac173813a1"
 			}
 		},
 		"metadata": {
@@ -68,7 +68,25 @@
 				"source": [
 					"%pip install opencensus-ext-azure"
 				],
-				"execution_count": 46
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run py_retry_logic"
+				],
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -76,14 +94,15 @@
 					"import logging\r\n",
 					"from opencensus.ext.azure.log_exporter import AzureLogHandler\r\n",
 					"\r\n",
-					"logger = logging.getLogger()\r\n",
-					"logger.setLevel(logging.INFO)\r\n",
-					"if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"    pass\r\n",
-					"else:\r\n",
-					"    key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"    logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
-					"  \r\n",
+					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\r\n",
+					"def setupLogging():\r\n",
+					"    logger = logging.getLogger()\r\n",
+					"    logger.setLevel(logging.INFO)\r\n",
+					"    if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
+					"        pass\r\n",
+					"    else:\r\n",
+					"        key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
+					"        logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
 					"\r\n",
 					"def logging_to_appins(func):\r\n",
 					"    import functools\r\n",
@@ -109,9 +128,11 @@
 					"            print(\"Logging Exception\")\r\n",
 					"            logger.exception(e)\r\n",
 					"            raise e\r\n",
-					"    return wrapper"
+					"    return wrapper\r\n",
+					"\r\n",
+					"    setupLogging()"
 				],
-				"execution_count": 47
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -128,18 +149,20 @@
 				},
 				"source": [
 					"#@logging_to_appins\n",
-					"#def test():\n",
-					"    #raise ValueError('BANANA')\n",
+					"def test():\n",
+					"    raise ValueError('BANANA')\n",
 					"\n",
-					"#try:\n",
-					"    #this should appear in the logs because it's got a decorator on it\n",
-					"    #logger.info(\"Running test\")\n",
-					"    #test()\n",
-					"#except:\n",
-					"    #logger.error(\"Caught error\")\n",
+					"#change to debug\n",
+					"if False:\n",
+					"    try:\n",
+					"        #this should appear in the logs because it's got a decorator on it\n",
+					"        logger.info(\"Running test\")\n",
+					"        test()\n",
+					"    except:\n",
+					"        logger.error(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -155,18 +178,20 @@
 					}
 				},
 				"source": [
-					"#def test2():\n",
-					"    #raise ValueError('CARROT')\n",
+					"def test2():\n",
+					"    raise ValueError('CARROT')\n",
 					"\n",
-					"#try:\n",
-					"    #this shouldn't appear in the logs because it's not got a decorator on it\n",
-					"    #logger.info(\"Running test2\")\n",
-					"    #test2()\n",
-					"#except:\n",
-					"    #logger.error(\"Caught error\")\n",
+					"#change to debug\n",
+					"if False:\n",
+					"    try:\n",
+					"        #this shouldn't appear in the logs because it's not got a decorator on it\n",
+					"        logger.info(\"Running test2\")\n",
+					"        test2()\n",
+					"    except:\n",
+					"        logger.error(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 49
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -182,18 +207,20 @@
 					}
 				},
 				"source": [
-					"#@logging_to_appins\n",
-					"#def test3():\n",
-					"    #raise ValueError('CAULIFLOWER')\n",
+					"@logging_to_appins\n",
+					"def test3():\n",
+					"    raise ValueError('CAULIFLOWER')\n",
 					"\n",
-					"#try:\n",
-					"    #this should appear in the logs because it's got a decorator on it\n",
-					"    #logger.info(\"Running test3\")\n",
-					"    #test3()\n",
-					"#except:\n",
-					"    #logger.error(\"Caught error\")"
+					"#change to debug\n",
+					"if False:\n",
+					"    try:\n",
+					"        #this should appear in the logs because it's got a decorator on it\n",
+					"        logger.info(\"Running test3\")\n",
+					"        test3()\n",
+					"    except:\n",
+					"        logger.error(\"Caught error\")"
 				],
-				"execution_count": 50
+				"execution_count": 10
 			}
 		]
 	}
