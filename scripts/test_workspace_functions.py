@@ -31,12 +31,12 @@ def test_delete_notebook_200(requests_mock) -> None:
     assert response["message"] == "OK"
 
 
-def test_delete_notebook_201(requests_mock) -> None:
+def test_delete_notebook_202(requests_mock) -> None:
     """
-    Tests the delete_notebook function for a 201 status code
+    Tests the delete_notebook function for a 202 status code
     """
     url = f"https://pins-synw-odw-dev-uks.dev.azuresynapse.net/notebooks/{NOTEBOOK_NAME}?api-version=2020-12-01"
-    requests_mock.delete(url, json = {"message": "Accepted"}, status_code = 201)
+    requests_mock.delete(url, json = {"message": "Accepted"}, status_code = 202)
     from workspace_functions import delete_notebook
     response = delete_notebook(NOTEBOOK_NAME)
     assert response["message"] == "Accepted"
@@ -91,14 +91,3 @@ async def test_fetch_objects():
 
     # Assertions
     assert result == ["dataset1", "dataset2", "dataset3"]
-
-
-from workspace_functions import compare_json_files
-import os
-
-script_dir: str = os.path.dirname(__file__)
-object_path: str = os.path.join(script_dir, "../workspace/notebook/")
-
-file1= f"{object_path}/aie_document_data.json"
-file2 = f"{object_path}/appeal_event.json"
-compare_json_files(file1=file1, file2=file2)
