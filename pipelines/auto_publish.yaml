@@ -123,14 +123,25 @@ stages:
                 
                 if (Test-Path $sourcePath) {
                     Copy-Item -Path $sourcePath -Destination $destinationPath -Force
-                    Write-Output "Copied: $file"
-                } else {
-                    Write-Warning "Source file not found: $sourcePath"
-                }
-            }
+                    Write-Output "Copied: $file"}
+                else {
+                    Write-Warning "Source file not found: $sourcePath"}}
+
+      - task: PowerShell@2
+        displayName: Check if artifact staging directory is empty
+        inputs:
+          targetType: 'inline'
+          script: |
+
+            $files = Get-ChildItem -Path "$(Build.ArtifactStagingDirectory)" -Recurse
+            if ($files) {
+              Write-Host "##vso[task.setvariable variable=IsDirectoryNotEmpty]true"} 
+              else {
+            Write-Host "##vso[task.setvariable variable=IsDirectoryNotEmpty]false"}
 
       - task: ArchiveFiles@2
         displayName: Zip the files
+        condition: and(succeeded(), eq(variables['IsDirectoryNotEmpty'], 'true'))
         inputs:
           rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
           includeRootFolder: false
@@ -140,6 +151,7 @@ stages:
 
       - task: PublishBuildArtifacts@1
         displayName: Publish artifact
+        condition: and(succeeded(), eq(variables['IsDirectoryNotEmpty'], 'true'))
         inputs:
           artifactName: 'synapse_changes'  
           publishLocation: 'Container'
