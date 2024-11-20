@@ -1,57 +1,11 @@
 {
-	"name": "Pipeline 1",
+	"name": "py_utils_log_to_storage",
 	"properties": {
 		"activities": [
 			{
-				"name": "Script1",
-				"type": "Script",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "ls_ssql_builtin",
-					"type": "LinkedServiceReference",
-					"parameters": {
-						"db_name": "logging"
-					}
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"parameters": [
-								{
-									"name": "Param1",
-									"type": "String",
-									"value": "test",
-									"direction": "Input"
-								}
-							],
-							"type": "Query",
-							"text": "--SELECT @Param1 AS Halwa;\nINSERT INTO pipeline_logs_test (LogId, PipelineName)\n\nVALUES (\n\n    (SELECT COALESCE(MAX(LogId), 0) FROM pipeline_logs_test) + 1,\n\n    'Test-Khan'\n\n)"
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "Copy data1",
+				"name": "Log to storage",
 				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "Script1",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -63,24 +17,21 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT COALESCE(MAX(LogId), 0) + 1 AS LogID,\n'Test-Khan' AS PipelineName\nFROM pipeline_logs_test",
+						"sqlReaderQuery": "SELECT COALESCE(MAX(LogId), 0) + 1 AS LogID,\n'Test-Khan' AS PipelineName\nFROM pipeline_logs",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
 					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"sqlWriterUseTableLock": false
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "FlattenHierarchy"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
 						}
-					}
+					},
+					"enableStaging": false
 				},
 				"inputs": [
 					{
@@ -90,7 +41,7 @@
 				],
 				"outputs": [
 					{
-						"referenceName": "ds_odw_main_pipeline_logging",
+						"referenceName": "ds_odw_main_pipeline_logs",
 						"type": "DatasetReference"
 					}
 				]
@@ -151,6 +102,9 @@
 			"ActivityType": {
 				"type": "String",
 				"defaultValue": "Pipeline"
+			},
+			"logss": {
+				"type": "Array"
 			}
 		},
 		"annotations": []
