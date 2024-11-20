@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f738f063-3c3b-4ae9-b426-24091aafb13e"
+				"spark.autotune.trackingId": "b8d7932f-ba57-4e84-b989-638537259403"
 			}
 		},
 		"metadata": {
@@ -507,7 +507,8 @@
 					"    (\n",
 					"        select {primary_key}\n",
 					"        from {hrm_db_name}.{sb_hrm_table}\n",
-					"    )\n",
+					"    ) \n",
+					"    and message_id is not null\n",
 					"    \"\"\")\n",
 					"    return df.count() == 0"
 				],
@@ -789,25 +790,21 @@
 					}
 				},
 				"source": [
-					"def test_curated_unique_hzn_only(curated_db: str, curated_table: str, primary_key: str) -> tuple[bool,int,int,bool]: \n",
+					"def test_no_project_from_horizon_dropped(std_db: str, curated_db_migration: str, horizon_table:str, curated_table_migration:str, horizon_pk:str, curated_pk:str):\n",
+					"    df = spark.sql(f\"\"\"\n",
+					"        SELECT *\n",
+					"        FROM {std_db}.{horizon_table}\n",
+					"        WHERE {horizon_pk} NOT IN (\n",
+					"            SELECT {curated_pk} FROM {curated_db_migration}.{curated_table_migration}\n",
+					"        )\n",
+					"        AND expected_from = (\n",
+					"            SELECT MAX(expected_from) FROM {std_db}.{horizon_table}\n",
+					"        )\n",
+					"    \"\"\")\n",
 					"\n",
-					"    df_curated: DataFrame = spark.sql(f\"SELECT * FROM {curated_db}.{curated_table}\")\n",
-					"\n",
-					"    if 'sourceSystem' in df_curated.columns:\n",
-					"        count_not_hzn_records: int = df_curated.filter(\"sourceSystem != 'horizon' AND sourceSystem != 'Horizon'\").count()\n",
-					"    else:\n",
-					"        count_not_hzn_records = 0\n",
-					"        \n",
-					"    total_count = df_curated.count()\n",
-					"\n",
-					"    #Count of distinct caseid (primary id)\n",
-					"    distinct_count = df_curated.select(primary_key).distinct().count()\n",
-					"\n",
-					"\n",
-					"    return (count_not_hzn_records == 0, total_count, distinct_count, total_count == distinct_count)\n",
-					""
+					"    return df.count() == 0"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
