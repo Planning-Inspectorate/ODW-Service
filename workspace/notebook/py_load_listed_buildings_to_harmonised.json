@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c889b113-b4dc-4c59-8456-6869a1cb4a88"
+				"spark.autotune.trackingId": "1df031c9-177b-46e4-bce8-0b1ca856f9cf"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,19 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Remove data that's changed in some way. We won't keep an explicit history as we have no requirements, this is master data, and if we need to debug changes we can use the delta timetravel history."
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -62,11 +75,12 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"df = spark.sql(\"\"\"\r\n",
-					"    SELECT\r\n",
+					" SELECT\r\n",
 					"        Listings.dataset\r\n",
 					"        ,Listings.`end-date` AS endDate\r\n",
 					"        ,CAST(Listings.entity AS Integer) AS entity\r\n",
@@ -84,13 +98,74 @@
 					"        odw_standardised_db.listed_building as Listings\r\n",
 					"        LEFT OUTER JOIN odw_harmonised_db.listedbuilding AS Target\r\n",
 					"            ON CAST(Listings.entity AS Integer) = Target.entity\r\n",
+					"            AND Listings.dataset = Target.dataset\r\n",
+					"            AND Listings.`end-date` =  Target.endDate\r\n",
+					"            AND CAST(Listings.entity AS Integer) =  Target.entity\r\n",
+					"            AND Listings.`entry-date` = Target.entryDate\r\n",
+					"            AND Listings.geometry = Target.geometry\r\n",
+					"            AND Listings.`listed-building-grade` =  Target.listedBuildingGrade\r\n",
+					"            AND Listings.name = Target.name\r\n",
+					"            AND Listings.`organisation-entity` =  Target.organisationEntity\r\n",
+					"            AND Listings.point = Target.point\r\n",
+					"            AND Listings.prefix = Target.prefix\r\n",
+					"            AND Listings.reference = Target.reference\r\n",
+					"            AND Listings.typology = Target.typology\r\n",
 					"    WHERE\r\n",
 					"        Target.entity IS NULL\r\n",
+					"UNION\r\n",
+					"SELECT\r\n",
+					"        Target.dataset\r\n",
+					"        ,Target.endDate\r\n",
+					"        ,Target.entity\r\n",
+					"        ,Target.entryDate\r\n",
+					"        ,Target.geometry\r\n",
+					"        ,Target.listedBuildingGrade\r\n",
+					"        ,Target.name\r\n",
+					"        ,Target.organisationEntity\r\n",
+					"        ,Target.point\r\n",
+					"        ,Target.prefix\r\n",
+					"        ,Target.reference\r\n",
+					"        ,Target.typology\r\n",
+					"        ,Target.dateReceived\r\n",
+					"    FROM\r\n",
+					"        odw_standardised_db.listed_building as Listings\r\n",
+					"        INNER JOIN odw_harmonised_db.listedbuilding AS Target\r\n",
+					"            ON CAST(Listings.entity AS Integer) = Target.entity\r\n",
+					"            AND Listings.dataset = Target.dataset\r\n",
+					"            AND Listings.`end-date` =  Target.endDate\r\n",
+					"            AND CAST(Listings.entity AS Integer) =  Target.entity\r\n",
+					"            AND Listings.`entry-date` = Target.entryDate\r\n",
+					"            AND Listings.geometry = Target.geometry\r\n",
+					"            AND Listings.`listed-building-grade` =  Target.listedBuildingGrade\r\n",
+					"            AND Listings.name = Target.name\r\n",
+					"            AND Listings.`organisation-entity` =  Target.organisationEntity\r\n",
+					"            AND Listings.point = Target.point\r\n",
+					"            AND Listings.prefix = Target.prefix\r\n",
+					"            AND Listings.reference = Target.reference\r\n",
+					"            AND Listings.typology = Target.typology\r\n",
 					"\"\"\")\r\n",
 					"\r\n",
-					"df.write.mode(\"Append\").saveAsTable(\"odw_harmonised_db.listedbuilding\")"
+					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.listedbuilding\")"
 				],
-				"execution_count": 15
+				"execution_count": 42
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
