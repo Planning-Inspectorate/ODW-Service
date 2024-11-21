@@ -7,10 +7,6 @@
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
-		"bigDataPool": {
-			"referenceName": "pinssynspodw",
-			"type": "BigDataPoolReference"
-		},
 		"sessionProperties": {
 			"driverMemory": "28g",
 			"driverCores": 4,
@@ -21,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5caf055d-8d15-43aa-8f49-11de84349079"
+				"spark.autotune.trackingId": "bdbfbc1e-863a-4a7c-bf42-0e87431eaa02"
 			}
 		},
 		"metadata": {
@@ -29,25 +25,10 @@
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
-				"display_name": "Synapse PySpark"
+				"display_name": "python"
 			},
 			"language_info": {
 				"name": "python"
-			},
-			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-				"name": "pinssynspodw",
-				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
-				"auth": {
-					"type": "AAD",
-					"authResource": "https://dev.azuresynapse.net"
-				},
-				"sparkVersion": "3.3",
-				"nodeCount": 3,
-				"cores": 4,
-				"memory": 28,
-				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -111,11 +92,7 @@
 					"from pyspark.sql import SparkSession\r\n",
 					"import pyspark.sql.functions\r\n",
 					"import time\r\n",
-					"from random import randint\r\n",
-					"\r\n",
-					"import subprocess\r\n",
-					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"tenacity\"])\r\n",
-					"from tenacity import retry, wait_exponential, stop_after_attempt, RetryCallState"
+					"from random import randint"
 				],
 				"execution_count": 4
 			},
@@ -133,33 +110,26 @@
 					}
 				},
 				"source": [
-					"def before_sleep(retry_state: RetryCallState):\n",
-					"    print(f\"Retrying after {retry_state.next_action.sleep} seconds...\")"
+					"#Create function to retry in the event of a read or parallel writes. We don't want a one off clash causing the pipeline to fail.\r\n",
+					"def save_to_delta_with_retry(df, table_name, max_retries):\r\n",
+					"    retries = 0\r\n",
+					"    while retries < max_retries:\r\n",
+					"        try:\r\n",
+					"            # Attempt to save the DataFrame to the Delta table\r\n",
+					"            df.write.mode(\"append\").format(\"delta\").saveAsTable(table_name)\r\n",
+					"            print(f\"Data saved successfully to {table_name}\")\r\n",
+					"            break  # Exit the loop if successful\r\n",
+					"        except Exception as e:\r\n",
+					"            print(f\"Error saving data to {table_name}: {str(e)}\")\r\n",
+					"            retries += 1\r\n",
+					"            if retries < max_retries:\r\n",
+					"                duration = randint(0, 100)/49.000\r\n",
+					"                time.sleep(duration)\r\n",
+					"            else:\r\n",
+					"                print(f\"Max retries reached. Unable to save data to {table_name}.\")\r\n",
+					"                break"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#Create function to retry in the event of a read or parallel writes. We don't want a one off clash causing the pipeline to fail.\n",
-					"@retry(wait=wait_exponential(multiplier=2, min=3, max=10), stop=stop_after_attempt(10), before_sleep=before_sleep,reraise=True)\n",
-					"def save_to_delta_with_retry(df, table_name):\n",
-					"    # Attempt to save the DataFrame to the Delta table\n",
-					"    df.write.mode(\"append\").format(\"delta\").saveAsTable(table_name)\n",
-					"    print(f\"Data saved successfully to {table_name}\")"
-				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -251,7 +221,7 @@
 					"            \"\"\"\r\n",
 					"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": 13
 			},
@@ -295,7 +265,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -339,7 +309,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -383,7 +353,7 @@
 					"                ,\"{ActivityType}\" AS ActivityType\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": null
 			},
@@ -433,7 +403,7 @@
 					"                AND StatusMessage = \"{StatusMessage}\"\r\n",
 					"            \"\"\"\r\n",
 					"    df = session.sql(sql)\r\n",
-					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\")"
+					"    save_to_delta_with_retry(df, \"logging.pipeline_logs\", 20)"
 				],
 				"execution_count": 10
 			}
