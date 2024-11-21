@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1656784c-07bf-427e-ba37-af48a106899e"
+				"spark.autotune.trackingId": "191ffe46-2c4e-40eb-a9e5-4fd5b1fcd723"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,24 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 1
+			},
 			{
 				"cell_type": "code",
 				"source": [
@@ -166,7 +184,9 @@
 					}
 				},
 				"source": [
-					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"logInfo(f\"Writing to {spark_table_final}\")\n",
+					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"logInfo(f\"Written to {spark_table_final}\")"
 				],
 				"execution_count": null
 			},
@@ -390,7 +410,6 @@
 				},
 				"source": [
 					"columns = results.columns\n",
-					"\n",
 					"results = results.drop(\"AIEDocumentDataID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
 				"execution_count": null
@@ -409,8 +428,10 @@
 					}
 				},
 				"source": [
+					"logInfo(f\"Merging and de-duplicating from {spark_table_final}\")\n",
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
-					"final_df = final_df.drop(primary_key).drop_duplicates()"
+					"final_df = final_df.drop(primary_key).drop_duplicates()\n",
+					"logInfo(f\"Done merging and de-duplicating from {spark_table_final}\")"
 				],
 				"execution_count": null
 			},
@@ -428,7 +449,9 @@
 					}
 				},
 				"source": [
-					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"logInfo(f\"Writing to {spark_table_final}\")\n",
+					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"logInfo(f\"Written to {spark_table_final}\")"
 				],
 				"execution_count": null
 			}
