@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9cc8d733-37de-4ae5-aa03-a26f79849eb5"
+				"spark.autotune.trackingId": "de43f4db-41d1-408a-8233-99c458734eba"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,24 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -157,10 +175,11 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\n",
 					"def read_raw_messages(source_path: str) -> DataFrame:\n",
 					"    try: \n",
 					"        df: DataFrame = spark.read.json(source_path, schema=spark_schema)\n",
-					"        print(f\"Found {df.count()} new rows.\")\n",
+					"        logInfo(f\"Found {df.count()} new rows.\")\n",
 					"\n",
 					"        # adding the standardised columns\n",
 					"        df: DataFrame = df.withColumn(\"expected_from\", current_timestamp())\n",
@@ -168,7 +187,7 @@
 					"        df: DataFrame = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
 					"\n",
 					"    except Exception as e:\n",
-					"        print('Raw data not found at ', source_path, e)\n",
+					"        logError('Raw data not found at ', source_path, e)\n",
 					"        mssparkutils.notebook.exit('')\n",
 					"\n",
 					"    return df"
@@ -220,7 +239,9 @@
 					}
 				},
 				"source": [
-					"compare_and_merge_schema(df, table_name)"
+					"logInfo(f\"Comparing and merging schema for {table_name}\")\n",
+					"compare_and_merge_schema(df, table_name)\n",
+					"logInfo(f\"Done comparing and merging schema for {table_name}\")"
 				],
 				"execution_count": 91
 			},
@@ -251,6 +272,7 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\n",
 					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\n",
 					"    table_df: DataFrame = spark.table(table_name)\n",
 					"    df: DataFrame = df.select(table_df.columns)\n",
@@ -280,8 +302,10 @@
 					"collapsed": false
 				},
 				"source": [
+					"logInfo(f\"Applying DF to {table_name}\")\n",
 					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
-					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
+					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\n",
+					"logInfo(f\"Done applying DF to {table_name}\")"
 				],
 				"execution_count": 93
 			}
