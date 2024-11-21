@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "aadd4a97-3b3b-4b1d-af59-c4ff7ff4f985"
+				"spark.autotune.trackingId": "73a881ab-de64-4282-8b0a-e432018a858c"
 			}
 		},
 		"metadata": {
@@ -190,7 +190,7 @@
 					"        {service_bus_table}\n",
 					"    \"\"\")\n",
 					"\n",
-					"# print(service_bus_data.count())\n",
+					"logInfo(f\"service_bus_data count {service_bus_data.count()}\")\n",
 					"# display(service_bus_data.head(10))"
 				],
 				"execution_count": 54
@@ -288,7 +288,7 @@
 					"        AND typeOfInvolvement IN ('Appellant', 'tAppellant', 'Apellant')\n",
 					"\"\"\")\n",
 					"\n",
-					"# print(appeal_casework_appellant_data.count())\n",
+					"logInfo(f\"appeal_casework_appellant_data count {appeal_casework_appellant_data.count()}\")\n",
 					"# display(appeal_casework_appellant_data.head(10))"
 				],
 				"execution_count": 55
@@ -373,8 +373,7 @@
 					"        AND typeOfInvolvement = 'Agent'\n",
 					"\"\"\")\n",
 					"\n",
-					"\n",
-					"# print(appeal_casework_agent_data.count())\n",
+					"logInfo(f\"appeal_casework_agent_data count {appeal_casework_agent_data.count()}\")\n",
 					"# display(appeal_casework_agent_data.head(10))"
 				],
 				"execution_count": 56
@@ -458,7 +457,7 @@
 					"        AND caseNodeId IS NOT NULL\n",
 					"\"\"\")\n",
 					"\n",
-					"# print(nsip_project_applicant_data.count())\n",
+					"logInfo(f\"nsip_project_applicant_data count {nsip_project_applicant_data.count()}\")\n",
 					"# display(nsip_project_applicant_data.head(10))"
 				],
 				"execution_count": 57
@@ -554,7 +553,7 @@
 					"        AND CaseReference IS NOT NULL\n",
 					"\"\"\")\n",
 					"\n",
-					"# print(relevant_reps_represented_data.count())\n",
+					"logInfo(f\"relevant_reps_represented_data count {relevant_reps_represented_data.count()}\")\n",
 					"# display(relevant_reps_represented_data.head(10))"
 				],
 				"execution_count": 58
@@ -645,7 +644,7 @@
 					"        AND CaseReference IS NOT NULL\n",
 					"\"\"\")\n",
 					"\n",
-					"# print(relevant_reps_agent_data.count())\n",
+					"logInfo(f\"relevant_reps_agent_data count {relevant_reps_agent_data.count()}\")\n",
 					"# display(relevant_reps_agent_data.head(10))"
 				],
 				"execution_count": 59
@@ -684,7 +683,7 @@
 					"            .union(relevant_reps_represented_data)\n",
 					"            .union(relevant_reps_agent_data))\n",
 					"            \n",
-					"print(results.count())"
+					"logInfo(f\"Total Results count {results.count()}\")"
 				],
 				"execution_count": 60
 			},
@@ -702,7 +701,9 @@
 					}
 				},
 				"source": [
-					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"logInfo(f\"Writing {spark_table_final}\")\n",
+					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"logInfo(f\"Written {spark_table_final}\")"
 				],
 				"execution_count": 61
 			},
@@ -884,8 +885,8 @@
 					}
 				},
 				"source": [
+					"logInfo(f\"Merging and dropping {spark_table_final}\")\n",
 					"columns = results.columns\n",
-					"\n",
 					"results = results.drop(\"ServiceUserID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
 				"execution_count": 66
@@ -905,7 +906,8 @@
 				},
 				"source": [
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns)\n",
-					"final_df = final_df.drop(primary_key).drop_duplicates()"
+					"final_df = final_df.drop(primary_key).drop_duplicates()\n",
+					"logInfo(f\"Done merging and dropping {spark_table_final}\")"
 				],
 				"execution_count": 67
 			},
@@ -923,7 +925,9 @@
 					}
 				},
 				"source": [
-					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"logInfo(f\"Writing final {spark_table_final}\")\n",
+					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"logInfo(f\"Written final {spark_table_final}\")"
 				],
 				"execution_count": 68
 			}
