@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "796e68b0-850c-41b3-aaec-c18ce99b191c"
+				"spark.autotune.trackingId": "fca74345-5ea8-4461-ab78-9ae9afed0dd0"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,7 @@
 					"from pyspark.sql import functions as F\r\n",
 					"import pprint"
 				],
-				"execution_count": 67
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +103,7 @@
 					"primary_key: str = 'caseId'\r\n",
 					"migration_primary_key:str = 'caseReference'"
 				],
-				"execution_count": 68
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -122,7 +122,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 69
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -141,7 +141,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 70
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -229,7 +229,7 @@
 					"\t\t\"isMaterialChange\"\r\n",
 					"\t]"
 				],
-				"execution_count": 71
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -247,7 +247,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 72
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -270,7 +270,7 @@
 					"curated_schema = create_spark_schema(curated_db_name, entity_name)\r\n",
 					"curated_table_schema = spark.table(f\"{curated_db_name}.{curated_table_name}\").schema"
 				],
-				"execution_count": 73
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -308,10 +308,9 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\r\n",
 					"cur_schema_correct: bool = test_compare_schemas(curated_schema, curated_table_schema)\r\n",
 					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_db_name}.{curated_table_name}\\nDifferences shown above (if any)\")\r\n",
-					"exitCode += int(not cur_schema_correct)\r\n",
-					""
+					"exitCode += int(not cur_schema_correct)"
 				],
-				"execution_count": 74
+				"execution_count": 39
 			},
 			{
 				"cell_type": "markdown",
@@ -349,7 +348,7 @@
 					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\r\n",
 					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\", data_model_columns)"
 				],
-				"execution_count": 75
+				"execution_count": 40
 			},
 			{
 				"cell_type": "markdown",
@@ -383,7 +382,7 @@
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\r\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 77
+				"execution_count": 41
 			},
 			{
 				"cell_type": "markdown",
@@ -430,7 +429,7 @@
 					"print(f\"There is no other records than Horizon: {no_horizon_records:}\\nCurated Count: {total_curated_count: ,}\\n Distinct Curated Count: {distinct_curated_count:,}\\nCounts match: {counts_match}\")\r\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 78
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -463,52 +462,9 @@
 					"    pass\n",
 					"else:\n",
 					"    print(\"Failed: Horizon to curated no caseids are dropped\")\n",
-					"    exitCode += 1\n",
-					"\n",
-					"\n",
-					""
-				],
-				"execution_count": 82
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#delete after testing\n",
-					"\n",
-					"def test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db: str, hrm_table: str, curated_db: str, curated_table: str, primary_key: str, sourceColumn: str = \"sourceSystem\" ) -> bool:\n",
-					"    df: DataFrame = spark.sql(f\"\"\"\n",
-					"                                SELECT {primary_key}\n",
-					"                                FROM {hrm_db}.{hrm_table}\n",
-					"                                WHERE LOWER({sourceColumn}) = 'horizon'\n",
-					"                                AND {primary_key} NOT IN\n",
-					"                                (\n",
-					"                                    SELECT {primary_key}\n",
-					"                                    FROM {curated_db}.{curated_table}\n",
-					"                                )\n",
-					"                            \"\"\")\n",
-					"    if df.count() > 0:\n",
-					"        df.show()\n",
-					"\n",
-					"    return df.count() == 0\n",
-					"\n",
-					"if test_hrm_to_curated_no_dropping_primary_ids_only_records(hrm_db_name, hrm_table_final, curated_db_migration_name, curated_table_migration_name, primary_key):\n",
-					"    pass\n",
-					"else:\n",
-					"    print(\"Failed: Horizon to curated no caseids are dropped\")\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 84
+				"execution_count": 43
 			},
 			{
 				"cell_type": "markdown",
@@ -543,7 +499,7 @@
 					"    print('FAIL: test_no_project_from_horizon_dropped')\n",
 					"    exitCode += 1"
 				],
-				"execution_count": 80
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -561,7 +517,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
 				],
-				"execution_count": 81
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
