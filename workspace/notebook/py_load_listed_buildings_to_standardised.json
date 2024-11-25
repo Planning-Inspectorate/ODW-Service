@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a515cd91-3246-4f05-af12-9927c60d2169"
+				"spark.autotune.trackingId": "ca53eca8-d32b-48e8-aef8-bc0b53f6d843"
 			}
 		},
 		"metadata": {
@@ -68,9 +68,9 @@
 					]
 				},
 				"source": [
-					"date_folder='2024-11-22'"
+					"date_folder='2024-11-23'"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -89,7 +89,7 @@
 					"from pyspark.sql.types import StructType, StructField, StringType, IntegerType, TimestampType\r\n",
 					"from pyspark.sql.functions import explode, col"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -133,20 +133,34 @@
 					"    StructField(\"start-date\", StringType(), True),\r\n",
 					"    StructField(\"typology\", StringType(), True),\r\n",
 					"    StructField(\"documentation-url\", StringType(), True),\r\n",
-					"    StructField(\"listed-building-grade\", StringType(), True),\r\n",
-					"    \r\n",
+					"    StructField(\"listed-building-grade\", StringType(), True)\r\n",
 					"])\r\n",
 					"\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"df = spark.read.option(\"multiline\",\"true\").json(f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/ListedBuildings/{date_folder}/listed_building.json\")\r\n",
-					"exploded_df = df.withColumn(\"entity\", explode(col(\"entities\")))\r\n",
-					"\r\n",
-					"final_df = exploded_df.select(col(\"entity.*\"))\r\n",
-					"final_df = spark.createDataFrame(final_df.rdd, json_schema)\r\n",
-					"\r\n",
-					"final_df.write.mode(\"overwrite\").saveAsTable(\"odw_standardised_db.Listed_building\")"
+					"entities_df = df.selectExpr(\"explode(entities) as entity\")\r\n",
+					"entities = [row.entity.asDict() for row in entities_df.collect()]\r\n",
+					"final_df = spark.createDataFrame(data=entities, schema=json_schema)"
 				],
-				"execution_count": 7
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"final_df.write.mode(\"overwrite\").saveAsTable(\"odw_standardised_db.listed_building\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -194,19 +208,15 @@
 					"    StructField(\"reference\", StringType(), True),\r\n",
 					"    StructField(\"start-date\", StringType(), True),\r\n",
 					"    StructField(\"typology\", StringType(), True)\r\n",
-					"    \r\n",
 					"])\r\n",
 					"\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
 					"df = spark.read.option(\"multiline\",\"true\").json(f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/ListedBuildings/{date_folder}/listed_building_outline.json\")\r\n",
-					"exploded_df = df.withColumn(\"entity\", explode(col(\"entities\")))\r\n",
-					"\r\n",
-					"final_df = exploded_df.select(col(\"entity.*\"))\r\n",
-					"final_df = spark.createDataFrame(final_df.rdd, json_schema)\r\n",
-					"\r\n",
-					"final_df.write.mode(\"overwrite\").saveAsTable(\"odw_standardised_db.Listed_building_outline\")"
+					"entities_df = df.selectExpr(\"explode(entities) as entity\")\r\n",
+					"entities = [row.entity.asDict() for row in entities_df.collect()]\r\n",
+					"final_df = spark.createDataFrame(data=entities, schema=json_schema)"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -222,7 +232,7 @@
 					}
 				},
 				"source": [
-					""
+					"final_df.write.mode(\"overwrite\").saveAsTable(\"odw_standardised_db.listed_building_outline\")"
 				],
 				"execution_count": null
 			}
