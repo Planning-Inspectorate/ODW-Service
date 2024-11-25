@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8cf2981a-b584-4fbb-8244-6bfcf96de5cc"
+				"spark.autotune.trackingId": "49eb93a2-f377-4417-af1c-90b8f8f7d129"
 			}
 		},
 		"metadata": {
@@ -98,7 +98,8 @@
 					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\n",
 					"from pyspark.sql import DataFrame\n",
 					"from pyspark.sql.types import StructType\n",
-					"from pyspark.sql.functions import *"
+					"from pyspark.sql.functions import *\n",
+					"import re"
 				],
 				"execution_count": 9
 			},
@@ -141,9 +142,8 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql.functions import to_timestamp, regexp_replace, element_at, split, coalesce, lit, max\r\n",
-					"\r\n",
-					"def process_and_get_max_datetime(df, filename_column=\"filename\", default_datetime=\"2000-01-01 00:00:00\"):\r\n",
+					"#get the latest file processed from target table\r\n",
+					"def process_and_get_max_datetime(table_name, filename_column=\"filename\", default_datetime=\"2000-01-01 00:00:00\"):\r\n",
 					"    \"\"\"\r\n",
 					"    Process the DataFrame to extract datetime from filename,\r\n",
 					"    and return the maximum extracted datetime.\r\n",
@@ -153,30 +153,40 @@
 					"    :param default_datetime: Default datetime string to use if extraction fails\r\n",
 					"    :return: Maximum extracted datetime\r\n",
 					"    \"\"\"\r\n",
-					"    processed_df = df.withColumn(\r\n",
-					"        \"extracted_datetime\",\r\n",
-					"        coalesce(\r\n",
-					"            to_timestamp(\r\n",
-					"                regexp_replace(\r\n",
-					"                    element_at(split(df[filename_column], \"/\"), -1),\r\n",
-					"                    r\"appeal-has_|\\.json\",\r\n",
-					"                    \"\"\r\n",
+					"    df = spark.sql(f'select * from {table_name}')\r\n",
+					"    # Check if the filename_column exists in the DataFrame\r\n",
+					"    if filename_column in df.columns:\r\n",
+					"        processed_df = df.withColumn(\r\n",
+					"            \"extracted_datetime\",\r\n",
+					"            coalesce(\r\n",
+					"                to_timestamp(\r\n",
+					"                    regexp_replace(\r\n",
+					"                        element_at(split(df[filename_column], \"/\"), -1),\r\n",
+					"                        r\"appeal-has_|\\.json\",\r\n",
+					"                        \"\"\r\n",
+					"                    ),\r\n",
+					"                    \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
 					"                ),\r\n",
-					"                \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
-					"            ),\r\n",
-					"            lit(default_datetime)\r\n",
+					"                lit(default_datetime).cast(TimestampType())\r\n",
+					"            )\r\n",
 					"        )\r\n",
-					"    )\r\n",
+					"    else:\r\n",
+					"        # If the filename_column doesn't exist, use the default_datetime for all rows\r\n",
+					"        processed_df = df.withColumn(\r\n",
+					"            \"extracted_datetime\",\r\n",
+					"            lit(default_datetime).cast(TimestampType())\r\n",
+					"        )\r\n",
+					"    \r\n",
 					"    \r\n",
 					"    max_datetime = processed_df.select(max(\"extracted_datetime\")).collect()[0][0]\r\n",
 					"    \r\n",
 					"    return max_datetime\r\n",
 					"\r\n",
 					"# Usage\r\n",
-					"max_extracted_datetime = process_and_get_max_datetime(df)\r\n",
+					"max_extracted_datetime = process_and_get_max_datetime(table_name)\r\n",
 					"print(max_extracted_datetime)"
 				],
-				"execution_count": null
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -261,57 +271,6 @@
 				"execution_count": 31
 			},
 			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"from pyspark.sql.functions import to_timestamp, regexp_replace, element_at, split, coalesce, lit, max\r\n",
-					"\r\n",
-					"def process_and_get_max_datetime(df, filename_column=\"filename\", default_datetime=\"2000-01-01 00:00:00\"):\r\n",
-					"    \"\"\"\r\n",
-					"    Process the DataFrame to extract datetime from filename,\r\n",
-					"    and return the maximum extracted datetime.\r\n",
-					"    \r\n",
-					"    :param df: Input DataFrame\r\n",
-					"    :param filename_column: Name of the column containing filenames\r\n",
-					"    :param default_datetime: Default datetime string to use if extraction fails\r\n",
-					"    :return: Maximum extracted datetime\r\n",
-					"    \"\"\"\r\n",
-					"    processed_df = df.withColumn(\r\n",
-					"        \"extracted_datetime\",\r\n",
-					"        coalesce(\r\n",
-					"            to_timestamp(\r\n",
-					"                regexp_replace(\r\n",
-					"                    element_at(split(df[filename_column], \"/\"), -1),\r\n",
-					"                    r\"appeal-has_|\\.json\",\r\n",
-					"                    \"\"\r\n",
-					"                ),\r\n",
-					"                \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
-					"            ),\r\n",
-					"            lit(default_datetime)\r\n",
-					"        )\r\n",
-					"    )\r\n",
-					"    \r\n",
-					"    max_datetime = processed_df.select(max(\"extracted_datetime\")).collect()[0][0]\r\n",
-					"    \r\n",
-					"    return max_datetime\r\n",
-					"\r\n",
-					"# Usage\r\n",
-					"max_extracted_datetime = process_and_get_max_datetime(df)\r\n",
-					"print(max_extracted_datetime)"
-				],
-				"execution_count": 55
-			},
-			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -359,7 +318,7 @@
 					"            for y in deep_ls(x.path, max_depth - 1):\r\n",
 					"                yield y"
 				],
-				"execution_count": 39
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -375,9 +334,9 @@
 					}
 				},
 				"source": [
-					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}\""
+					"max_extracted_datetime"
 				],
-				"execution_count": 53
+				"execution_count": 86
 			},
 			{
 				"cell_type": "code",
@@ -393,32 +352,6 @@
 					}
 				},
 				"source": [
-					"\r\n",
-					"\r\n",
-					"\r\n",
-					"# List all files in a directory\r\n",
-					"x= list(deep_ls(source_path,2))\r\n",
-					""
-				],
-				"execution_count": 56
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"import re\r\n",
-					"from datetime import datetime\r\n",
-					"\r\n",
 					"def extract_and_filter_paths(file_info_list, filter_date):\r\n",
 					"    timestamp_pattern = re.compile(r\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}[:_]\\d{2}[:_]\\d{2}[.\\d]*[+-]\\d{4})\")\r\n",
 					"    filter_datetime = datetime.strptime(filter_date, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
@@ -434,33 +367,14 @@
 					"\r\n",
 					"    return filtered_paths\r\n",
 					"\r\n",
-					"# Usage\r\n",
-					"filter_date = \"2024-11-25T12:34:26.566833+0000\"\r\n",
-					"filtered_paths = extract_and_filter_paths(x, filter_date)\r\n",
+					"\r\n",
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,1)), max_extracted_datetime)\r\n",
 					"\r\n",
 					"# Print the list of paths\r\n",
 					"for path in filtered_paths:\r\n",
 					"    print(path)"
 				],
-				"execution_count": 67
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"type(timestamps)"
-				],
-				"execution_count": 61
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
