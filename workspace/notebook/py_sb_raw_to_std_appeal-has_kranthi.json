@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "951e8469-6e02-49aa-b667-dd8a46f5281b"
+				"spark.autotune.trackingId": "63f10b8f-e94d-4526-a402-379295f86a81"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"entity_name=''\n",
 					"date_folder=''"
 				],
-				"execution_count": 82
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 					"entity_name = \"appeal-has\"\n",
 					""
 				],
-				"execution_count": 83
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -95,13 +95,14 @@
 					"from notebookutils import mssparkutils\n",
 					"import json\n",
 					"from datetime import datetime, date\n",
-					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\n",
+					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit,array,input_file_name\n",
 					"from pyspark.sql import DataFrame\n",
-					"from pyspark.sql.types import StructType,TimestampType\n",
+					"from pyspark.sql.types import StructType,TimestampType,ArrayType\n",
 					"from pyspark.sql.functions import *\n",
-					"import re"
+					"import re\n",
+					"from functools import reduce"
 				],
-				"execution_count": 84
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +127,7 @@
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
-				"execution_count": 85
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +188,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"An error occurred: {str(e)}\")"
 				],
-				"execution_count": 86
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +225,7 @@
 					"            for y in deep_ls(x.path, max_depth - 1):\r\n",
 					"                yield y"
 				],
-				"execution_count": 87
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -256,37 +257,12 @@
 					"    return filtered_paths\r\n",
 					"\r\n",
 					"# Usage\r\n",
-					"# filter_date = \"2024-11-25T12:34:26.566833+0000\"\r\n",
-					"\r\n",
 					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,2)), max_extracted_datetime)\r\n",
 					"\r\n",
-					"# Print the list of paths\r\n",
-					"for path in filtered_paths:\r\n",
-					"    print(path)"
+					"# Convert filtered_paths to a PySpark array\r\n",
+					"filtered_paths_array = spark.createDataFrame([(filtered_paths,)], ['paths']).select('paths').collect()[0]['paths']"
 				],
-				"execution_count": 98
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"extracted_date = df.select(\r\n",
-					"    regexp_extract(element_at(split(\"path\", \"/\"), -1), r\"(\\d{4}-\\d{2}-\\d{2})\", 1).alias(\"date\")\r\n",
-					")\r\n",
-					"\r\n",
-					"extracted_date.show()"
-				],
-				"execution_count": 100
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -304,20 +280,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 89
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"Reading raw data and adding standardised master columns to the dataframe"
-				]
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -333,24 +296,32 @@
 					}
 				},
 				"source": [
-					"def read_raw_messages(source_path: str) -> DataFrame:\n",
-					"    try: \n",
-					"        df: DataFrame = spark.read.json(source_path, schema=spark_schema)\n",
-					"        print(f\"Found {df.count()} new rows.\")\n",
-					"\n",
-					"        # adding the standardised columns\n",
-					"        df: DataFrame = df.withColumn(\"expected_from\", current_timestamp())\n",
-					"        df: DataFrame = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
-					"        df: DataFrame = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
-					"        df: DataFrame = df.withColumn(\"filename\", input_file_name())\n",
-					"\n",
-					"    except Exception as e:\n",
-					"        print('Raw data not found at ', source_path, e)\n",
-					"        mssparkutils.notebook.exit('')\n",
-					"\n",
-					"    return df"
+					"def read_raw_messages(filtered_paths: List[str]) -> DataFrame:\r\n",
+					"    try:\r\n",
+					"        # Read JSON files from filtered paths\r\n",
+					"        df = spark.read.json(filtered_paths, schema=spark_schema)\r\n",
+					"        print(f\"Found {df.count()} new rows.\")\r\n",
+					"\r\n",
+					"        # Adding the standardised columns\r\n",
+					"        df = df.withColumn(\"expected_from\", current_timestamp())\r\n",
+					"        df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\r\n",
+					"        df = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\r\n",
+					"        \r\n",
+					"           # Add all filtered paths as a column\r\n",
+					"        path_literals = [lit(path) for path in filtered_paths]\r\n",
+					"        df = df.withColumn(\"filtered_paths\", array(*path_literals))\r\n",
+					"\r\n",
+					"    except Exception as e:\r\n",
+					"        print('Error reading raw messages:', str(e))\r\n",
+					"        mssparkutils.notebook.exit('')\r\n",
+					"\r\n",
+					"    return df\r\n",
+					"\r\n",
+					"# Usage\r\n",
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\r\n",
+					""
 				],
-				"execution_count": 90
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -363,12 +334,14 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
-					"df: DataFrame = read_raw_messages(source_path)"
+					"df: DataFrame = read_raw_messages(filtered_paths)\r\n",
+					"display(df)"
 				],
-				"execution_count": 91
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -399,7 +372,7 @@
 				"source": [
 					"compare_and_merge_schema(df, table_name)"
 				],
-				"execution_count": 92
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
@@ -440,7 +413,7 @@
 					"\n",
 					"    return table_df"
 				],
-				"execution_count": 93
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -459,7 +432,7 @@
 				"source": [
 					"display(table_df)"
 				],
-				"execution_count": 94
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -479,7 +452,7 @@
 					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
 					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
-				"execution_count": 95
+				"execution_count": null
 			}
 		]
 	}
