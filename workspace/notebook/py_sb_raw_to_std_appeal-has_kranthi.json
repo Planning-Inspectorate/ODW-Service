@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c0c936f1-7786-4ebb-8e50-2ecaab0042b4"
+				"spark.autotune.trackingId": "d45a1633-e910-41b0-936a-10d2e2c61b3d"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"entity_name=''\n",
 					"date_folder=''"
 				],
-				"execution_count": 8
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 					"entity_name = \"appeal-has\"\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -101,7 +101,7 @@
 					"from pyspark.sql.functions import *\n",
 					"import re"
 				],
-				"execution_count": 10
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +126,7 @@
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
-				"execution_count": 11
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -142,22 +142,21 @@
 					}
 				},
 				"source": [
-					"#get the latest file processed from target table\r\n",
 					"def process_and_get_max_datetime(table_name, filename_column=\"filename\", default_datetime=\"2024-11-25T12:34:26.566833+0000\"):\r\n",
-					"    \"\"\"\r\n",
-					"    Process the DataFrame to extract datetime from filename,\r\n",
-					"    and return the maximum extracted datetime.\r\n",
-					"    \r\n",
-					"    :param df: Input DataFrame\r\n",
-					"    :param filename_column: Name of the column containing filenames\r\n",
-					"    :param default_datetime: Default datetime string to use if extraction fails\r\n",
-					"    :return: Maximum extracted datetime\r\n",
-					"    \"\"\"\r\n",
 					"    df = spark.sql(f'select * from {table_name}')\r\n",
-					"    # Check if the filename_column exists in the DataFrame\r\n",
+					"    \r\n",
 					"    if filename_column in df.columns:\r\n",
 					"        processed_df = df.withColumn(\r\n",
 					"            \"extracted_datetime\",\r\n",
+					"            when(\r\n",
+					"                to_timestamp(\r\n",
+					"                    regexp_replace(\r\n",
+					"                        element_at(split(df[filename_column], \"/\"), -1),\r\n",
+					"                        r\"appeal-has_|\\.json\",\r\n",
+					"                        \"\"\r\n",
+					"                    ),\r\n",
+					"                    \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
+					"                ).isNotNull(),\r\n",
 					"                to_timestamp(\r\n",
 					"                    regexp_replace(\r\n",
 					"                        element_at(split(df[filename_column], \"/\"), -1),\r\n",
@@ -166,25 +165,29 @@
 					"                    ),\r\n",
 					"                    \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
 					"                )\r\n",
-					"            \r\n",
+					"            ).otherwise(lit(default_datetime).cast(TimestampType()))\r\n",
 					"        )\r\n",
 					"    else:\r\n",
-					"        # If the filename_column doesn't exist, use the default_datetime for all rows\r\n",
 					"        processed_df = df.withColumn(\r\n",
 					"            \"extracted_datetime\",\r\n",
 					"            lit(default_datetime).cast(TimestampType())\r\n",
 					"        )\r\n",
 					"    \r\n",
-					"    \r\n",
 					"    max_datetime = processed_df.select(max(\"extracted_datetime\")).collect()[0][0]\r\n",
+					"    if max_datetime is None:\r\n",
+					"        print(\"No valid datetime found. Using default datetime.\")\r\n",
+					"        max_datetime = datetime.strptime(default_datetime, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
 					"    \r\n",
-					"    return max_datetime.strftime(\"%Y-%m-%dT%H:%M:%S.%f%z\") + \"+0000\"\r\n",
+					"    return max_datetime.strftime(\"%Y-%m-%dT%H:%M:%S.%f%z\")+'+0000'\r\n",
 					"\r\n",
 					"# Usage\r\n",
-					"max_extracted_datetime = process_and_get_max_datetime(table_name)\r\n",
-					"print(max_extracted_datetime)"
+					"try:\r\n",
+					"    max_extracted_datetime = process_and_get_max_datetime(table_name)\r\n",
+					"    print(f\"Max extracted datetime: {max_extracted_datetime}\")\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"An error occurred: {str(e)}\")"
 				],
-				"execution_count": 12
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -202,7 +205,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": null
+				"execution_count": 73
 			},
 			{
 				"cell_type": "markdown",
@@ -248,7 +251,7 @@
 					"\n",
 					"    return df"
 				],
-				"execution_count": null
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -266,7 +269,7 @@
 				"source": [
 					"df: DataFrame = read_raw_messages(source_path)"
 				],
-				"execution_count": null
+				"execution_count": 75
 			},
 			{
 				"cell_type": "markdown",
@@ -316,7 +319,7 @@
 					"            for y in deep_ls(x.path, max_depth - 1):\r\n",
 					"                yield y"
 				],
-				"execution_count": null
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
@@ -356,25 +359,7 @@
 					"for path in filtered_paths:\r\n",
 					"    print(path)"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"display(df)"
-				],
-				"execution_count": null
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -392,7 +377,7 @@
 				"source": [
 					"compare_and_merge_schema(df, table_name)"
 				],
-				"execution_count": null
+				"execution_count": 78
 			},
 			{
 				"cell_type": "markdown",
@@ -427,13 +412,13 @@
 					"    table_df: DataFrame = table_df.union(df)\n",
 					"\n",
 					"    # removing duplicates while ignoring the ingestion dates columns\n",
-					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime','filename']\n",
 					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\n",
 					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\n",
 					"\n",
 					"    return table_df"
 				],
-				"execution_count": null
+				"execution_count": 79
 			},
 			{
 				"cell_type": "code",
@@ -453,7 +438,7 @@
 					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
 					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
-				"execution_count": null
+				"execution_count": 80
 			}
 		]
 	}
