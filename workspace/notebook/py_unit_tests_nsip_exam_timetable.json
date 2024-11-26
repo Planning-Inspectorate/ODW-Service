@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "65ca6e09-d8b0-4718-95c8-1189eef8fead"
+				"spark.autotune.trackingId": "c76a7334-38fb-4041-9d72-a5ede65aeffe"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 31
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -101,7 +101,7 @@
 					"curated_migration_db_name: str = 'odw_curated_migration_db'\n",
 					"curated_migration_table_name: str = 'nsip_exam_timetable'"
 				],
-				"execution_count": 32
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 33
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -140,7 +140,7 @@
 					"            \"published\",\n",
 					"            \"events\"]"
 				],
-				"execution_count": 34
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -158,7 +158,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 35
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -181,7 +181,7 @@
 					"curated_schema = create_spark_schema(curated_db_name, entity_name)\n",
 					"curated_table_schema = spark.table(f\"{curated_db_name}.{curated_table_name}\").schema"
 				],
-				"execution_count": 37
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -223,7 +223,7 @@
 					"exitCode += int(not cur_schema_correct)\n",
 					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_db_name}.{curated_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 38
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -262,227 +262,7 @@
 					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\n",
 					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\", data_model_columns)"
 				],
-				"execution_count": 39
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Trace service bus data from standardised to harmonised\n",
-					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df_std = spark.sql(\"SELECT * FROM odw_standardised_db.sb_nsip_exam_timetable WHERE casereference = 'BC0110001' ORDER BY ingested_datetime\")\n",
-					"display(df_std)\n",
-					"\n",
-					"df_hrm = spark.sql(\"SELECT * FROM odw_harmonised_db.sb_nsip_exam_timetable WHERE casereference = 'BC0110001' ORDER BY IngestionDate\")\n",
-					"display(df_hrm)"
-				],
-				"execution_count": 41
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Check array fields are aggregated properly\n",
-					"Go and find examples"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"SELECT\n",
-					"    casereference,\n",
-					"    COUNT(DISTINCT ID)\n",
-					"FROM\n",
-					"    odw_standardised_db.horizon_examination_timetable\n",
-					"WHERE\n",
-					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_examination_timetable)\n",
-					"GROUP BY\n",
-					"    casereference\n",
-					"HAVING\n",
-					"    COUNT(DISTINCT ID) > 1\n",
-					"ORDER BY\n",
-					"    2 DESC"
-				],
-				"execution_count": 42
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df = spark.sql(\"SELECT * FROM odw_curated_db.nsip_exam_timetable WHERE casereference = 'EN010020'\")\n",
-					"display(df)"
-				],
-				"execution_count": 43
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Trace Horizon data to Harmonised"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df = spark.sql(\"\"\"\n",
-					"        SELECT DISTINCT\n",
-					"            *\n",
-					"        FROM\n",
-					"            odw_standardised_db.horizon_examination_timetable\n",
-					"        WHERE\n",
-					"            casereference = 'EN010120' and\n",
-					"            ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_examination_timetable)\n",
-					"        order by ingested_datetime\n",
-					"    \"\"\")\n",
-					"    \n",
-					"display(df)"
-				],
-				"execution_count": 44
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df = spark.sql(f\"\"\"\n",
-					"    SELECT DISTINCT\n",
-					"      *\n",
-					"    FROM\n",
-					"        odw_harmonised_db.nsip_exam_timetable\n",
-					"    WHERE\n",
-					"        casereference = 'EN010120' \n",
-					"    order BY\n",
-					"        ingestiondate DESC\n",
-					"  \"\"\")\n",
-					"    \n",
-					"display(df)"
-				],
-				"execution_count": 45
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### Horizon and Service Bus data successfully combined and flags set appropriately"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df_hzn_std = spark.sql(\"SELECT * from odw_standardised_db.horizon_examination_timetable where casereference = 'BC010006' and ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_examination_timetable)\")\n",
-					"df_sb_hrm = spark.sql(\"select * from odw_harmonised_db.sb_nsip_exam_timetable where casereference = 'BC010006'\")\n",
-					"df_hrm_final = spark.sql(\"select * from odw_harmonised_db.nsip_exam_timetable where casereference = 'BC010006'\")\n",
-					"df_cur = spark.sql(\"select * from odw_curated_db.nsip_exam_timetable where casereference = 'BC010006'\")\n",
-					"\n",
-					"\n",
-					"display(df_hzn_std)\n",
-					"display(df_sb_hrm)\n",
-					"display(df_hrm_final)\n",
-					"display(df_cur)"
-				],
-				"execution_count": 46
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -520,7 +300,7 @@
 					"exitCode += int(not cur_migrated_schema_correct)\n",
 					"print(f\"Curated Migration schema correct: {cur_migrated_schema_correct}\\nTable: {curated_migration_db_name}.{curated_migration_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 47
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -554,7 +334,7 @@
 					"print(f\"Horizon to Curated - Counts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 48
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -606,9 +386,14 @@
 					"\r\n",
 					"\r\n",
 					"missing = df_hzn.subtract(df_cur)\r\n",
-					"display(missing)"
+					"display(missing)\r\n",
+					"\r\n",
+					"if missing.rdd.isEmpty():\r\n",
+					"    pass\r\n",
+					"else:\r\n",
+					"    exitCode += 1"
 				],
-				"execution_count": 49
+				"execution_count": 24
 			},
 			{
 				"cell_type": "markdown",
@@ -642,7 +427,7 @@
 					"print(f\"Horizon to Curated - No rows dropped: {rows_dropped}\")\n",
 					"exitCode += int(not rows_dropped)"
 				],
-				"execution_count": 50
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -659,6 +444,223 @@
 				},
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Trace service bus data from standardised to harmonised\n",
+					"We need to make sure the data has loaded through correctly. To do this efficiently, we will select a sample record and check that the data is maintained as it moves through the medallian architecture."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df_std = spark.sql(\"SELECT * FROM odw_standardised_db.sb_nsip_exam_timetable WHERE casereference = 'BC0110001' ORDER BY ingested_datetime\")\n",
+					"display(df_std)\n",
+					"\n",
+					"df_hrm = spark.sql(\"SELECT * FROM odw_harmonised_db.sb_nsip_exam_timetable WHERE casereference = 'BC0110001' ORDER BY IngestionDate\")\n",
+					"display(df_hrm)"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Check array fields are aggregated properly\n",
+					"Go and find examples"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"SELECT\n",
+					"    casereference,\n",
+					"    COUNT(DISTINCT ID)\n",
+					"FROM\n",
+					"    odw_standardised_db.horizon_examination_timetable\n",
+					"WHERE\n",
+					"    ingested_datetime = (SELECT MAX(ingested_datetime) FROM odw_standardised_db.horizon_examination_timetable)\n",
+					"GROUP BY\n",
+					"    casereference\n",
+					"HAVING\n",
+					"    COUNT(DISTINCT ID) > 1\n",
+					"ORDER BY\n",
+					"    2 DESC"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df = spark.sql(\"SELECT * FROM odw_curated_db.nsip_exam_timetable WHERE casereference = 'EN010020'\")\n",
+					"display(df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Trace Horizon data to Harmonised"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df = spark.sql(\"\"\"\n",
+					"        SELECT DISTINCT\n",
+					"            *\n",
+					"        FROM\n",
+					"            odw_standardised_db.horizon_examination_timetable\n",
+					"        WHERE\n",
+					"            casereference = 'EN010120' and\n",
+					"            ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_examination_timetable)\n",
+					"        order by ingested_datetime\n",
+					"    \"\"\")\n",
+					"    \n",
+					"display(df)"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df = spark.sql(f\"\"\"\n",
+					"    SELECT DISTINCT\n",
+					"      *\n",
+					"    FROM\n",
+					"        odw_harmonised_db.nsip_exam_timetable\n",
+					"    WHERE\n",
+					"        casereference = 'EN010120' \n",
+					"    order BY\n",
+					"        ingestiondate DESC\n",
+					"  \"\"\")\n",
+					"    \n",
+					"display(df)"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Horizon and Service Bus data successfully combined and flags set appropriately"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_hzn_std = spark.sql(\"SELECT * from odw_standardised_db.horizon_examination_timetable where casereference = 'BC010006' and ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.horizon_examination_timetable)\")\n",
+					"df_sb_hrm = spark.sql(\"select * from odw_harmonised_db.sb_nsip_exam_timetable where casereference = 'BC010006'\")\n",
+					"df_hrm_final = spark.sql(\"select * from odw_harmonised_db.nsip_exam_timetable where casereference = 'BC010006'\")\n",
+					"df_cur = spark.sql(\"select * from odw_curated_db.nsip_exam_timetable where casereference = 'BC010006'\")\n",
+					"\n",
+					"\n",
+					"display(df_hzn_std)\n",
+					"display(df_sb_hrm)\n",
+					"display(df_hrm_final)\n",
+					"display(df_cur)"
 				],
 				"execution_count": null
 			}
