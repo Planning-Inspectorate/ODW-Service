@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "887128cc-ed12-4563-82e7-2cc3eebe020f"
+				"spark.autotune.trackingId": "2fa9b0a6-6a73-41c9-b08d-ce29cf8dbee8"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,31 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Load Horizon data all in one notebook\r\n",
+					"\r\n",
+					"Load the required notebooks that host the Horizon load functions, i.e. `py_1_raw_to_standardised_hr_functions` and `py_raw_to_std`.    \r\n",
+					"\r\n",
+					"`py_raw_to_std` now contains an async function called `ingest_horizon` which can be called asynchronously for all the Horizon csv files.  \r\n",
+					"\r\n",
+					"Mount the storage path to the Horizon date folder once and only once.  \r\n",
+					"\r\n",
+					"Load all the Horizon data asynchronously. Date folder can be amended for testing. Currently this will write to tables prefixed with `zzz_test`. This can be converted back (remove the prefix) in the `ingest_adhoc` function in `py_1_raw_to_standardised_hr_functions` before merging back to main.  \r\n",
+					"\r\n",
+					"Unmount the storage path.  \r\n",
+					"\r\n",
+					"TODO: Add error handling and make sure 1 file can't fail the rest of them.  "
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -67,7 +92,7 @@
 				"source": [
 					"%run 1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions"
 				],
-				"execution_count": 21
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +110,7 @@
 				"source": [
 					"%run 1-odw-raw-to-standardised/py_raw_to_std"
 				],
-				"execution_count": 22
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -103,7 +128,7 @@
 				"source": [
 					"%run utils/py_mount_storage"
 				],
-				"execution_count": 23
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -127,42 +152,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"# horizon_files = [\r\n",
-					"#     \"NSIPData\",\r\n",
-					"#     \"NSIPAdvice\",\r\n",
-					"#     \"HorizonFolder\",\r\n",
-					"#     \"HorizonAppealsFolder\",\r\n",
-					"#     \"HorizonAppealsEvent\",\r\n",
-					"#     \"HorizonAppealsDocumentMetadata\",\r\n",
-					"#     \"ExaminationTimetable\",\r\n",
-					"#     \"DocumentMetadata\",\r\n",
-					"#     \"CaseInvolvement\",\r\n",
-					"#     \"NSIPRelevantRepresentation\",\r\n",
-					"#     \"S62AViewCaseBasicData\",\r\n",
-					"#     \"S62AViewCaseDates\",\r\n",
-					"#     \"S62AViewCaseExtendedData\",\r\n",
-					"#     \"S62AViewCaseOfficers\",\r\n",
-					"#     \"S62AViewCases\"\r\n",
-					"# ]"
-				],
-				"execution_count": 25
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +177,7 @@
 					"dataAttribute = \"\"\r\n",
 					"source_path = f\"{raw_container}{source_folder}/{date_folder}\""
 				],
-				"execution_count": 26
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -203,16 +193,11 @@
 					}
 				},
 				"source": [
-					"try:\r\n",
-					"    files = mssparkutils.fs.ls(source_path)\r\n",
-					"except Exception as e:\r\n",
-					"    mssparkutils.notebook.exit(f\"Raw file not found at {source_path}\")\r\n",
-					"\r\n",
+					"files = mssparkutils.fs.ls(source_path)\r\n",
 					"horizon_files = [file.name for file in files]\r\n",
-					"\r\n",
 					"horizon_files"
 				],
-				"execution_count": 31
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -231,7 +216,7 @@
 					"jobId = mssparkutils.env.getJobId()\r\n",
 					"mount_storage(path=source_path)"
 				],
-				"execution_count": 28
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -245,24 +230,10 @@
 				"source": [
 					"##### Load horizon standardised\r\n",
 					"\r\n",
-					"Sequentially, this took around 12 mins for all tables to be loaded"
+					"Sequentially, this took around 12 mins for all tables to be loaded using the original notebook and running it per file.  \r\n",
+					"\r\n",
+					"Using async functions this can be reduced to around 5 mins."
 				]
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# for file in horizon_files:\r\n",
-					"#     print(f\"Ingesting data for {file}\")\r\n",
-					"#     mssparkutils.notebook.run(path=\"1-odw-raw-to-standardised/py_raw_to_std\", \r\n",
-					"#         timeout_seconds=600, \r\n",
-					"#         arguments={\r\n",
-					"#             \"source_folder\": source_folder, \r\n",
-					"#             \"specific_file\": file, \r\n",
-					"#             \"date_folder\": date_folder\r\n",
-					"#             }\r\n",
-					"#         )"
-				],
-				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -288,24 +259,6 @@
 					"loop = asyncio.get_event_loop()\r\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 30
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"unmount_storage()"
-				],
 				"execution_count": null
 			},
 			{
@@ -322,19 +275,7 @@
 					}
 				},
 				"source": [
-					"# async def test1():\r\n",
-					"#     print(\"Hello1\")\r\n",
-					"\r\n",
-					"# async def test2():\r\n",
-					"#     print(\"Hello2\")\r\n",
-					"\r\n",
-					"# async def main():\r\n",
-					"#     tasks: list = [test1(), test2()]\r\n",
-					"#     await asyncio.gather(*tasks)\r\n",
-					"\r\n",
-					"# nest_asyncio.apply()\r\n",
-					"# loop = asyncio.get_event_loop()\r\n",
-					"# loop.run_until_complete(main())"
+					"unmount_storage()"
 				],
 				"execution_count": null
 			}
