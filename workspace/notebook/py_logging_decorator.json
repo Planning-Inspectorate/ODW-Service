@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodwpr",
+			"referenceName": "pinssynspodw",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "51375cc1-69d9-45fd-b4b4-c1330d9a831c"
+				"spark.autotune.trackingId": "5c26e5bf-999e-4503-b10d-a2ff6549e143"
 			}
 		},
 		"metadata": {
@@ -35,10 +35,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
-				"name": "pinssynspodwpr",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -69,7 +69,7 @@
 					"import subprocess\n",
 					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"azure-monitor-opentelemetry\"])"
 				],
-				"execution_count": 40
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -87,7 +87,7 @@
 				"source": [
 					"%run py_retry_logic"
 				],
-				"execution_count": 41
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -107,7 +107,7 @@
 					"logger = logging.getLogger()\n",
 					"display(logger.handlers)"
 				],
-				"execution_count": 42
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -133,6 +133,7 @@
 					"import uuid\r\n",
 					"\r\n",
 					"logger = logging.getLogger()\r\n",
+					"logger_provider = LoggerProvider()\r\n",
 					"\r\n",
 					"if mssparkutils.runtime.context['isForPipeline'] == True:\r\n",
 					"    pipelinejobid = mssparkutils.runtime.context['pipelinejobid']\r\n",
@@ -156,15 +157,13 @@
 					"\r\n",
 					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\r\n",
 					"def setupLogging():\r\n",
-					"\r\n",
-					"    logger = logging.getLogger()\r\n",
 					"    \r\n",
 					"    if True in [type(handle) == LoggingHandler for handle in logger.handlers]:\r\n",
 					"        logInfo(\"Logging is already setup\")\r\n",
 					"        pass\r\n",
 					"    else:\r\n",
 					"        key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"        logger_provider = LoggerProvider()\r\n",
+					"        \r\n",
 					"        set_logger_provider(logger_provider)\r\n",
 					"        exporter = AzureMonitorLogExporter.from_connection_string(key.split(\";\")[0])\r\n",
 					"        get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(exporter, schedule_delay_millis=60000))\r\n",
@@ -173,7 +172,8 @@
 					"        \r\n",
 					"    logger.setLevel(logging.INFO)\r\n",
 					"\r\n",
-					"\r\n",
+					"def flushLogging():\r\n",
+					"    logger_provider.force_flush()\r\n",
 					"\r\n",
 					"def logging_to_appins(func):\r\n",
 					"\r\n",
@@ -199,9 +199,11 @@
 					"            raise e\r\n",
 					"    return wrapper\r\n",
 					"\r\n",
-					"setupLogging()"
+					"setupLogging()\r\n",
+					"logInfo(\"Logging ready\")\r\n",
+					"flushLogging()"
 				],
-				"execution_count": 43
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -229,7 +231,7 @@
 					"if False:\n",
 					"    testException()"
 				],
-				"execution_count": 44
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -250,7 +252,7 @@
 					"    raise ValueError('BANANA')\n",
 					"\n",
 					"#change to debug\n",
-					"if True:\n",
+					"if False:\n",
 					"    try:\n",
 					"        #this should appear in the logs because it's got a decorator on it\n",
 					"        logInfo(\"Running test\")\n",
@@ -259,7 +261,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 45
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -279,7 +281,7 @@
 					"    raise ValueError('CARROT')\n",
 					"\n",
 					"logger = logging.getLogger()\n",
-					"if True:\n",
+					"if False:\n",
 					"    try:\n",
 					"        #this shouldn't appear in the logs because it's not got a decorator on it\n",
 					"        logInfo(\"Running test2\")\n",
@@ -288,7 +290,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 46
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -309,7 +311,7 @@
 					"    raise ValueError('CAULIFLOWER')\n",
 					"\n",
 					"#change to debug\n",
-					"if True:\n",
+					"if False:\n",
 					"    try:\n",
 					"        #this should appear in the logs because it's got a decorator on it\n",
 					"        logInfo(\"Running test3\")\n",
@@ -317,7 +319,7 @@
 					"    except:\n",
 					"        logError(\"Caught error\")"
 				],
-				"execution_count": 47
+				"execution_count": 32
 			}
 		]
 	}
