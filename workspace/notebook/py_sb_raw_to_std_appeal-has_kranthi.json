@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a2136d1a-1505-485f-90a7-64647ad8621d"
+				"spark.autotune.trackingId": "9dd2f844-1000-45d6-9b02-6fc7dab0906b"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"entity_name=''\n",
 					"date_folder=''"
 				],
-				"execution_count": 76
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -86,7 +86,7 @@
 					"entity_name = \"appeal-has\"\n",
 					""
 				],
-				"execution_count": 77
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +102,7 @@
 					"import re\n",
 					"from functools import reduce"
 				],
-				"execution_count": 78
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +127,7 @@
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
-				"execution_count": 79
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -189,7 +189,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"An error occurred: {str(e)}\")"
 				],
-				"execution_count": 90
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -226,7 +226,7 @@
 					"            for y in deep_ls(x.path, max_depth - 1):\r\n",
 					"                yield y"
 				],
-				"execution_count": 81
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -258,12 +258,9 @@
 					"    return filtered_paths\r\n",
 					"\r\n",
 					"# Usage\r\n",
-					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,2)), max_extracted_datetime)\r\n",
-					"\r\n",
-					"# Convert filtered_paths to a PySpark array\r\n",
-					"filtered_paths_array = spark.createDataFrame([(filtered_paths,)], ['paths']).select('paths').collect()[0]['paths']"
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,2)), max_extracted_datetime)"
 				],
-				"execution_count": 82
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -281,7 +278,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 83
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -323,7 +320,7 @@
 					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\r\n",
 					""
 				],
-				"execution_count": 84
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -342,7 +339,7 @@
 				"source": [
 					"df: DataFrame = read_raw_messages(filtered_paths)"
 				],
-				"execution_count": 85
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -371,76 +368,9 @@
 					}
 				},
 				"source": [
-					"def compare_and_merge_schema(df: DataFrame, table_name: str):\r\n",
-					"    # get the existing table's df\r\n",
-					"    table_df: DataFrame = spark.table(table_name)\r\n",
-					"\r\n",
-					"    # compare the schemas\r\n",
-					"    in_current_not_in_existing, in_existing_not_in_current = compare_schemas(df.schema, table_df.schema)\r\n",
-					"\r\n",
-					"    if in_current_not_in_existing or in_existing_not_in_current:\r\n",
-					"        print('Schemas do not match')\r\n",
-					"        print(\"#\" * 100)\r\n",
-					"        print('Columns in new data not in existing table kranthi: \\n', in_current_not_in_existing)\r\n",
-					"        print(\"#\" * 100)\r\n",
-					"        print('Columns in existing table not in data: \\n', in_existing_not_in_current)\r\n",
-					"        print(\"#\" * 100)\r\n",
-					"\r\n",
-					"        # merging schema if there is any schema mismatch\r\n",
-					"        merge_schema(table_name, table_df, in_current_not_in_existing, in_existing_not_in_current)\r\n",
-					"        \r\n",
-					"    else:\r\n",
-					"        print('Schemas match.')\r\n",
-					"\r\n",
-					"\r\n",
-					"def merge_schema(table_name: str, table_df: DataFrame, in_current_not_in_existing: tuple, in_existing_not_in_current: tuple) -> None:\r\n",
-					"\r\n",
-					"    # removing columns from the existing table that are not in the new df\r\n",
-					"    for item in in_existing_not_in_current:\r\n",
-					"        print(f\"Removing column '{item[0]}' from {table_name} since it's not in the new data's schema\")\r\n",
-					"        table_df = table_df.drop(item[0])\r\n",
-					"\r\n",
-					"    # adding new columns in the existing table\r\n",
-					"    for item in in_current_not_in_existing:\r\n",
-					"        print(f\"Adding new column '{item[0]}' of type '{item[1]}' in {table_name} since it's not in the table's schema\")\r\n",
-					"        table_df = table_df.withColumn(item[0], lit(None).cast(item[1]))\r\n",
-					"    \r\n",
-					"    apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\r\n",
-					"\r\n",
-					"\r\n",
-					"def apply_df_to_table(df: DataFrame, db_name: str, table_name: str) -> None:\r\n",
-					"\r\n",
-					"    from notebookutils import mssparkutils\r\n",
-					"\r\n",
-					"    # Write the DataFrame with the new column to a new temporary table\r\n",
-					"    temp_table_name: str = f\"{table_name}_tmp\"\r\n",
-					"    df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(f\"{db_name}.{temp_table_name}\")\r\n",
-					"\r\n",
-					"    # Drop the original table and empty the location\r\n",
-					"    mssparkutils.notebook.run('/utils/py_delete_table', 600, arguments={ 'db_name': db_name, 'table_name': table_name })\r\n",
-					"\r\n",
-					"    # Rename the temporary table to replace the original table\r\n",
-					"    spark.sql(f\"ALTER TABLE {db_name}.{temp_table_name} RENAME TO {db_name}.{table_name}\")"
-				],
-				"execution_count": 95
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"compare_and_merge_schema(df, table_name)"
 				],
-				"execution_count": 96
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -481,26 +411,7 @@
 					"\n",
 					"    return table_df"
 				],
-				"execution_count": 98
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(table_df)"
-				],
-				"execution_count": 99
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -520,7 +431,7 @@
 					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
 					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])"
 				],
-				"execution_count": 89
+				"execution_count": 29
 			}
 		]
 	}
