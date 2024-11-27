@@ -715,7 +715,7 @@ def gettimesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.Htt
     
 @_app.function_name("appeals78")
 @_app.route(route="appeals78", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
-def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
+def appeals78(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Function endpoint for handling HTTP requests.
 
