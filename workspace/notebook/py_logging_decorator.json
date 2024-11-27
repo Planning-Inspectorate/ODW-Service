@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d5d22a3d-9ef2-4c58-845f-0b35fa18f47a"
+				"spark.autotune.trackingId": "1cdb685b-9e95-4f77-aebb-b5832a2919c8"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"import subprocess\n",
 					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"azure-monitor-opentelemetry\"])"
 				],
-				"execution_count": 19
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -87,17 +87,49 @@
 				"source": [
 					"%run py_retry_logic"
 				],
-				"execution_count": 20
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import logging\n",
+					"logger = logging.getLogger()\n",
+					"display(logger.handlers)"
+				],
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"#https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/monitor/azure-monitor-opentelemetry-exporter/samples/logs/sample_log.py\r\n",
 					"import functools\r\n",
 					"from notebookutils import mssparkutils\r\n",
 					"from pyspark.sql import SparkSession\r\n",
 					"import logging\r\n",
-					"from azure.monitor.opentelemetry import configure_azure_monitor\r\n",
+					"\r\n",
+					"from opentelemetry._logs import (\r\n",
+					"    get_logger_provider,\r\n",
+					"    set_logger_provider,\r\n",
+					")\r\n",
+					"from opentelemetry.sdk._logs import (\r\n",
+					"    LoggerProvider,\r\n",
+					"    LoggingHandler,\r\n",
+					")\r\n",
+					"from opentelemetry.sdk._logs.export import BatchLogRecordProcessor\r\n",
+					"from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter\r\n",
 					"from opentelemetry import trace\r\n",
+					"\r\n",
 					"import uuid\r\n",
 					"\r\n",
 					"logger = logging.getLogger()\r\n",
@@ -124,15 +156,19 @@
 					"\r\n",
 					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\r\n",
 					"def setupLogging():\r\n",
-					"    \r\n",
+					"\r\n",
 					"    logger = logging.getLogger()\r\n",
+					"    \r\n",
+					"    key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
+					"    logger_provider = LoggerProvider()\r\n",
+					"    set_logger_provider(logger_provider)\r\n",
+					"    exporter = AzureMonitorLogExporter.from_connection_string(key.split(\";\")[0])\r\n",
+					"    get_logger_provider().add_log_record_processor(BatchLogRecordProcessor(exporter, schedule_delay_millis=60000))\r\n",
+					"    handler = LoggingHandler()\r\n",
+					"    logger.addHandler(handler)\r\n",
 					"    logger.setLevel(logging.INFO)\r\n",
 					"\r\n",
-					"    if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"        pass\r\n",
-					"    else:\r\n",
-					"        key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"        configure_azure_monitor(connection_string=key.split(\";\")[0])\r\n",
+					"\r\n",
 					"\r\n",
 					"def logging_to_appins(func):\r\n",
 					"\r\n",
@@ -160,7 +196,7 @@
 					"\r\n",
 					"setupLogging()"
 				],
-				"execution_count": 21
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -188,7 +224,7 @@
 					"if False:\n",
 					"    testException()"
 				],
-				"execution_count": null
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -209,7 +245,7 @@
 					"    raise ValueError('BANANA')\n",
 					"\n",
 					"#change to debug\n",
-					"if False:\n",
+					"if True:\n",
 					"    try:\n",
 					"        #this should appear in the logs because it's got a decorator on it\n",
 					"        logInfo(\"Running test\")\n",
@@ -218,7 +254,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -238,7 +274,7 @@
 					"    raise ValueError('CARROT')\n",
 					"\n",
 					"logger = logging.getLogger()\n",
-					"if False:\n",
+					"if True:\n",
 					"    try:\n",
 					"        #this shouldn't appear in the logs because it's not got a decorator on it\n",
 					"        logInfo(\"Running test2\")\n",
@@ -247,7 +283,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -276,7 +312,7 @@
 					"    except:\n",
 					"        logError(\"Caught error\")"
 				],
-				"execution_count": null
+				"execution_count": 34
 			}
 		]
 	}
