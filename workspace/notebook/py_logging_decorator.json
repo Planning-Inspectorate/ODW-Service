@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodw",
+			"referenceName": "pinssynspodwpr",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "420fb933-0d34-4623-ad36-a28972e43b52"
+				"spark.autotune.trackingId": "e7b7aff9-b2e8-4826-a524-ce071001f7f3"
 			}
 		},
 		"metadata": {
@@ -35,10 +35,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-				"name": "pinssynspodw",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
+				"name": "pinssynspodwpr",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -66,9 +66,28 @@
 					}
 				},
 				"source": [
+					"import subprocess\n",
+					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"azure-monitor-opentelemetry\"])"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"%run py_retry_logic"
 				],
-				"execution_count": 22
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -77,7 +96,8 @@
 					"from notebookutils import mssparkutils\r\n",
 					"from pyspark.sql import SparkSession\r\n",
 					"import logging\r\n",
-					"from opencensus.ext.azure.log_exporter import AzureLogHandler\r\n",
+					"from azure.monitor.opentelemetry import configure_azure_monitor\r\n",
+					"from opentelemetry import trace\r\n",
 					"import uuid\r\n",
 					"\r\n",
 					"logger = logging.getLogger()\r\n",
@@ -104,13 +124,16 @@
 					"\r\n",
 					"@retry(wait=wait_exponential(multiplier=1, min=5, max=20), stop=stop_after_delay(30) | stop_after_attempt(5), reraise=True, before_sleep=before_sleep)\r\n",
 					"def setupLogging():\r\n",
+					"    configure_azure_monitor()\r\n",
 					"    logger = logging.getLogger()\r\n",
 					"    logger.setLevel(logging.INFO)\r\n",
-					"    if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\r\n",
-					"        pass\r\n",
-					"    else:\r\n",
-					"        key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
-					"        logger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
+					"\r\n",
+					"    if True in [type(handle) == AzureLogHandler for handle in logger.handlers]:\\r\\n\",\r\n",
+					"\t\tpass\r\n",
+					"\telse:\r\n",
+					"\t\tkey = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\r\n",
+					"\t\tlogger.addHandler(AzureLogHandler(connection_string=key.split(\";\")[0]))\r\n",
+					"    \r\n",
 					"\r\n",
 					"def logging_to_appins(func):\r\n",
 					"\r\n",
@@ -138,7 +161,7 @@
 					"\r\n",
 					"setupLogging()"
 				],
-				"execution_count": 23
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -166,7 +189,7 @@
 					"if False:\n",
 					"    testException()"
 				],
-				"execution_count": 24
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -196,7 +219,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +248,7 @@
 					"        logError(\"Caught error\")\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -246,7 +269,7 @@
 					"    raise ValueError('CAULIFLOWER')\n",
 					"\n",
 					"#change to debug\n",
-					"if False:\n",
+					"if True:\n",
 					"    try:\n",
 					"        #this should appear in the logs because it's got a decorator on it\n",
 					"        logInfo(\"Running test3\")\n",
@@ -254,7 +277,7 @@
 					"    except:\n",
 					"        logError(\"Caught error\")"
 				],
-				"execution_count": 27
+				"execution_count": null
 			}
 		]
 	}
