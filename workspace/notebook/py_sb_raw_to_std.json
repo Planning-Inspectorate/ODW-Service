@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6dc026a6-7b7d-4659-8a58-462fdb52002c"
+				"spark.autotune.trackingId": "865f85c9-86d1-4d79-99d8-0f110c135217"
 			}
 		},
 		"metadata": {
@@ -98,10 +98,12 @@
 					"from notebookutils import mssparkutils\n",
 					"import json\n",
 					"from datetime import datetime, date\n",
-					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit\n",
+					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit,input_file_name\n",
 					"from pyspark.sql import DataFrame\n",
-					"from pyspark.sql.types import StructType\n",
-					"from pyspark.sql.functions import *"
+					"from pyspark.sql.types import StructType,TimestampType\n",
+					"from pyspark.sql.functions import *\n",
+					"import re\n",
+					"from functools import reduce"
 				],
 				"execution_count": 19
 			},
@@ -123,12 +125,170 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"table_name: str = f\"odw_standardised_db.sb_{entity_name.replace('-', '_')}\"\n",
 					"date_folder = datetime.now().date().strftime('%Y-%m-%d') if date_folder == '' else date_folder\n",
-					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/{date_folder}/\"\n",
-					"\n",
+					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/\"\n",
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
 				"execution_count": 20
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Function to Extract the Maximum Datetime from filename in odw_standardised_db.sb_appeal_has"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def process_and_get_max_datetime(table_name, filename_column=\"filename\", default_datetime=\"2024-06-12T08:43:00.939606+0000\"):\r\n",
+					"    df = spark.sql(f'select * from {table_name}')\r\n",
+					"    \r\n",
+					"    if filename_column in df.columns:\r\n",
+					"        processed_df = df.withColumn(\r\n",
+					"            \"extracted_datetime\",\r\n",
+					"            when(\r\n",
+					"                to_timestamp(\r\n",
+					"                    regexp_replace(\r\n",
+					"                        element_at(split(df[filename_column], \"/\"), -1),\r\n",
+					"                        r\"appeal-has_|\\.json\",\r\n",
+					"                        \"\"\r\n",
+					"                    ),\r\n",
+					"                    \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
+					"                ).isNotNull(),\r\n",
+					"                to_timestamp(\r\n",
+					"                    regexp_replace(\r\n",
+					"                        element_at(split(df[filename_column], \"/\"), -1),\r\n",
+					"                        r\"appeal-has_|\\.json\",\r\n",
+					"                        \"\"\r\n",
+					"                    ),\r\n",
+					"                    \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
+					"                )\r\n",
+					"            ).otherwise(lit(default_datetime).cast(TimestampType()))\r\n",
+					"        )\r\n",
+					"    else:\r\n",
+					"        processed_df = df.withColumn(\r\n",
+					"            \"extracted_datetime\",\r\n",
+					"            lit(default_datetime).cast(TimestampType())\r\n",
+					"        )\r\n",
+					"        \r\n",
+					"\r\n",
+					"    max_datetime = processed_df.select(max(\"extracted_datetime\")).collect()[0][0]\r\n",
+					"    if max_datetime is None:\r\n",
+					"        print(\"No valid datetime found. Using default datetime.\")\r\n",
+					"        max_datetime = datetime.strptime(default_datetime, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
+					"    \r\n",
+					"    return max_datetime.strftime(\"%Y-%m-%dT%H:%M:%S.%f%z\")+'+0000'\r\n",
+					"\r\n",
+					"# Usage\r\n",
+					"try:\r\n",
+					"    max_extracted_datetime = process_and_get_max_datetime(table_name)\r\n",
+					"    print(f\"Max extracted datetime: {max_extracted_datetime}\")\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"An error occurred: {str(e)}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"This function recursively lists all files and folders in a specified path and its subdirectories, up to find latest file"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def deep_ls(path: str, maItem_depth=1):\r\n",
+					"    \"\"\"\r\n",
+					"    List all files and folders in specified path and\r\n",
+					"    subfolders within maItemimum recursion depth.\r\n",
+					"    \"\"\"\r\n",
+					"    # Itemsst all files in path\r\n",
+					"    Items = mssparkutils.fs.ls(path)\r\n",
+					"\r\n",
+					"    # Return all files\r\n",
+					"    for Item in Items:\r\n",
+					"        if Item.size != 0:\r\n",
+					"            yield Item\r\n",
+					"\r\n",
+					"    # If the maItem_depth has not been reached, start Itemssting files and folders in subdirectories\r\n",
+					"    if maItem_depth > 1:\r\n",
+					"        for Item in Items:\r\n",
+					"            if Item.size != 0:\r\n",
+					"                continue\r\n",
+					"            for sub_Item in deep_ls(Item.path, maItem_depth - 1):\r\n",
+					"                yield sub_Item"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def extract_and_filter_paths(file_info_list, filter_date):\r\n",
+					"    timestamp_pattern = re.compile(r\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}[:_]\\d{2}[:_]\\d{2}[.\\d]*[+-]\\d{4})\")\r\n",
+					"    filter_datetime = datetime.strptime(filter_date, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
+					"\r\n",
+					"    filtered_paths = []\r\n",
+					"    for file_info in file_info_list:\r\n",
+					"        match = timestamp_pattern.search(file_info.name)\r\n",
+					"        if match:\r\n",
+					"            timestamp_str = match.group(1).replace('_', ':')\r\n",
+					"            file_datetime = datetime.strptime(timestamp_str, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
+					"            if file_datetime > filter_datetime:\r\n",
+					"                filtered_paths.append(file_info.path)\r\n",
+					"\r\n",
+					"    return filtered_paths\r\n",
+					"\r\n",
+					"# Usage\r\n",
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,2)), max_extracted_datetime)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -175,22 +335,29 @@
 					}
 				},
 				"source": [
-					"@logging_to_appins\n",
-					"def read_raw_messages(source_path: str) -> DataFrame:\n",
-					"    try: \n",
-					"        df: DataFrame = spark.read.json(source_path, schema=spark_schema)\n",
-					"        logInfo(f\"Found {df.count()} new rows.\")\n",
+					"def read_raw_messages(filtered_paths: List[str]) -> DataFrame:\n",
+					"    try:\n",
+					"        # Read JSON files from filtered paths\n",
+					"        df = spark.read.json(filtered_paths, schema=spark_schema)\n",
+					"        print(f\"Found {df.count()} new rows.\")\n",
 					"\n",
-					"        # adding the standardised columns\n",
-					"        df: DataFrame = df.withColumn(\"expected_from\", current_timestamp())\n",
-					"        df: DataFrame = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
-					"        df: DataFrame = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
+					"\n",
+					"        # Adding the standardised columns\n",
+					"        df = df.withColumn(\"expected_from\", current_timestamp())\n",
+					"        df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
+					"        df = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
+					"        df = df.withColumn(\"filename\",input_file_name())\n",
+					"        ## array(*path_literals))\n",
 					"\n",
 					"    except Exception as e:\n",
-					"        logError(f'Raw data not found at {source_path}, Exception is {e}')\n",
+					"        print('Error reading raw messages:', str(e))\n",
 					"        mssparkutils.notebook.exit('')\n",
 					"\n",
-					"    return df"
+					"    return df\n",
+					"\n",
+					"# Usage\n",
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\n",
+					"print(filtered_paths)"
 				],
 				"execution_count": 22
 			},
@@ -208,7 +375,7 @@
 					}
 				},
 				"source": [
-					"df: DataFrame = read_raw_messages(source_path)"
+					"df: DataFrame = read_raw_messages(filtered_paths)"
 				],
 				"execution_count": 23
 			},
