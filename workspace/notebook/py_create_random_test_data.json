@@ -1,0 +1,263 @@
+{
+	"name": "py_create_random_test_data",
+	"properties": {
+		"folder": {
+			"name": "utils"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "bb16ba47-4e47-48cf-b0da-5ffa97415de0"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": true,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"import pprint\r\n",
+					"import json\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"import random\r\n",
+					"from datetime import datetime, timedelta\r\n",
+					"from faker import Faker\r\n",
+					"from pyspark.sql.functions import lit, monotonically_increasing_id, col"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"entity_name = \"nsip-subscription\"\r\n",
+					"std_db_name = \"odw_standardised_db\"\r\n",
+					"hrm_db_name = \"odw_harmonised_db\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"std_schema = StructType.fromJson(json.loads(mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \r\n",
+					"                            arguments={\"entity_name\": entity_name, \"db_name\": std_db_name})))\r\n",
+					"\r\n",
+					"hrm_schema = StructType.fromJson(json.loads(mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \r\n",
+					"                            arguments={\"entity_name\": entity_name, \"db_name\": hrm_db_name})))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"faker = Faker()\r\n",
+					"\r\n",
+					"def generate_unique_uuids(existing_ids, count):\r\n",
+					"    new_uuids = []\r\n",
+					"    while len(new_uuids) < count:\r\n",
+					"        new_id = faker.uuid4()\r\n",
+					"        if new_id not in existing_ids:\r\n",
+					"            new_uuids.append(new_id)\r\n",
+					"            existing_ids.add(new_id)\r\n",
+					"    return new_uuids\r\n",
+					"    \r\n",
+					"def generate_random_value(field_name: str, field_type):\r\n",
+					"    \"\"\"Generate a random value based on the field's data type.\"\"\"\r\n",
+					"    if field_name == \"message_type\":\r\n",
+					"        return \"Create\"\r\n",
+					"    if field_name == \"message_id\":\r\n",
+					"        return faker.uuid4()\r\n",
+					"    if field_name == \"IsActive\":\r\n",
+					"        return random.choice([\"Y\"])\r\n",
+					"    if isinstance(field_type, StringType):\r\n",
+					"        return faker.word()\r\n",
+					"    elif isinstance(field_type, LongType):\r\n",
+					"        return random.randint(1, 10**9)\r\n",
+					"    elif isinstance(field_type, IntegerType):\r\n",
+					"        return random.randint(1, 10**5)\r\n",
+					"    elif isinstance(field_type, DoubleType):\r\n",
+					"        return random.uniform(1.0, 1000.0)\r\n",
+					"    elif isinstance(field_type, FloatType):\r\n",
+					"        return random.uniform(1.0, 100.0)\r\n",
+					"    elif isinstance(field_type, TimestampType):\r\n",
+					"        return datetime.now() - timedelta(seconds=random.randint(0, 86400 * 365))\r\n",
+					"    elif isinstance(field_type, DateType):\r\n",
+					"        return datetime.now().date() - timedelta(days=random.randint(0, 365))\r\n",
+					"    elif isinstance(field_type, BooleanType):\r\n",
+					"        return random.choice([True, False])\r\n",
+					"    else:\r\n",
+					"        return None\r\n",
+					"\r\n",
+					"def generate_random_row(schema):\r\n",
+					"    \"\"\"Generate a random row of data based on the schema.\"\"\"\r\n",
+					"    return {field.name: generate_random_value(field.name, field.dataType) for field in schema.fields}\r\n",
+					"\r\n",
+					"def generate_random_dataframe(schema: StructType, num_records: int):\r\n",
+					"    \"\"\"Generate a PySpark DataFrame with random data based on the schema.\"\"\"\r\n",
+					"    # Generate random data\r\n",
+					"    data = [generate_random_row(schema) for _ in range(num_records)]\r\n",
+					"    \r\n",
+					"    # Create DataFrame\r\n",
+					"    return spark.createDataFrame(data, schema=schema)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"num_records = 5\r\n",
+					"random_df = generate_random_dataframe(hrm_schema, num_records)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(random_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"existing_message_ids = set(random_df.select(\"message_id\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"\r\n",
+					"top_100_df = random_df.limit(100)\r\n",
+					"\r\n",
+					"new_message_ids = generate_unique_uuids(existing_message_ids, 100)\r\n",
+					"\r\n",
+					"deleted_df = (\r\n",
+					"    top_100_df.rdd\r\n",
+					"    .zipWithIndex()  # Add an index to align with the new_message_ids\r\n",
+					"    .map(lambda row: {**row[0].asDict(), \"message_id\": new_message_ids[row[1]], \"message_type\": \"delete\"})  # Update message_id and message_type\r\n",
+					"    .toDF(schema=top_100_df.schema)  # Convert back to a DataFrame\r\n",
+					")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(deleted_df)"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
