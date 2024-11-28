@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4922962e-abe7-4a12-8b5a-762918a77fef"
+				"spark.autotune.trackingId": "0fd891b7-07d3-43f0-8a72-5ff8300d2414"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,7 @@
 					"from pyspark.sql import functions as F\n",
 					"import pprint"
 				],
-				"execution_count": 122
+				"execution_count": 160
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +106,7 @@
 					"curated_migration_db_name: str = 'odw_curated_migration_db'\n",
 					"curated_migration_table_name: str = 'nsip_document'"
 				],
-				"execution_count": 123
+				"execution_count": 161
 			},
 			{
 				"cell_type": "code",
@@ -140,7 +140,7 @@
 					"aie_appeals_documentIds = aie_std_documentIds.intersect(horizon_documentIds)\r\n",
 					"aie_appeals_documents_count = aie_appeals_documentIds.count()"
 				],
-				"execution_count": 124
+				"execution_count": 162
 			},
 			{
 				"cell_type": "code",
@@ -159,7 +159,7 @@
 					"#keep track of the exitCodes, if the exit code is not zero then we've had failures, we flip the boolean\n",
 					"exitCode: int = 0"
 				],
-				"execution_count": 125
+				"execution_count": 163
 			},
 			{
 				"cell_type": "code",
@@ -215,7 +215,7 @@
 					"\t\"transcriptId\"\n",
 					"]"
 				],
-				"execution_count": 126
+				"execution_count": 164
 			},
 			{
 				"cell_type": "code",
@@ -233,7 +233,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 127
+				"execution_count": 165
 			},
 			{
 				"cell_type": "code",
@@ -254,7 +254,7 @@
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\n",
 					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
 				],
-				"execution_count": 128
+				"execution_count": 166
 			},
 			{
 				"cell_type": "markdown",
@@ -291,7 +291,7 @@
 					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
 					"exitCode += int(not hrm_schema_correct)"
 				],
-				"execution_count": 129
+				"execution_count": 167
 			},
 			{
 				"cell_type": "markdown",
@@ -330,7 +330,7 @@
 					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\n",
 					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\", data_model_columns)"
 				],
-				"execution_count": 130
+				"execution_count": 168
 			},
 			{
 				"cell_type": "markdown",
@@ -364,7 +364,7 @@
 					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 131
+				"execution_count": 169
 			},
 			{
 				"cell_type": "code",
@@ -380,6 +380,8 @@
 					}
 				},
 				"source": [
+					"# this function needs to be transferred to 'py_spark_df_ingestion_functions' notebook\r\n",
+					"\r\n",
 					"# def read_csvs_recursively(storage_account: str = None, folder: str = None) -> DataFrame:\r\n",
 					"#    \"\"\"\r\n",
 					"#    Example of how to read csv files in a folder recursively.\r\n",
@@ -407,7 +409,7 @@
 					"\r\n",
 					"#    return df_with_path"
 				],
-				"execution_count": 132
+				"execution_count": 170
 			},
 			{
 				"cell_type": "code",
@@ -423,161 +425,21 @@
 					}
 				},
 				"source": [
-					"# def test_sb_std_to_sb_hrm_no_dropping_records(sb_std_table: str, sb_hrm_table: str) -> bool:\n",
-					"#     df: DataFrame = spark.sql(f\"\"\"\n",
-					"#     select documentId\n",
-					"#     from {std_db_name}.{sb_std_table}\n",
-					"#     where documentId not in\n",
-					"#     (\n",
-					"#         select documentId\n",
-					"#         from {hrm_db_name}.{sb_hrm_table}\n",
-					"#     )\n",
-					"#     \"\"\")\n",
+					"def test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name: str, hrm_table_final: str) -> bool:\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"    select dataId\n",
+					"    from {std_db_name}.{horizon_std_table_name}\n",
+					"    where ingested_datetime = (select max(ingested_datetime) from {std_db_name}.{horizon_std_table_name})\n",
+					"    and dataId not in\n",
+					"    (\n",
+					"        select documentId\n",
+					"        from {hrm_db_name}.{hrm_table_final}\n",
+					"    )\n",
+					"    \"\"\")\n",
 					"\n",
-					"#     return df.count() == 0"
+					"    return df.count() == 0"
 				],
-				"execution_count": 133
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_sb_hrm_to_hrm_final_no_dropping_records(sb_hrm_table: str, hrm_table_final: str) -> bool:\n",
-					"#     df: DataFrame = spark.sql(f\"\"\"\n",
-					"#     select documentId\n",
-					"#     from {hrm_db_name}.{sb_hrm_table}\n",
-					"#     where documentId not in\n",
-					"#     (\n",
-					"#         select documentId\n",
-					"#         from {hrm_db_name}.{hrm_table_final}\n",
-					"#     )\n",
-					"#     \"\"\")\n",
-					"\n",
-					"#     return df.count() == 0"
-				],
-				"execution_count": 134
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_hrm_to_curated_no_dropping_records(hrm_table_final: str, curated_table_name: str) -> bool:\n",
-					"#     df: DataFrame = spark.sql(f\"\"\"\n",
-					"#     select documentId\n",
-					"#     from {hrm_db_name}.{hrm_table_final}\n",
-					"#     where IsActive = 'Y'\n",
-					"#     and documentId not in\n",
-					"#     (\n",
-					"#         select documentId\n",
-					"#         from {curated_db_name}.{curated_table_name}\n",
-					"#     )\n",
-					"#     \"\"\")\n",
-					"\n",
-					"#     return df.count() == 0"
-				],
-				"execution_count": 135
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name: str, hrm_table_final: str) -> bool:\n",
-					"#     df: DataFrame = spark.sql(f\"\"\"\n",
-					"#     select dataId\n",
-					"#     from {std_db_name}.{horizon_std_table_name}\n",
-					"#     where ingested_datetime = (select max(ingested_datetime) from {std_db_name}.{horizon_std_table_name})\n",
-					"#     and dataId not in\n",
-					"#     (\n",
-					"#         select documentId\n",
-					"#         from {hrm_db_name}.{hrm_table_final}\n",
-					"#     )\n",
-					"#     \"\"\")\n",
-					"\n",
-					"#     return df.count() == 0"
-				],
-				"execution_count": 136
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_aie_std_to_hrm_no_dropping_records(aie_std_table_name: str, aie_hrm_table_name: str) -> bool:\n",
-					"#     df: DataFrame = aie_std_documentIds.subtract(aie_hrm_documentIds)\n",
-					"#     return df.count() == 0 "
-				],
-				"execution_count": 137
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# def test_document_row_counts_match(hrm_table_final: str, curated_table_name: str) -> DataFrame:\r\n",
-					"#     # Count rows per documentId in harmonised final table\r\n",
-					"#     hrm_final_counts = hrm_final_df_active.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"hrm_final_count\"))\r\n",
-					"\r\n",
-					"#     # Count rows per documentId in curated table\r\n",
-					"#     curated_counts = curated_df.groupBy(\"documentId\").agg(F.count(\"*\").alias(\"curated_count\"))\r\n",
-					"\r\n",
-					"#     # Join both tables on documentId to compare the counts\r\n",
-					"#     comparison_df = hrm_final_counts.join(curated_counts, \"documentId\", how=\"outer\")\r\n",
-					"\r\n",
-					"#     comparison_df = comparison_df.withColumn(\"count_difference\", F.col(\"hrm_final_count\") - F.col(\"curated_count\"))\r\n",
-					"\r\n",
-					"#     non_zero_differences = comparison_df.filter(\"count_difference > 0\")\r\n",
-					"\r\n",
-					"#     return non_zero_differences.count() == 0"
-				],
-				"execution_count": 138
+				"execution_count": 174
 			},
 			{
 				"cell_type": "code",
@@ -595,7 +457,7 @@
 				"source": [
 					"print(f\"Service bus std to hrm no documentIds dropped: {test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name, 'documentId')}\")"
 				],
-				"execution_count": 151
+				"execution_count": 177
 			},
 			{
 				"cell_type": "code",
@@ -611,9 +473,9 @@
 					}
 				},
 				"source": [
-					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_sb_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final)}\")"
+					"print(f\"Service bus hrm to hrm table final no documentIds dropped: {test_sb_hrm_to_hrm_final_no_dropping_records(hrm_table_name, hrm_table_final, 'documentId')}\")"
 				],
-				"execution_count": 140
+				"execution_count": 178
 			},
 			{
 				"cell_type": "code",
@@ -629,9 +491,9 @@
 					}
 				},
 				"source": [
-					"print(f\"hrm table final to curated no documentIds dropped: {test_hrm_to_curated_no_dropping_records(hrm_table_final, curated_table_name)}\")"
+					"print(f\"hrm table final to curated no documentIds dropped: {test_hrm_to_curated_no_dropping_records(hrm_table_final, curated_table_name, 'documentId')}\")"
 				],
-				"execution_count": 141
+				"execution_count": 179
 			},
 			{
 				"cell_type": "code",
@@ -649,7 +511,7 @@
 				"source": [
 					"print(f\"Horizon std table to hrm table final no documentIds dropped: {test_horizon_to_hrm_final_no_dropping_records(horizon_std_table_name, hrm_table_final)}\")"
 				],
-				"execution_count": 142
+				"execution_count": 180
 			},
 			{
 				"cell_type": "code",
@@ -667,7 +529,7 @@
 				"source": [
 					"print(f\"AIE std table to hrm table no documentIds dropped: {test_aie_std_to_hrm_no_dropping_records(aie_std_table_name, aie_hrm_table_name)}\")"
 				],
-				"execution_count": 143
+				"execution_count": 181
 			},
 			{
 				"cell_type": "code",
@@ -685,7 +547,7 @@
 				"source": [
 					"print(f\"Document row counts match for each document in harmonised final to curated: {test_document_row_counts_match(hrm_table_final, curated_table_name)}\")"
 				],
-				"execution_count": 144
+				"execution_count": 182
 			},
 			{
 				"cell_type": "markdown",
@@ -723,7 +585,7 @@
 					"exitCode += int(not cur_migrated_schema_correct)\n",
 					"print(f\"Curated Migration schema correct: {cur_migrated_schema_correct}\\nTable: {curated_migration_db_name}.{curated_migration_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": 145
+				"execution_count": 183
 			},
 			{
 				"cell_type": "markdown",
@@ -757,7 +619,7 @@
 					"print(f\"Horizon to Curared - Counts match: {counts_match}\")\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 146
+				"execution_count": 184
 			},
 			{
 				"cell_type": "markdown",
@@ -791,7 +653,7 @@
 					"print(f\"Horizon to Curared - No rows dropped: {rows_dropped}\")\n",
 					"exitCode += int(not rows_dropped)"
 				],
-				"execution_count": 147
+				"execution_count": 185
 			},
 			{
 				"cell_type": "markdown",
@@ -825,7 +687,7 @@
 					"exitCode += int(not no_horizon_records)\n",
 					"exitCode += int(not counts_match)"
 				],
-				"execution_count": 148
+				"execution_count": 186
 			},
 			{
 				"cell_type": "code",
@@ -843,7 +705,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(exitCode)"
 				],
-				"execution_count": 149
+				"execution_count": 187
 			},
 			{
 				"cell_type": "markdown",
