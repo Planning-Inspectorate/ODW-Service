@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bb16ba47-4e47-48cf-b0da-5ffa97415de0"
+				"spark.autotune.trackingId": "3bc9de41-2aa7-4550-94b7-5d356982fad9"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,8 @@
 					"import random\r\n",
 					"from datetime import datetime, timedelta\r\n",
 					"from faker import Faker\r\n",
-					"from pyspark.sql.functions import lit, monotonically_increasing_id, col"
+					"from pyspark.sql.functions import lit, monotonically_increasing_id, col, when\r\n",
+					"from pyspark.sql import Row"
 				],
 				"execution_count": null
 			},
@@ -90,10 +91,24 @@
 				},
 				"source": [
 					"entity_name = \"nsip-subscription\"\r\n",
+					"primary_key = \"subscriptionId\"\r\n",
 					"std_db_name = \"odw_standardised_db\"\r\n",
 					"hrm_db_name = \"odw_harmonised_db\""
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define schemas for standardised and harmonised"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -105,6 +120,19 @@
 					"                            arguments={\"entity_name\": entity_name, \"db_name\": hrm_db_name})))"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Functions to generate a DataFrame with random values"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -125,7 +153,7 @@
 					"def generate_unique_uuids(existing_ids, count):\r\n",
 					"    new_uuids = []\r\n",
 					"    while len(new_uuids) < count:\r\n",
-					"        new_id = faker.uuid4()\r\n",
+					"        new_id = faker.unique.uuid4()\r\n",
 					"        if new_id not in existing_ids:\r\n",
 					"            new_uuids.append(new_id)\r\n",
 					"            existing_ids.add(new_id)\r\n",
@@ -136,7 +164,7 @@
 					"    if field_name == \"message_type\":\r\n",
 					"        return \"Create\"\r\n",
 					"    if field_name == \"message_id\":\r\n",
-					"        return faker.uuid4()\r\n",
+					"        return faker.unique.uuid4()\r\n",
 					"    if field_name == \"IsActive\":\r\n",
 					"        return random.choice([\"Y\"])\r\n",
 					"    if isinstance(field_type, StringType):\r\n",
@@ -173,6 +201,19 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Create standardised DataFrame"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -186,8 +227,8 @@
 					}
 				},
 				"source": [
-					"num_records = 5\r\n",
-					"random_df = generate_random_dataframe(hrm_schema, num_records)"
+					"num_records = 1\r\n",
+					"std_df = generate_random_dataframe(std_schema, num_records)"
 				],
 				"execution_count": null
 			},
@@ -206,9 +247,22 @@
 					"collapsed": false
 				},
 				"source": [
-					"display(random_df)"
+					"display(std_df)"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Create harmonised DataFrame"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -224,18 +278,159 @@
 					}
 				},
 				"source": [
-					"existing_message_ids = set(random_df.select(\"message_id\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"num_records = 1\r\n",
+					"hrm_df = generate_random_dataframe(hrm_schema, num_records)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(hrm_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"sample_hrm_df = hrm_df.limit(1)\r\n",
+					"sample_std_df = std_df.limit(1)\r\n",
 					"\r\n",
-					"top_100_df = random_df.limit(100)\r\n",
+					"sample_records = (\r\n",
+					"    sample_hrm_df.select(primary_key).distinct()\r\n",
+					"    )\r\n",
 					"\r\n",
-					"new_message_ids = generate_unique_uuids(existing_message_ids, 100)\r\n",
+					"sample_records_list = sample_records.select(primary_key).rdd.flatMap(lambda x: x).collect()\r\n",
 					"\r\n",
-					"deleted_df = (\r\n",
-					"    top_100_df.rdd\r\n",
-					"    .zipWithIndex()  # Add an index to align with the new_message_ids\r\n",
-					"    .map(lambda row: {**row[0].asDict(), \"message_id\": new_message_ids[row[1]], \"message_type\": \"delete\"})  # Update message_id and message_type\r\n",
-					"    .toDF(schema=top_100_df.schema)  # Convert back to a DataFrame\r\n",
-					")"
+					"print(sample_records_list)\r\n",
+					"\r\n",
+					"# sample_records_list = [row.subscriptionId for row in sample_records.collect()]\r\n",
+					"\r\n",
+					"# print(sample_records_list)\r\n",
+					"\r\n",
+					"# std_df_with_index = std_df.withColumn(\"row_id\", monotonically_increasing_id())\r\n",
+					"\r\n",
+					"# top_rows = (\r\n",
+					"#     std_df_with_index.filter(col(\"row_id\") < len(sample_records_list))\r\n",
+					"#     .drop(\"row_id\")\r\n",
+					"# )\r\n",
+					"\r\n",
+					"# display(std_df_with_index)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"updated_rows = spark.createDataFrame(\r\n",
+					"    [\r\n",
+					"        row.asDict() | {primary_key: sample_records_list[i], \"message_type\": \"Delete\"}\r\n",
+					"        for i, row in enumerate(sample_std_df.collect())\r\n",
+					"    ],\r\n",
+					"    schema=std_df.schema,\r\n",
+					")\r\n",
+					"\r\n",
+					"display(updated_rows)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"final_std_df = std_df.union(updated_rows)\r\n",
+					"display(final_std_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Create a DataFrame of deleted messages"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# existing_message_ids = set(hrm_df.select(\"message_id\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"\r\n",
+					"# sample_df = hrm_df.limit(1)\r\n",
+					"\r\n",
+					"# new_message_ids = generate_unique_uuids(existing_message_ids, 1)\r\n",
+					"\r\n",
+					"# deleted_df = (\r\n",
+					"#     sample_df.rdd\r\n",
+					"#     .zipWithIndex()  # Add an index to align with the new_message_ids\r\n",
+					"#     .map(lambda row: {**row[0].asDict(), \"message_id\": new_message_ids[row[1]], \"message_type\": \"delete\"})  # Update message_id and message_type\r\n",
+					"#     .toDF(schema=hrm_schema)  # Convert back to a DataFrame\r\n",
+					"# )\r\n",
+					"\r\n",
+					"deleted_df = final_std_df.filter(\"message_type = 'Delete'\")"
 				],
 				"execution_count": null
 			},
@@ -255,6 +450,86 @@
 				},
 				"source": [
 					"display(deleted_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Join harmonised with the deleted DataFrame"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# merged_df = hrm_df.join(\r\n",
+					"#     deleted_df.select(similar_columns), \r\n",
+					"#     on=primary_key, \r\n",
+					"#     how=\"left\"\r\n",
+					"# )\r\n",
+					"\r\n",
+					"merged_df = hrm_df.unionByName(deleted_df, allowMissingColumns=True)\r\n",
+					"display(merged_df)\r\n",
+					"\r\n",
+					"# # Update the IsActive column\r\n",
+					"# updated_df = merged_df.withColumn(\r\n",
+					"#     \"IsActive\",\r\n",
+					"#     when(col(\"message_type\") == \"Delete\", \"N\").otherwise(col(\"IsActive\"))\r\n",
+					"# ).drop(\"message_type\")  # Drop unnecessary columns after processing\r\n",
+					"\r\n",
+					"# # Step 3: Add new delete records (not in target_df) if needed\r\n",
+					"# new_deletes = deleted_df.join(target_df, on=\"subscriptionId\", how=\"left_anti\")\r\n",
+					"# final_df = updated_df.unionByName(new_deletes, allowMissingColumns=True)\r\n",
+					"\r\n",
+					"# # Show the result\r\n",
+					"# final_df.show()\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"deleted_subscription_ids = deleted_df.select(primary_key).distinct()\r\n",
+					"\r\n",
+					"updated_hrm_df = merged_df.withColumn(\r\n",
+					"    \"IsActive\", \r\n",
+					"    when(col(\"subscriptionId\").isin([row.subscriptionId for row in deleted_subscription_ids.collect()]), lit(\"N\"))\r\n",
+					"    .otherwise(col(\"IsActive\"))\r\n",
+					")\r\n",
+					"\r\n",
+					"display(updated_hrm_df.orderBy(\"subscriptionId\"))"
 				],
 				"execution_count": null
 			}
