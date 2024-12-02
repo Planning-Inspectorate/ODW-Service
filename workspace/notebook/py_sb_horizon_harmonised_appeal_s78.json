@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a9eabddc-3d93-4171-be7d-31f5f16b2c46"
+				"spark.autotune.trackingId": "3ec5e07b-dfc8-4753-b89b-29ae6f85d64d"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 56
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -81,7 +81,7 @@
 					"primary_key = 'caseReference'\n",
 					"incremental_key = 'AppealS78ID'"
 				],
-				"execution_count": 57
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,8 @@
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
 					"service_bus_data = spark.sql(f\"\"\"\r\n",
 					"                    SELECT DISTINCT\r\n",
-					"                         caseReference as {primary_key}\r\n",
+					"                        CAST(NULL AS Long) as AppealS78ID\r\n",
+					"                        ,caseReference as {primary_key}\r\n",
 					"                        ,caseId\r\n",
 					"                        ,submissionId\r\n",
 					"                        ,caseStatus\r\n",
@@ -247,7 +248,7 @@
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 59
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -265,7 +266,7 @@
 				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)"
 				],
-				"execution_count": 60
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +284,7 @@
 				"source": [
 					"results = service_bus_data"
 				],
-				"execution_count": 64
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -301,7 +302,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 65
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -353,7 +354,7 @@
 					"    \"\"\")\n",
 					""
 				],
-				"execution_count": 66
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
@@ -392,7 +393,25 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 67
+				"execution_count": 59
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_calcs"
+				],
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -410,7 +429,26 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 68
+				"execution_count": 61
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df_calcs\r\n",
+					""
+				],
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -429,7 +467,7 @@
 				"source": [
 					"results = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT \n",
-					"                        {incremental_key}\n",
+					"                        AppealS78ID\n",
 					"                        ,{primary_key}\n",
 					"                        ,caseId\n",
 					"                        ,submissionId\n",
@@ -620,7 +658,7 @@
 					"                            ,IFNULL(CAST(siteAddressPostcode as String), '.')\n",
 					"                            ,IFNULL(CAST(siteAccessDetails as String), '.')\n",
 					"                            ,IFNULL(CAST(siteSafetyDetails as String), '.')\n",
-					"                            ,IFNULL(CAST(siteAreaSquareMetre sas String), '.')\n",
+					"                            ,IFNULL(CAST(siteAreaSquareMetres as String), '.')\n",
 					"                            ,IFNULL(CAST(floorSpaceSquareMetres as String), '.')\n",
 					"                            ,IFNULL(CAST(isCorrectAppealType as String), '.')\n",
 					"                            ,IFNULL(CAST(isGreenBelt as String), '.')\n",
@@ -636,7 +674,7 @@
 					"                            ,IFNULL(CAST(changedDevelopmentDescription as String), '.')\n",
 					"                            ,IFNULL(CAST(newConditionDetails as String), '.')\n",
 					"                            ,IFNULL(CAST(nearbyCaseReferences as String), '.')\n",
-					"                            ,IFNULL(CAST(neighbouringSiteAddresses as String),\n",
+					"                            ,IFNULL(CAST(neighbouringSiteAddresses as String), '.')\n",
 					"                            ,IFNULL(CAST(affectedListedBuildingNumbers as String), '.')\n",
 					"                            ,IFNULL(CAST(changedListedBuildingNumbers as String), '.')\n",
 					"                            ,IFNULL(CAST(appellantCostsAppliedFor as String), '.')\n",
@@ -711,7 +749,7 @@
 					"                \"\"\")\n",
 					"    "
 				],
-				"execution_count": 73
+				"execution_count": 63
 			},
 			{
 				"cell_type": "code",
@@ -731,7 +769,7 @@
 					"\n",
 					"results = results.drop(\"AppealS78ID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": null
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -750,7 +788,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\n",
 					"final_df = final_df.drop(primary_key).drop_duplicates()"
 				],
-				"execution_count": null
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -768,7 +806,7 @@
 				"source": [
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": null
+				"execution_count": 67
 			},
 			{
 				"cell_type": "code",
