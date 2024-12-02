@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "664811d4-4c91-45e1-b5bb-facfec21292f"
+				"spark.autotune.trackingId": "a3a1574f-a2b0-460a-a70f-a75231c05df5"
 			}
 		},
 		"metadata": {
@@ -750,6 +750,64 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"original_delete_df = delete_df.filter(\"subscriptionId == '22173'\")\r\n",
+					"display(original_delete_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"delete_df = delete_df \\\r\n",
+					".withColumn(\"ValidTo\", col(\"IngestionDate\")) \\\r\n",
+					".withColumn(\"IsActive\", lit(\"N\"))\r\n",
+					"display(delete_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"display(target_df.filter(\"subscriptionId == '22173'\"))"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -779,15 +837,24 @@
 				},
 				"source": [
 					"if delete_df.count() > 0:\r\n",
-					"    logInfo(\"Handling deleted rows\")\r\n",
-					"    validto_df = target_df.join(\r\n",
-					"        delete_df.select(entity_primary_key, \"message_enqueued_time_utc\"),\r\n",
-					"        on=primary_key,\r\n",
-					"        how=\"left\"\r\n",
-					"    ).withColumn(\r\n",
-					"        \"ValidTo\",\r\n",
-					"        when(col(\"IsActive\") == \"Y\", col(\"message_enqueued_time_utc\"))\r\n",
-					"    ).drop(\"message_enqueued_time_utc\")"
+					"    delete_df = (\r\n",
+					"        target_df.join(\r\n",
+					"            delete_df.select(\r\n",
+					"                entity_primary_key, \r\n",
+					"                col(\"IngestionDate\").alias(\"delete_IngestionDate\")\r\n",
+					"            ),\r\n",
+					"            on=entity_primary_key,\r\n",
+					"            how=\"left\"\r\n",
+					"        )\r\n",
+					"        .withColumn(\r\n",
+					"            \"ValidTo\",\r\n",
+					"            when(col(\"IsActive\") == \"Y\", col(\"delete_IngestionDate\"))\r\n",
+					"            .otherwise(col(\"ValidTo\"))\r\n",
+					"        )\r\n",
+					"        .drop(\"delete_IngestionDate\")\r\n",
+					"    )\r\n",
+					"\r\n",
+					"display(delete_df.filter(\"subscriptionId = '22173'\"))"
 				],
 				"execution_count": null
 			},
@@ -822,15 +889,15 @@
 					}
 				},
 				"source": [
-					"deleted_primary_keys = deleted_df.select(primary_key).distinct()\r\n",
+					"deleted_primary_keys = delete_df.select(entity_primary_key).distinct()\r\n",
 					"\r\n",
-					"isactive_df = validto_df.withColumn(\r\n",
+					"delete_df = delete_df.withColumn(\r\n",
 					"    \"IsActive\", \r\n",
-					"    when(col(primary_key).isin([getattr(row, entity_primary_key) for row in deleted_primary_keys.collect()]), lit(\"N\"))\r\n",
+					"    when(col(entity_primary_key).isin([getattr(row, entity_primary_key) for row in deleted_primary_keys.collect()]), lit(\"N\"))\r\n",
 					"    .otherwise(col(\"IsActive\"))\r\n",
 					")\r\n",
 					"\r\n",
-					"logInfo(\"Done handling deleted rows\")"
+					"display(delete_df.filter(\"subscriptionId = '22173'\"))"
 				],
 				"execution_count": null
 			},
@@ -861,7 +928,7 @@
 					}
 				},
 				"source": [
-					"target_df = insert_rows_in_df(isactive_df, target_df, hrm_incremental_key)\r\n",
+					"target_df = insert_rows_in_df(delete_df, target_df, hrm_incremental_key)\r\n",
 					"logInfo(f\"Deleted rows: {delete_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
 				"execution_count": null
