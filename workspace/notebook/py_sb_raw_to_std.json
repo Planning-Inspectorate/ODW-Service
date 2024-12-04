@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4ad15860-a3a3-4d57-a75a-b49ef0837d77"
+				"spark.autotune.trackingId": "ecee0fc4-d757-438c-bdfb-7831cbab1e6f"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 54
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -89,7 +89,7 @@
 					"entity_name='appeal-has'\n",
 					"date_folder=''"
 				],
-				"execution_count": 55
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"import re\n",
 					"from functools import reduce"
 				],
-				"execution_count": 56
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +129,7 @@
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
-				"execution_count": 57
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -204,7 +204,131 @@
 					"except Exception as e:\r\n",
 					"    print(f\"An error occurred: {str(e)}\")"
 				],
-				"execution_count": 58
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run service-bus/py_spark_df_ingestion_functions"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df = spark.table(table_name)\r\n",
+					"display(df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"def get_max_file_date_from_folder(folder_name: str) -> str:\r\n",
+					"    df = collect_all_raw_sb_data_historic(folder_name).select(\"caseId\", \"caseReference\", \"input_file\")\r\n",
+					"    date_pattern = r'(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\+\\d{4})'\r\n",
+					"    df = df.withColumn(\"file_date\", regexp_extract(df[\"input_file\"], date_pattern, 1))\r\n",
+					"    df = df.withColumn(\"file_date\", df[\"file_date\"].cast(TimestampType()))\r\n",
+					"    max_timestamp = df.agg(max(\"file_date\")).collect()[0][0]\r\n",
+					"    formatted_timestamp = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
+					"    return f\"Maximum file date: {formatted_timestamp}\"\r\n",
+					"\r\n",
+					"folder_name = \"appeal-has\"\r\n",
+					"print(get_max_file_date_from_folder(folder_name))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_all_files_recursive(source_path):\r\n",
+					"    files = []\r\n",
+					"    entries = mssparkutils.fs.ls(source_path)\r\n",
+					"    \r\n",
+					"    for entry in entries:\r\n",
+					"        # Check if the entry is a directory\r\n",
+					"        if entry.isDir:\r\n",
+					"            # Recursively process the directory\r\n",
+					"            files.extend(get_all_files_recursive(entry.path))\r\n",
+					"        else:\r\n",
+					"            # It's a file, add to the list\r\n",
+					"            files.append(entry.path)\r\n",
+					"    \r\n",
+					"    return files\r\n",
+					"\r\n",
+					"all_files = get_all_files_recursive(source_path)\r\n",
+					"\r\n",
+					"print(all_files)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"files: set = set(get_all_files_recursive(source_path))\r\n",
+					"files_in_table: set = set(df.select(\"filename\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"missing_files = list(files - files_in_table)\r\n",
+					"print(missing_files)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -254,7 +378,7 @@
 					"            for sub_Item in deep_ls(Item.path, maxItem_depth - 1):\r\n",
 					"                yield sub_Item"
 				],
-				"execution_count": 59
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -286,9 +410,27 @@
 					"    return filtered_paths\r\n",
 					"\r\n",
 					"# Usage\r\n",
-					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path,2)), max_extracted_datetime)"
+					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)"
 				],
-				"execution_count": 60
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"filtered_paths"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -306,7 +448,7 @@
 				"source": [
 					"%run \"service-bus/py_spark_df_ingestion_functions\""
 				],
-				"execution_count": 61
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -359,7 +501,7 @@
 					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\n",
 					"print(filtered_paths)"
 				],
-				"execution_count": 62
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -377,7 +519,7 @@
 				"source": [
 					"df: DataFrame = read_raw_messages(filtered_paths)"
 				],
-				"execution_count": 63
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -410,7 +552,7 @@
 					"compare_and_merge_schema(df, table_name)\n",
 					"logInfo(f\"Done comparing and merging schema for {table_name}\")"
 				],
-				"execution_count": 64
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -452,7 +594,7 @@
 					"\n",
 					"    return table_df"
 				],
-				"execution_count": 65
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -474,7 +616,7 @@
 					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\n",
 					"logInfo(f\"Done applying DF to {table_name}\")"
 				],
-				"execution_count": 66
+				"execution_count": null
 			}
 		]
 	}
