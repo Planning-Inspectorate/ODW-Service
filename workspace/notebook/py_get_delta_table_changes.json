@@ -1,0 +1,177 @@
+{
+	"name": "py_get_delta_table_changes",
+	"properties": {
+		"folder": {
+			"name": "utils"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "913477bf-2322-4937-ac70-f9cad774ecbd"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.types import StructType, StructField, StringType, IntegerType\n",
+					"\n",
+					"# Initialize a SparkSession\n",
+					"\n",
+					"# Define the schema for the DataFrame\n",
+					"schema = StructType([\n",
+					"    StructField(\"id\", IntegerType(), True),\n",
+					"    StructField(\"name\", StringType(), True)\n",
+					"])\n",
+					"\n",
+					"# Define the data\n",
+					"data = [\n",
+					"    (1, \"Alice\"),\n",
+					"    (2, \"Bob\")\n",
+					"]\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.test_table_delta_logs\")\n",
+					"\n",
+					"# Create the DataFrame\n",
+					"df = spark.createDataFrame(data, schema)\n",
+					"\n",
+					"# Show the DataFrame\n",
+					"df.show()\n",
+					"\n",
+					"# Define the data\n",
+					"data = [\n",
+					"    (1, \"Alice\"),\n",
+					"    (2, \"Bob\"),\n",
+					"    (3, \"Khan Niazi\")\n",
+					"]\n",
+					"\n",
+					"# Create the DataFrame\n",
+					"df = spark.createDataFrame(data, schema)\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.test_table_delta_logs\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"table_path = 'abfss://synapse@pinsstodwdevuks9h80mb.dfs.core.windows.net/synapse/workspaces/pins-synw-odw-dev-uks/warehouse/odw_harmonised_db.db/test_table_delta_logs'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_delta_table_lastest_version(table_path):\n",
+					"    from delta.tables import DeltaTable\n",
+					"\n",
+					"    delta_table = DeltaTable.forPath(spark, table_path)\n",
+					"    history_df = delta_table.history()\n",
+					"    return history_df.select(\"version\").orderBy(\"version\", ascending=False).first()[\"version\"]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"latest_version = get_delta_table_lastest_version(table_path)\n",
+					"\n",
+					"# Load the current and previous versions\n",
+					"current_version = spark.read.format(\"delta\").option(\"versionAsOf\", latest_version).load(table_path)\n",
+					"previous_version = spark.read.format(\"delta\").option(\"versionAsOf\", latest_version - 1).load(table_path)\n",
+					"\n",
+					"# Find the differences\n",
+					"create_df = current_version.subtract(previous_version)\n",
+					"delete_df = previous_version.subtract(current_version)\n",
+					"\n",
+					"# find the updated rows based on the entity_primary_key\n",
+					"update_df = create_df \\\n",
+					"    .join(delete_df.select('id'), on=\"id\", how=\"inner\") \\\n",
+					"    .withColumn(\"EventType\", lit(\"Update\"))\n",
+					"\n",
+					"# remove updated rows from create and delete df\n",
+					"create_df = create_df \\\n",
+					"    .join(update_df.select(\"id\"), on=\"id\", how=\"left_anti\") \\\n",
+					"    .withColumn(\"EventType\", lit(\"Create\"))\n",
+					"\n",
+					"delete_df = delete_df \\\n",
+					"    .join(update_df.select(\"id\"), on=\"id\", how=\"left_anti\") \\\n",
+					"    .withColumn(\"EventType\", lit(\"Delete\"))"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
