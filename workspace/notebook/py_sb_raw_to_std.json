@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ecee0fc4-d757-438c-bdfb-7831cbab1e6f"
+				"spark.autotune.trackingId": "fda887d1-abfa-425c-89e7-2b94f44c4213"
 			}
 		},
 		"metadata": {
@@ -255,6 +255,40 @@
 						"transient": {
 							"deleting": false
 						}
+					}
+				},
+				"source": [
+					"def get_max_value_from_column(table_name: str, column_name: str) -> datetime:\r\n",
+					"    \"\"\"\r\n",
+					"    Gets the maximum value from a given table column\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        table_name: the name of the table, e.g. sb_appeal_has\r\n",
+					"        column_name: the name of the table column, e.g. ingested_datetime\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        max_value: the maximum value from the table column\r\n",
+					"    \"\"\"\r\n",
+					"    df = spark.table(table_name)\r\n",
+					"    max_value = df.agg(max(column_name)).collect()[0][0]\r\n",
+					"\r\n",
+					"    return max_value\r\n",
+					"\r\n",
+					"print(get_max_value_from_column(table_name, column_name=\"message_enqueued_time_utc\"))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					},
 					"collapsed": false
 				},
@@ -287,7 +321,18 @@
 					}
 				},
 				"source": [
-					"def get_all_files_recursive(source_path):\r\n",
+					"def get_all_files_recursive(source_path: str) -> list:\r\n",
+					"    \"\"\"\r\n",
+					"    Lists all files in a given source path.\r\n",
+					"    Recursively loops through all directories.\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        source_path: the folder path to start from, \r\n",
+					"        e.g. abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ServiceBus/appeal-has/\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        files: a list of files in the source path.\r\n",
+					"    \"\"\"\r\n",
 					"    files = []\r\n",
 					"    entries = mssparkutils.fs.ls(source_path)\r\n",
 					"    \r\n",
@@ -297,14 +342,14 @@
 					"            # Recursively process the directory\r\n",
 					"            files.extend(get_all_files_recursive(entry.path))\r\n",
 					"        else:\r\n",
-					"            # It's a file, add to the list\r\n",
+					"            # If it's a file, add to the list\r\n",
 					"            files.append(entry.path)\r\n",
 					"    \r\n",
 					"    return files\r\n",
 					"\r\n",
 					"all_files = get_all_files_recursive(source_path)\r\n",
 					"\r\n",
-					"print(all_files)"
+					"print(f\"Number of files: {len(all_files)}\")"
 				],
 				"execution_count": null
 			},
@@ -323,10 +368,29 @@
 					"collapsed": false
 				},
 				"source": [
-					"files: set = set(get_all_files_recursive(source_path))\r\n",
-					"files_in_table: set = set(df.select(\"filename\").rdd.flatMap(lambda x: x).collect())\r\n",
-					"missing_files = list(files - files_in_table)\r\n",
-					"print(missing_files)"
+					"def get_missing_files(table_name: str, source_path: str) -> list:\r\n",
+					"    \"\"\"\r\n",
+					"    Gets the difference between the files in the source path and the files in the table.\r\n",
+					"    Converts the table column \"filename\" into a set.\r\n",
+					"    Creates a set containing all the files int he source path.\r\n",
+					"    Compares the two sets to give the missing files not yet loaded to the table.\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        table_name: the name of the table, e.g. sb_appeal_has\r\n",
+					"        source_path: the folder path to start from, \r\n",
+					"        e.g. abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ServiceBus/appeal-has/\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        missing_files: a list of missing files not yet loaded to the table.\r\n",
+					"    \"\"\"\r\n",
+					"    df: DataFrame = spark.table(table_name)\r\n",
+					"    files_in_path: set = set(get_all_files_recursive(source_path))\r\n",
+					"    files_in_table: set = set(df.select(\"filename\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"    missing_files = list(files_in_path - files_in_table)\r\n",
+					"\r\n",
+					"    return missing_files\r\n",
+					"\r\n",
+					"print(f\"Missing files: {len(get_missing_files(table_name=table_name, source_path=source_path))}\")"
 				],
 				"execution_count": null
 			},
