@@ -6,6 +6,8 @@
 				"name": "Ingest Raw",
 				"description": "Source to Raw",
 				"type": "ExecutePipeline",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [],
 				"policy": {
 					"secureInput": false
@@ -22,6 +24,8 @@
 			{
 				"name": "Listed building - standardised",
 				"type": "SynapseNotebook",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Ingest Raw",
@@ -64,6 +68,8 @@
 			{
 				"name": "Listed building - harmonised",
 				"type": "SynapseNotebook",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Listed building - standardised",
@@ -97,6 +103,8 @@
 			{
 				"name": "Listed building - curated",
 				"type": "SynapseNotebook",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Listed building - harmonised",
@@ -153,24 +161,30 @@
 					},
 					"parameters": {
 						"db_name": {
-							"value": "odw_curated_db",
+							"value": "odw_harmonised_db",
 							"type": "string"
 						},
 						"table_name": {
-							"value": "listed_building",
+							"value": "test_table_delta_logs",
 							"type": "string"
 						},
 						"primary_key": {
-							"value": "entity",
+							"value": "id",
 							"type": "string"
 						}
 					},
-					"snapshot": true
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
 				}
 			},
 			{
-				"name": "pln_publish_to_sb",
-				"type": "ExecutePipeline",
+				"name": "If Changes found",
+				"type": "IfCondition",
 				"dependsOn": [
 					{
 						"activity": "py_get_delta_table_changes",
@@ -179,24 +193,60 @@
 						]
 					}
 				],
-				"policy": {
-					"secureInput": false
-				},
 				"userProperties": [],
 				"typeProperties": {
-					"pipeline": {
-						"referenceName": "pln_publish_to_sb",
-						"type": "PipelineReference"
+					"expression": {
+						"value": "@greater(length(json(activity('py_get_delta_table_changes').output.status.Output.result.exitValue)), 0)",
+						"type": "Expression"
 					},
-					"waitOnCompletion": true,
-					"parameters": {
-						"service_bus_name": "pins-sb-odw-dev-uks-b9rt9m",
-						"messages": {
-							"value": "@activity('py_get_delta_table_changes').output.status.Output.result.exitValue",
-							"type": "Expression"
+					"ifFalseActivities": [
+						{
+							"name": "Wait1",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "pln_publish_to_sb",
+							"type": "ExecutePipeline",
+							"state": "Inactive",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_publish_to_sb",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"service_bus_name": "pins-sb-odw-dev-uks-b9rt9m",
+									"messages": {
+										"value": "@activity('py_get_delta_table_changes').output.status.Output.result.exitValue",
+										"type": "Expression"
+									},
+									"topic_name": "listed-building"
+								}
+							}
 						},
-						"topic_name": "listed-building"
-					}
+						{
+							"name": "Wait2",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					]
 				}
 			}
 		],
