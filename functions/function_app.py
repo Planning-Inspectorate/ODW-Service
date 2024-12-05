@@ -763,5 +763,24 @@ def appeals78(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
+@_app.function_name(name="getDaRT")
+@_app.route(route="getDaRT", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="dart",
+                command_text="SELECT * FROM [odw_curated_db].[dbo].[dart] WHERE UPPER([appealReference]) = UPPER(@appealReference) OR UPPER([caseReference]) = UPPER(@caseReference)",
+                command_type="Text",
+                parameters="@caseReference={caseReference},@appealReference={appealReference}",
+                connection_string_setting="SqlConnectionString")
+def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
 
+    try:
+        rows = list(map(lambda r: json.loads(r.to_json()), dart))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
 
