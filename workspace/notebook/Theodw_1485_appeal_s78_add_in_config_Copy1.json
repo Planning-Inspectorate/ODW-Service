@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1b9d55ca-afce-4b80-964f-95f34432ab72"
+				"spark.autotune.trackingId": "7f7494d0-056d-47af-b220-2df70d1f9018"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,8 @@
 				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 28
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -58,18 +59,36 @@
 						"transient": {
 							"deleting": false
 						}
-					},
-					"microsoft": {
-						"language": "sparksql"
 					}
 				},
 				"source": [
-					"%%sql \r\n",
-					"INSERT INTO odw_config_db.main_pipeline_config (`System_key`, System_name, Object, entity_name, is_enabled)\r\n",
+					"df = spark.sql(\"\"\"\r\n",
+					"    SELECT\r\n",
+					"        *\r\n",
+					"    FROM\r\n",
+					"        odw_config_db.main_pipeline_config\r\n",
+					"    WHERE\r\n",
+					"        System_name = 'Service bus'\r\n",
+					"        AND Object = 'Appeal S78'\r\n",
+					"        AND entity_name = 'appeal-s78'\r\n",
+					"    \"\"\")\r\n",
 					"\r\n",
-					"SELECT 25,'Service bus', 'Appeal S78','appeal-s78',TRUE"
+					"if df.count() == 0:\r\n",
+					"    spark.sql(\"\"\"\r\n",
+					"        INSERT INTO odw_config_db.main_pipeline_config (`System_key`\r\n",
+					"                                                        ,System_name\r\n",
+					"                                                        ,Object\r\n",
+					"                                                        ,entity_name\r\n",
+					"                                                        ,is_enabled)\r\n",
+					"        SELECT \r\n",
+					"            25\r\n",
+					"            ,'Service bus'\r\n",
+					"            ,'Appeal S78'\r\n",
+					"            ,'appeal-s78'\r\n",
+					"            ,TRUE \r\n",
+					"    \"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 2
 			}
 		]
 	}
