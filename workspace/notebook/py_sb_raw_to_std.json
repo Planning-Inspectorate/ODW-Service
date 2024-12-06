@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "65ae6b5b-83ef-48c7-b55b-5ec0d03a5e25"
+				"spark.autotune.trackingId": "8f57b857-9be7-416a-889d-97013abd4044"
 			}
 		},
 		"metadata": {
@@ -161,68 +161,6 @@
 					}
 				},
 				"source": [
-					"# def process_and_get_max_datetime(table_name, filename_column=\"filename\", default_datetime=\"2024-11-26T17:02:12.011836+0000\"):\r\n",
-					"#     df = spark.sql(f'select * from {table_name}')\r\n",
-					"    \r\n",
-					"#     if filename_column in df.columns:\r\n",
-					"#         processed_df = df.withColumn(\r\n",
-					"#             \"extracted_datetime\",\r\n",
-					"#             when(\r\n",
-					"#                 to_timestamp(\r\n",
-					"#                     regexp_replace(\r\n",
-					"#                         element_at(split(df[filename_column], \"/\"), -1),\r\n",
-					"#                         r\"appeal-has_|\\.json\",\r\n",
-					"#                         \"\"\r\n",
-					"#                     ),\r\n",
-					"#                     \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
-					"#                 ).isNotNull(),\r\n",
-					"#                 to_timestamp(\r\n",
-					"#                     regexp_replace(\r\n",
-					"#                         element_at(split(df[filename_column], \"/\"), -1),\r\n",
-					"#                         r\"appeal-has_|\\.json\",\r\n",
-					"#                         \"\"\r\n",
-					"#                     ),\r\n",
-					"#                     \"yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ\"\r\n",
-					"#                 )\r\n",
-					"#             ).otherwise(lit(default_datetime).cast(TimestampType()))\r\n",
-					"#         )\r\n",
-					"#     else:\r\n",
-					"#         processed_df = df.withColumn(\r\n",
-					"#             \"extracted_datetime\",\r\n",
-					"#             lit(default_datetime).cast(TimestampType())\r\n",
-					"#         )\r\n",
-					"        \r\n",
-					"\r\n",
-					"#     max_datetime = processed_df.select(max(\"extracted_datetime\")).collect()[0][0]\r\n",
-					"#     if max_datetime is None:\r\n",
-					"#         print(\"No valid datetime found. Using default datetime.\")\r\n",
-					"#         max_datetime = datetime.strptime(default_datetime, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
-					"    \r\n",
-					"#     return max_datetime.strftime(\"%Y-%m-%dT%H:%M:%S.%f%z\")+'+0000'\r\n",
-					"\r\n",
-					"# # Usage\r\n",
-					"# try:\r\n",
-					"#     max_extracted_datetime = process_and_get_max_datetime(table_name)\r\n",
-					"#     print(f\"Max extracted datetime: {max_extracted_datetime}\")\r\n",
-					"# except Exception as e:\r\n",
-					"#     print(f\"An error occurred: {str(e)}\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
 				"execution_count": null
@@ -255,10 +193,7 @@
 					"    df = spark.table(table_name)\r\n",
 					"    max_value = df.agg(max(column_name)).collect()[0][0]\r\n",
 					"\r\n",
-					"    return max_value\r\n",
-					"\r\n",
-					"max_extracted_date = get_max_value_from_column(table_name, column_name=\"message_enqueued_time_utc\")\r\n",
-					"print(max_extracted_date)"
+					"    return max_value"
 				],
 				"execution_count": null
 			},
@@ -277,17 +212,25 @@
 					"collapsed": false
 				},
 				"source": [
-					"def get_max_file_date_from_folder(folder_name: str) -> str:\r\n",
-					"    df = collect_all_raw_sb_data_historic(folder_name).select(\"caseId\", \"caseReference\", \"input_file\")\r\n",
-					"    date_pattern = r'(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\+\\d{4})'\r\n",
-					"    df = df.withColumn(\"file_date\", regexp_extract(df[\"input_file\"], date_pattern, 1))\r\n",
-					"    df = df.withColumn(\"file_date\", df[\"file_date\"].cast(TimestampType()))\r\n",
-					"    max_timestamp = df.agg(max(\"file_date\")).collect()[0][0]\r\n",
-					"    formatted_timestamp = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
-					"    return f\"Maximum file date: {formatted_timestamp}\"\r\n",
+					"def get_max_file_date(df: DataFrame) -> datetime:\r\n",
+					"    \"\"\"\r\n",
+					"    Gets the maximum date from a file path field in a DataFrame.\r\n",
+					"    E.g. if the input_file field contained paths such as this:\r\n",
+					"    abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/ServiceBus/appeal-has/2024-12-02/appeal-has_2024-12-02T16:54:35.214679+0000.json\r\n",
+					"    It extracts the date from the string for each row and gets the maximum date.\r\n",
 					"\r\n",
-					"folder_name = \"appeal-has\"\r\n",
-					"print(get_max_file_date_from_folder(folder_name))"
+					"    Args:\r\n",
+					"        df: a spark DataFrame\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        formatted_timestamp: a string of the maximum file date\r\n",
+					"    \"\"\"\r\n",
+					"    date_pattern: str = r'(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\+\\d{4})'\r\n",
+					"    df: DataFrame = df.withColumn(\"file_date\", regexp_extract(df[\"input_file\"], date_pattern, 1))\r\n",
+					"    df: DataFrame = df.withColumn(\"file_date\", df[\"file_date\"].cast(TimestampType()))\r\n",
+					"    max_timestamp: list = df.agg(max(\"file_date\")).collect()[0][0]\r\n",
+					"    formatted_timestamp: str = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
+					"    return formatted_timestamp"
 				],
 				"execution_count": null
 			},
@@ -329,9 +272,7 @@
 					"            # If it's a file, add to the list\r\n",
 					"            files.append(entry.path)\r\n",
 					"    \r\n",
-					"    return files\r\n",
-					"\r\n",
-					"pprint.pprint(get_all_files_recursive(source_path))"
+					"    return files"
 				],
 				"execution_count": null
 			},
@@ -367,12 +308,10 @@
 					"    \"\"\"\r\n",
 					"    df: DataFrame = spark.table(table_name)\r\n",
 					"    files_in_path: set = set(get_all_files_recursive(source_path))\r\n",
-					"    files_in_table: set = set(df.select(\"filename\").rdd.flatMap(lambda x: x).collect())\r\n",
+					"    files_in_table: set = set(df.select(\"input_file\").rdd.flatMap(lambda x: x).collect())\r\n",
 					"    missing_files = list(files_in_path - files_in_table)\r\n",
 					"\r\n",
-					"    return missing_files\r\n",
-					"\r\n",
-					"print(f\"Missing files: {len(get_missing_files(table_name=table_name, source_path=source_path))}\")"
+					"    return missing_files"
 				],
 				"execution_count": null
 			},
@@ -403,67 +342,30 @@
 					}
 				},
 				"source": [
-					"# def deep_ls(path: str, maxItem_depth=1):\r\n",
-					"#     \"\"\"\r\n",
-					"#     List all files and folders in specified path and\r\n",
-					"#     subfolders within maItemimum recursion depth.\r\n",
-					"#     \"\"\"\r\n",
-					"#     # Itemsst all files in path\r\n",
-					"#     Items = mssparkutils.fs.ls(path)\r\n",
+					"def extract_and_filter_paths(files: list, filter_date: str):\r\n",
+					"    \"\"\"\r\n",
+					"    Takes a list of file paths and filters them to return the file paths greater than the filter_date\r\n",
+					"    \r\n",
+					"    Args:\r\n",
+					"        files: a list of file paths\r\n",
+					"        filter_date: a date to filter on\r\n",
 					"\r\n",
-					"#     # Return all files\r\n",
-					"#     for Item in Items:\r\n",
-					"#         if Item.size != 0:\r\n",
-					"#             yield Item\r\n",
+					"    Returns:\r\n",
+					"        filtered_paths: a list of file paths greater than a given date\r\n",
+					"    \"\"\"\r\n",
+					"    timestamp_pattern: str = re.compile(r\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}[:_]\\d{2}[:_]\\d{2}[.\\d]*[+-]\\d{4})\")\r\n",
+					"    filter_datetime: datetime = datetime.strptime(filter_date, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
+					"    filtered_paths: list = []\r\n",
 					"\r\n",
-					"#     # If the maItem_depth has not been reached, start Itemssting files and folders in subdirectories\r\n",
-					"#     if maxItem_depth > 1:\r\n",
-					"#         for Item in Items:\r\n",
-					"#             if Item.size != 0:\r\n",
-					"#                 continue\r\n",
-					"#             for sub_Item in deep_ls(Item.path, maxItem_depth - 1):\r\n",
-					"#                 yield sub_Item"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# using the funciton get_all_files_recursive is a bit simpler than deep_ls. \r\n",
-					"# It avoids the need for a fetch_depth and is simpler to read.\r\n",
-					"\r\n",
-					"def extract_and_filter_paths(file_info_list, filter_date):\r\n",
-					"    timestamp_pattern = re.compile(r\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}[:_]\\d{2}[:_]\\d{2}[.\\d]*[+-]\\d{4})\")\r\n",
-					"    filter_datetime = datetime.strptime(filter_date, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
-					"\r\n",
-					"    filtered_paths = []\r\n",
-					"    for file_info in file_info_list:\r\n",
-					"        # match = timestamp_pattern.search(file_info.name)\r\n",
-					"        match = timestamp_pattern.search(file_info)\r\n",
+					"    for file in files:\r\n",
+					"        match = timestamp_pattern.search(file)\r\n",
 					"        if match:\r\n",
 					"            timestamp_str = match.group(1).replace('_', ':')\r\n",
 					"            file_datetime = datetime.strptime(timestamp_str, \"%Y-%m-%dT%H:%M:%S.%f%z\")\r\n",
 					"            if file_datetime > filter_datetime:\r\n",
-					"                # filtered_paths.append(file_info.path)\r\n",
-					"                filtered_paths.append(file_info)\r\n",
+					"                filtered_paths.append(file)\r\n",
 					"\r\n",
-					"    return filtered_paths\r\n",
-					"\r\n",
-					"# Usage\r\n",
-					"# filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\r\n",
-					"filtered_paths = extract_and_filter_paths(get_all_files_recursive(source_path=source_path), max_extracted_date)\r\n",
-					"filtered_paths"
+					"    return filtered_paths"
 				],
 				"execution_count": null
 			},
@@ -481,7 +383,12 @@
 					}
 				},
 				"source": [
-					"%run \"service-bus/py_spark_df_ingestion_functions\""
+					"# max_extracted_date = get_max_value_from_column(table_name, column_name=\"message_enqueued_time_utc\")\r\n",
+					"table_df = spark.table(table_name)\r\n",
+					"max_extracted_date = get_max_file_date(df=table_df)\r\n",
+					"print(f\"max_extracted_date: {max_extracted_date}\")\r\n",
+					"filtered_paths = extract_and_filter_paths(get_all_files_recursive(source_path=source_path), max_extracted_date)\r\n",
+					"filtered_paths"
 				],
 				"execution_count": null
 			},
@@ -512,29 +419,23 @@
 					}
 				},
 				"source": [
-					"def read_raw_messages(filtered_paths: List[str]) -> DataFrame:\n",
+					"@logging_to_appins\n",
+					"def read_raw_messages(filtered_paths: list[str]) -> DataFrame:\n",
 					"    try:\n",
 					"        # Read JSON files from filtered paths\n",
 					"        df = spark.read.json(filtered_paths, schema=spark_schema)\n",
-					"        print(f\"Found {df.count()} new rows.\")\n",
-					"\n",
-					"\n",
+					"        logInfo(f\"Found {df.count()} new rows.\")\n",
 					"        # Adding the standardised columns\n",
 					"        df = df.withColumn(\"expected_from\", current_timestamp())\n",
 					"        df = df.withColumn(\"expected_to\", expr(\"current_timestamp() + INTERVAL 1 DAY\"))\n",
 					"        df = df.withColumn(\"ingested_datetime\", to_timestamp(df.message_enqueued_time_utc))\n",
-					"        df = df.withColumn(\"filename\",input_file_name())\n",
-					"        ## array(*path_literals))\n",
+					"        df = df.withColumn(\"input_file\", input_file_name())\n",
 					"\n",
 					"    except Exception as e:\n",
-					"        print('Error reading raw messages:', str(e))\n",
+					"        logError(f'Raw data not found at {source_path}, Exception is {e}')\n",
 					"        mssparkutils.notebook.exit('')\n",
 					"\n",
-					"    return df\n",
-					"\n",
-					"# Usage\n",
-					"filtered_paths = extract_and_filter_paths(list(deep_ls(source_path, 2)), max_extracted_datetime)\n",
-					"print(filtered_paths)"
+					"    return df"
 				],
 				"execution_count": null
 			},
@@ -553,6 +454,44 @@
 				},
 				"source": [
 					"df: DataFrame = read_raw_messages(filtered_paths)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"max_date = get_max_file_date(df)\r\n",
+					"print(max_date)"
 				],
 				"execution_count": null
 			},
@@ -648,8 +587,47 @@
 				"source": [
 					"logInfo(f\"Applying DF to {table_name}\")\n",
 					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
-					"apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\n",
-					"logInfo(f\"Done applying DF to {table_name}\")"
+					"# apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\n",
+					"# logInfo(f\"Done applying DF to {table_name}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"display(df.filter(\"input_file is not null\"))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"df = spark.sql(f\"describe history {table_name}\")\r\n",
+					"display(df)"
 				],
 				"execution_count": null
 			}
