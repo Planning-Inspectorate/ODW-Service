@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8f57b857-9be7-416a-889d-97013abd4044"
+				"spark.autotune.trackingId": "0a8c87be-eb43-4bfa-9a8c-aa69564a1e8a"
 			}
 		},
 		"metadata": {
@@ -131,21 +131,6 @@
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
 				],
 				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#### Function to Extract the Maximum Datetime from filename in odw_standardised_db.sb_appeal_has\r\n",
-					"\r\n",
-					"A better, cleaner function is below"
-				]
 			},
 			{
 				"cell_type": "code",
@@ -316,19 +301,6 @@
 				"execution_count": null
 			},
 			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"This function recursively lists all files and folders in a specified path and its subdirectories, up to find latest file"
-				]
-			},
-			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -383,12 +355,30 @@
 					}
 				},
 				"source": [
-					"# max_extracted_date = get_max_value_from_column(table_name, column_name=\"message_enqueued_time_utc\")\r\n",
 					"table_df = spark.table(table_name)\r\n",
 					"max_extracted_date = get_max_file_date(df=table_df)\r\n",
 					"print(f\"max_extracted_date: {max_extracted_date}\")\r\n",
 					"filtered_paths = extract_and_filter_paths(get_all_files_recursive(source_path=source_path), max_extracted_date)\r\n",
 					"filtered_paths"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"missing = get_missing_files(table_name, source_path)\r\n",
+					"missing"
 				],
 				"execution_count": null
 			},
@@ -453,7 +443,7 @@
 					}
 				},
 				"source": [
-					"df: DataFrame = read_raw_messages(filtered_paths)"
+					"df: DataFrame = read_raw_messages(missing)"
 				],
 				"execution_count": null
 			},
@@ -473,25 +463,6 @@
 				},
 				"source": [
 					"display(df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"max_date = get_max_file_date(df)\r\n",
-					"print(max_date)"
 				],
 				"execution_count": null
 			},
@@ -522,9 +493,9 @@
 					}
 				},
 				"source": [
-					"logInfo(f\"Comparing and merging schema for {table_name}\")\n",
-					"compare_and_merge_schema(df, table_name)\n",
-					"logInfo(f\"Done comparing and merging schema for {table_name}\")"
+					"# logInfo(f\"Comparing and merging schema for {table_name}\")\n",
+					"# compare_and_merge_schema(df, table_name)\n",
+					"# logInfo(f\"Done comparing and merging schema for {table_name}\")"
 				],
 				"execution_count": null
 			},
@@ -555,18 +526,76 @@
 					}
 				},
 				"source": [
-					"@logging_to_appins\n",
-					"def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\n",
-					"    table_df: DataFrame = spark.table(table_name)\n",
-					"    df: DataFrame = df.select(table_df.columns)\n",
-					"    table_df: DataFrame = table_df.union(df)\n",
+					"@logging_to_appins\r\n",
+					"def dedupe_dataframe(df: DataFrame) -> DataFrame:\r\n",
+					"    # removing duplicates while ignoring the ingestion dates columns\r\n",
+					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
+					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
+					"    df: DataFrame = df.dropDuplicates(subset=columns_to_consider)\r\n",
+					"    \r\n",
+					"    return df\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\r\n",
+					"def append_df_to_table(df: DataFrame, table_name: str) -> None:\r\n",
+					"    \"\"\"\r\n",
+					"    Appends the new rows to the target table\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        df: DataFrame of new rows\r\n",
+					"    \"\"\"\r\n",
+					"    df \\\r\n",
+					"    .write \\\r\n",
+					"    .mode(\"append\") \\\r\n",
+					"    .format(\"delta\") \\\r\n",
+					"    .option(\"mergeSchema\", \"true\") \\\r\n",
+					"    .saveAsTable(table_name)\r\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# @logging_to_appins\n",
+					"# def create_dataframe_to_load(df: DataFrame, table_name: str) -> DataFrame:\n",
+					"#     table_df: DataFrame = spark.table(table_name)\n",
+					"#     df: DataFrame = df.select(table_df.columns)\n",
+					"#     table_df: DataFrame = table_df.union(df)\n",
 					"\n",
-					"    # removing duplicates while ignoring the ingestion dates columns\n",
-					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\n",
-					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\n",
-					"    table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\n",
+					"#     # removing duplicates while ignoring the ingestion dates columns\n",
+					"#     columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\n",
+					"#     columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\n",
+					"#     table_df: DataFrame = table_df.dropDuplicates(subset=columns_to_consider)\n",
 					"\n",
-					"    return table_df"
+					"#     return table_df"
 				],
 				"execution_count": null
 			},
@@ -585,49 +614,12 @@
 					"collapsed": false
 				},
 				"source": [
-					"logInfo(f\"Applying DF to {table_name}\")\n",
-					"table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
+					"logInfo(f\"Appending new rows to table {table_name}\")\n",
+					"dedupe_dataframe(df=df) \n",
+					"append_df_to_table(df=df, table_name=table_name)\n",
+					"# table_df: DataFrame = create_dataframe_to_load(df, table_name)\n",
 					"# apply_df_to_table(table_df, table_name.split('.')[0], table_name.split('.')[1])\n",
 					"# logInfo(f\"Done applying DF to {table_name}\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"display(df.filter(\"input_file is not null\"))"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					},
-					"collapsed": false
-				},
-				"source": [
-					"df = spark.sql(f\"describe history {table_name}\")\r\n",
-					"display(df)"
 				],
 				"execution_count": null
 			}
