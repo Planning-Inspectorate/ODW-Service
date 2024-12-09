@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "58544ed6-a230-4bf7-8367-6359520c1d2f"
+				"spark.autotune.trackingId": "3ec569a4-d259-4b58-ab72-236305b0ff32"
 			}
 		},
 		"metadata": {
@@ -70,6 +70,24 @@
 					"Saves the updated DataFrame to the target table if tests have passed.  \r\n",
 					"Runs a final test to check again that the table now has `input_file` populated with no null values.   "
 				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -131,8 +149,8 @@
 				},
 				"source": [
 					"target_df = spark.table(f\"odw_standardised_db.{table_name}\")\r\n",
-					"source_df = collect_all_raw_sb_data(folder_name=folder_name, schema=schema)\r\n",
-					"schema = target_df.schema"
+					"schema = target_df.schema\r\n",
+					"source_df = collect_all_raw_sb_data(folder_name=folder_name, schema=schema)"
 				],
 				"execution_count": null
 			},
@@ -151,6 +169,7 @@
 					"collapsed": false
 				},
 				"source": [
+					"@logging_to_appins\r\n",
 					"def populate_input_file(source_df: DataFrame, target_df: DataFrame) -> DataFrame:\r\n",
 					"    \"\"\"\r\n",
 					"    Populates the input_file column on a target table.\r\n",
@@ -165,11 +184,13 @@
 					"    Returns:\r\n",
 					"        updated_df: An updated DataFrame with the input_file correctly populated\r\n",
 					"    \"\"\"\r\n",
+					"    # rename column temporarily to avoid ambiguity\r\n",
+					"    source_df = source_df.withColumnRenamed(\"input_file\", \"source_input_file\")\r\n",
 					"    joined_df: DataFrame = target_df.alias(\"target\").join(source_df.alias(\"source\"), on=join_key, how=\"left\")\r\n",
-					"    updated_df = joined_df.withColumn(\"input_file\", col(\"source.input_file\"))\r\n",
+					"    updated_df = joined_df.withColumn(\"input_file\", col(\"source.source_input_file\"))\r\n",
 					"    updated_df = updated_df.select(\r\n",
 					"        [\r\n",
-					"            col(f\"source.{column}\").alias(column) if column != \"input_file\" else col(\"input_file\") \r\n",
+					"            col(f\"source.{column}\").alias(column) if column != \"source_input_file\" else col(\"source.source_input_file\").alias(\"input_file\")\r\n",
 					"        for column in source_df.columns\r\n",
 					"        ]\r\n",
 					"    )\r\n",
@@ -192,6 +213,7 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\r\n",
 					"def test_counts_match(table_df: DataFrame, updated_df: DataFrame) -> bool:\r\n",
 					"    \"\"\"\r\n",
 					"    Test that the target table row count matches the updated DataFrame row count\r\n",
@@ -222,6 +244,7 @@
 					"collapsed": false
 				},
 				"source": [
+					"@logging_to_appins\r\n",
 					"def test_input_file_populated(updated_df: DataFrame) -> bool:\r\n",
 					"    \"\"\"\r\n",
 					"    Test that the input_file column is fully populated for all rows\r\n",
@@ -250,6 +273,7 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\r\n",
 					"def save_to_table(updated_df: DataFrame) -> None:\r\n",
 					"    \"\"\"\r\n",
 					"    Saves the updated DataFrame to the target table\r\n",
@@ -280,6 +304,7 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\r\n",
 					"def main():\r\n",
 					"    \"\"\"\r\n",
 					"    Main function to run the required steps\r\n",
@@ -291,22 +316,22 @@
 					"    exitCode = 0\r\n",
 					"\r\n",
 					"    try:\r\n",
-					"        print(\"Creating updated_df with input_file values...\")\r\n",
+					"        logInfo(\"Creating updated_df with input_file values...\")\r\n",
 					"        updated_df = populate_input_file(source_df=source_df, target_df=target_df)\r\n",
-					"        print(\"Running tests...\")\r\n",
+					"        logInfo(\"Running tests...\")\r\n",
 					"        if not test_counts_match(target_df, populate_input_file(source_df, target_df)):\r\n",
 					"            exitCode += 1\r\n",
 					"        if not test_input_file_populated(updated_df=populate_input_file(source_df, target_df)):\r\n",
 					"            exitCode +=1\r\n",
 					"        if exitCode == 0:\r\n",
-					"            print(\"All tests have passed...\")\r\n",
-					"            print(\"Saving to table...\")\r\n",
+					"            logInfo(\"All tests have passed...\")\r\n",
+					"            logInfo(\"Saving to table...\")\r\n",
 					"            save_to_table(updated_df)\r\n",
-					"            print(\"Table overwrite completed\")\r\n",
+					"            logInfo(\"Table overwrite completed\")\r\n",
 					"        else:\r\n",
-					"            print(f\"One or more tests have failed\\nexitCode: {exitCode}\")\r\n",
+					"            logInfo(f\"One or more tests have failed\\nexitCode: {exitCode}\")\r\n",
 					"    except Exception as e:\r\n",
-					"        print(f\"Error encountered\\n{e}\")"
+					"        logInfo(f\"Error encountered\\n{e}\")"
 				],
 				"execution_count": null
 			},
