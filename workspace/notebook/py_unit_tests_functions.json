@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "159863cf-1a47-4a00-b6cd-cec887ab8c6d"
+				"spark.autotune.trackingId": "c2320c63-cec4-4a25-b3ab-8a3b0df79a17"
 			}
 		},
 		"metadata": {
@@ -1000,6 +1000,172 @@
 					"\r\n",
 					"    return True  \r\n",
 					"        "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Unit tests to cover the handling of Delete message_type from standarised to harmonised"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_deleted_std_records_inactive_in_hrm(primary_key: str, std_table: str, hrm_table: str) -> bool:\n",
+					"    \"\"\"\n",
+					"    For all deletes in standardised, all records in harmonised must be inactive   \n",
+					"\n",
+					"    Args:\n",
+					"        primary_key: The primary key for the entity, e.g. subscriptionId\n",
+					"        std_table: The standardised table name, e.g. sb_nsip_subscription\n",
+					"        hrm_table: The harmonised table name, e.g. sb_nsip_subscription\n",
+					"    \"\"\"\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"        SELECT * FROM odw_harmonised_db.{hrm_table}\n",
+					"        WHERE {primary_key} IN (\n",
+					"            SELECT DISTINCT {primary_key} \n",
+					"            FROM odw_standardised_db.{std_table}\n",
+					"            WHERE message_type = 'Delete'\n",
+					"        )\n",
+					"        AND IsActive = 'Y'\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_no_deleted_std_records_missing_in_hrm(primary_key: str, std_table: str, hrm_table: str) -> bool:\n",
+					"    \"\"\"\n",
+					"    For all deletes in standardised, we should have the same message id in harmonised\n",
+					"\n",
+					"    Args:\n",
+					"        primary_key: The primary key for the entity, e.g. subscriptionId\n",
+					"        std_table: The standardised table name, e.g. sb_nsip_subscription\n",
+					"        hrm_table: The harmonised table name, e.g. sb_nsip_subscription\n",
+					"    \"\"\"\n",
+					"    df: DataFrame = spark.sql(f\"\"\"\n",
+					"        SELECT * FROM odw_standardised_db.{std_table} std\n",
+					"        LEFT JOIN odw_harmonised_db.{hrm_table} hrm \n",
+					"            ON std.message_id = hrm.message_id \n",
+					"        WHERE hrm.message_id IS NULL\n",
+					"        AND std.message_type = 'Delete'\n",
+					"    \"\"\")\n",
+					"\n",
+					"    return df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_deleted_records_valid_to_not_null(std_table, hrm_table):\n",
+					"    \"\"\"\n",
+					"    For all deletes in standardised, the ValidTo in harmonised must not be null\n",
+					"\n",
+					"    Args:\n",
+					"        std_table: The standardised table name, e.g. sb_nsip_subscription\n",
+					"        hrm_table: The harmonised table name, e.g. sb_nsip_subscription\n",
+					"    \"\"\"\n",
+					"    delete_df = spark.table(f\"odw_standardised_db.{std_table}\").filter(\"message_type = 'Delete'\").select(\"message_id\").distinct()\n",
+					"    target_df = spark.table(f\"odw_harmonised_db.{hrm_table}\")\n",
+					"\n",
+					"    invalid_records_df = (\n",
+					"        delete_df.alias(\"d\")\n",
+					"        .join(target_df.alias(\"t\"), delete_df[\"message_id\"] == target_df[\"message_id\"], \"left\")\n",
+					"        .filter(target_df[\"ValidTo\"].isNull())\n",
+					"    )\n",
+					"\n",
+					"    invalid_message_ids = invalid_records_df.select(\"d.message_id\").distinct().rdd.flatMap(lambda x: x).collect()\n",
+					"    \n",
+					"    return len(invalid_message_ids) == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def test_deleted_records_valid_to_equals_message_enqueued_time(std_table: str, hrm_table: str) -> bool:\r\n",
+					"    \"\"\"\r\n",
+					"    For all deleted records, the ValidTo date in harmonised must equal \r\n",
+					"    the message_enqueued_time_utc in standardised for the same message_id\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        std_table: The standardised table name, e.g. sb_nsip_subscription\r\n",
+					"        hrm_table: The harmonised table name, e.g. sb_nsip_subscription\r\n",
+					"    \"\"\"\r\n",
+					"    delete_df = (\r\n",
+					"        spark.table(f\"odw_standardised_db.{std_table}\")\r\n",
+					"        .filter(\"message_type = 'Delete'\")\r\n",
+					"        .select(\"message_id\", \"message_enqueued_time_utc\")\r\n",
+					"        .distinct()\r\n",
+					"    )\r\n",
+					"\r\n",
+					"    target_df = spark.table(f\"odw_harmonised_db.{hrm_table}\")\r\n",
+					"\r\n",
+					"    mismatched_records_df = (\r\n",
+					"        delete_df.alias(\"d\")\r\n",
+					"        .join(target_df.alias(\"t\"), delete_df[\"message_id\"] == target_df[\"message_id\"], \"left\")\r\n",
+					"        .filter(target_df[\"ValidTo\"] != delete_df[\"message_enqueued_time_utc\"])\r\n",
+					"    )\r\n",
+					"    \r\n",
+					"    mismatched_message_ids = mismatched_records_df.select(\"d.message_id\").distinct().rdd.flatMap(lambda x: x).collect()\r\n",
+					"\r\n",
+					"    return len(mismatched_message_ids) == 0"
 				],
 				"execution_count": null
 			}

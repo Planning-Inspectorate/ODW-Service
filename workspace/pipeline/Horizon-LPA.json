@@ -1,26 +1,10 @@
 {
-	"name": "pln_listed_buildings_main",
+	"name": "Horizon-LPA",
 	"properties": {
 		"activities": [
 			{
-				"name": "Src to Raw",
-				"description": "Source to Raw",
-				"type": "ExecutePipeline",
-				"dependsOn": [],
-				"policy": {
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"pipeline": {
-						"referenceName": "0_Listed_Buildings_API_to_RAW",
-						"type": "PipelineReference"
-					},
-					"waitOnCompletion": true
-				}
-			},
-			{
-				"name": "Raw to Std",
+				"name": "Raw to Std View Cases",
+				"description": "Ingests raw data into the standardised table ",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
@@ -40,15 +24,16 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_load_listed_buildings_to_standardised",
+						"referenceName": "py_raw_to_std",
 						"type": "NotebookReference"
 					},
 					"parameters": {
-						"date_folder": {
-							"value": {
-								"value": "@formatDateTime(utcNow(), 'yyyy-MM-dd')",
-								"type": "Expression"
-							},
+						"source_folder": {
+							"value": "Horizon",
+							"type": "string"
+						},
+						"specific_file": {
+							"value": "DaRT_LPA",
 							"type": "string"
 						}
 					},
@@ -62,11 +47,28 @@
 				}
 			},
 			{
+				"name": "Src to Raw",
+				"description": "",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "0_Raw_Horizon_DaRT_LPA",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
 				"name": "Std to Hrm",
 				"type": "SynapseNotebook",
 				"dependsOn": [
 					{
-						"activity": "Raw to Std",
+						"activity": "Raw to Std View Cases",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -82,7 +84,40 @@
 				"userProperties": [],
 				"typeProperties": {
 					"notebook": {
-						"referenceName": "py_load_listed_buildings_to_harmonised",
+						"referenceName": "pins_lpa",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Hrm_to_Curated",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Std to Hrm",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "pins_lpa_curated",
 						"type": "NotebookReference"
 					},
 					"snapshot": true,
@@ -96,7 +131,7 @@
 			}
 		],
 		"folder": {
-			"name": "listed buildings"
+			"name": "DaRT"
 		},
 		"annotations": []
 	}
