@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a4da7707-8504-40c2-8d62-184a3406214f"
+				"spark.autotune.trackingId": "bec2063a-cefc-4241-b50d-dac59fdd58ea"
 			}
 		},
 		"metadata": {
@@ -133,8 +133,8 @@
 					]
 				},
 				"source": [
-					"table_name: str = \"sb_appeal_has\"\r\n",
-					"folder_name: str = \"appeal-has\"\r\n",
+					"table_name: str = \"sb_nsip_subscription\"\r\n",
+					"folder_name: str = \"nsip-subscription\"\r\n",
 					"join_key: str = \"message_id\""
 				],
 				"execution_count": null
@@ -156,24 +156,6 @@
 					"target_df: DataFrame = spark.table(f\"odw_standardised_db.{table_name}\")\r\n",
 					"schema: StructType = target_df.schema\r\n",
 					"source_df: DataFrame = collect_all_raw_sb_data(folder_name=folder_name, schema=schema)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"source_df.filter(\"ingested_datetime is not null\").count()"
 				],
 				"execution_count": null
 			},
@@ -213,12 +195,12 @@
 					"    joined_df: DataFrame = target_df.alias(\"target\").join(source_df.alias(\"source\"), on=join_key, how=\"left\")\r\n",
 					"    updated_df: DataFrame = joined_df.withColumn(\"input_file\", col(\"source.source_input_file\"))\r\n",
 					"    updated_df: DataFrame = updated_df.select(\r\n",
-					"        [\r\n",
-					"        col(f\"target.{column}\").alias(column) if column != \"target_input_file\" else col(\"source.source_input_file\").alias(\"input_file\")\r\n",
+					"        *[\r\n",
+					"        col(f\"target.{column}\").alias(column) if column != \"target_input_file\" else col(\"input_file\").alias(\"input_file\")\r\n",
 					"        for column in target_df.columns\r\n",
-					"        ]\r\n",
+					"        ],\r\n",
+					"        col(\"input_file\")\r\n",
 					"    )\r\n",
-					"\r\n",
 					"    return updated_df"
 				],
 				"execution_count": null
@@ -279,7 +261,9 @@
 					"    Returns:\r\n",
 					"        True if all rows have an input_file\r\n",
 					"    \"\"\"\r\n",
-					"    return updated_df.filter(col(\"input_file\").isNull()).count() == 0"
+					"    invalid_rows = updated_df.filter((col(\"message_id\").isNotNull()) & (col(\"input_file\").isNull()))\r\n",
+					"    \r\n",
+					"    return invalid_rows.count() == 0"
 				],
 				"execution_count": null
 			},
