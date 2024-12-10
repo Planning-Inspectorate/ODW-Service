@@ -1,0 +1,238 @@
+{
+	"name": "nsip_project_migration",
+	"properties": {
+		"description": "please refer to the NSIP Entity Message Topic Requirements  documentation",
+		"folder": {
+			"name": "odw-curated/migration"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "d1016063-1a91-42d2-b061-11cdc1f1cf1a"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## View odw_curated_migration_db.vw_nsip_project is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"CREATE OR REPLACE VIEW odw_curated_migration_db.vw_nsip_project\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT\n",
+					"\n",
+					"\tNP.caseId\n",
+					"\t,NP.caseReference\n",
+					"\t,NP.projectName\n",
+					"\t,NP.projectNameWelsh\n",
+					"\t,NP.projectDescription\n",
+					"\t,NP.projectDescriptionWelsh\n",
+					"\t,NP.decision\n",
+					"\t,LOWER(NP.publishStatus) AS publishStatus\n",
+					"\t,NP.sector\n",
+					"\t,CASE\n",
+					"\t\tWHEN NP.ProjectType = 'WW01 - Waste Water treatment Plants' THEN\n",
+					"\t\t\t'WW01 - Waste Water Treatment Plants'\n",
+					"\t\tELSE \n",
+					"\t\t\tNP.ProjectType\n",
+					"\tEND AS projectType\n",
+					"\t,LOWER(\tCASE \n",
+					"\t\t\t\tWHEN NP.ODTSourceSystem = 'ODT' THEN \n",
+					"\t\t\t\t\t'back-office-applications' \n",
+					"\t\t\t\tELSE \n",
+					"\t\t\t\t\tNP.ODTSourceSystem \n",
+					"\t\t\tEND) AS sourceSystem\n",
+					"\t,LOWER(REPLACE(REPLACE(NP.Stage,'-', '_'),' ', '_')) AS stage\n",
+					"\t,NP.projectLocation\n",
+					"\t,NP.projectLocationWelsh\n",
+					"\t,NP.projectEmailAddress\n",
+					"\t,NP.regions\n",
+					"\t,NP.transboundary\n",
+					"\t,CAST(NP.Easting AS INT) AS easting\n",
+					"\t,CAST(NP.Northing AS INT) AS northing\n",
+					"\t,NP.WelshLanguage AS welshLanguage\n",
+					"\t,NP.mapZoomLevel\n",
+					"\t,NP.SecretaryOfState AS secretaryOfState\n",
+					"\t-- Pre-application dates\n",
+					"\t,NP.datePINSFirstNotifiedOfProject\n",
+					"\t,NP.dateProjectAppearsOnWebsite\t\n",
+					"\t,NP.anticipatedSubmissionDateNonSpecific\n",
+					"\t,NP.anticipatedDateOfSubmission\n",
+					"\t,NP.screeningOpinionSought\t\n",
+					"\t,NP.screeningOpinionIssued\n",
+					"\t,NP.scopingOpinionSought\n",
+					"\t,NP.scopingOpinionIssued\n",
+					"\t,NP.section46Notification\n",
+					"\t-- acceptance dates\n",
+					"\t,NP.dateOfDCOSubmission\n",
+					"\t,NP.deadlineForAcceptanceDecision\n",
+					"\t,NP.dateOfDCOAcceptance\n",
+					"\t,NP.dateOfNonAcceptance\n",
+					"\t--pre examination dates\n",
+					"\t,NP.dateOfRepresentationPeriodOpen\n",
+					"\t,NP.dateOfRelevantRepresentationClose\n",
+					"\t,NP.extensionToDateRelevantRepresentationsClose\n",
+					"\t,NP.dateRRepAppearOnWebsite\n",
+					"\t,NP.dateIAPIDue\n",
+					"\t,NP.rule6LetterPublishDate\n",
+					"\t,NP.preliminaryMeetingStartDate\n",
+					"\t,NP.notificationDateForPMAndEventsDirectlyFollowingPM\n",
+					"\t,NP.notificationDateForEventsDeveloper\n",
+					"\t-- examination dates\n",
+					"\t,NP.dateSection58NoticeReceived\n",
+					"\t,NP.confirmedStartOfExamination\n",
+					"\t,NP.rule8LetterPublishDate\n",
+					"\t,NP.deadlineForCloseOfExamination\n",
+					"\t,NP.dateTimeExaminationEnds\n",
+					"\t,NP.stage4ExtensionToExamCloseDate\n",
+					"\t--recommendation dates\n",
+					"\t,NP.deadlineForSubmissionOfRecommendation\n",
+					"\t,NP.dateOfRecommendations\n",
+					"\t,NP.stage5ExtensionToRecommendationDeadline\n",
+					"\t--decision dates\n",
+					"\t,NP.deadlineForDecision\n",
+					"\t,NP.confirmedDateOfDecision\n",
+					"\t,NP.stage5ExtensionToDecisionDeadline\n",
+					"\t--post decision dates\n",
+					"\t,NP.jRPeriodEndDate\n",
+					"\t--withdrawl dates\n",
+					"\t,NP.dateProjectWithdrawn\n",
+					"\t-- Additional fields\n",
+					"\t,NP.operationsLeadId\n",
+					"\t,NP.operationsManagerId\n",
+					"\t,NP.caseManagerId\n",
+					"\t,NP.nsipOfficerIds\n",
+					"\t,NP.nsipAdministrationOfficerIds\n",
+					"\t,NP.leadInspectorId\n",
+					"\t,NP.inspectorIds\n",
+					"\t,NP.environmentalServicesOfficerId\n",
+					"\t,NP.legalOfficerId\n",
+					"\t,SU.id AS applicantId\n",
+					"\t,NP.migrationStatus\n",
+					"\t,NP.dateOfReOpenRelevantRepresentationStart\n",
+					"\t,NP.dateOfReOpenRelevantRepresentationClose\n",
+					"\n",
+					"FROM odw_harmonised_db.nsip_project AS NP\n",
+					"\t\n",
+					"INNER JOIN (\n",
+					"\n",
+					"    SELECT caseId, MAX(IngestionDate) AS latest_date\n",
+					"    FROM odw_harmonised_db.nsip_project\n",
+					"    WHERE LOWER(ODTSourceSystem) = 'horizon'\n",
+					"    GROUP BY caseId\n",
+					"    \n",
+					") latest ON NP.caseId = latest.caseId AND NP.IngestionDate = latest.latest_date   \n",
+					"\n",
+					"LEFT JOIN odw_curated_migration_db.service_user AS SU ON NP.caseReference = SU.caseReference\n",
+					"\n",
+					"WHERE LOWER(NP.ODTSourceSystem) = 'horizon'\n",
+					"\tAND SU.serviceUserType = 'Applicant'"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Table odw_curated_db.nsip_project spark table is created"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"view_df = spark.sql('SELECT * FROM odw_curated_migration_db.vw_nsip_project')\n",
+					"view_df.write.mode(\"overwrite\").option(\"overwriteSchema\", \"true\").saveAsTable('odw_curated_migration_db.nsip_project')"
+				],
+				"execution_count": 4
+			}
+		]
+	}
+}

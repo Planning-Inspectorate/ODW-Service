@@ -46,6 +46,13 @@ function_app_enabled = true
 function_app = [
   {
     name = "fnapp01"
+    connection_strings = [
+      {
+        name  = "SqlConnectionString",
+        type  = "SQLAzure",
+        value = "Server=tcp:pins-synw-odw-dev-uks-ondemand.sql.azuresynapse.net,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;"
+      }
+    ]
     site_config = {
       application_stack = {
         python_version = "3.11"
@@ -200,7 +207,7 @@ spark_pool_timeout_minutes = 60
 spark_pool_version         = "3.3"
 
 spark_pool_preview_enabled = true
-spark_pool_preview_version = "3.2"
+spark_pool_preview_version = "3.3"
 
 sql_pool_collation = "SQL_Latin1_General_CP1_CI_AS"
 sql_pool_enabled   = false

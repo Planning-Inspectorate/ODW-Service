@@ -3,53 +3,11 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Src to Raw",
-				"description": "Triggers Function App to read messages from Service Bus and write to odw-raw",
-				"type": "ExecutePipeline",
-				"dependsOn": [
-					{
-						"activity": "Create standardised table",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "Create harmonised table",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "Create curated table",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"pipeline": {
-						"referenceName": "pln_trigger_function_app",
-						"type": "PipelineReference"
-					},
-					"waitOnCompletion": true,
-					"parameters": {
-						"function_name": {
-							"value": "@variables('entity_name')",
-							"type": "Expression"
-						}
-					}
-				}
-			},
-			{
 				"name": "If New Messages",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
-						"activity": "Set number of messages received",
+						"activity": "If service user",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -999,30 +957,6 @@
 				}
 			},
 			{
-				"name": "Set number of messages received",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Src to Raw",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "Number_of_messages",
-					"value": {
-						"value": "@int(coalesce(activity('Src to Raw').output.pipelineReturnValue.Messages, '0'))",
-						"type": "Expression"
-					}
-				}
-			},
-			{
 				"name": "Record starting service bus stage",
 				"type": "SynapseNotebook",
 				"dependsOn": [
@@ -1170,7 +1104,25 @@
 						]
 					},
 					{
-						"activity": "nsip s51 advise - custom harmonised",
+						"activity": "s51 advice - custom harmonised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "nsip document - custom harmonised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "appeal - event - custom harmonised",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "appeal - s78- custom harmonised",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1497,7 +1449,7 @@
 				}
 			},
 			{
-				"name": "nsip s51 advise - custom harmonised",
+				"name": "s51 advice - custom harmonised",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
@@ -1510,12 +1462,12 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@equals(variables('entity_name'), 'nsip-s51-advice')",
+						"value": "@equals(variables('entity_name'), 's51-advice')",
 						"type": "Expression"
 					},
 					"ifTrueActivities": [
 						{
-							"name": "Harmonised step for nsip-s51-advice",
+							"name": "Harmonised step for s51-advice",
 							"type": "SynapseNotebook",
 							"dependsOn": [],
 							"policy": {
@@ -1580,7 +1532,13 @@
 							"type": "string"
 						}
 					},
-					"snapshot": true
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
 				}
 			},
 			{
@@ -1620,7 +1578,13 @@
 							"type": "string"
 						}
 					},
-					"snapshot": true
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
 				}
 			},
 			{
@@ -1660,14 +1624,366 @@
 							"type": "string"
 						}
 					},
-					"snapshot": true
+					"snapshot": true,
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "nsip document - custom harmonised",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If New Messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'nsip-document')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Harmonised step for nsip-document",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_sb_horizon_harmonised_nsip_document",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "If service user",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Create standardised table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Create harmonised table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Create curated table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'service-user')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Src to Raw - non service user",
+							"description": "Triggers Function App to read messages from Service Bus and write to odw-raw",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_trigger_function_app",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"function_name": {
+										"value": "@variables('entity_name')",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set number of messages received - non service user",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Src to Raw - non service user",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Number_of_messages",
+								"value": {
+									"value": "@int(coalesce(activity('Src to Raw - non service user').output.pipelineReturnValue.Messages, '0'))",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Src to Raw - service user",
+							"description": "Triggers Function App to read messages from Service Bus and write to odw-raw",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_trigger_function_app",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"function_name": {
+										"value": "service-user",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Src to Raw - appeal service user",
+							"description": "Triggers Function App to read messages from Service Bus and write to odw-raw",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pln_trigger_function_app",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"function_name": {
+										"value": "appeal-service-user",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Set number of messages received - service user",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Src to Raw - service user",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "Src to Raw - appeal service user",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Number_of_messages",
+								"value": {
+									"value": "@add(\n    int(coalesce(activity('Src to Raw - service user').output.pipelineReturnValue.Messages, '0')),\n    int(coalesce(activity('Src to Raw - appeal service user').output.pipelineReturnValue.Messages, '0'))\n    )",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "appeal - event - custom harmonised",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If New Messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'nsip-document')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Harmonised step for appeal_event",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_sb_horizon_harmonised_appeal_event",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "service user - custom harmonised",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If New Messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'service-user')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Harmonised step for service user",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_sb_horizon_harmonised_service_user",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "appeal - s78- custom harmonised",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If New Messages",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('entity_name'), 'nsip-document')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Harmonised step for appeal_s78",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "py_sb_horizon_harmonised_appeal_s78",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"conf": {
+									"spark.dynamicAllocation.enabled": null,
+									"spark.dynamicAllocation.minExecutors": null,
+									"spark.dynamicAllocation.maxExecutors": null
+								},
+								"numExecutors": null
+							}
+						}
+					]
 				}
 			}
 		],
 		"parameters": {
 			"entity_name_input": {
 				"type": "string",
-				"defaultValue": "['nsip-representation']"
+				"defaultValue": "['nsip-document']"
 			}
 		},
 		"variables": {

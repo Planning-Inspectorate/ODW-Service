@@ -50,16 +50,22 @@ sudo apt install -y --no-install-recommends \
   python3.7-distutils \
   python3-pip
 
-# Terraform 1.3.3
+# Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
 sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get install -y terraform=1.3.3
+sudo apt-get install -y terraform=1.9.6-1
 
 # Checkov
-python3.7 -m pip install -U checkov
+python3.7 -m pip install --force-reinstall packaging==21
+python3.7 -m pip install -U checkov==2.2.94
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+# Set up Node.js 22.x
+curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+
+sudo apt-get install nodejs
 
 # Azure CLI
 curl -sL https://aka.ms/InstallAzureCLIDeb | bash

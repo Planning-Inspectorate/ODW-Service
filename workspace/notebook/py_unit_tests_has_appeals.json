@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "36ffdaa0-b17e-483e-bbeb-ea0ecc651c1e"
+				"spark.autotune.trackingId": "17cd57a1-82fe-4512-8c0b-e1024e2f7dd9"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"from pyspark.sql import DataFrame\n",
 					"import pprint"
 				],
-				"execution_count": 5
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -90,12 +90,14 @@
 					"std_db_name: str = 'odw_standardised_db'\n",
 					"hrm_db_name: str = 'odw_harmonised_db'\n",
 					"curated_db_name: str = 'odw_curated_db'\n",
-					"std_table_name: str = 'sb_appeal_document'\n",
-					"hrm_table_name: str = 'sb_appeal_document'\n",
-					"hrm_table_final: str = 'appeals_document_metadata'\n",
-					"curated_table_name: str = 'appeal_has'"
+					"std_table_name: str = 'sb_appeal_has'\n",
+					"hrm_table_name: str = 'sb_appeal_has'\n",
+					"curated_table_name: str = 'appeal_has'\n",
+					"\n",
+					"# if exitCode is not 0 at the end of the notebook then we have had failures\n",
+					"exitCode: int = 0"
 				],
-				"execution_count": 6
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -113,7 +115,98 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": 7
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"data_model_columns = [\n",
+					"     \"caseId\",\n",
+					"    \"caseReference\",\n",
+					"    \"caseStatus\",\n",
+					"    \"caseType\",\n",
+					"    \"caseProcedure\",\n",
+					"    \"lpaCode\",\n",
+					"    \"caseOfficerId\",\n",
+					"    \"inspectorId\",\n",
+					"    \"allocationLevel\",\n",
+					"    \"allocationBand\",\n",
+					"    \"caseSpecialisms\",\n",
+					"    \"caseSubmittedDate\",\n",
+					"    \"caseCreatedDate\",\n",
+					"    \"caseUpdatedDate\",\n",
+					"    \"caseValidDate\",\n",
+					"    \"caseValidationDate\",\n",
+					"    \"caseValidationOutcome\",\n",
+					"    \"caseValidationInvalidDetails\",\n",
+					"    \"caseValidationIncompleteDetails\",\n",
+					"    \"caseExtensionDate\",\n",
+					"    \"caseStartedDate\",\n",
+					"    \"casePublishedDate\",\n",
+					"    \"linkedCaseStatus\",\n",
+					"    \"leadCaseReference\",\n",
+					"    \"lpaQuestionnaireDueDate\",\n",
+					"    \"lpaQuestionnaireSubmittedDate\",\n",
+					"    \"lpaQuestionnaireCreatedDate\",\n",
+					"    \"lpaQuestionnairePublishedDate\",\n",
+					"    \"lpaQuestionnaireValidationOutcome\",\n",
+					"    \"lpaQuestionnaireValidationOutcomeDate\",\n",
+					"    \"lpaQuestionnaireValidationDetails\",\n",
+					"    \"lpaStatement\",\n",
+					"    \"caseWithdrawnDate\",\n",
+					"    \"caseTransferredDate\",\n",
+					"    \"transferredCaseClosedDate\",\n",
+					"    \"caseDecisionOutcomeDate\",\n",
+					"    \"caseDecisionPublishedDate\",\n",
+					"    \"caseDecisionOutcome\",\n",
+					"    \"caseCompletedDate\",\n",
+					"    \"enforcementNotice\",\n",
+					"    \"applicationReference\",\n",
+					"    \"applicationDate\",\n",
+					"    \"applicationDecision\",\n",
+					"    \"applicationDecisionDate\",\n",
+					"    \"caseSubmissionDueDate\",\n",
+					"    \"siteAddressLine1\",\n",
+					"    \"siteAddressLine2\",\n",
+					"    \"siteAddressTown\",\n",
+					"    \"siteAddressCounty\",\n",
+					"    \"siteAddressPostcode\",\n",
+					"    \"siteAccessDetails\",\n",
+					"    \"siteSafetyDetails\",\n",
+					"    \"siteAreaSquareMetres\",\n",
+					"    \"floorSpaceSquareMetres\",\n",
+					"    \"isCorrectAppealType\",\n",
+					"    \"isGreenBelt\",\n",
+					"    \"inConservationArea\",\n",
+					"    \"ownsAllLand\",\n",
+					"    \"ownsSomeLand\",\n",
+					"    \"knowsOtherOwners\",\n",
+					"    \"knowsAllOwners\",\n",
+					"    \"advertisedAppeal\",\n",
+					"    \"notificationMethod\",\n",
+					"    \"ownersInformed\",\n",
+					"    \"originalDevelopmentDescription\",\n",
+					"    \"changedDevelopmentDescription\",\n",
+					"    \"newConditionDetails\",\n",
+					"    \"nearbyCaseReferences\",\n",
+					"    \"neighbouringSiteAddresses\",\n",
+					"    \"affectedListedBuildingNumbers\",\n",
+					"    \"appellantCostsAppliedFor\",\n",
+					"    \"lpaCostsAppliedFor\"\n",
+					"    ]"
+				],
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -132,9 +225,11 @@
 					"sb_std_schema = create_spark_schema(std_db_name, entity_name)\n",
 					"sb_std_table_schema = spark.table(f\"{std_db_name}.{std_table_name}\").schema\n",
 					"sb_hrm_schema = create_spark_schema(hrm_db_name, entity_name)\n",
-					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema"
+					"sb_hrm_table_schema = spark.table(f\"{hrm_db_name}.{hrm_table_name}\").schema\n",
+					"curated_schema = create_spark_schema(curated_db_name, entity_name)\n",
+					"curated_table_schema = spark.table(f\"{curated_db_name}.{curated_table_name}\").schema"
 				],
-				"execution_count": 8
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -165,11 +260,18 @@
 				},
 				"source": [
 					"std_schema_correct: bool = test_compare_schemas(sb_std_schema, sb_std_table_schema)\n",
+					"exitCode += int(not std_schema_correct)\n",
 					"print(f\"Service bus standardised schema correct: {std_schema_correct}\\nTable: {std_db_name}.{std_table_name}\\nDifferences shown above (if any)\")\n",
+					"\n",
 					"hrm_schema_correct: bool = test_compare_schemas(sb_hrm_schema, sb_hrm_table_schema)\n",
-					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")"
+					"exitCode += int(not hrm_schema_correct)\n",
+					"print(f\"Service bus harmonised schema correct: {hrm_schema_correct}\\nTable: {hrm_db_name}.{hrm_table_name}\\nDifferences shown above (if any)\")\n",
+					"\n",
+					"cur_schema_correct: bool = test_compare_schemas(curated_schema, curated_table_schema)\n",
+					"exitCode += int(not cur_schema_correct)\n",
+					"print(f\"Curated schema correct: {cur_schema_correct}\\nTable: {curated_db_name}.{curated_table_name}\\nDifferences shown above (if any)\")"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -196,13 +298,61 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"standardised_count, harmonised_count, counts_match = test_std_same_rows_hrm(std_table_name, hrm_table_name)\n",
-					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")"
+					"print(f\"Standardised Count: {standardised_count: ,}\\nHarmonised Count: {harmonised_count: ,}\\nCounts match: {counts_match}\")\n",
+					"\n",
+					"if standardised_count > harmonised_count:\n",
+					"    exitCode += 1\n",
+					"    print(f\"{standardised_count - harmonised_count} rows from Standardised are missing in Harmonised.\" )\n",
+					"    differentiate_std_and_hrm(f\"{std_db_name}.{std_table_name}\", f\"{hrm_db_name}.{hrm_table_name}\", data_model_columns)"
 				],
-				"execution_count": null
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if test_sb_std_to_sb_hrm_no_dropping_records(std_table_name, hrm_table_name, 'caseId'):\n",
+					"    pass  \n",
+					"else:\n",
+					"    exitCode += 1"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if test_hrm_to_curated_no_dropping_records(hrm_table_name, curated_table_name, 'caseId'):\n",
+					"    pass\n",
+					"else:\n",
+					"    exitCode += 1"
+				],
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -214,7 +364,7 @@
 					}
 				},
 				"source": [
-					"##### Compare final harmonised table (if combined with Horizon) with curated table\n",
+					"##### Compare harmonised table with curated table\n",
 					"Comparing where IsActive = Y in harmonised = curated row count"
 				]
 			},
@@ -232,10 +382,29 @@
 					}
 				},
 				"source": [
-					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_final, curated_table_name)\n",
-					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")"
+					"harmonised_final_count, curated_count, counts_match = test_curated_row_count(hrm_table_name, curated_table_name)\n",
+					"print(f\"Harmonised Final Count: {harmonised_final_count: ,}\\nCurated Count: {curated_count: ,}\\nCounts match: {counts_match}\")\n",
+					"exitCode += int(not counts_match)"
 				],
-				"execution_count": null
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"mssparkutils.notebook.exit(exitCode)"
+				],
+				"execution_count": 33
 			}
 		]
 	}

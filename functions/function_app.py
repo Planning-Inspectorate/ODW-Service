@@ -8,13 +8,23 @@ from servicebus_funcs import get_messages_and_validate, send_to_storage
 from set_environment import current_config, config
 from var_funcs import CREDENTIAL
 from pins_data_model import load_schemas
+from azure.functions.decorators.core import DataType
 import json
 import os
 
-_STORAGE = os.environ["MESSAGE_STORAGE_ACCOUNT"]
-_CONTAINER = os.environ["MESSAGE_STORAGE_CONTAINER"]
-_NAMESPACE = os.environ["ServiceBusConnection__fullyQualifiedNamespace"]
-_NAMESPACE_APPEALS = os.environ["SERVICEBUS_NAMESPACE_APPEALS"]
+_STORAGE = ""
+_CONTAINER = ""
+_NAMESPACE = ""
+_NAMESPACE_APPEALS = ""
+
+try:
+    _STORAGE = os.environ["MESSAGE_STORAGE_ACCOUNT"]
+    _CONTAINER = os.environ["MESSAGE_STORAGE_CONTAINER"]
+    _NAMESPACE = os.environ["ServiceBusConnection__fullyQualifiedNamespace"]
+    _NAMESPACE_APPEALS = os.environ["SERVICEBUS_NAMESPACE_APPEALS"]
+except:
+    print("Warning: Missing Environment Variables")
+
 _CREDENTIAL = CREDENTIAL
 _MAX_MESSAGE_COUNT = config["global"]["max_message_count"]
 _MAX_WAIT_TIME = config["global"]["max_wait_time"]
@@ -331,9 +341,9 @@ def nsiprepresentation(req: func.HttpRequest) -> func.HttpResponse:
         )
 
 
-@_app.function_name("nsips51advice")
-@_app.route(route="nsips51advice", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
-def nsips51advice(req: func.HttpRequest) -> func.HttpResponse:
+@_app.function_name("s51advice")
+@_app.route(route="s51advice", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def s51advice(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure Function endpoint for handling HTTP requests.
 
@@ -362,7 +372,7 @@ def nsips51advice(req: func.HttpRequest) -> func.HttpResponse:
             account_url=_STORAGE,
             credential=_CREDENTIAL,
             container=_CONTAINER,
-            entity=_TOPIC,
+            entity='s51-advice',
             data=_data,
         )
 
@@ -677,3 +687,81 @@ def appealserviceuser(req: func.HttpRequest) -> func.HttpResponse:
             if f"{_VALIDATION_ERROR}" in str(e)
             else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
+
+@_app.function_name(name="gettimesheets")
+@_app.route(route="gettimesheets", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="timesheet",
+                command_text="SELECT [caseReference], [applicationReference], [siteAddressLine1], [siteAddressLine2], [siteAddressTown], [siteAddressCounty], [siteAddressPostcode] FROM [odw_curated_db].[dbo].[appeal_has] WHERE UPPER([caseReference]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([applicationReference]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressLine1]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressLine2]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressTown]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressCounty]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressPostcode]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37))",
+                command_type="Text",
+                parameters="@searchCriteria={searchCriteria}",
+                connection_string_setting="SqlConnectionString")
+def gettimesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.HttpResponse:
+    """
+    We need to use Char(37) to escape the % 
+    https://stackoverflow.com/questions/71914897/how-do-i-use-sql-like-value-operator-with-azure-functions-sql-binding
+    """
+    try:
+        rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+
+    
+@_app.function_name("appeals78")
+@_app.route(route="appeals78", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def appeals78(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Azure Function endpoint for handling HTTP requests.
+
+    Args:
+        req: An instance of `func.HttpRequest` representing the HTTP request.
+
+    Returns:
+        An instance of `func.HttpResponse` representing the HTTP response.
+    """
+
+    _SCHEMA = _SCHEMAS["appeal-s78.schema.json"]
+    _TOPIC = config["global"]["entities"]["appeal-s78"]["topic"]
+    _SUBSCRIPTION = config["global"]["entities"]["appeal-s78"]["subscription"]
+
+    try:
+        _data = get_messages_and_validate(
+            namespace=_NAMESPACE_APPEALS,
+            credential=_CREDENTIAL,
+            topic=_TOPIC,
+            subscription=_SUBSCRIPTION,
+            max_message_count=_MAX_MESSAGE_COUNT,
+            max_wait_time=_MAX_WAIT_TIME,
+            schema=_SCHEMA,
+        )
+        _message_count = send_to_storage(
+            account_url=_STORAGE,
+            credential=_CREDENTIAL,
+            container=_CONTAINER,
+            entity="appeal-s78",
+            data=_data,
+        )
+        
+        response = json.dumps({"message" : f"{_SUCCESS_RESPONSE} - {_message_count} messages sent to storage", "count": _message_count})
+
+        return func.HttpResponse(
+            response,
+            status_code=200
+        )
+
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if f"{_VALIDATION_ERROR}" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+
+
+
+

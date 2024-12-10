@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8593e94c-8e40-47a3-b6d4-08f5e43518d6"
+				"spark.autotune.trackingId": "f3ce6639-976b-48f1-88c4-e336131f007e"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,72 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"The below cell is creating the table if it does not exist"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from notebookutils import mssparkutils\n",
+					"\n",
+					"db_name: str = 'odw_harmonised_db'\n",
+					"table_name: str = 's62a_view_cases_dim'\n",
+					"\n",
+					"@logging_to_appins\n",
+					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
+					"    spark.sql(f\"USE {db_name}\")\n",
+					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\n",
+					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
+					"    return table_name in table_names\n",
+					"\n",
+					"if test_table_exists(db_name, table_name):\n",
+					"    logInfo(\"Table exists in harmonised, updating the harmonised layer\")\n",
+					"else:\n",
+					"    logInfo(\"Table doesn't exist, creating table first.\")\n",
+					"    mssparkutils.notebook.run(\"/py_odw_harmonised_table_creation\",300,{'specific_table': table_name } )\n",
+					""
+				],
+				"execution_count": 2
+			},
 			{
 				"cell_type": "markdown",
 				"metadata": {
@@ -423,6 +489,24 @@
 					""
 				],
 				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"logInfo(f\"{db_name}.{table_name}\")"
+				],
+				"execution_count": 8
 			}
 		]
 	}
