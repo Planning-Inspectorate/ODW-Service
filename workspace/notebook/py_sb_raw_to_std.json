@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a3e68ba2-e0d4-413b-97ee-1b2a4d3021f7"
+				"spark.autotune.trackingId": "780c1c7b-b982-485b-ba1b-eb8358fc0a3e"
 			}
 		},
 		"metadata": {
@@ -362,6 +362,15 @@
 				"source": [
 					"@logging_to_appins\n",
 					"def read_raw_messages(filtered_paths: list[str]) -> DataFrame:\n",
+					"    \"\"\"\n",
+					"    Ingests data from service bus messages stored as json files in the raw layer\n",
+					"\n",
+					"    Args:\n",
+					"        filtered_paths: a list of file paths to ingest\n",
+					"\n",
+					"    Returns:\n",
+					"        A DataFrame of service bus messages with additional columns needed for the standardised table\n",
+					"    \"\"\"\n",
 					"    try:\n",
 					"        # Read JSON files from filtered paths\n",
 					"        df = spark.read.json(filtered_paths, schema=spark_schema)\n",
@@ -396,6 +405,15 @@
 				"source": [
 					"@logging_to_appins\r\n",
 					"def dedupe_dataframe(df: DataFrame) -> DataFrame:\r\n",
+					"    \"\"\"\r\n",
+					"    Dedupes a DataFrame based on certain columns\r\n",
+					"\r\n",
+					"    Args:\r\n",
+					"        df: a DataFrame of service bus data\r\n",
+					"\r\n",
+					"    Returns:\r\n",
+					"        a deduped DataFrame\r\n",
+					"    \"\"\"\r\n",
 					"    # removing duplicates while ignoring the ingestion dates columns\r\n",
 					"    columns_to_ignore: list = ['expected_to', 'expected_from', 'ingested_datetime']\r\n",
 					"    columns_to_consider: list = [c for c in table_df.columns if c not in columns_to_ignore]\r\n",
@@ -470,12 +488,8 @@
 				"execution_count": null
 			},
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
 					"nteract": {
 						"transient": {
 							"deleting": false
@@ -483,27 +497,12 @@
 					}
 				},
 				"source": [
-					"table_df = spark.table(table_name)\r\n",
-					"try:\r\n",
-					"    logInfo(\"Getting the maximum file date\")\r\n",
-					"    max_extracted_date = get_max_file_date(df=table_df)\r\n",
-					"    print(f\"max_extracted_date: {max_extracted_date}\")\r\n",
-					"except Exception as e:\r\n",
-					"    logError(f\"Error getting the maximum file date:\\n{e}\")\r\n",
+					"##### Get the filtered list of files we want to ingest.  \r\n",
 					"\r\n",
-					"try:\r\n",
-					"    logInfo(\"Getting the filtered list of paths\")\r\n",
-					"    filtered_paths = extract_and_filter_paths(get_all_files_recursive(source_path=source_path), max_extracted_date)\r\n",
-					"except Exception as e:\r\n",
-					"    logError(f\"Error getting the filtered list of paths:\\n{e}\")\r\n",
+					"If `USE_MAX_DATE_FILTER` is set to `True` then we get the maximum date of the ingested files from the target table. We use this date to filter the json files in the raw storage layer to only ingest files greater than this date.  \r\n",
 					"\r\n",
-					"try:\r\n",
-					"    logInfo(\"Getting list of missing files\")\r\n",
-					"    missing = get_missing_files(table_name, source_path)\r\n",
-					"except Exception as e:\r\n",
-					"    logError(f\"Error getting list of missing files:\\n{e}\")"
-				],
-				"execution_count": null
+					"If `USE_MAX_DATE_FILTER` is set to `False` then we compare the files ingested already in the target table with the source files and get the difference, i.e. the missing files."
+				]
 			},
 			{
 				"cell_type": "code",
@@ -519,9 +518,50 @@
 					}
 				},
 				"source": [
-					"df: DataFrame = read_raw_messages(missing)"
+					"USE_MAX_DATE_FILTER = False\r\n",
+					"\r\n",
+					"if USE_MAX_DATE_FILTER:\r\n",
+					"    try:\r\n",
+					"        logInfo(\"Getting the maximum file date\")\r\n",
+					"        table_df = spark.table(table_name)\r\n",
+					"        max_extracted_date = get_max_file_date(df=table_df)\r\n",
+					"        print(f\"max_extracted_date: {max_extracted_date}\")\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error getting the maximum file date:\\n{e}\")\r\n",
+					"\r\n",
+					"    try:\r\n",
+					"        logInfo(\"Getting the filtered list of paths\")\r\n",
+					"        filtered_paths = extract_and_filter_paths(get_all_files_recursive(source_path=source_path), max_extracted_date)\r\n",
+					"        df = read_raw_messages(filtered_paths=filtered_paths)\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error getting the filtered list of paths:\\n{e}\")\r\n",
+					"else:\r\n",
+					"    try:\r\n",
+					"        logInfo(\"Getting list of missing files\")\r\n",
+					"        missing_files = get_missing_files(table_name, source_path)\r\n",
+					"        df = read_raw_messages(filtered_paths=missing_files)\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error getting list of missing files:\\n{e}\")"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Dedupe the DataFrame and generate counts.\r\n",
+					"\r\n",
+					"1. Get existing row count of target table  \r\n",
+					"2. Dedupe the DataFrame  \r\n",
+					"3. Get count of rows to append  \r\n",
+					"4. Get the expected new row count which is existing count + new rows"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -546,9 +586,22 @@
 					"    expected_new_count = table_row_count + rows_to_append\r\n",
 					"    logInfo(f\"Expected new count: {expected_new_count}\")\r\n",
 					"except Exception as e:\r\n",
-					"    logError(f\"Error deduping DataFrame:\\n{e}\")"
+					"    logError(f\"Error deduping and generating counts:\\n{e}\")"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Append rows to the target table"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -574,6 +627,21 @@
 					"    logError(f\"Error appending rows:\\n{e}\")"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test rows were appended successfully\r\n",
+					"\r\n",
+					"Test that the new row count in the target table matches the expected new row count above"
+				]
 			},
 			{
 				"cell_type": "code",
