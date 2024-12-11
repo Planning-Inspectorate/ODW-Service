@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bec2063a-cefc-4241-b50d-dac59fdd58ea"
+				"spark.autotune.trackingId": "d6a2b1ce-55c0-4d8d-8a0e-49ee39cdcd51"
 			}
 		},
 		"metadata": {
@@ -133,8 +133,8 @@
 					]
 				},
 				"source": [
-					"table_name: str = \"sb_nsip_subscription\"\r\n",
-					"folder_name: str = \"nsip-subscription\"\r\n",
+					"table_name: str = \"sb_s51_advice\"\r\n",
+					"folder_name: str = \"s51-advice\"\r\n",
 					"join_key: str = \"message_id\""
 				],
 				"execution_count": null
@@ -155,7 +155,10 @@
 				"source": [
 					"target_df: DataFrame = spark.table(f\"odw_standardised_db.{table_name}\")\r\n",
 					"schema: StructType = target_df.schema\r\n",
-					"source_df: DataFrame = collect_all_raw_sb_data(folder_name=folder_name, schema=schema)"
+					"source_df: DataFrame = collect_all_raw_sb_data(folder_name=folder_name, schema=schema)\r\n",
+					"# dedupe as there can be the smae message in different files, more than likely during early testing\r\n",
+					"source_df: DataFrame = source_df.dropDuplicates([\"message_id\"])\r\n",
+					"target_df: DataFrame = target_df.dropDuplicates([\"message_id\"])"
 				],
 				"execution_count": null
 			},
@@ -189,18 +192,29 @@
 					"    Returns:\r\n",
 					"        updated_df: An updated DataFrame with the input_file correctly populated\r\n",
 					"    \"\"\"\r\n",
+					"\r\n",
 					"    # rename column temporarily to avoid ambiguity\r\n",
 					"    source_df: DataFrame = source_df.withColumnRenamed(\"input_file\", \"source_input_file\")\r\n",
-					"    target_df: DataFrame = target_df.withColumnRenamed(\"input_file\", \"target_input_file\")\r\n",
+					"\r\n",
+					"    if \"input_file\" in target_df.columns:\r\n",
+					"        target_df: DataFrame = target_df.withColumnRenamed(\"input_file\", \"target_input_file\")\r\n",
+					"    else:\r\n",
+					"        target_df: DataFrame = target_df.withColumn(\"target_input_file\", lit(None))\r\n",
+					"\r\n",
 					"    joined_df: DataFrame = target_df.alias(\"target\").join(source_df.alias(\"source\"), on=join_key, how=\"left\")\r\n",
-					"    updated_df: DataFrame = joined_df.withColumn(\"input_file\", col(\"source.source_input_file\"))\r\n",
-					"    updated_df: DataFrame = updated_df.select(\r\n",
-					"        *[\r\n",
+					"\r\n",
+					"    joined_df = joined_df.withColumn(\r\n",
+					"        \"input_file\",\r\n",
+					"        col(\"source.source_input_file\")\r\n",
+					"        )\r\n",
+					"\r\n",
+					"    updated_columns = [\r\n",
 					"        col(f\"target.{column}\").alias(column) if column != \"target_input_file\" else col(\"input_file\").alias(\"input_file\")\r\n",
 					"        for column in target_df.columns\r\n",
-					"        ],\r\n",
-					"        col(\"input_file\")\r\n",
-					"    )\r\n",
+					"    ]\r\n",
+					"\r\n",
+					"    updated_df = joined_df.select(*updated_columns)    \r\n",
+					"\r\n",
 					"    return updated_df"
 				],
 				"execution_count": null
@@ -313,7 +327,7 @@
 				},
 				"source": [
 					"@logging_to_appins\r\n",
-					"def main():\r\n",
+					"def main(target_df: DataFrame, updated_df: DataFrame):\r\n",
 					"    \"\"\"\r\n",
 					"    Main function to run the required steps\r\n",
 					"    Populates the updated DataFrame first\r\n",
@@ -324,13 +338,13 @@
 					"    exitCode = 0\r\n",
 					"\r\n",
 					"    try:\r\n",
-					"        logInfo(\"Creating updated_df with input_file values...\")\r\n",
-					"        updated_df: DataFrame = populate_input_file(source_df=source_df, target_df=target_df)\r\n",
 					"        logInfo(\"Running tests...\")\r\n",
-					"        if not test_counts_match(target_df, populate_input_file(source_df, target_df)):\r\n",
+					"        if not test_counts_match(target_df, updated_df):\r\n",
 					"            exitCode += 1\r\n",
-					"        if not test_input_file_populated(updated_df=populate_input_file(source_df, target_df)):\r\n",
+					"            logInfo(f\"test_counts_match failed:\\nexitCode={exitCode}\")\r\n",
+					"        if not test_input_file_populated(updated_df):\r\n",
 					"            exitCode +=1\r\n",
+					"            logInfo(f\"test_counts_match failed:\\nexitCode={exitCode}\")\r\n",
 					"        if exitCode == 0:\r\n",
 					"            logInfo(\"All tests have passed...\")\r\n",
 					"            logInfo(\"Saving to table...\")\r\n",
@@ -357,7 +371,25 @@
 					}
 				},
 				"source": [
-					"main()"
+					"updated_df = populate_input_file(source_df, target_df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"main(target_df=target_df, updated_df=updated_df)"
 				],
 				"execution_count": null
 			},
