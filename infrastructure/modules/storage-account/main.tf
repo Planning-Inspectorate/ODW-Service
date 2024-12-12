@@ -99,12 +99,11 @@ resource "azurerm_storage_share" "share" {
 }
 
 resource "azurerm_storage_share_directory" "share_directories" {
-  for_each             = var.share_directories
-  name                 = each.key
-  share_name           = each.value
-  storage_account_name = azurerm_storage_account.storage.name
-  depends_on           = [azurerm_storage_share.share]
-  storage_share_id     = azurerm_storage_share.share.id
+  for_each = var.share_directories
+
+  name             = each.key
+  depends_on       = [azurerm_storage_share.share]
+  storage_share_id = azurerm_storage_share.share[each.value.share_index].id
 }
 
 resource "azurerm_storage_table" "table" {
