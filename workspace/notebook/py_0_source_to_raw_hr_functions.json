@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a11ed9af-2331-46e1-94b9-5159305fcc55"
+				"spark.autotune.trackingId": "15d0e4d9-7e28-4166-b83a-76dcf6774302"
 			}
 		},
 		"metadata": {
@@ -140,7 +140,6 @@
 					"    from azure.storage.fileshare import ShareDirectoryClient\r\n",
 					"    from notebookutils import mssparkutils\r\n",
 					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
-					"    print(creds)\r\n",
 					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
 					"\r\n",
 					"    ### recursive function to find all files within a directory\r\n",
@@ -281,6 +280,84 @@
 					"        raise NameError(f\"{db_name} doesn't exist\")"
 				],
 				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def azfileshare_new_files_test(akv_name: str, secret_name: str, kv_linked_service: str, share_name: str, directory_path: str, jsonschema: str, target_container: str, target_folder: str, db_name: str, table_name: str):\r\n",
+					"   \r\n",
+					"    import datetime\r\n",
+					"    dt = datetime.datetime.now()\r\n",
+					"\r\n",
+					"    # Establish connection to Azure files and create client\r\n",
+					"    from azure.storage.fileshare import ShareDirectoryClient\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
+					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
+					"\r\n",
+					"    # Function to find the latest folder\r\n",
+					"    def get_latest_folder(share_directory_client):\r\n",
+					"        directories = list(share_directory_client.list_directories_and_files())\r\n",
+					"        if not directories:\r\n",
+					"            raise ValueError(\"Empty directory has been provided\")\r\n",
+					"        latest_folder = max([dir for dir in directories if dir.is_directory], key=lambda x: x.last_modified)\r\n",
+					"        return latest_folder.name\r\n",
+					"\r\n",
+					"    latest_folder_name = get_latest_folder(parent_dir)\r\n",
+					"    latest_folder_path = f\"{directory_path}/{latest_folder_name}\"\r\n",
+					"\r\n",
+					"    # Recursive function to find all files within the latest folder\r\n",
+					"    all_files = []\r\n",
+					"    def _recursive_find_all_files(share_directory_client, path):\r\n",
+					"        files_and_dirs = list(share_directory_client.list_directories_and_files())\r\n",
+					"        for li in files_and_dirs:\r\n",
+					"            if li.is_directory:\r\n",
+					"                _recursive_find_all_files(share_directory_client.get_subdirectory_client(li.name), f\"{path}/{li.name}\")\r\n",
+					"            else:\r\n",
+					"                fileprops = share_directory_client.get_file_client(li.name).get_file_properties()\r\n",
+					"                all_files.append([dt, fileprops.path, fileprops.last_modified])\r\n",
+					"\r\n",
+					"    latest_folder_client = parent_dir.get_subdirectory_client(latest_folder_name)\r\n",
+					"    _recursive_find_all_files(latest_folder_client, latest_folder_path)\r\n",
+					"\r\n",
+					"    # Create Spark DataFrame\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    from pyspark.sql.functions import lit\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"\r\n",
+					"    from pyspark.sql.types import StructType\r\n",
+					"    import json\r\n",
+					"\r\n",
+					"    schema = StructType.fromJson(json.loads(jsonschema))\r\n",
+					"    logs_now_df = spark.createDataFrame(all_files, schema)\r\n",
+					"    logs_table_df = spark.read.format(\"delta\").load(target_container + target_folder)\r\n",
+					"    filtered_cols = logs_now_df.columns\r\n",
+					"    filtered_cols.remove(\"Process_Date\")\r\n",
+					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\r\n",
+					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\r\n",
+					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\r\n",
+					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\r\n",
+					"\r\n",
+					"    # Append new files to delta table\r\n",
+					"    if new_paths.count() == 0:\r\n",
+					"        mssparkutils.notebook.exit(\"[]\")\r\n",
+					"    else:\r\n",
+					"        all_paths = [paths[\"Filepath\"] for paths in new_paths.collect()]\r\n",
+					"        mssparkutils.notebook.exit(\",,,\".join(all_paths))\r\n",
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
