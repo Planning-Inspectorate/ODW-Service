@@ -69,7 +69,7 @@ resource "azurerm_storage_container" "container" {
   #checkov:skip=CKV2_AZURE_21: "Ensure Storage logging is enabled for Blob service for read requests"
   for_each              = toset(var.container_name)
   name                  = each.key
-  storage_account_name  = azurerm_storage_account.storage.name
+  storage_account_id    = azurerm_storage_account.storage.name
   container_access_type = var.container_access_type #TODO: this needs to be a list
 }
 
@@ -92,15 +92,14 @@ resource "azurerm_storage_queue" "queue" {
 }
 
 resource "azurerm_storage_share" "share" {
-  count                = length(var.shares)
-  name                 = var.shares[count.index].name
-  storage_account_name = azurerm_storage_account.storage.name
-  quota                = var.shares[count.index].quota
+  count              = length(var.shares)
+  name               = var.shares[count.index].name
+  storage_account_id = azurerm_storage_account.storage.name
+  quota              = var.shares[count.index].quota
 }
 
 resource "azurerm_storage_share_directory" "share_directories" {
-  for_each = var.share_directories
-
+  for_each         = var.share_directories
   name             = each.key
   depends_on       = [azurerm_storage_share.share]
   storage_share_id = azurerm_storage_share.share[each.value.share_index].id
