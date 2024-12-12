@@ -14,7 +14,7 @@ resource "azurerm_storage_account" "shir" {
   account_replication_type        = "LRS"
   account_kind                    = "StorageV2"
   default_to_oauth_authentication = true
-  enable_https_traffic_only       = true
+  https_traffic_only_enabled      = true
   min_tls_version                 = "TLS1_2"
 
   blob_properties {
@@ -27,38 +27,37 @@ resource "azurerm_storage_account" "shir" {
     }
   }
 
-  queue_properties {
-    logging {
-      read                  = true
-      write                 = true
-      delete                = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
+  tags = local.tags
+}
 
-    minute_metrics {
-      enabled               = true
-      include_apis          = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
-
-    hour_metrics {
-      enabled               = true
-      include_apis          = true
-      retention_policy_days = 7
-      version               = "1.0"
-    }
+resource "azurerm_storage_account_queue_properties" "shir" {
+  storage_account_id = azurerm_storage_account.shir.id
+  logging {
+    read                  = true
+    write                 = true
+    delete                = true
+    retention_policy_days = 7
+    version               = "1.0"
   }
 
-  tags = local.tags
+  minute_metrics {
+    include_apis          = true
+    retention_policy_days = 7
+    version               = "1.0"
+  }
+
+  hour_metrics {
+    include_apis          = true
+    retention_policy_days = 7
+    version               = "1.0"
+  }
 }
 
 resource "azurerm_storage_container" "shir" {
   #checkov:skip=CKV_AZURE_34: Public access is required
   #checkov:skip=CKV2_AZURE_21: Blob logging is not required
   name                  = "scripts"
-  storage_account_name  = azurerm_storage_account.shir.name
+  storage_account_id    = azurerm_storage_account.shir.name
   container_access_type = "container"
 }
 

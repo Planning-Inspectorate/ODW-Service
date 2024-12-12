@@ -14,7 +14,7 @@ resource "azurerm_storage_account" "sql_server_auditing" {
   account_replication_type        = "LRS"
   account_kind                    = "BlockBlobStorage"
   default_to_oauth_authentication = true
-  enable_https_traffic_only       = true
+  https_traffic_only_enabled      = true
   min_tls_version                 = "TLS1_2"
   public_network_access_enabled   = true
 
