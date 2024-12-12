@@ -8,17 +8,17 @@ resource "azurerm_storage_account" "storage" {
   #checkov:skip=CKV2_AZURE_8: Firewall is enabled using azurerm_storage_account_network_rules
   #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   #checkov:skip=CKV2_AZURE_33: Private Endpoint is not enabled as networking is controlled by Firewall
-  name                      = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
-  resource_group_name       = var.resource_group_name
-  location                  = var.location
-  account_tier              = var.storage_tier
-  account_replication_type  = var.storage_replication
-  account_kind              = var.account_kind
-  enable_https_traffic_only = true
-  min_tls_version           = "TLS1_2"
-  access_tier               = var.access_tier
-  is_hns_enabled            = var.is_hns_enabled
-  large_file_share_enabled  = var.large_file_share_enabled
+  name                       = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
+  resource_group_name        = var.resource_group_name
+  location                   = var.location
+  account_tier               = var.storage_tier
+  account_replication_type   = var.storage_replication
+  account_kind               = var.account_kind
+  https_traffic_only_enabled = true
+  min_tls_version            = "TLS1_2"
+  access_tier                = var.access_tier
+  is_hns_enabled             = var.is_hns_enabled
+  large_file_share_enabled   = var.large_file_share_enabled
 
   dynamic "custom_domain" {
     for_each = var.custom_domain
@@ -104,6 +104,7 @@ resource "azurerm_storage_share_directory" "share_directories" {
   share_name           = each.value
   storage_account_name = azurerm_storage_account.storage.name
   depends_on           = [azurerm_storage_share.share]
+  storage_share_id     = azurerm_storage_share.share.id
 }
 
 resource "azurerm_storage_table" "table" {
