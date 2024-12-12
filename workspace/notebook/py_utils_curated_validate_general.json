@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9fdcfebb-6cbd-4b31-a3cd-bddc20599ec2"
+				"spark.autotune.trackingId": "01f624ba-35f3-4024-b1e5-7156094f2691"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"%pip install --quiet --upgrade pip\r\n",
 					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0 git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -124,7 +124,7 @@
 					"from iso8601 import parse_date, ParseError\r\n",
 					"from pins_data_model import load_schemas"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -190,7 +190,7 @@
 					"\n",
 					"    return success"
 				],
-				"execution_count": 140
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -219,11 +219,17 @@
 					}
 				},
 				"source": [
-					"SCHEMAS = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
-					"# just get the schema_names\r\n",
-					"SCHEMA = list(SCHEMAS.keys())"
+					"SCHEMA_DICT = load_schemas.load_all_schemas()[\"schemas\"]\r\n",
+					"\r\n",
+					"for key in SCHEMA_DICT:\r\n",
+					"    SCHEMA_DICT[key] =[SCHEMA_DICT[key]]\r\n",
+					"    \r\n",
+					"# add in the dictionary the name of the table as well\r\n",
+					"\r\n",
+					"for key in SCHEMA_DICT:\r\n",
+					"    SCHEMA_DICT[key].append(f\"{key}\".replace('-', '_').split('.')[0])"
 				],
-				"execution_count": 35
+				"execution_count": 149
 			},
 			{
 				"cell_type": "code",
@@ -239,10 +245,9 @@
 					}
 				},
 				"source": [
-					"# create a dictionary only the entities and table names\r\n",
-					"SCHEMA_DICT = {item:item.replace('-', '_').split('.')[0] for item in SCHEMA}  "
+					"schema_file = 's51-advice.schema.json'"
 				],
-				"execution_count": 29
+				"execution_count": 151
 			},
 			{
 				"cell_type": "code",
@@ -258,10 +263,26 @@
 					}
 				},
 				"source": [
-					"TABLE = SCHEMA_TABLES['folder.schema.json']\r\n",
-					"DATABASE = \"odw_curated_db\""
+					"SCHEMA = SCHEMA_DICT[schema_file][0]\r\n",
+					"TABLE = SCHEMA_DICT[schema_file][1]\r\n",
+					"DATABASE = \"odw_curated_db\"\r\n",
+					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
+					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
-				"execution_count": 41
+				"execution_count": 153
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"before"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -285,7 +306,7 @@
 					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
 					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
-				"execution_count": 141
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -323,7 +344,83 @@
 				"source": [
 					"spark.sql(f\"REFRESH TABLE {DATABASE}.{TABLE}\")"
 				],
-				"execution_count": 142
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df = spark.sql(QUERY)\r\n",
+					"data = df.toPandas()"
+				],
+				"execution_count": 161
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df.dtypes"
+				],
+				"execution_count": 169
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df = spark.sql(QUERY)\r\n",
+					"data = df.toPandas()\r\n",
+					"for column in data:\r\n",
+					"    data[column].replace({pd.NaT: None, np.nan: None},inplace=True)"
+				],
+				"execution_count": 159
 			},
 			{
 				"cell_type": "code",
@@ -348,7 +445,7 @@
 					"data['attachmentIds'] = data['attachmentIds'].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)\r\n",
 					"json_data = data.to_dict(orient='records')"
 				],
-				"execution_count": 143
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -387,7 +484,7 @@
 					"                        schema=SCHEMA,\r\n",
 					"                        primary_key = PRIMARY_KEY)"
 				],
-				"execution_count": 144
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -421,7 +518,7 @@
 					"result = output.stdout\r\n",
 					"print(result)"
 				],
-				"execution_count": 145
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -452,7 +549,7 @@
 				"source": [
 					"write_file_to_storage(path, OUTPUT_FILE, result)"
 				],
-				"execution_count": 146
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -486,7 +583,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(validate)"
 				],
-				"execution_count": 147
+				"execution_count": null
 			}
 		]
 	}
