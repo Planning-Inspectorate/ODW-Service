@@ -711,3 +711,74 @@ def gettimesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.Htt
         return (
             func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
+
+    
+@_app.function_name("appeals78")
+@_app.route(route="appeals78", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def appeals78(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Azure Function endpoint for handling HTTP requests.
+
+    Args:
+        req: An instance of `func.HttpRequest` representing the HTTP request.
+
+    Returns:
+        An instance of `func.HttpResponse` representing the HTTP response.
+    """
+
+    _SCHEMA = _SCHEMAS["appeal-s78.schema.json"]
+    _TOPIC = config["global"]["entities"]["appeal-s78"]["topic"]
+    _SUBSCRIPTION = config["global"]["entities"]["appeal-s78"]["subscription"]
+
+    try:
+        _data = get_messages_and_validate(
+            namespace=_NAMESPACE_APPEALS,
+            credential=_CREDENTIAL,
+            topic=_TOPIC,
+            subscription=_SUBSCRIPTION,
+            max_message_count=_MAX_MESSAGE_COUNT,
+            max_wait_time=_MAX_WAIT_TIME,
+            schema=_SCHEMA,
+        )
+        _message_count = send_to_storage(
+            account_url=_STORAGE,
+            credential=_CREDENTIAL,
+            container=_CONTAINER,
+            entity="appeal-s78",
+            data=_data,
+        )
+        
+        response = json.dumps({"message" : f"{_SUCCESS_RESPONSE} - {_message_count} messages sent to storage", "count": _message_count})
+
+        return func.HttpResponse(
+            response,
+            status_code=200
+        )
+
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if f"{_VALIDATION_ERROR}" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+    
+@_app.function_name(name="getDaRT")
+@_app.route(route="getDaRT", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="dart",
+                command_text="SELECT h.caseReference ,h.caseType ,h.siteAddressLine1 + ', ' +  h.siteAddressLine2 + ', ' +  siteAddressTown  + ', ' +  h.siteAddressCounty + ', ' +  h.siteAddressPostcode as siteAddress ,h.applicationReference ,h.applicationDate ,h.applicationDecisionDate as lpaDecisionDate ,h.originalDevelopmentDescription ,l.lpaName ,su.firstName + ' ' + su.LastName as appellantName ,e.eventType as typeOfEvent ,e.eventStartDateTime as startDateOfTheEvent ,ent.givenName + ' ' +  ent.surname as inspectorName ,i.qualifications as inspectorQualifications FROM odw_harmonised_db.dbo.sb_appeal_has h left join odw_harmonised_db.dbo.pins_lpa l on h.lpaCode = l.pinsLpaCode and l.isActive = 'Y' left join odw_harmonised_db.dbo.sb_service_user su on h.caseReference = su.caseReference and su.serviceUserType = 'Appellant' and su.isActive = 'Y' left join odw_harmonised_db.dbo.sb_appeal_event e on h.caseReference = e.caseReference and e.isActive = 'Y' left join odw_harmonised_db.dbo.entraid ent on h.inspectorId = ent.id and ent.isActive = 'Y' left join odw_harmonised_db.dbo.pins_inspectors i on ent.userPrincipalName = i.email and i.isActive = 'Y' WHERE h.IsActive = 'Y' AND UPPER([applicationReference]) = UPPER(@applicationReference) OR UPPER([h].[caseReference]) = UPPER(@caseReference)",
+                command_type="Text",
+                parameters="@caseReference={caseReference},@applicationReference={applicationReference}",
+                connection_string_setting="SqlConnectionString2")
+def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
+
+    try:
+        rows = list(map(lambda r: json.loads(r.to_json()), dart))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
