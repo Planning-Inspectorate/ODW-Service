@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c14f8fb6-5b96-4091-ba76-7d4ffe23a62a"
+				"spark.autotune.trackingId": "a68b971e-df73-4812-a8c3-072c1304c3ae"
 			}
 		},
 		"metadata": {
@@ -66,7 +66,9 @@
 					}
 				},
 				"source": [
-					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+					"# %run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions\r\n",
+					"import subprocess\r\n",
+					"subprocess.run([\"pip\", \"install\", \"--quiet\", \"azure-storage-file-share\"])"
 				],
 				"execution_count": 272
 			},
@@ -125,9 +127,83 @@
 					}
 				},
 				"source": [
-					"create_table_from_schema(jsonschema, db_name, table_name, target_container, target_folder)"
+					"# create_table_from_schema(jsonschema, db_name, table_name, target_container, target_folder)"
 				],
 				"execution_count": 275
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# @logging_to_appins\r\n",
+					"# @retry(wait=wait_random_exponential(multiplier=1, max=60), before_sleep=before_sleep)\r\n",
+					"def azfileshare_file_path_new(akv_name: str, secret_name: str, kv_linked_service: str, share_name: str, directory_path: str, jsonschema: str, target_container: str, target_folder: str, db_name: str, table_name: str, last_date: str):\r\n",
+					"   \r\n",
+					"    import datetime\r\n",
+					"    dt = datetime.datetime.now()\r\n",
+					"\r\n",
+					"    # Convert last_date to a date object\r\n",
+					"    last_date_obj = datetime.datetime.strptime(last_date, '%Y-%m-%d').date()\r\n",
+					"\r\n",
+					"    # Establish connection to Azure files and create client\r\n",
+					"    from azure.storage.fileshare import ShareDirectoryClient\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\r\n",
+					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\r\n",
+					"\r\n",
+					"    def get_directories_greater_than_last_date(share_directory_client, last_date_obj):\r\n",
+					"        # List directories and files\r\n",
+					"        directories_and_files = list(share_directory_client.list_directories_and_files())\r\n",
+					"        \r\n",
+					"        # Check if the directory is empty\r\n",
+					"        if not directories_and_files:\r\n",
+					"            raise ValueError(\"Empty directory has been provided\")\r\n",
+					"        \r\n",
+					"        # Filter directories\r\n",
+					"        directories = [dir for dir in directories_and_files if dir.is_directory]\r\n",
+					"        \r\n",
+					"        # Check if there are any directories\r\n",
+					"        if not directories:\r\n",
+					"            raise ValueError(\"No directories found\")\r\n",
+					"\r\n",
+					"        # Initialize list to store directories greater than last_date\r\n",
+					"        directories_greater_than_last_date = []\r\n",
+					"\r\n",
+					"        # Iterate through directories\r\n",
+					"        for directory in directories:\r\n",
+					"            # Get the directory name and convert it to a date object\r\n",
+					"            try:\r\n",
+					"                directory_date = datetime.datetime.strptime(directory.name, '%Y-%m-%d').date()\r\n",
+					"            except ValueError:\r\n",
+					"                continue  # Skip if directory name is not in the expected format\r\n",
+					"\r\n",
+					"            # Check if the directory date is greater than the last_date\r\n",
+					"            if directory_date > last_date_obj:\r\n",
+					"                # Append the directory name to the list\r\n",
+					"                directories_greater_than_last_date.append(directory.name)\r\n",
+					"\r\n",
+					"        return directories_greater_than_last_date\r\n",
+					"\r\n",
+					"    directories_greater_than_last_date = get_directories_greater_than_last_date(parent_dir, last_date_obj)\r\n",
+					"\r\n",
+					"    # Exit with the list of directory names\r\n",
+					"    if directories_greater_than_last_date:\r\n",
+					"        mssparkutils.notebook.exit(directories_greater_than_last_date)\r\n",
+					"    else:\r\n",
+					"        mssparkutils.notebook.exit([])\r\n",
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
