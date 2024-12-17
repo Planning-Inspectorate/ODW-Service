@@ -8,3 +8,13 @@ terraform {
   }
   required_version = ">= 1.5.7, < 1.10.0"
 }
+
+provider "azurerm" {
+  alias = "default"
+  features {}
+}
+
+provider "azurerm" {
+  alias = "odt"
+  features {}
+}
