@@ -93,16 +93,18 @@ resource "azurerm_storage_queue" "queue" {
 }
 
 resource "azurerm_storage_share" "share" {
-  count              = length(var.shares)
-  name               = var.shares[count.index].name
-  storage_account_id = azurerm_storage_account.storage.name
-  quota              = var.shares[count.index].quota
+  count                = length(var.shares)
+  name                 = var.shares[count.index].name
+  storage_account_name = azurerm_storage_account.storage.name
+  quota                = var.shares[count.index].quota
 }
 
 resource "azurerm_storage_share_directory" "share_directories" {
-  for_each         = var.share_directories
-  name             = each.key
-  depends_on       = [azurerm_storage_share.share]
+  for_each = var.share_directories
+  name     = each.key
+  # share_name           = each.value not expected here
+  depends_on = [azurerm_storage_share.share]
+  # storage_account_name = azurerm_storage_share.share[each.value.share_index].name
   storage_share_id = azurerm_storage_share.share[each.value.share_index].id
 }
 
