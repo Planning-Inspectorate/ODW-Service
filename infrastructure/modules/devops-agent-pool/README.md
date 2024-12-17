@@ -16,8 +16,7 @@ This module provisions an Azure DevOps agent pool into the specified a specified
 
 ## Usage
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -66,4 +65,4 @@ No requirements.
 | Name | Description |
 |------|-------------|
 | <a name="output_resource_group_name"></a> [resource\_group\_name](#output\_resource\_group\_name) | The name of the resource group deployed in this module |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->
