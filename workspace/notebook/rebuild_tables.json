@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fc5164ce-a25f-4e00-856f-ce8f3cd0256b"
+				"spark.autotune.trackingId": "27d5ee9a-41ff-467f-913f-270ebc48535f"
 			}
 		},
 		"metadata": {
@@ -65,6 +65,24 @@
 					}
 				},
 				"source": [
+					"import pprint"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"standardised_container = 'odw-standardised'\r\n",
 					"harmonised_container = 'odw-harmonised'\r\n",
 					"curated_container = 'odw-curated'\r\n",
@@ -89,8 +107,12 @@
 				},
 				"source": [
 					"def rebuild_table(db_name: str, table_name: str, location: str):\r\n",
+					"    if db_name == \"odw_standardised_db\" and table_name.startswith(\"listed_building\"):\r\n",
+					"        table_format = \"PARQUET\"\r\n",
+					"    else:\r\n",
+					"        table_format = \"DELTA\"\r\n",
 					"    spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {db_name}.{table_name}\r\n",
-					"    USING DELTA\r\n",
+					"    USING {table_format}\r\n",
 					"    LOCATION '{location}'\r\n",
 					"    \"\"\")\r\n",
 					"    print(f\"Table {db_name}.{table_name} rebuilt at location\\n{location}\")"
@@ -143,8 +165,11 @@
 					"            table_info = table_details.collect()[0].asDict()\r\n",
 					"            table_name = table_info.get(\"name\", table)\r\n",
 					"            table_location = table_info.get(\"location\", \"Unknown\")\r\n",
-					"            table_metadata[table_name] = table_location\r\n",
-					"\r\n",
+					"            table_format = table_info.get(\"format\", \"Unknown\")\r\n",
+					"            table_metadata[table_name] = {\r\n",
+					"                \"location\": table_location,\r\n",
+					"                \"format\": table_format\r\n",
+					"                }\r\n",
 					"        except Exception as e:\r\n",
 					"            print(f\"Failed to fetch details for {table}: {e}\")\r\n",
 					"\r\n",
@@ -168,8 +193,9 @@
 				"source": [
 					"def get_table_location(container: str, db_name: str, table_name: str) -> str:\r\n",
 					"    full_table_name = f\"{db_name}.{table_name}\"\r\n",
-					"    for table, path in table_metadata.items():\r\n",
+					"    for table, metadata in table_metadata.items():\r\n",
 					"        if table == full_table_name:\r\n",
+					"            path = metadata.get(\"location\", \"Unknown\")\r\n",
 					"            if path.startswith('abfss://synapse'):\r\n",
 					"                location = f'abfss://{container}@pinsstodwdevuks9h80mb.dfs.core.windows.net/{table_name}'\r\n",
 					"            else:\r\n",
@@ -234,6 +260,24 @@
 					"tables = list_tables(db_name=db_name)\r\n",
 					"table_metadata = create_table_metadata(db_name=db_name, tables=tables)\r\n",
 					"table_locations = get_new_locations(container=standardised_container, tables=tables)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"pprint.pprint(table_metadata)"
 				],
 				"execution_count": null
 			},
