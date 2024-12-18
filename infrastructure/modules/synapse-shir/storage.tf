@@ -7,15 +7,16 @@ resource "azurerm_storage_account" "shir" {
   #checkov:skip=CKV2_AZURE_8: Firewall not required for this stroage account
   #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   #checkov:skip=CKV2_AZURE_33: Private Endpoint is not enabled as networking is controlled by Firewall
-  name                            = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
-  resource_group_name             = var.resource_group_name
-  location                        = var.location
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  account_kind                    = "StorageV2"
-  default_to_oauth_authentication = true
-  https_traffic_only_enabled      = true
-  min_tls_version                 = "TLS1_2"
+  name                             = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
+  resource_group_name              = var.resource_group_name
+  location                         = var.location
+  account_tier                     = "Standard"
+  account_replication_type         = "LRS"
+  account_kind                     = "StorageV2"
+  default_to_oauth_authentication  = true
+  https_traffic_only_enabled       = true
+  min_tls_version                  = "TLS1_2"
+  cross_tenant_replication_enabled = true
 
   blob_properties {
     delete_retention_policy {
