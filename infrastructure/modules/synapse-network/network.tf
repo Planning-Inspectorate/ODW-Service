@@ -23,7 +23,7 @@ resource "azurerm_subnet" "synapse" {
   address_prefixes                  = [each.value.cidr_block]
   virtual_network_name              = azurerm_virtual_network.synapse.name
   service_endpoints                 = each.value.service_endpoints
-  private_endpoint_network_policies = "Enabled"
+  private_endpoint_network_policies = each.value.private_endpoint_network_policies
 
   dynamic "delegation" {
     for_each = each.value.service_delegation
