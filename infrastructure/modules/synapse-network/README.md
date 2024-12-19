@@ -49,16 +49,19 @@ module "synapse_network" {
 |----------|
 | This module uses the HashiCorp `subnets` module to determine the subnet size CIDR ranges. |
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.7, < 1.10.0 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | >= 3.0, < 5.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.39.1 |
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 4.14.0 |
 
 ## Modules
 
@@ -91,7 +94,7 @@ No requirements.
 | <a name="input_synapse_private_endpoint_subnet_name"></a> [synapse\_private\_endpoint\_subnet\_name](#input\_synapse\_private\_endpoint\_subnet\_name) | The name of the subnet into which Synapse private endpoints should be deployed | `string` | `"SynapseEndpointSubnet"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | A collection of tags to assign to taggable resources | `map(string)` | `{}` | no |
 | <a name="input_vnet_base_cidr_block"></a> [vnet\_base\_cidr\_block](#input\_vnet\_base\_cidr\_block) | The base IPv4 range for the Virtual Network in CIDR notation | `string` | `"10.90.0.0/24"` | no |
-| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | <pre>list(object({<br>    name              = string<br>    new_bits          = number<br>    service_endpoints = list(string)<br>    service_delegation = list(object({<br>      delegation_name = string<br>      actions         = list(string)<br>    }))<br>  }))</pre> | <pre>[<br>  {<br>    "name": "AzureBastionSubnet",<br>    "new_bits": 4,<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  },<br>  {<br>    "name": "FunctionAppSubnet",<br>    "new_bits": 4,<br>    "service_delegation": [<br>      {<br>        "actions": [<br>          "Microsoft.Network/virtualNetworks/subnets/action"<br>        ],<br>        "delegation_name": "Microsoft.Web/serverFarms"<br>      }<br>    ],<br>    "service_endpoints": [<br>      "Microsoft.Storage",<br>      "Microsoft.KeyVault"<br>    ]<br>  },<br>  {<br>    "name": "SynapseEndpointSubnet",<br>    "new_bits": 2,<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  },<br>  {<br>    "name": "ComputeSubnet",<br>    "new_bits": 2,<br>    "service_delegation": [],<br>    "service_endpoints": [<br>      "Microsoft.Storage",<br>      "Microsoft.KeyVault"<br>    ]<br>  },<br>  {<br>    "name": "ApimSubnet",<br>    "new_bits": 2,<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  }<br>]</pre> | no |
+| <a name="input_vnet_subnets"></a> [vnet\_subnets](#input\_vnet\_subnets) | A collection of subnet definitions used to logically partition the Virtual Network | <pre>list(object({<br>    name                              = string<br>    new_bits                          = number<br>    service_endpoints                 = list(string)<br>    private_endpoint_network_policies = string<br>    service_delegation = list(object({<br>      delegation_name = string<br>      actions         = list(string)<br>    }))<br>  }))</pre> | <pre>[<br>  {<br>    "name": "AzureBastionSubnet",<br>    "new_bits": 4,<br>    "private_endpoint_network_policies": "Enabled",<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  },<br>  {<br>    "name": "FunctionAppSubnet",<br>    "new_bits": 4,<br>    "private_endpoint_network_policies": "Enabled",<br>    "service_delegation": [<br>      {<br>        "actions": [<br>          "Microsoft.Network/virtualNetworks/subnets/action"<br>        ],<br>        "delegation_name": "Microsoft.Web/serverFarms"<br>      }<br>    ],<br>    "service_endpoints": [<br>      "Microsoft.Storage",<br>      "Microsoft.KeyVault"<br>    ]<br>  },<br>  {<br>    "name": "SynapseEndpointSubnet",<br>    "new_bits": 2,<br>    "private_endpoint_network_policies": "Enabled",<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  },<br>  {<br>    "name": "ComputeSubnet",<br>    "new_bits": 2,<br>    "private_endpoint_network_policies": "Enabled",<br>    "service_delegation": [],<br>    "service_endpoints": [<br>      "Microsoft.Storage",<br>      "Microsoft.KeyVault"<br>    ]<br>  },<br>  {<br>    "name": "ApimSubnet",<br>    "new_bits": 2,<br>    "private_endpoint_network_policies": "Enabled",<br>    "service_delegation": [],<br>    "service_endpoints": []<br>  }<br>]</pre> | no |
 
 ## Outputs
 
@@ -105,4 +108,4 @@ No requirements.
 | <a name="output_vnet_subnet_ids"></a> [vnet\_subnet\_ids](#output\_vnet\_subnet\_ids) | A list of subnet IDs deployed in this module |
 | <a name="output_vnet_subnet_prefixes"></a> [vnet\_subnet\_prefixes](#output\_vnet\_subnet\_prefixes) | A map of subnet names to CIDR ranges deployed in this module |
 | <a name="output_vnet_subnets"></a> [vnet\_subnets](#output\_vnet\_subnets) | A map of subnet names to IDs deployed in this module |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->

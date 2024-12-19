@@ -36,6 +36,11 @@ module "synapse_sql_server" {
   vnet_subnet_ids_failover          = module.synapse_network_failover.vnet_subnets
 
   tags = local.tags
+
+  providers = {
+    azurerm     = azurerm
+    azurerm.odt = azurerm.odt
+  }
 }
 
 module "synapse_sql_server_failover" {
@@ -58,4 +63,9 @@ module "synapse_sql_server_failover" {
   vnet_subnet_ids_failover          = module.synapse_network.vnet_subnets
 
   tags = local.tags
+
+  providers = {
+    azurerm     = azurerm
+    azurerm.odt = azurerm.odt
+  }
 }

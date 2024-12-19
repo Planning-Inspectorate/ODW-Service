@@ -28,18 +28,21 @@ module "synapse_ingestion" {
 |----------|
 | The resources in this module are currently hardcoded and as such this module has no dependencies. |
 
-<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5.7, < 1.10.0 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | >= 3.0, < 5.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_azuread"></a> [azuread](#provider\_azuread) | 2.47.0 |
-| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.39.1 |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.4.3 |
+| <a name="provider_azuread"></a> [azuread](#provider\_azuread) | 3.0.2 |
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 4.13.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.6.3 |
 
 ## Modules
 
@@ -90,4 +93,4 @@ No requirements.
 | <a name="output_service_bus_namespace_id"></a> [service\_bus\_namespace\_id](#output\_service\_bus\_namespace\_id) | The ID of the Service Bus Namespace deployed in this module |
 | <a name="output_service_bus_namespace_name"></a> [service\_bus\_namespace\_name](#output\_service\_bus\_namespace\_name) | The name of the Service Bus Namespace deployed in this module |
 | <a name="output_service_bus_primary_connection_string"></a> [service\_bus\_primary\_connection\_string](#output\_service\_bus\_primary\_connection\_string) | The name of the Service Bus Namespace deployed in this module |
-<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+<!-- END_TF_DOCS -->
