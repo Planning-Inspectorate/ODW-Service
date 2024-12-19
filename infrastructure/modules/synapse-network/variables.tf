@@ -46,9 +46,8 @@ variable "vnet_subnets" {
     {
       "name" : "AzureBastionSubnet",
       "new_bits" : 4 # /28
-      service_endpoints                 = []
-      service_delegation                = []
-      private_endpoint_network_policies = "Enabled"
+      service_endpoints  = []
+      service_delegation = []
     },
     {
       "name" : "FunctionAppSubnet",
