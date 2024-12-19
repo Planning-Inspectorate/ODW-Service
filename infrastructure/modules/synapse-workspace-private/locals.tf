@@ -10,7 +10,7 @@ locals {
     for role, principals in var.synapse_role_assignments : [
       for principal in principals : {
         role_definition_name = role
-        principal_id         = principal
+        principal_id         = "User"
       }
     ]
   ])
