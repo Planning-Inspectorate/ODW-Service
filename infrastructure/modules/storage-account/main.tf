@@ -8,17 +8,18 @@ resource "azurerm_storage_account" "storage" {
   #checkov:skip=CKV2_AZURE_8: Firewall is enabled using azurerm_storage_account_network_rules
   #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   #checkov:skip=CKV2_AZURE_33: Private Endpoint is not enabled as networking is controlled by Firewall
-  name                      = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
-  resource_group_name       = var.resource_group_name
-  location                  = var.location
-  account_tier              = var.storage_tier
-  account_replication_type  = var.storage_replication
-  account_kind              = var.account_kind
-  enable_https_traffic_only = true
-  min_tls_version           = "TLS1_2"
-  access_tier               = var.access_tier
-  is_hns_enabled            = var.is_hns_enabled
-  large_file_share_enabled  = var.large_file_share_enabled
+  name                             = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
+  resource_group_name              = var.resource_group_name
+  location                         = var.location
+  account_tier                     = var.storage_tier
+  account_replication_type         = var.storage_replication
+  account_kind                     = var.account_kind
+  https_traffic_only_enabled       = true
+  min_tls_version                  = "TLS1_2"
+  access_tier                      = var.access_tier
+  is_hns_enabled                   = var.is_hns_enabled
+  large_file_share_enabled         = var.large_file_share_enabled
+  cross_tenant_replication_enabled = true
 
   dynamic "custom_domain" {
     for_each = var.custom_domain
@@ -69,7 +70,7 @@ resource "azurerm_storage_container" "container" {
   #checkov:skip=CKV2_AZURE_21: "Ensure Storage logging is enabled for Blob service for read requests"
   for_each              = toset(var.container_name)
   name                  = each.key
-  storage_account_name  = azurerm_storage_account.storage.name
+  storage_account_id    = azurerm_storage_account.storage.name
   container_access_type = var.container_access_type #TODO: this needs to be a list
 }
 
@@ -99,11 +100,12 @@ resource "azurerm_storage_share" "share" {
 }
 
 resource "azurerm_storage_share_directory" "share_directories" {
-  for_each             = var.share_directories
-  name                 = each.key
-  share_name           = each.value
-  storage_account_name = azurerm_storage_account.storage.name
-  depends_on           = [azurerm_storage_share.share]
+  for_each = var.share_directories
+  name     = each.key
+  # share_name           = each.value not expected here
+  depends_on = [azurerm_storage_share.share]
+  # storage_account_name = azurerm_storage_share.share[each.value.share_index].name
+  storage_share_id = azurerm_storage_share.share[each.value.share_index].id
 }
 
 resource "azurerm_storage_table" "table" {

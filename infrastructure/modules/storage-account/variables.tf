@@ -186,16 +186,16 @@ variable "large_file_share_enabled" {
   type        = bool
 }
 
-variable "directory_type" {
-  type        = string
-  description = "Defines whether the Storage Account will be joined to the AD in order to provide identity based auth / RBAC to File Shares"
-  default     = "not-ad-joined"
+# variable "directory_type" { unused variable?
+#   type        = string
+#   description = "Defines whether the Storage Account will be joined to the AD in order to provide identity based auth / RBAC to File Shares"
+#   default     = "not-ad-joined"
 
-  validation {
-    condition     = var.directory_type == "not-ad-joined" || var.directory_type == "ad-joined"
-    error_message = "The directory_type must be set to not-ad-joined or ad-joined. We do not support AADDS at this time."
-  }
-}
+#   validation {
+#     condition     = var.directory_type == "not-ad-joined" || var.directory_type == "ad-joined"
+#     error_message = "The directory_type must be set to not-ad-joined or ad-joined. We do not support AADDS at this time."
+#   }
+# }
 
 variable "soft_delete_retention_policy" {
   type        = bool

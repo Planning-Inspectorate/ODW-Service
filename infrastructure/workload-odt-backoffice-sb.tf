@@ -65,7 +65,7 @@ module "odt_backoffice_sb" {
   tags = local.tags
 
   providers = {
-    azurerm     = azurerm,
+    azurerm     = azurerm
     azurerm.odt = azurerm.odt
   }
 }

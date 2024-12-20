@@ -10,7 +10,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.74.0"
+      version = "=4.13.0"
     }
   }
   required_version = ">= 1.1.6, < 1.10.0"
@@ -22,19 +22,19 @@ provider "azurerm" {
       purge_soft_delete_on_destroy = false
     }
   }
-  skip_provider_registration = true
+  resource_provider_registrations = "none"
 }
 
 provider "azurerm" {
   features {}
-  subscription_id            = var.odt_subscription_id
-  alias                      = "odt"
-  skip_provider_registration = true
+  subscription_id                 = var.odt_subscription_id
+  alias                           = "odt"
+  resource_provider_registrations = "none"
 }
 
 provider "azurerm" {
   features {}
-  subscription_id            = var.horizon_subscription_id
-  alias                      = "horizon"
-  skip_provider_registration = true
+  subscription_id                 = var.horizon_subscription_id
+  alias                           = "horizon"
+  resource_provider_registrations = "none"
 }
