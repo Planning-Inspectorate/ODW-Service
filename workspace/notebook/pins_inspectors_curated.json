@@ -1,9 +1,8 @@
 {
-	"name": "py_create_lake_databases",
+	"name": "pins_inspectors_curated",
 	"properties": {
-		"description": "Post deployment script to create lake databases",
 		"folder": {
-			"name": "post-deployment"
+			"name": "odw-curated"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -17,17 +16,16 @@
 			"executorMemory": "28g",
 			"executorCores": 4,
 			"numExecutors": 2,
-			"runAsWorkspaceSystemIdentity": false,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "aecfe711-fbdc-4164-84f9-de218abc7d8a"
+				"spark.autotune.trackingId": "8cb0fba6-a886-4127-b0d6-cfe4c7f824a8"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": true,
+			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -67,10 +65,66 @@
 					}
 				},
 				"source": [
-					"from notebookutils import mssparkutils\r\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import *\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import DataFrame\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.vw_pins_inspectors_curated\n",
+					"\n",
+					"AS\n",
+					"\n",
+					"SELECT DISTINCT \n",
+					"inspectorsId\n",
+					",horizonId\n",
+					",firstName\n",
+					",lastName\n",
+					",postName\n",
+					",organisationName\n",
+					",title\n",
+					",salutation\n",
+					",qualifications\n",
+					",email\n",
+					",Migrated\n",
+					",ODTSourceSystem\n",
+					",IngestionDate\n",
+					",ValidTo\n",
+					",IsActive\n",
+					",RowID\n",
+					"FROM odw_harmonised_db.pins_inspectors\n",
+					"WHERE IsActive = 'Y'"
+				],
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -86,14 +140,9 @@
 					}
 				},
 				"source": [
-					"logging_database_location = f\"abfss://logging@{storage_account}\"\r\n",
-					"standardised_database_location = f\"abfss://odw-standardised@{storage_account}\"\r\n",
-					"harmonised_database_location = f\"abfss://odw-harmonised@{storage_account}\"\r\n",
-					"curated_database_location = f\"abfss://odw-curated@{storage_account}\"\r\n",
-					"curated_migration_database_location = f\"abfss://odw-curated-migration@{storage_account}\"\r\n",
-					"config_database_location = f\"abfss://odw-config-db@{storage_account}\""
+					"spark.sql(f\"drop table if exists odw_curated_db.pins_inspectors;\")"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -109,14 +158,12 @@
 					}
 				},
 				"source": [
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS logging LOCATION '{logging_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_standardised_db LOCATION '{standardised_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_harmonised_db LOCATION '{harmonised_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_curated_db LOCATION '{curated_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_curated_migration_db LOCATION '{curated_migration_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS config LOCATION '{config_database_location}'\")"
+					"logInfo(f\"Writing to odw_curated_db.pins_inspectors\")\n",
+					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_pins_inspectors_curated\")\n",
+					"view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.pins_inspectors\")\n",
+					"logInfo(f\"Written {view_df.count()} rows to odw_curated_db.pins_inspectors\")"
 				],
-				"execution_count": null
+				"execution_count": 5
 			}
 		]
 	}
