@@ -1,0 +1,133 @@
+{
+	"name": "dart_api",
+	"properties": {
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "46638c5b-f54b-4402-93c7-d4f9c3609500"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": true,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Create DataFrame of required data"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df = spark.sql(\r\n",
+					"    \"\"\"\r\n",
+					"    SELECT\r\n",
+					"    h.caseReference\r\n",
+					"    ,h.caseType\r\n",
+					"    ,h.siteAddressLine1 + ', ' +  h.siteAddressLine2 + ', ' +  siteAddressTown  + ', ' +  h.siteAddressCounty + ', ' +  h.siteAddressPostcode as siteAddress\r\n",
+					"    ,h.applicationReference\r\n",
+					"    ,h.applicationDate\r\n",
+					"    ,h.applicationDecisionDate as lpaDecisionDate\r\n",
+					"    ,h.originalDevelopmentDescription\r\n",
+					"    ,l.lpaName\r\n",
+					"    ,su.firstName + ' ' + su.LastName as appellantName\r\n",
+					"    ,e.eventType as typeOfEvent\r\n",
+					"    ,e.eventStartDateTime as startDateOfTheEvent\r\n",
+					"    ,ent.givenName + ' ' +  ent.surname as inspectorName\r\n",
+					"    ,i.qualifications as inspectorQualifications\r\n",
+					"FROM \r\n",
+					"    odw_harmonised_db.sb_appeal_has h\r\n",
+					"        left join odw_harmonised_db.pins_lpa l on h.lpaCode = l.pinsLpaCode and l.isActive = 'Y'\r\n",
+					"        left join odw_harmonised_db.sb_service_user su on h.caseReference = su.caseReference and su.serviceUserType = 'Appellant' and su.isActive = 'Y'\r\n",
+					"        left join odw_harmonised_db.sb_appeal_event e on h.caseReference = e.caseReference and e.isActive = 'Y'\r\n",
+					"        left join odw_harmonised_db.entraid ent on h.inspectorId = ent.id and ent.isActive = 'Y'\r\n",
+					"        left join odw_harmonised_db.pins_inspectors i on ent.userPrincipalName = i.email and i.isActive = 'Y'\r\n",
+					"WHERE\r\n",
+					"    h.IsActive = 'Y'\r\n",
+					"    \"\"\"\r\n",
+					"    )"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Write DataFrame to delta table"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(\"odw_curated_db.dart_api\")"
+				],
+				"execution_count": 4
+			}
+		]
+	}
+}
