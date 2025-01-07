@@ -78,6 +78,16 @@ resource "azurerm_linux_function_app" "function" {
       }
     }
     application_insights_key = var.application_insights_key == null ? null : var.application_insights_key
+
+    # ip_restriction {
+    #   action   = "Allow"
+    #   priority = 65000
+    # }
+
+    # scm_ip_restriction {
+    #   action   = "Allow"
+    #   priority = 65000
+    # }
   }
 
   identity {
