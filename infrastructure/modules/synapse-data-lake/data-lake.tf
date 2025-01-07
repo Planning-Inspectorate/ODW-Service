@@ -40,11 +40,11 @@ resource "azurerm_storage_data_lake_gen2_filesystem" "synapse" {
 }
 
 resource "azurerm_storage_container" "synapse" {
-  #checkov:skip=CKV2_AZURE_21: Implemented in synapse-monitoring module
+  # checkov:skip=CKV2_AZURE_21: Implemented in synapse-monitoring module
   for_each = toset(var.data_lake_storage_containers)
 
   name                  = each.key
-  storage_account_id    = azurerm_storage_account.synapse.name
+  storage_account_id    = azurerm_storage_account.synapse.id
   container_access_type = "private"
 
   depends_on = [
@@ -54,6 +54,7 @@ resource "azurerm_storage_container" "synapse" {
 
 resource "azurerm_storage_account_queue_properties" "synapse" {
   storage_account_id = azurerm_storage_account.synapse.id
+
   logging {
     read                  = true
     write                 = true

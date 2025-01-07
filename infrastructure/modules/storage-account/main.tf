@@ -93,10 +93,10 @@ resource "azurerm_storage_queue" "queue" {
 }
 
 resource "azurerm_storage_share" "share" {
-  count                = length(var.shares)
-  name                 = var.shares[count.index].name
-  storage_account_name = azurerm_storage_account.storage.name
-  quota                = var.shares[count.index].quota
+  count              = length(var.shares)
+  name               = var.shares[count.index].name
+  storage_account_id = azurerm_storage_account.storage.id
+  quota              = var.shares[count.index].quota
 }
 
 resource "azurerm_storage_share_directory" "share_directories" {
