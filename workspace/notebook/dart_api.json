@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "46638c5b-f54b-4402-93c7-d4f9c3609500"
+				"spark.autotune.trackingId": "8e84528f-0181-4209-8094-aaf748a6073e"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,24 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from delta.tables import DeltaTable"
+				],
+				"execution_count": null
+			},
 			{
 				"cell_type": "markdown",
 				"metadata": {
@@ -95,7 +113,7 @@
 					"    \"\"\"\r\n",
 					"    )"
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -124,9 +142,77 @@
 					}
 				},
 				"source": [
-					"df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(\"odw_curated_db.dart_api\")"
+					"table_name = \"odw_curated_db.dart_api\""
 				],
-				"execution_count": 4
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Partition by `applicationReference` as this field only contains around 50 unique values and will be included in the search filters by users."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df.write.mode(\"overwrite\") \\\r\n",
+					"    .partitionBy(\"applicationReference\") \\\r\n",
+					"    .option(\"overwriteSchema\", \"true\") \\\r\n",
+					"    .format(\"delta\") \\\r\n",
+					"    .saveAsTable(table_name)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"Optimise by adding `ZOrderBy` for the column `caseReference`. This column has too many values for partitioning to be useful but is one of the columns used in the query filters by users. This ensures the minimum number of files are read when querying for a `caseReference`."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"delta_table = DeltaTable.forName(spark, table_name)\r\n",
+					"delta_table.optimize().executeZOrderBy(\"caseReference\")\r\n",
+					"delta_table.optimize()"
+				],
+				"execution_count": null
 			}
 		]
 	}
