@@ -790,7 +790,7 @@ def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
                         pass
             rows.append(row)
         return func.HttpResponse(
-            json.dumps(rows, ensure_ascii=False),
+            json.dumps(rows),
             status_code=200,
             mimetype="application/json"
         )
