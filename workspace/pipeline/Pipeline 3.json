@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Pipeline Two",
+				"name": "Execute Service Bus Pipeline",
 				"type": "ExecutePipeline",
 				"dependsOn": [],
 				"policy": {
@@ -12,10 +12,85 @@
 				"userProperties": [],
 				"typeProperties": {
 					"pipeline": {
-						"referenceName": "Pipeline 2",
+						"referenceName": "pln_service_bus",
 						"type": "PipelineReference"
 					},
 					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Record Service Bus failure_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Set variable1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Fail",
+						"PipelineName": {
+							"value": "@activity('Execute Service Bus Pipeline').Output.pipelineName",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@activity('Execute Service Bus Pipeline').Output.pipelineRunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@activity('Execute Service Bus Pipeline').ExecutionStartTime",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@activity('Execute Service Bus Pipeline').ExecutionEndTime",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('notebook_err')",
+							"type": "Expression"
+						},
+						"StatusMessage": {
+							"value": "@concat(activity('Execute Service Bus Pipeline').Status, ' ')",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@activity('Execute Service Bus Pipeline').PipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@activity('Execute Service Bus Pipeline').PipelineRunId",
+							"type": "Expression"
+						},
+						"PipelineExecutionTimeInSec": {
+							"value": "@activity('Execute Service Bus Pipeline').Duration",
+							"type": "Expression"
+						},
+						"ActivityType": {
+							"value": "@activity('Execute Service Bus Pipeline').ActivityType",
+							"type": "Expression"
+						},
+						"DurationSeconds": {
+							"value": "@activity('Execute Service Bus Pipeline').Duration",
+							"type": "Expression"
+						},
+						"AppInsCustomEventName": "ODW_Master_Pipeline_Logs",
+						"StatusCode": {
+							"value": "@activity('Execute Service Bus Pipeline').StatusCode",
+							"type": "Expression"
+						}
+					}
 				}
 			},
 			{
@@ -23,7 +98,7 @@
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "Pipeline Two",
+						"activity": "Execute Service Bus Pipeline",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -35,57 +110,9 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"variableName": "errorMsg",
+					"variableName": "notebook_err",
 					"value": {
-						"value": "@activity('Pipeline Two').Error.message",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Set variable1_copy1",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Pipeline Two",
-						"dependencyConditions": [
-							"Failed"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "errorMsg",
-					"value": {
-						"value": "@activity('Pipeline Two').Error.errorCode",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Set variable1_copy2",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Pipeline Two",
-						"dependencyConditions": [
-							"Failed"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "errorMsg",
-					"value": {
-						"value": "@activity('Pipeline Two').Error.target",
+						"value": "@activity('Execute Service Bus Pipeline').Error.message",
 						"type": "Expression"
 					}
 				}
@@ -93,6 +120,12 @@
 		],
 		"variables": {
 			"errorMsg": {
+				"type": "String"
+			},
+			"feed": {
+				"type": "Array"
+			},
+			"notebook_err": {
 				"type": "String"
 			}
 		},
