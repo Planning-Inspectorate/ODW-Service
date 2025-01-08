@@ -1,9 +1,8 @@
 {
-	"name": "py_create_lake_databases",
+	"name": "py_unit_tests_getDaRTfunction",
 	"properties": {
-		"description": "Post deployment script to create lake databases",
 		"folder": {
-			"name": "post-deployment"
+			"name": "utils/unit-tests"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -17,12 +16,11 @@
 			"executorMemory": "28g",
 			"executorCores": 4,
 			"numExecutors": 2,
-			"runAsWorkspaceSystemIdentity": false,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "aecfe711-fbdc-4164-84f9-de218abc7d8a"
+				"spark.autotune.trackingId": "01193a98-19e3-4ec7-8c12-0f26dd7e5e6e"
 			}
 		},
 		"metadata": {
@@ -64,13 +62,17 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"tags": [
+						"parameters"
+					]
 				},
 				"source": [
-					"from notebookutils import mssparkutils\r\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
+					"url = ''\n",
+					"caseReference=''\n",
+					"applicationReference=''"
 				],
-				"execution_count": null
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -86,14 +88,13 @@
 					}
 				},
 				"source": [
-					"logging_database_location = f\"abfss://logging@{storage_account}\"\r\n",
-					"standardised_database_location = f\"abfss://odw-standardised@{storage_account}\"\r\n",
-					"harmonised_database_location = f\"abfss://odw-harmonised@{storage_account}\"\r\n",
-					"curated_database_location = f\"abfss://odw-curated@{storage_account}\"\r\n",
-					"curated_migration_database_location = f\"abfss://odw-curated-migration@{storage_account}\"\r\n",
-					"config_database_location = f\"abfss://odw-config-db@{storage_account}\""
+					"import json\n",
+					"from pyspark.sql.types import *\n",
+					"from pyspark.sql import DataFrame\n",
+					"import pprint\n",
+					"import requests as req"
 				],
-				"execution_count": null
+				"execution_count": 107
 			},
 			{
 				"cell_type": "code",
@@ -109,14 +110,22 @@
 					}
 				},
 				"source": [
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS logging LOCATION '{logging_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_standardised_db LOCATION '{standardised_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_harmonised_db LOCATION '{harmonised_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_curated_db LOCATION '{curated_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS odw_curated_migration_db LOCATION '{curated_migration_database_location}'\")\r\n",
-					"spark.sql(f\"CREATE DATABASE IF NOT EXISTS config LOCATION '{config_database_location}'\")"
+					"url += f\"&caseReference={caseReference}&applicationReference={applicationReference}\"\n",
+					"print(url)\n",
+					"response = req.get(url)\n",
+					"if response.status_code == 200:\n",
+					"    text:str = response.text\n",
+					"    parsed_json = json.loads(text)\n",
+					"    print(len(parsed_json))\n",
+					"    if len(parsed_json) > 0:\n",
+					"        #we have some results, everything else is a failure\n",
+					"        mssparkutils.notebook.exit(\"0\")\n",
+					"    else:\n",
+					"        raise Exception(\"Invalid Response\")\n",
+					"else:\n",
+					"    raise Exception(\"Invalid Response\")"
 				],
-				"execution_count": null
+				"execution_count": 108
 			}
 		]
 	}
