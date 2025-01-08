@@ -8,44 +8,33 @@ Data model for appeals-representation entity showing data flow from source to cu
 ```mermaid
 
 classDiagram
-
     direction LR
 
     namespace Sources {
-
-               class appeals-representation {
-            representationId:int
+        class appeals_representation {
         }
-
     }
     
     namespace Standardised {
-
-               class sb_appeals_representation {
-            representationId:int
+        class sb_nsip_representation_std {
+            representationId: int
         }
-
     }
 
     namespace Harmonised {
-
-          class sb_appeals_representation {
+        class sb_nsip_representation_hrm {
             representationId: int
         }
-    
     }
 
     namespace Curated {
-
         class appeals_representation {
             representationId: int
         }
     }
 
+appeals_representation --> sb_nsip_representation_std
+sb_nsip_representation_std --> sb_nsip_representation_hrm
+sb_nsip_representation_hrm --> appeals_representation
+appeals_representation --> appeals_representation
 
-`appeals-representation` --> `sb_appeals_representation`
-`sb_appeals_representation` --> `sb_appeals_representation`
-`sb_appeals_representation` --> `appeals_representation`
-`appeals_representation` --> `appeals_representation`
-
-```
