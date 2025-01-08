@@ -13,17 +13,16 @@ classDiagram
 
     namespace Sources {
 
-               class appeals-representation{
+               class appeals-representation {
             representationId:int
         }
-
 
     }
     
     namespace Standardised {
 
                class sb_appeals_representation {
-            representationId: int
+            representationId:int
         }
 
     }
