@@ -12,6 +12,7 @@ classDiagram
 
     namespace Sources {
         class appeals_representation {
+            representationId: int
         }
     }
     
@@ -28,13 +29,12 @@ classDiagram
     }
 
     namespace Curated {
-        class appeals_representation {
+        class appeals_representation_cu {
             representationId: int
         }
     }
 
 appeals_representation --> sb_nsip_representation_std
 sb_nsip_representation_std --> sb_nsip_representation_hrm
-sb_nsip_representation_hrm --> appeals_representation
-appeals_representation --> appeals_representation
+sb_nsip_representation_hrm --> appeals_representation_cu
 
