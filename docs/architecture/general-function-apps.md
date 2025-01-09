@@ -2,11 +2,8 @@
 
 [High level architecture](#high-level-architecture)  
 [Service User process](#service-user-process)  
-[DaRT process](#dart-process)  
-[Folder structure example](#folder-structure-example)  
-[Authorisation flow](#authorisation-flow)  
-[DaRT API](#dart-api)
-[Timesheet API](#timesheet-api)
+[DaRT API](#dart-api)  
+[Timesheet API](#timesheet-api)  
 
 ## High level architecture  
 
@@ -94,9 +91,9 @@ The URL looks a little like this:
 
 ```https://<FUNCTION_APP_URL>/api/getDaRT?code=<ACCESS_TOKEN>==&applicationReference=<APPLICATION_REFERENCE>&caseReference=<CASE_REFERENCE>```
 
-```<APPLICATION_REFERENCE>``` is expected to be a string to match against the column applicationReference. The sql_input decorator protects against SQL injection.
+```<APPLICATION_REFERENCE>``` is expected to be a string to match against the column applicationReference. The sql_input decorator protects against SQL injection.  
 
-```<CASE_REFERENCE>``` is expected to be a string to match against the column caseReference. The sql_input decorator protects against SQL injection.
+```<CASE_REFERENCE>``` is expected to be a string to match against the column caseReference. The sql_input decorator protects against SQL injection.  
 
 CORS headers are returned which means that Web UIs from other origins can access the API.
 
