@@ -99,6 +99,7 @@ resource "azurerm_synapse_managed_private_endpoint" "data_lake" {
   subresource_name     = "dfs"
 
   depends_on = [
+    azurerm_synapse_workspace.synapse,
     time_sleep.firewall_delay
   ]
 }
@@ -110,6 +111,7 @@ resource "azurerm_synapse_managed_private_endpoint" "data_lake_failover" {
   subresource_name     = "dfs"
 
   depends_on = [
+    azurerm_synapse_workspace.synapse,
     time_sleep.firewall_delay
   ]
 }
@@ -121,6 +123,7 @@ resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_kv" {
   subresource_name     = "vault"
 
   depends_on = [
+    azurerm_synapse_workspace.synapse,
     time_sleep.firewall_delay
   ]
 }
@@ -145,6 +148,7 @@ resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_appeals_bo_sb" 
   subresource_name     = "namespace"
 
   depends_on = [
-    azurerm_synapse_workspace.synapse
+    azurerm_synapse_workspace.synapse,
+    time_sleep.firewall_delay
   ]
 }
