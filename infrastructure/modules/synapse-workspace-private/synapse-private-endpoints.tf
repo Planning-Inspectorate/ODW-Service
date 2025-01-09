@@ -124,3 +124,27 @@ resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_kv" {
     time_sleep.firewall_delay
   ]
 }
+
+#
+# synapse PE for connecting to the Appeals BO Service Bus instance when running in the Azure integration runtime
+#
+
+data "azurerm_servicebus_namespace" "appeals_back_office" {
+  count               = var.odt_appeals_back_office_service_bus_name == null ? 0 : 1
+  name                = var.odt_appeals_back_office_service_bus_name
+  resource_group_name = var.odt_appeals_back_office_service_bus_resource_group_name
+  provider            = azurerm.odt
+}
+
+resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_appeals_bo_sb" {
+  count = var.odt_appeals_back_office_service_bus_name == null ? 0 : 1
+
+  name                 = "synapse-mpe-appeals-bo--${local.resource_suffix}"
+  synapse_workspace_id = azurerm_synapse_workspace.synapse.id
+  target_resource_id   = data.azurerm_servicebus_namespace.appeals_back_office[0].id
+  subresource_name     = "namespace"
+
+  depends_on = [
+    azurerm_synapse_workspace.synapse
+  ]
+}
