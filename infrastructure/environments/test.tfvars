@@ -239,7 +239,6 @@ synapse_role_assignments = [
   { # Azure DevOps Pipelines - ODW Test - Infrastructure
     role_definition_name = "Synapse Administrator",
     principal_id         = "9d4c68d1-c43d-4502-b35f-74f31c497757"
-    # principal_type       = "User"
   },
   { # pins-odw-data-preprod-syn-ws-contributors
     role_definition_name = "Synapse Contributor",

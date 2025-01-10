@@ -238,7 +238,6 @@ synapse_role_assignments = [
   { # Azure DevOps Pipelines - ODW Prod - Infrastructure
     role_definition_name = "Synapse Administrator",
     principal_id         = "0cad1989-27de-4242-a06b-7cad373497e7"
-    # principal_type       = "User"
   },
   { # pins-odw-data-prod-syn-ws-contributors
     role_definition_name = "Synapse Contributor",
