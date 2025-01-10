@@ -1,6 +1,6 @@
 # Documentation of the use of Azure Function Apps to receive and process messages from Azure Servicebus  
 
-[High level architecture](#high-level-architecture)
+[High level architecture](#high-level-architecture)  
 [Functions folder structure](#functions-folder-structure)  
 [Description of code](#description-of-code)  
 [Process flow](#process-flow)  
