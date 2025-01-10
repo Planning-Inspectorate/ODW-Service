@@ -7,7 +7,7 @@ resource "azurerm_storage_account" "shir" {
   #checkov:skip=CKV2_AZURE_8: Firewall not required for this stroage account
   #checkov:skip=CKV2_AZURE_18: Microsoft managed keys are acceptable
   #checkov:skip=CKV2_AZURE_33: Private Endpoint is not enabled as networking is controlled by Firewall
-  #checkov:skip=CKV_AZURE_33:
+  #checkov:skip=CKV_AZURE_33: Ensure Storage logging is enabled for Queue service for read, write and delete requests
   name                             = replace("pins-st-${local.resource_suffix}-${random_string.unique_id.id}", "-", "")
   resource_group_name              = var.resource_group_name
   location                         = var.location
