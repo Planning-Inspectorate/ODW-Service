@@ -229,23 +229,20 @@ synapse_aad_administrator = {
 synapse_data_exfiltration_enabled  = false
 synapse_sql_administrator_username = "synadmin"
 
-synapse_role_assignments = [{
-
-  # pins-odw-data-dev-syn-ws-administrators
-  role_definition_name = "Synapse Administrator",
-  principal_id = "6a38f212-3834-4e2e-93fb-f81bb3a3fe49" },
-
+synapse_role_assignments = [
+  { # pins-odw-data-dev-syn-ws-administrators
+    role_definition_name = "Synapse Administrator",
+    principal_id         = "6a38f212-3834-4e2e-93fb-f81bb3a3fe49"
+  },
   { # Azure DevOps Pipelines - ODW DEV - Infrastructure
     role_definition_name = "Synapse Administrator",
     principal_id         = "875e931a-ee45-425e-acde-1ec24a8a290d",
     principal_type       = "User"
   },
-
   { # pins-odw-data-dev-syn-ws-contributors
     role_definition_name = "Synapse Contributor",
     principal_id         = "0a5073e3-b8e9-4786-8e1f-39f2c277aeb2"
   },
-
   { # pins-odw-data-dev-syn-ws-computeoperators
     role_definition_name = "Synapse Compute Operator",
     principal_id         = "a66ee73a-c31b-451d-b13e-19b4e92c0c25"
