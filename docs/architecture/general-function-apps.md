@@ -7,7 +7,7 @@
 
 ## High level architecture  
 
-![architecture](../../images/apim-function-apps.drawio.svg)  
+![architecture](../../images/function-apps.drawio.svg)  
 
 ## Key points to note
 
