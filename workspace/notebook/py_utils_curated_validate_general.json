@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c46d8974-1992-4bd7-ae26-b107834d4062"
+				"spark.autotune.trackingId": "cf42c368-9c2d-434b-927f-8478fe855050"
 			}
 		},
 		"metadata": {
@@ -43,7 +43,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.4",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -86,7 +86,7 @@
 					"%pip install --quiet --upgrade pip\r\n",
 					"%pip install --quiet jsonschema==4.20.0 iso8601==2.1.0 git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model"
 				],
-				"execution_count": 54
+				"execution_count": 86
 			},
 			{
 				"cell_type": "markdown",
@@ -125,7 +125,7 @@
 					"from iso8601 import parse_date, ParseError\r\n",
 					"from pins_data_model import load_schemas"
 				],
-				"execution_count": 56
+				"execution_count": 88
 			},
 			{
 				"cell_type": "markdown",
@@ -191,7 +191,7 @@
 					"\n",
 					"    return success"
 				],
-				"execution_count": 35
+				"execution_count": 117
 			},
 			{
 				"cell_type": "markdown",
@@ -231,7 +231,7 @@
 					"for key in SCHEMA_DICT:\r\n",
 					"    SCHEMA_DICT[key].append(f\"{key}\".replace('-', '_').split('.')[0])"
 				],
-				"execution_count": null
+				"execution_count": 148
 			},
 			{
 				"cell_type": "code",
@@ -247,9 +247,10 @@
 					}
 				},
 				"source": [
-					"schema_file = 'appeal-s78.schema.json'"
+					"schema_file = 'appeal-s78.schema.json'\r\n",
+					"#schema_file = 's51-advice.schema.json'"
 				],
-				"execution_count": 37
+				"execution_count": 147
 			},
 			{
 				"cell_type": "code",
@@ -271,7 +272,7 @@
 					"QUERY = f\"SELECT * FROM `{DATABASE}`.`{TABLE}`\"\r\n",
 					"OUTPUT_FILE = f\"{TABLE}.txt\""
 				],
-				"execution_count": 38
+				"execution_count": 149
 			},
 			{
 				"cell_type": "code",
@@ -289,7 +290,7 @@
 				"source": [
 					"TABLE"
 				],
-				"execution_count": 39
+				"execution_count": 136
 			},
 			{
 				"cell_type": "markdown",
@@ -364,9 +365,10 @@
 					"collapsed": false
 				},
 				"source": [
-					"spark.sql(f\"REFRESH TABLE {DATABASE}.{TABLE}\")"
+					"spark.sql(f\"REFRESH TABLE {DATABASE}.{TABLE}\")\r\n",
+					"df = spark.sql(QUERY)"
 				],
-				"execution_count": 43
+				"execution_count": 150
 			},
 			{
 				"cell_type": "code",
@@ -384,7 +386,7 @@
 				"source": [
 					"df"
 				],
-				"execution_count": 45
+				"execution_count": 151
 			},
 			{
 				"cell_type": "code",
@@ -400,8 +402,102 @@
 					}
 				},
 				"source": [
-					"df = spark.sql(QUERY)\r\n",
 					"data = df.toPandas()"
+				],
+				"execution_count": 152
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"data.dtypes"
+				],
+				"execution_count": 141
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql.functions import col\r\n",
+					"from pyspark.sql.types import StructType, StructField\r\n",
+					"\r\n",
+					"def flatten_struct(df):\r\n",
+					"    # List to hold column names for the flattened DataFrame\r\n",
+					"    flat_columns = []\r\n",
+					"    \r\n",
+					"    # Iterate over the schema to find struct fields\r\n",
+					"    for field in df.schema.fields:\r\n",
+					"        if isinstance(field.dataType, StructType):\r\n",
+					"            # For each struct type field, flatten it\r\n",
+					"            for sub_field in field.dataType.fields:\r\n",
+					"                flat_columns.append(col(f\"{field.name}.{sub_field.name}\").alias(f\"{field.name}_{sub_field.name}\"))\r\n",
+					"        else:\r\n",
+					"            # For non-struct fields, just add them as they are\r\n",
+					"            flat_columns.append(col(field.name))\r\n",
+					"    \r\n",
+					"    # Return the DataFrame with flattened struct columns\r\n",
+					"    return df.select(*flat_columns)\r\n",
+					"\r\n",
+					"# Example usage\r\n",
+					"df_flat = flatten_struct(df)\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 160
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"data = df_flat.toPandas()  "
+				],
+				"execution_count": 161
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
 				],
 				"execution_count": 44
 			},
@@ -419,9 +515,30 @@
 					}
 				},
 				"source": [
-					"data"
+					"columns_with_ndarray = data.columns[\r\n",
+					"    data.dtypes.map(lambda dtype: dtype == 'object')   # Check if dtype supports arrays\r\n",
+					"    data.apply(lambda col: col.map(lambda x: isinstance(x, np.ndarray)).any(), axis=0)\r\n",
+					"].tolist()"
 				],
-				"execution_count": 41
+				"execution_count": 157
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"data.dtypes"
+				],
+				"execution_count": 159
 			},
 			{
 				"cell_type": "code",
@@ -438,13 +555,37 @@
 				},
 				"source": [
 					"# Create a list of the columns in the dataFrame that have array dtype\r\n",
-					"columns_with_arrays = data.columns[data.iloc[0].map(lambda x: isinstance(x, np.ndarray))].tolist()\r\n",
+					"#columns_with_arrays = data.columns[data.iloc[0].map(lambda x: isinstance(x, np.ndarray))].tolist()\r\n",
+					"columns_with_ndarray = data.columns[\r\n",
+					"    data.dtypes.map(lambda dtype: dtype == 'object') &  # Check if dtype supports arrays\r\n",
+					"    data.apply(lambda col: col.map(lambda x: isinstance(x, np.ndarray)).any(), axis=0)\r\n",
+					"].tolist()\r\n",
 					"\r\n",
 					"#Apply list on the array columns\r\n",
 					"for col in columns_with_arrays:\r\n",
-					"    data[col] = data[col].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)"
+					"    data[col] = data[col].apply(lambda x: x.tolist() if isinstance(x, np.ndarray) else x)\r\n",
+					"\r\n",
+					"json_data = data.to_dict(orient='records')"
 				],
-				"execution_count": 42
+				"execution_count": 146
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"json_data"
+				],
+				"execution_count": 145
 			},
 			{
 				"cell_type": "code",
