@@ -17,13 +17,13 @@ classDiagram
     }
     
     namespace Standardised {
-        class sb_nsip_representation_std {
+        class sb_appeals_representation_std {
             representationId: int
         }
     }
 
     namespace Harmonised {
-        class sb_nsip_representation_hrm {
+        class sb_appeals_representation_hrm {
             representationId: int
         }
     }
@@ -34,7 +34,7 @@ classDiagram
         }
     }
 
-appeals_representation --> sb_nsip_representation_std
-sb_nsip_representation_std --> sb_nsip_representation_hrm
-sb_nsip_representation_hrm --> appeals_representation_cu
+appeals_representation --> sb_appeals_representation_std
+sb_appeals_representation_std --> sb_appeals_representation_hrm
+sb_appeals_representation_hrm --> appeals_representation_cu
 
