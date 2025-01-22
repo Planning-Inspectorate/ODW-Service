@@ -692,4 +692,4 @@ This function simply  makes a query to the curated table [odw_curated_db].[dbo].
 
 ```SqlConnectionString: Server=tcp:<SQL INSTANCE>,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;",```
 
-The SQL permissions are granted as per this documentation (insert link here)
+The SQL permissions are granted as per this documentation [Add user to ODW](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/docs/add_user.md)
