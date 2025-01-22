@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "708be6ee-4caf-4010-8cca-ee4756dfb463"
+				"spark.autotune.trackingId": "08f6075c-ed16-49af-90c1-07548b084161"
 			}
 		},
 		"metadata": {
@@ -71,7 +71,7 @@
 					"import json\r\n",
 					"import re"
 				],
-				"execution_count": 30
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,7 @@
 					"print(source_path)\r\n",
 					"print(config)"
 				],
-				"execution_count": 33
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +130,7 @@
 					"    print(\"No folders found in the specified directory.\")\r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -146,35 +146,58 @@
 					}
 				},
 				"source": [
-					"spark = SparkSession.builder.appName(\"ExcelToSynapse\").getOrCreate()\r\n",
+					"# Initialize Spark Session\r\n",
+					"spark = SparkSession.builder \\\r\n",
+					"    .appName(\"Excel to Synapse Table\") \\\r\n",
+					"    .config(\"spark.jars.packages\", \"com.crealytics:spark-excel_2.12:3.3.1\") \\\r\n",
+					"    .getOrCreate()\r\n",
 					"\r\n",
-					"# Read JSON metadata file\r\n",
-					"with open(\"Hr-raw-stb-config.json\", \"r\") as f:\r\n",
-					"    config = json.load(f)\r\n",
+					"# Read configuration file\r\n",
+					"with open(config_file_path, 'r') as config_file:\r\n",
+					"    config = json.load(config_file)\r\n",
 					"\r\n",
-					"# Process each Excel import\r\n",
-					"for import_config in config[\"excelImports\"]:\r\n",
-					"    # Read Excel file\r\n",
-					"    df = spark.read.format(\"com.crealytics.spark.excel\") \\\r\n",
-					"        .option(\"header\", \"true\") \\\r\n",
-					"        .option(\"inferSchema\", \"true\") \\\r\n",
-					"        .load(import_config[\"sourceFile\"])\r\n",
 					"\r\n",
-					"    # Write to Synapse table\r\n",
-					"    df.write \\\r\n",
-					"        .format(\"com.databricks.spark.sqldw\") \\\r\n",
-					"        .option(\"url\", \"jdbc:sqlserver://<server>.database.windows.net:1433;database=<database>\") \\\r\n",
-					"        .option(\"tempDir\", \"abfss://<container>@<storage-account>.dfs.core.windows.net/<path>\") \\\r\n",
-					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\r\n",
-					"        .option(\"dbTable\", import_config[\"targetTable\"]) \\\r\n",
-					"        .option(\"authentication\", \"ActiveDirectoryPassword\") \\\r\n",
-					"        .option(\"user\", \"<username>\") \\\r\n",
-					"        .option(\"password\", \"<password>\") \\\r\n",
-					"        .mode(\"overwrite\") \\\r\n",
-					"        .save()\r\n",
+					"# Construct the path to Excel files\r\n",
+					"excel_path = f\"abfss://{config['container']}@{config['storage_account']}.dfs.core.windows.net/{latest_folder}/*.xlsx\"\r\n",
 					"\r\n",
-					"# Stop Spark session\r\n",
-					"spark.stop()\r\n",
+					"# Read Excel files\r\n",
+					"excel_df = spark.read.format(\"com.crealytics.spark.excel\") \\\r\n",
+					"    .option(\"header\", \"true\") \\\r\n",
+					"    .option(\"inferSchema\", \"true\") \\\r\n",
+					"    .load(excel_path)\r\n",
+					"\r\n",
+					"# Add metadata columns\r\n",
+					"excel_df = excel_df.withColumn(\"source_file\", lit(excel_path))\r\n",
+					"excel_df = excel_df.withColumn(\"load_date\", lit(datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")))\r\n",
+					"\r\n",
+					"# Create Delta Table in Synapse\r\n",
+					"excel_df.write \\\r\n",
+					"    .format(\"delta\") \\\r\n",
+					"    .mode(\"overwrite\") \\\r\n",
+					"    .saveAsTable(\"odw_standardised_db.SAP_HR_Weekly\")\r\n",
+					"\r\n",
+					"# Set Delta Table Properties\r\n",
+					"spark.sql(f\"\"\"\r\n",
+					"    ALTER TABLE odw_standardised_db.SAP_HR_Weekly \r\n",
+					"    SET TBLPROPERTIES (\r\n",
+					"        'delta.columnMapping.mode' = 'name',\r\n",
+					"        'delta.minReaderVersion' = '2',\r\n",
+					"        'delta.minWriterVersion' = '5'\r\n",
+					"    )\r\n",
+					"\"\"\")\r\n",
+					"\r\n",
+					"# Optional: Write to Synapse SQL Pool\r\n",
+					"excel_df.write \\\r\n",
+					"    .format(\"com.microsoft.sqlserver.jdbc.spark\") \\\r\n",
+					"    .mode(\"overwrite\") \\\r\n",
+					"    .option(\"url\", f\"jdbc:sqlserver://{config['synapse_server']}.sql.azuresynapse.net:1433;database={config['target_database']}\") \\\r\n",
+					"    .option(\"dbtable\", config['target_table']) \\\r\n",
+					"    .option(\"user\", config['username']) \\\r\n",
+					"    .option(\"password\", config['password']) \\\r\n",
+					"    .option(\"driver\", \"com.microsoft.sqlserver.jdbc.SQLServerDriver\") \\\r\n",
+					"    .save()\r\n",
+					"\r\n",
+					"print(\"Excel files successfully loaded to Synapse Delta Table and SQL Pool\")\r\n",
 					""
 				],
 				"execution_count": null
