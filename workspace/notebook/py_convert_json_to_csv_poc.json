@@ -11,16 +11,16 @@
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
-			"driverMemory": "28g",
-			"driverCores": 4,
-			"executorMemory": "28g",
-			"executorCores": 4,
-			"numExecutors": 4,
+			"driverMemory": "56g",
+			"driverCores": 8,
+			"executorMemory": "56g",
+			"executorCores": 8,
+			"numExecutors": 2,
 			"conf": {
 				"spark.dynamicAllocation.enabled": "false",
-				"spark.dynamicAllocation.minExecutors": "4",
-				"spark.dynamicAllocation.maxExecutors": "4",
-				"spark.autotune.trackingId": "5f788ef9-c006-4465-ad7c-62b0c47fb598"
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "cb5930dd-3e4c-4072-92c1-400733125d14"
 			}
 		},
 		"metadata": {
@@ -65,9 +65,9 @@
 					}
 				},
 				"source": [
-					"#%run /utils/py_mount_storage"
+					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 1
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -92,17 +92,14 @@
 					"from datetime import date\r\n",
 					"\r\n",
 					"### mount the data lake storage in Synapse to the Synapse File Mount API\r\n",
-					"#jobId = mssparkutils.env.getJobId()\r\n",
-					"#storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"#mount_storage(path=\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/IMS/API-Data/\", mount_point='/ims_items')\r\n",
-					"\r\n",
+					"jobId = mssparkutils.env.getJobId()\r\n",
 					"storage_acc_name = spark.sparkContext.environment.get('dataLakeAccountName', 'get')\r\n",
-					"folder_path = \"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/IMS/API-Data/\"\r\n",
+					"mount_storage(path=\"abfss://odw-raw@\"+storage_acc_name+\".dfs.core.windows.net/IMS/API-Data/\", mount_point='/ims_items')\r\n",
 					"\r\n",
 					"today = date.today()\r\n",
 					"todaysdate = today.strftime(\"%Y-%m-%d\")"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -120,13 +117,11 @@
 				"source": [
 					"def json_to_csv(source):\r\n",
 					"    attributesList=[]\r\n",
-					"    #with open(f\"/synfs/{jobId}/ims_items/{source}.json\", \"r\",encoding='utf-8') as inputfile:\r\n",
-					"    #    ims_dict = json.load(inputfile)\r\n",
-					"    df = spark.read.option(\"multiline\", \"true\").json(f\"{folder_path}{source}.json\")\r\n",
-					"    ims_dict = json.loads(df.toJSON().first())\r\n",
-					"    for items in ims_dict[\"data\"]:\r\n",
-					"        dict = items['attributes']\r\n",
-					"        attributesList.append(dict)\r\n",
+					"    with open(f\"/synfs/{jobId}/ims_items/{source}.json\", \"r\",encoding='utf-8') as inputfile:\r\n",
+					"        ims_dict = json.load(inputfile)\r\n",
+					"        for items in ims_dict[\"data\"]:\r\n",
+					"            dict = items['attributes']\r\n",
+					"            attributesList.append(dict)\r\n",
 					"    sparkDF = spark.createDataFrame(attributesList)\r\n",
 					"\r\n",
 					"    output_folder_path = f\"abfss://odw-raw@{storage_acc_name}.dfs.core.windows.net/IMS/New/{todaysdate}/{source}\"\r\n",
@@ -140,7 +135,7 @@
 					"        mssparkutils.fs.mv(output_file.path, output_folder_path + '.csv', True)\r\n",
 					"        mssparkutils.fs.rm(output_folder_path, True)"
 				],
-				"execution_count": 3
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -160,7 +155,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 49
 			}
 		]
 	}
