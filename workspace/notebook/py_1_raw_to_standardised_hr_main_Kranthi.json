@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "95de9b3f-ed66-45a4-99dd-edf1d7eb741e"
+				"spark.autotune.trackingId": "708be6ee-4caf-4010-8cca-ee4756dfb463"
 			}
 		},
 		"metadata": {
@@ -67,9 +67,11 @@
 				},
 				"source": [
 					"from pyspark.sql import SparkSession\r\n",
-					"from notebookutils import mssparkutils"
+					"from notebookutils import mssparkutils\r\n",
+					"import json\r\n",
+					"import re"
 				],
-				"execution_count": 26
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -89,13 +91,13 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)\r\n",
 					"foldername=\"MiPINS/SAP_HR_Weekly\"\r\n",
-					"config=\"config/Hr-raw-stb-config.json\"\r\n",
+					"config=\"config/\"\r\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}{foldername}/\"\r\n",
-					"config_file_path: str=f\"abfss://odw-raw@{storage_account}{config}\r\n",
+					"config_file_path: str=f\"abfss://odw-raw@{storage_account}{config}/\"\r\n",
 					"print(source_path)\r\n",
 					"print(config)"
 				],
-				"execution_count": 25
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -144,6 +146,35 @@
 					}
 				},
 				"source": [
+					"spark = SparkSession.builder.appName(\"ExcelToSynapse\").getOrCreate()\r\n",
+					"\r\n",
+					"# Read JSON metadata file\r\n",
+					"with open(\"Hr-raw-stb-config.json\", \"r\") as f:\r\n",
+					"    config = json.load(f)\r\n",
+					"\r\n",
+					"# Process each Excel import\r\n",
+					"for import_config in config[\"excelImports\"]:\r\n",
+					"    # Read Excel file\r\n",
+					"    df = spark.read.format(\"com.crealytics.spark.excel\") \\\r\n",
+					"        .option(\"header\", \"true\") \\\r\n",
+					"        .option(\"inferSchema\", \"true\") \\\r\n",
+					"        .load(import_config[\"sourceFile\"])\r\n",
+					"\r\n",
+					"    # Write to Synapse table\r\n",
+					"    df.write \\\r\n",
+					"        .format(\"com.databricks.spark.sqldw\") \\\r\n",
+					"        .option(\"url\", \"jdbc:sqlserver://<server>.database.windows.net:1433;database=<database>\") \\\r\n",
+					"        .option(\"tempDir\", \"abfss://<container>@<storage-account>.dfs.core.windows.net/<path>\") \\\r\n",
+					"        .option(\"forwardSparkAzureStorageCredentials\", \"true\") \\\r\n",
+					"        .option(\"dbTable\", import_config[\"targetTable\"]) \\\r\n",
+					"        .option(\"authentication\", \"ActiveDirectoryPassword\") \\\r\n",
+					"        .option(\"user\", \"<username>\") \\\r\n",
+					"        .option(\"password\", \"<password>\") \\\r\n",
+					"        .mode(\"overwrite\") \\\r\n",
+					"        .save()\r\n",
+					"\r\n",
+					"# Stop Spark session\r\n",
+					"spark.stop()\r\n",
 					""
 				],
 				"execution_count": null
