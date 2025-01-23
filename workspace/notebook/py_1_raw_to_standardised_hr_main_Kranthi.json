@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "56c2b276-b1fa-432d-a88b-110984b01a76"
+				"spark.autotune.trackingId": "dd1bf654-b5fa-4491-a3a0-ef8c92fe491d"
 			}
 		},
 		"metadata": {
@@ -72,7 +72,7 @@
 					"import json\r\n",
 					"import re"
 				],
-				"execution_count": 5
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -98,7 +98,7 @@
 					"print(source_path)\r\n",
 					"print(config_file_path)"
 				],
-				"execution_count": 6
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -133,7 +133,25 @@
 					"    print(\"No folders found in the specified directory.\")\r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"config_df = spark.read.json(config_file_path)"
+				],
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -163,6 +181,11 @@
 					"try:\r\n",
 					"    # Read configuration file from Azure Data Lake Storage\r\n",
 					"    config_df = spark.read.json(config_file_path)\r\n",
+					"    \r\n",
+					"    # Check if config_df is empty\r\n",
+					"    if config_df.isEmpty():\r\n",
+					"        raise ValueError(\"Configuration DataFrame is empty. Please check the config file path.\")\r\n",
+					"\r\n",
 					"    config = config_df.collect()[0].asDict()\r\n",
 					"\r\n",
 					"    # Extract Configuration Parameters\r\n",
@@ -175,54 +198,16 @@
 					"\r\n",
 					"    # Construct Excel File Path\r\n",
 					"    excel_path = f\"{latest_folder_path}{excel_filename}\"\r\n",
+					"    print(excel_path)\r\n",
 					"\r\n",
 					"    # Read Excel Files with Specific Sheet\r\n",
 					"    excel_df = spark.read.format(\"com.crealytics.spark.excel\") \\\r\n",
 					"        .option(\"header\", \"true\") \\\r\n",
 					"        .option(\"inferSchema\", \"true\") \\\r\n",
 					"        .option(\"sheetName\", sheet_name) \\\r\n",
-					"        .load(excel_path)\r\n",
-					"\r\n",
-					"    # Add Metadata Columns\r\n",
-					"    excel_df = excel_df.withColumn(\"source_file\", lit(excel_path))\r\n",
-					"    excel_df = excel_df.withColumn(\"load_date\", current_timestamp())\r\n",
-					"\r\n",
-					"    # Create Delta Table in Synapse\r\n",
-					"    excel_df.write \\\r\n",
-					"        .format(\"delta\") \\\r\n",
-					"        .mode(\"overwrite\") \\\r\n",
-					"        .saveAsTable(f\"odw_standardised_db.{target_table}\")\r\n",
-					"\r\n",
-					"    # Set Delta Table Properties\r\n",
-					"    spark.sql(f\"\"\"\r\n",
-					"        ALTER TABLE odw_standardised_db.{target_table} \r\n",
-					"        SET TBLPROPERTIES (\r\n",
-					"            'delta.columnMapping.mode' = 'name',\r\n",
-					"            'delta.minReaderVersion' = '2',\r\n",
-					"            'delta.minWriterVersion' = '5'\r\n",
-					"        )\r\n",
-					"    \"\"\")\r\n",
-					"\r\n",
-					"    print(f\"Successfully loaded {excel_filename} to table {target_table}\")\r\n",
-					"\r\n",
-					"except Exception as e:\r\n",
-					"    print(\"An error occurred:\")\r\n",
-					"    print(traceback.format_exc())\r\n",
-					"    \r\n",
-					"    # Optional: Log error to a specific location or send notification\r\n",
-					"    spark.sql(f\"\"\"\r\n",
-					"        INSERT INTO error_log \r\n",
-					"        SELECT \r\n",
-					"            current_timestamp() as error_timestamp, \r\n",
-					"            '{str(e)}' as error_message,\r\n",
-					"            '{traceback.format_exc()}' as error_details\r\n",
-					"    \"\"\")\r\n",
-					"\r\n",
-					"finally:\r\n",
-					"    spark.stop()\r\n",
-					""
+					"        .load(excel_path)"
 				],
-				"execution_count": 4
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
