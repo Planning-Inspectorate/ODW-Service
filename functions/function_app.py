@@ -796,3 +796,33 @@ def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
         )
     except Exception as e:
         return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+
+
+@_app.function_name(name="runtest")
+@_app.route(route="runtest", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="test",
+                command_text="""
+                select dataId
+                from odw_standardised_db.dbo.document_meta_data
+                where ingested_datetime = (select max(ingested_datetime) from odw_standardised_db.dbo.document_meta_data)
+                and dataId not in
+                (
+                    select documentId
+                    from odw_harmonised_db.dbo.nsip_document
+                )
+                """,
+                command_type="Text",
+                connection_string_setting="SqlConnectionString"
+                )
+def runtest(req: func.HttpRequest, test: func.SqlRowList) -> func.HttpResponse:
+    try:
+        row_count = len(test)
+        result = row_count == 0
+        return func.HttpResponse(
+            json.dumps({"result": result}),
+            status_code=200,
+            mimetype="application/json"
+            )
+        
+    except Exception as e:
+        return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
