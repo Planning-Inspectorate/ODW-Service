@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c892260d-e1d5-468f-88eb-5e11cb22b1cc"
+				"spark.autotune.trackingId": "1c16efeb-831e-4a59-99dc-236eeb76def5"
 			}
 		},
 		"metadata": {
@@ -149,12 +149,99 @@
 					}
 				},
 				"source": [
-					"config_df = spark.read.json(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/Hr-raw-stb-config.json\")\r\n",
-					"excel_filename = config.get('excel_filename', '*.xlsx')\r\n",
-					"print(excel_filename)\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"\r\n",
+					"# Initialize Spark Session\r\n",
+					"spark = SparkSession.builder \\\r\n",
+					"    .appName(\"Read Config JSON\") \\\r\n",
+					"    .getOrCreate()\r\n",
+					"\r\n",
+					"# Read configuration file from Azure Data Lake Storage\r\n",
+					"config_df = spark.read.json(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration.json\")\r\n",
+					"\r\n",
+					"# Convert the DataFrame to a dictionary\r\n",
+					"try:\r\n",
+					"    # Ensure the DataFrame is not empty\r\n",
+					"    if config_df.count() == 0:\r\n",
+					"        raise ValueError(\"Configuration DataFrame is empty. Please check the config file path.\")\r\n",
+					"    \r\n",
+					"    # Extract the first row as a dictionary\r\n",
+					"    config = config_df.collect()[0].asDict()\r\n",
+					"\r\n",
+					"    # Access configuration parameters\r\n",
+					"    excel_filename = config.get('excel_filename', '*.xlsx')\r\n",
+					"    print(f\"Excel Filename: {excel_filename}\")\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"An error occurred: {e}\")\r\n",
+					"\r\n",
+					"finally:\r\n",
+					"    spark.stop()\r\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\r\n",
+					"\r\n",
+					"# Initialize Spark Session\r\n",
+					"spark = SparkSession.builder \\\r\n",
+					"    .appName(\"Read JSON from Azure Data Lake\") \\\r\n",
+					"    .getOrCreate()\r\n",
+					"\r\n",
+					"# Path to the JSON file in Azure Data Lake Storage\r\n",
+					"json_file_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration/orchestration.json\"\r\n",
+					"\r\n",
+					"try:\r\n",
+					"    # Read the JSON file into a DataFrame\r\n",
+					"    df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
+					"\r\n",
+					"    # Display the schema of the DataFrame\r\n",
+					"    df.printSchema()\r\n",
+					"\r\n",
+					"    # Show the contents of the DataFrame\r\n",
+					"    df.show(truncate=False)\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"An error occurred: {e}\")\r\n",
+					"\r\n",
+					"finally:\r\n",
+					"    spark.stop()\r\n",
+					""
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"df:DataFrame = spark.read.json(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/orchestration.json\")\r\n",
+					"df.printSchema()"
+				],
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
