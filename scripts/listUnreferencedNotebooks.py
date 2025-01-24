@@ -43,6 +43,7 @@ def get_pipeline_references():
         pipelines = response.json()['value']
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
+            print(f"Checking {pipeline_name}")
             pipeline_definition_url = f'{base_url}pipelines/{pipeline_name}?api-version=2021-06-01'
             pipeline_def_response = requests.get(pipeline_definition_url, headers=headers)
             
@@ -51,10 +52,17 @@ def get_pipeline_references():
                 # Check for ExecuteNotebook activities
                 activities = pipeline_definition.get('properties', {}).get('activities', [])
                 for activity in activities:
-                    if activity['type'] == 'ExecuteNotebook':
-                        notebook_name = activity['typeProperties']['notebook']['name']
-                        print(notebook_name)
-                        pipeline_references.add(notebook_name)
+                    if activity['type'] == 'SynapseNotebook':
+                        try:
+                            notebook_name = activity['typeProperties']['notebook']['referenceName']
+                            print(f"\t\t{notebook_name}")
+                            pipeline_references.add(notebook_name)
+                        except:
+                            print("invalid data")
+                    else:
+                        print("\t\t No executed notebooks")
+            else:
+                print("FAILED TO READ PIPELINES")
     else:
         print(f"{response.text}")
         raise Exception(f"Error retrieving pipelines: {response.text}")
@@ -74,6 +82,9 @@ def find_unreferenced_notebooks():
 unreferenced_notebooks = find_unreferenced_notebooks()
 
 # Print out the unreferenced notebooks
+print('########################################')
 print("Notebooks not referenced by pipelines:")
+print('########################################')
 for notebook in unreferenced_notebooks:
     print(notebook)
+print('########################################')
