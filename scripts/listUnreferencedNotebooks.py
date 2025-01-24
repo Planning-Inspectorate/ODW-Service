@@ -67,6 +67,12 @@ def get_pipeline_references():
                             print("invalid data")
             else:
                 print("FAILED TO READ PIPELINES")
+
+
+        print('**************** LIST OF PIPELINES *******************')
+        for pipeline in pipelines:
+            print(pipeline['name'])
+        print('**************** END OF LIST OF PIPELINES *******************')            
     else:
         raise Exception(f"Error retrieving pipelines")
     
@@ -77,10 +83,10 @@ def find_unreferenced_notebooks():
     referenced_notebooks = get_pipeline_references()
 
     list_referenced_notebooks = list(set(referenced_notebooks))
-    print("*********** REFERENCED NOTEBOOKS ***********")
+    print("*********** LIST OF REFERENCED NOTEBOOKS ***********")
     for notebook in list_referenced_notebooks:
         print(notebook)
-    print("********************************************")
+    print("*********** END OF LIST OF REFERENCED NOTEBOOKS ***********")
 
     notebooks = get_notebooks()
     
@@ -92,9 +98,7 @@ def find_unreferenced_notebooks():
 unreferenced_notebooks = find_unreferenced_notebooks()
 
 # Print out the unreferenced notebooks
-print('########################################')
-print("Notebooks not referenced by pipelines:")
-print('########################################')
+print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
 for notebook in unreferenced_notebooks:
     print(notebook)
-print('########################################')
+print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
