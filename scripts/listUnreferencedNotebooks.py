@@ -17,33 +17,36 @@ token = credential.get_token('https://dev.azuresynapse.net/.default').token
 # Define the base URL for Synapse Workspace REST API
 base_url = "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/"
 
+#get a list of all of the pipelines (paginated)
+def read_paginated_data(url, headers):
+    data = []
+    while url:
+        response = requests.get(url, headers=headers)
+        response_json = response.json()
+        data.extend(response_json.get('value', []))
+        url = response_json.get('nextLink')
+    return data
+
+
 # Function to get a list of notebooks
 def get_notebooks():
     notebooks_url = f'{base_url}notebooks?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
-    response = requests.get(notebooks_url, headers=headers)
+    notebooks = read_paginated_data(notebooks_url, headers=headers)
     
-    if response.status_code == 200:
-        notebooks = response.json()['value']
+    if notebooks:
         return [notebook['name'] for notebook in notebooks]
     else:
-        raise Exception(f"Error retrieving notebooks: {response.text}")
+        raise Exception(f"Error retrieving notebooks")
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
     pipeline_references = set()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
-    print(pipelines_url)
     headers = {'Authorization': f'Bearer {token}'}
-    response = requests.get(pipelines_url, headers=headers)
+    pipelines = read_paginated_data(pipelines_url, headers=headers)
     
-    print(response.status_code)
-
-    if response.status_code == 200:
-
-        print(response.json())
-
-        pipelines = response.json()['value']
+    if pipelines:
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
             print(f"Checking {pipeline_name}")
@@ -65,8 +68,7 @@ def get_pipeline_references():
             else:
                 print("FAILED TO READ PIPELINES")
     else:
-        print(f"{response.text}")
-        raise Exception(f"Error retrieving pipelines: {response.text}")
+        raise Exception(f"Error retrieving pipelines")
     
     return pipeline_references
 
