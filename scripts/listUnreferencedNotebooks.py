@@ -40,6 +40,9 @@ def get_pipeline_references():
     print(response.status_code)
 
     if response.status_code == 200:
+
+        print(response.json())
+
         pipelines = response.json()['value']
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
@@ -59,8 +62,6 @@ def get_pipeline_references():
                             pipeline_references.add(notebook_name)
                         except:
                             print("invalid data")
-                    else:
-                        print("\t\t No executed notebooks")
             else:
                 print("FAILED TO READ PIPELINES")
     else:
@@ -72,6 +73,13 @@ def get_pipeline_references():
 # Main logic to find unreferenced notebooks
 def find_unreferenced_notebooks():
     referenced_notebooks = get_pipeline_references()
+
+    list_referenced_notebooks = list(set(referenced_notebooks))
+    print("*********** REFERENCED NOTEBOOKS ***********")
+    for notebook in list_referenced_notebooks:
+        print(notebook)
+    print("********************************************")
+
     notebooks = get_notebooks()
     
     # Find notebooks that are not referenced by any pipeline
