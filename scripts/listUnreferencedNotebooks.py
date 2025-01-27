@@ -1,6 +1,9 @@
 #pip install azure-mgmt-synapse azure-identity requests
 
 import requests
+import os
+import re
+
 from azure.identity import DefaultAzureCredential
 
 # Replace these with your actual values
@@ -17,6 +20,7 @@ token = credential.get_token('https://dev.azuresynapse.net/.default').token
 # Define the base URL for Synapse Workspace REST API
 base_url = "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/"
 
+
 #get a list of all of the pipelines (paginated)
 def read_paginated_data(url, headers):
     data = []
@@ -31,6 +35,7 @@ def read_paginated_data(url, headers):
 # Function to get a list of notebooks
 def get_notebooks():
     notebooks_url = f'{base_url}notebooks?api-version=2020-12-01'
+    print(f"Reading from {notebooks_url}")
     headers = {'Authorization': f'Bearer {token}'}
     notebooks = read_paginated_data(notebooks_url, headers=headers)
     
@@ -55,6 +60,7 @@ def get_pipeline_references():
             
             if pipeline_def_response.status_code == 200:
                 pipeline_definition = pipeline_def_response.json()
+
                 # Check for ExecuteNotebook activities
                 activities = pipeline_definition.get('properties', {}).get('activities', [])
                 for activity in activities:
@@ -94,11 +100,40 @@ def find_unreferenced_notebooks():
     unreferenced_notebooks = set(notebooks) - referenced_notebooks
     return unreferenced_notebooks
 
+
+def grep_files(pattern, root_dir):
+    # Compile the regular expression pattern
+    regex = re.compile(pattern)
+    notebooks = set()
+    
+    # Walk through the directory
+    for subdir, _, files in os.walk(root_dir):
+        for file in files:
+            file_path = os.path.join(subdir, file)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    for line_num, line in enumerate(f, 1):
+                        match = regex.search(line)
+                        if (match is not None):
+                            notebooks.add(f"{match.group(1).strip()}")
+            except (UnicodeDecodeError, FileNotFoundError):
+                # Skip files that can't be read
+                continue
+    return notebooks
+
+# Example usage
+pattern = r'\"%run.+\/(.+).*\"'
+root_dir = '../workspace/notebook/'
+source_notebooks = grep_files(pattern, root_dir)
+
+for source_notebook in source_notebooks:
+    print(source_notebook)
+
 # Get unreferenced notebooks
-unreferenced_notebooks = find_unreferenced_notebooks()
+#unreferenced_notebooks = find_unreferenced_notebooks()
 
 # Print out the unreferenced notebooks
-print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
-for notebook in unreferenced_notebooks:
-    print(notebook)
-print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
+#print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
+#for notebook in unreferenced_notebooks:
+#    print(notebook)
+#print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
