@@ -54,10 +54,10 @@ def get_pipeline_references():
     headers = {'Authorization': f'Bearer {token}'}
     pipelines = read_paginated_data(pipelines_url, headers=headers)
     
+    print("Reading pipelines and notebooks")
     if pipelines:
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
-            print(f"Checking {pipeline_name}")
             pipeline_definition_url = f'{base_url}pipelines/{pipeline_name}?api-version=2021-06-01'
             pipeline_def_response = requests.get(pipeline_definition_url, headers=headers)
             
@@ -70,17 +70,21 @@ def get_pipeline_references():
                     if activity['type'] == 'SynapseNotebook':
                         try:
                             notebook_name = activity['typeProperties']['notebook']['referenceName']
-                            print(f"\t\t{notebook_name}")
                             pipeline_references.add(notebook_name)
                         except:
                             print("invalid data")
             else:
                 print("FAILED TO READ PIPELINES")
 
+        #sort the list of pipelines
+        pipeline_list = []
+        for pipeline in pipelines:
+            pipeline_list.append(pipeline['name'])
+        pipeline_list = sorted(pipeline_list)
 
         print('**************** LIST OF PIPELINES *******************')
-        for pipeline in pipelines:
-            print(pipeline['name'])
+        for pipeline in pipeline_list:
+            print(pipeline)
         print('**************** END OF LIST OF PIPELINES *******************')            
     else:
         raise Exception(f"Error retrieving pipelines")
@@ -91,7 +95,7 @@ def get_pipeline_references():
 def find_unreferenced_notebooks():
     referenced_notebooks = get_pipeline_references()
 
-    list_referenced_notebooks = list(set(referenced_notebooks))
+    list_referenced_notebooks = sorted(list(set(referenced_notebooks)))
     print("*********** LIST OF REFERENCED NOTEBOOKS ***********")
     for notebook in list_referenced_notebooks:
         print(notebook)
@@ -101,7 +105,7 @@ def find_unreferenced_notebooks():
     
     # Find notebooks that are not referenced by any pipeline
     unreferenced_notebooks = set(notebooks) - referenced_notebooks
-    return unreferenced_notebooks
+    return sorted(unreferenced_notebooks)
 
 
 def grep_files(pattern, pattern2, root_dir):
@@ -134,7 +138,7 @@ root_dir = '../workspace/notebook/'
 source_notebooks = grep_files(pattern, pattern2, root_dir)
 
 print("*********** LIST OF NOTEBOOKS FROM RUN SOURCECODE***********")
-for source_notebook in source_notebooks:
+for source_notebook in sorted(source_notebooks):
     print(source_notebook)
 print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE ***********")    
 
@@ -145,6 +149,6 @@ unreferenced_notebooks = set(unreferenced_notebooks) - source_notebooks
 
 # Print out the unreferenced notebooks
 print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
-for notebook in unreferenced_notebooks:
+for notebook in sorted(unreferenced_notebooks):
     print(notebook)
 print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
