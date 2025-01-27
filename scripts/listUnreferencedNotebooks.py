@@ -101,9 +101,10 @@ def find_unreferenced_notebooks():
     return unreferenced_notebooks
 
 
-def grep_files(pattern, root_dir):
+def grep_files(pattern, pattern2, root_dir):
     # Compile the regular expression pattern
     regex = re.compile(pattern)
+    regex2 = re.compile(pattern2)
     notebooks = set()
     
     # Walk through the directory
@@ -115,25 +116,32 @@ def grep_files(pattern, root_dir):
                     for line_num, line in enumerate(f, 1):
                         match = regex.search(line)
                         if (match is not None):
-                            notebooks.add(f"{match.group(1).strip()}")
+                            data = regex2.search(match.group(1).strip()).group(1).strip().split(' ')[0].replace("\"", "").replace("\\", "")
+                            notebooks.add(f"{data}")
             except (UnicodeDecodeError, FileNotFoundError):
                 # Skip files that can't be read
                 continue
     return notebooks
 
 # Example usage
-pattern = r'\"%run.+\/(.+).*\"'
+pattern = r'%run (.+)'
+pattern2 = r'([^/]+)\"$'
 root_dir = '../workspace/notebook/'
-source_notebooks = grep_files(pattern, root_dir)
+#get a list of the lines that start with pattern and extract them (with some tidying)
+source_notebooks = grep_files(pattern, pattern2, root_dir)
 
+print("*********** LIST OF NOTEBOOKS FROM RUN SOURCECODE***********")
 for source_notebook in source_notebooks:
     print(source_notebook)
+print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE ***********")    
 
 # Get unreferenced notebooks
-#unreferenced_notebooks = find_unreferenced_notebooks()
+unreferenced_notebooks = find_unreferenced_notebooks()
+
+unreferenced_notebooks = set(unreferenced_notebooks) - source_notebooks
 
 # Print out the unreferenced notebooks
-#print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
-#for notebook in unreferenced_notebooks:
-#    print(notebook)
-#print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
+print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
+for notebook in unreferenced_notebooks:
+    print(notebook)
+print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
