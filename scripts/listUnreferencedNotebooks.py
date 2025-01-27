@@ -6,6 +6,9 @@ import re
 
 from azure.identity import DefaultAzureCredential
 
+import sys
+sys.stdout = open('notebooksAudit.txt','wt')
+
 # Replace these with your actual values
 subscription_id = 'ff442a29-fc06-4a13-8e3e-65fd5da513b3'
 resource_group_name = 'pins-rg-data-odw-dev-uks'
