@@ -26,6 +26,11 @@ token = credential.get_token('https://dev.azuresynapse.net/.default').token
 # Define the base URL for Synapse Workspace REST API
 base_url = "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/"
 
+total_referenced_notebooks_by_pipelines = 0
+total_notebooks = 0
+total_pipelines = 0
+total_referenced_notebooks = 0
+total_unreferenced_notebooks = 0
 
 #get a list of all of the pipelines (paginated)
 def read_paginated_data(url, headers):
@@ -85,6 +90,9 @@ def get_pipeline_references():
             pipeline_list.append(pipeline['name'])
         pipeline_list = sorted(pipeline_list)
 
+        global total_pipelines
+        total_pipelines = len(pipeline_list)
+
         print('**************** LIST OF PIPELINES *******************')
         for pipeline in pipeline_list:
             print(pipeline)
@@ -99,12 +107,16 @@ def find_unreferenced_notebooks():
     referenced_notebooks = get_pipeline_references()
 
     list_referenced_notebooks = sorted(list(set(referenced_notebooks)))
+    global total_referenced_notebooks_by_pipelines
+    total_referenced_notebooks_by_pipelines = len(list_referenced_notebooks)
     print("*********** LIST OF REFERENCED NOTEBOOKS ***********")
     for notebook in list_referenced_notebooks:
         print(notebook)
     print("*********** END OF LIST OF REFERENCED NOTEBOOKS ***********")
 
     notebooks = get_notebooks()
+    global total_notebooks
+    total_notebooks = len(notebooks)
     
     # Find notebooks that are not referenced by any pipeline
     unreferenced_notebooks = set(notebooks) - referenced_notebooks
@@ -132,7 +144,7 @@ def grep_files(pattern, pattern2, root_dir):
                                     data = data2.group(1)
 
                                     #quick tidy
-                                    data = data.strip().split(' ')[0].replace("\"", "").replace("\\", "").replace("'", "")
+                                    data = data.split(' ')[0].replace("\"", "").replace("\\", "").replace("'", "").split(',')[0].strip()
                                     notebooks.add(f"{data}")
                             except Exception:
                                 print("No Matches")
@@ -167,10 +179,7 @@ for source_notebook in sorted(source_notebooks2):
 print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE2 ***********")    
 
 #combine the two sets
-print(f"Notebooks found in source check 1 {len(source_notebooks)}")
-print(f"Notebooks found in source check 2 {len(source_notebooks2)}")
 all_source = source_notebooks.union(source_notebooks2)
-print(f"Notebooks found in combined set {len(all_source)}")
 
 # Get unreferenced notebooks
 unreferenced_notebooks = find_unreferenced_notebooks()
@@ -181,3 +190,10 @@ print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
 for notebook in sorted(unreferenced_notebooks):
     print(notebook)
 print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
+
+print(f"Total pipelines {total_pipelines}")
+print(f"Total notebooks {total_notebooks}")
+print(f"Notebooks referenced by piplines {total_referenced_notebooks_by_pipelines}")
+print(f"Notebooks found in source check 1 {len(source_notebooks)}")
+print(f"Notebooks found in source check 2 {len(source_notebooks2)}")
+print(f"Notebooks found in combined set {len(all_source)}")
