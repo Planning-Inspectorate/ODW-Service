@@ -193,7 +193,7 @@ print("*********** END OF LIST OF UNREFERENCED NOTEBOOKS ***********")
 
 print(f"Total pipelines {total_pipelines}")
 print(f"Total notebooks {total_notebooks}")
-print(f"Notebooks referenced by piplines {total_referenced_notebooks_by_pipelines}")
+print(f"Notebooks referenced by pipelines {total_referenced_notebooks_by_pipelines}")
 print(f"Notebooks found in source check 1 {len(source_notebooks)}")
 print(f"Notebooks found in source check 2 {len(source_notebooks2)}")
 print(f"Notebooks found in combined set {len(all_source)}")
