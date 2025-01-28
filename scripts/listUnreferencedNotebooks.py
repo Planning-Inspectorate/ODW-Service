@@ -126,29 +126,55 @@ def grep_files(pattern, pattern2, root_dir):
                     for line_num, line in enumerate(f, 1):
                         match = regex.search(line)
                         if (match is not None):
-                            data = regex2.search(match.group(1).strip()).group(1).strip().split(' ')[0].replace("\"", "").replace("\\", "")
-                            notebooks.add(f"{data}")
+                            try:
+                                data2 = regex2.search(match.group(1).strip())
+                                if data2 is not None:
+                                    data = data2.group(1)
+
+                                    #quick tidy
+                                    data = data.strip().split(' ')[0].replace("\"", "").replace("\\", "").replace("'", "")
+                                    notebooks.add(f"{data}")
+                            except Exception:
+                                print("No Matches")
+
             except (UnicodeDecodeError, FileNotFoundError):
                 # Skip files that can't be read
                 continue
     return notebooks
 
-# Example usage
+#get runs from source code
 pattern = r'%run (.+)'
 pattern2 = r'([^/]+)\"$'
 root_dir = '../workspace/notebook/'
 #get a list of the lines that start with pattern and extract them (with some tidying)
 source_notebooks = grep_files(pattern, pattern2, root_dir)
 
+#get runs from source code (with a different pattern)
+pattern = r'.*mssparkutils.notebook.run\((.+)\)'
+pattern2 = r'([^/]+)$'
+root_dir = '../workspace/notebook/'
+#get a list of the lines that start with pattern and extract them (with some tidying)
+source_notebooks2 = grep_files(pattern, pattern2, root_dir)
+
 print("*********** LIST OF NOTEBOOKS FROM RUN SOURCECODE***********")
 for source_notebook in sorted(source_notebooks):
     print(source_notebook)
 print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE ***********")    
 
+print("*********** LIST OF NOTEBOOKS FROM RUN SOURCECODE2***********")
+for source_notebook in sorted(source_notebooks2):
+    print(source_notebook)
+print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE2 ***********")    
+
+#combine the two sets
+print(f"Notebooks found in source check 1 {len(source_notebooks)}")
+print(f"Notebooks found in source check 2 {len(source_notebooks2)}")
+all_source = source_notebooks.union(source_notebooks2)
+print(f"Notebooks found in combined set {len(all_source)}")
+
 # Get unreferenced notebooks
 unreferenced_notebooks = find_unreferenced_notebooks()
-
-unreferenced_notebooks = set(unreferenced_notebooks) - source_notebooks
+unreferenced_notebooks = set(unreferenced_notebooks) - all_source
 
 # Print out the unreferenced notebooks
 print("*********** LIST OF UNREFERENCED NOTEBOOKS ***********")
