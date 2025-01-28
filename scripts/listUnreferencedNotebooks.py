@@ -3,6 +3,9 @@
 import requests
 import os
 import re
+import json
+import jsonpath_rw_ext
+from jsonpath_ng.ext import parse
 
 from azure.identity import DefaultAzureCredential
 
@@ -47,6 +50,7 @@ def get_notebooks():
     else:
         raise Exception(f"Error retrieving notebooks")
 
+
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
     pipeline_references = set()
@@ -63,16 +67,15 @@ def get_pipeline_references():
             
             if pipeline_def_response.status_code == 200:
                 pipeline_definition = pipeline_def_response.json()
+                #print(f"{pipeline_name}")
 
-                # Check for ExecuteNotebook activities
-                activities = pipeline_definition.get('properties', {}).get('activities', [])
-                for activity in activities:
-                    if activity['type'] == 'SynapseNotebook':
-                        try:
-                            notebook_name = activity['typeProperties']['notebook']['referenceName']
-                            pipeline_references.add(notebook_name)
-                        except:
-                            print("invalid data")
+                jsonpath_expr = parse('$..notebook.referenceName')
+                matches = jsonpath_expr.find(pipeline_definition)
+
+                # Extract and print the matched elements
+                for match in matches:
+                    #print(f"\t\t{match.value}")
+                    pipeline_references.add(str(match.value))
             else:
                 print("FAILED TO READ PIPELINES")
 
