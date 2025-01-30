@@ -3,11 +3,16 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy data1",
+				"name": "CopySharePointFilesAdls",
 				"type": "Copy",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "GetSharePointWebToken",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -18,86 +23,63 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "SharePointOnlineListSource",
-						"httpRequestTimeout": "00:05:00"
-					},
-					"sink": {
-						"type": "DelimitedTextSink",
+						"type": "BinarySource",
 						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
+							"type": "HttpReadSettings",
+							"requestMethod": "GET",
+							"additionalHeaders": {
+								"value": "@{concat('Authorisation:Bearer ',activity('GetSharePointWebToken').output.access_token)}",
+								"type": "Expression"
+							}
 						},
 						"formatSettings": {
-							"type": "DelimitedTextWriteSettings",
-							"quoteAllText": true,
-							"fileExtension": ".txt"
+							"type": "BinaryReadSettings"
 						}
 					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
+					"sink": {
+						"type": "BinarySink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
 						}
-					}
+					},
+					"enableStaging": false
 				},
 				"inputs": [
 					{
-						"referenceName": "ls_SharePointOnlineListSAPHRData",
+						"referenceName": "DsSharePointBinary",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "DelimitedText1",
+						"referenceName": "AdlsBinarySink",
 						"type": "DatasetReference"
 					}
 				]
 			},
 			{
-				"name": "Lkp_GetFolderStructure",
-				"type": "Lookup",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "SharePointOnlineListSource",
-						"httpRequestTimeout": "00:05:00"
-					},
-					"dataset": {
-						"referenceName": "ls_SharePointOnlineListSAPHRData",
-						"type": "DatasetReference"
-					},
-					"firstRowOnly": false
-				}
-			},
-			{
-				"name": "Web1",
+				"name": "GetSharePointWebToken",
 				"type": "WebActivity",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
 					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
+					"secureOutput": true,
 					"secureInput": false
 				},
 				"userProperties": [],
 				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/x-www-form-urlencoded"
+					},
+					"url": "https://accounts.accesscontrol.windows.net/5878df98-6f88-48ab-9322-998ce557088d/tokens/OAuth/2",
 					"connectVia": {
-						"referenceName": "AutoResolveIntegrationRuntime",
+						"referenceName": "PinsIntegrationRuntime",
 						"type": "IntegrationRuntimeReference"
-					}
+					},
+					"body": ""
 				}
 			}
 		],
