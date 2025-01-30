@@ -12,19 +12,21 @@ from azure.identity import DefaultAzureCredential
 import sys
 sys.stdout = open('notebooksAudit.txt','wt')
 
+
 # Replace these with your actual values
+environment = "dev"
 subscription_id = 'ff442a29-fc06-4a13-8e3e-65fd5da513b3'
-resource_group_name = 'pins-rg-data-odw-dev-uks'
-workspace_name = 'pins-synw-odw-dev-uks'
+resource_group_name = f'pins-rg-data-odw-{environment}-uks'
+workspace_name = f'pins-synw-odw-{environment}-uks'
 
 # Use DefaultAzureCredential to authenticate
 credential = DefaultAzureCredential()
 
 # Get an access token for the REST API
-token = credential.get_token('https://dev.azuresynapse.net/.default').token
+token = credential.get_token(f'https://dev.azuresynapse.net/.default').token
 
 # Define the base URL for Synapse Workspace REST API
-base_url = "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/"
+base_url = f"https://pins-synw-odw-{environment}-uks.dev.azuresynapse.net/"
 
 total_referenced_notebooks_by_pipelines = 0
 total_notebooks = 0
@@ -42,11 +44,57 @@ def read_paginated_data(url, headers):
         url = response_json.get('nextLink')
     return data
 
+def read_paginated_data_post(url, data, headers):
+    response_data = []
+    continuationToken = ''
+    while continuationToken is not None:
+        print(f"Reading from {url}")
+        response = requests.post(url, json=data, headers=headers)
+        response_json = response.json()
+        response_data.extend(response_json.get('value', []))
+        
+        tokenData = response_json.get('continuationToken')
+        if tokenData is not None:
+            continuationToken = tokenData
+            data['continuationToken'] = tokenData
+        
+        if tokenData is None:
+            continuationToken = None
+            break
+        
+    return response_data
+
+
+def get_pipline_runs():
+    runs_url = f'{base_url}queryPipelineRuns?api-version=2020-12-01'
+    headers = {'Authorization': f'Bearer {token}'}
+    data = {
+        "lastUpdatedAfter": "2018-06-16T00:36:44.3345758Z",
+        "lastUpdatedBefore": "2026-01-16T00:49:48.3686473Z",
+        "orderBy": [
+            {
+                "order": "ASC",
+                "orderBy": "RunEnd"
+            }
+        ]
+    }
+    runs = read_paginated_data_post(runs_url, data=data, headers=headers)
+    
+    pipeline_runs = {}
+
+    if runs:
+        for run in runs:
+            pipeline_runs[run['pipelineName']] = run['runStart']
+
+    else:
+        raise Exception(f"Error retrieving pipelines")
+
+    return pipeline_runs
 
 # Function to get a list of notebooks
 def get_notebooks():
     notebooks_url = f'{base_url}notebooks?api-version=2020-12-01'
-    print(f"Reading from {notebooks_url}")
+    #print(f"Reading from {notebooks_url}")
     headers = {'Authorization': f'Bearer {token}'}
     notebooks = read_paginated_data(notebooks_url, headers=headers)
     
@@ -57,7 +105,7 @@ def get_notebooks():
 
 
 # Function to get all pipeline names and their notebook references
-def get_pipeline_references():
+def get_pipeline_references(pipeline_runs):
     pipeline_references = set()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
@@ -95,7 +143,10 @@ def get_pipeline_references():
 
         print('**************** LIST OF PIPELINES *******************')
         for pipeline in pipeline_list:
-            print(pipeline)
+            if pipeline in pipeline_runs:
+                print(f"{pipeline}: {pipeline_runs[pipeline]}")
+            else:
+                print(f"{pipeline}: NONE")
         print('**************** END OF LIST OF PIPELINES *******************')            
     else:
         raise Exception(f"Error retrieving pipelines")
@@ -103,8 +154,8 @@ def get_pipeline_references():
     return pipeline_references
 
 # Main logic to find unreferenced notebooks
-def find_unreferenced_notebooks():
-    referenced_notebooks = get_pipeline_references()
+def find_unreferenced_notebooks(pipeline_runs):
+    referenced_notebooks = get_pipeline_references(pipeline_runs)
 
     list_referenced_notebooks = sorted(list(set(referenced_notebooks)))
     global total_referenced_notebooks_by_pipelines
@@ -154,6 +205,10 @@ def grep_files(pattern, pattern2, root_dir):
                 continue
     return notebooks
 
+pipeline_runs = get_pipline_runs()
+#for key in pipeline_runs.keys():
+#    print(f"{key}: {pipeline_runs[key]}")
+
 #get runs from source code
 pattern = r'%run (.+)'
 pattern2 = r'([^/]+)\"$'
@@ -182,7 +237,7 @@ print("*********** END OF LIST OF NOTEBOOKS FROM RUN SOURCECODE2 ***********")
 all_source = source_notebooks.union(source_notebooks2)
 
 # Get unreferenced notebooks
-unreferenced_notebooks = find_unreferenced_notebooks()
+unreferenced_notebooks = find_unreferenced_notebooks(pipeline_runs)
 unreferenced_notebooks = set(unreferenced_notebooks) - all_source
 
 # Print out the unreferenced notebooks
