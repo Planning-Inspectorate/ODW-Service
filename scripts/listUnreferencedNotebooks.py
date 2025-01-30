@@ -48,7 +48,7 @@ def read_paginated_data_post(url, data, headers):
     response_data = []
     continuationToken = ''
     while continuationToken is not None:
-        print(f"Reading from {url}")
+        #print(f"Reading from {url}")
         response = requests.post(url, json=data, headers=headers)
         response_json = response.json()
         response_data.extend(response_json.get('value', []))
