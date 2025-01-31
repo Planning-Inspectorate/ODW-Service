@@ -34,6 +34,8 @@ total_pipelines = 0
 total_referenced_notebooks = 0
 total_unreferenced_notebooks = 0
 
+print(f"######### Running against {workspace_name} #########")
+
 #get a list of all of the pipelines (paginated)
 def read_paginated_data(url, headers):
     data = []
@@ -107,6 +109,7 @@ def get_notebooks():
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references(pipeline_runs):
     pipeline_references = set()
+    pipeline_subreferences = set()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
     pipelines = read_paginated_data(pipelines_url, headers=headers)
@@ -120,15 +123,23 @@ def get_pipeline_references(pipeline_runs):
             
             if pipeline_def_response.status_code == 200:
                 pipeline_definition = pipeline_def_response.json()
-                #print(f"{pipeline_name}")
+                #print(pipeline_definition)
+                print(f"{pipeline_name}")
 
-                jsonpath_expr = parse('$..notebook.referenceName')
-                matches = jsonpath_expr.find(pipeline_definition)
+                notebook_jsonpath_expr = parse('$..notebook.referenceName')
+                notebook_matches = notebook_jsonpath_expr.find(pipeline_definition)
+
+                pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
+                pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
+
+                for pipelineMatch in pipeline_matches:
+                    print(f"\t\tPIPELINE : {pipelineMatch.value}")
+                    pipeline_subreferences.add(str(pipelineMatch.value))
 
                 # Extract and print the matched elements
-                for match in matches:
-                    #print(f"\t\t{match.value}")
-                    pipeline_references.add(str(match.value))
+                for notebook in notebook_matches:
+                    print(f"\t\tNOTEBOOK : {notebook.value}")
+                    pipeline_references.add(str(notebook.value))
             else:
                 print("FAILED TO READ PIPELINES")
 
@@ -137,6 +148,9 @@ def get_pipeline_references(pipeline_runs):
         for pipeline in pipelines:
             pipeline_list.append(pipeline['name'])
         pipeline_list = sorted(pipeline_list)
+
+        #sort the list of subpipelines
+        subpipeline_list = sorted(pipeline_subreferences)  
 
         global total_pipelines
         total_pipelines = len(pipeline_list)
@@ -147,7 +161,16 @@ def get_pipeline_references(pipeline_runs):
                 print(f"{pipeline}: {pipeline_runs[pipeline]}")
             else:
                 print(f"{pipeline}: NONE")
-        print('**************** END OF LIST OF PIPELINES *******************')            
+        print('**************** END OF LIST OF PIPELINES *******************')  
+
+        print('**************** LIST OF PIPELINES CALLED BY OTHER PIPELINES *******************')
+        for subpipeline in subpipeline_list:
+            if subpipeline in pipeline_runs:
+                print(f"{subpipeline}: {pipeline_runs[subpipeline]}")
+            else:
+                print(f"{subpipeline}: NONE")
+        print('**************** LIST OF PIPELINES CALLED BY OTHER PIPELINES *******************')  
+
     else:
         raise Exception(f"Error retrieving pipelines")
     
