@@ -1,9 +1,9 @@
 {
-	"name": "pln_GetHrParentFolders",
+	"name": "Pln_GetHrSubFlodersList",
 	"properties": {
 		"activities": [
 			{
-				"name": "GetHrParentFolders",
+				"name": "GetSubFloders",
 				"type": "GetMetadata",
 				"dependsOn": [],
 				"policy": {
@@ -16,8 +16,14 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataset": {
-						"referenceName": "Ds_SapHrGetFoldersList",
-						"type": "DatasetReference"
+						"referenceName": "GetSubFlodersBinary",
+						"type": "DatasetReference",
+						"parameters": {
+							"par_DsGetFolderName": {
+								"value": "@pipeline().parameters.par_GetParentFolderName",
+								"type": "Expression"
+							}
+						}
 					},
 					"fieldList": [
 						"childItems"
@@ -32,11 +38,11 @@
 				}
 			},
 			{
-				"name": "ForEachTopFolders",
+				"name": "ForEachSubFolders",
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "GetHrParentFolders",
+						"activity": "GetSubFloders",
 						"dependencyConditions": [
 							"Completed"
 						]
@@ -45,30 +51,36 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('GetHrParentFolders').output.childItems",
+						"value": "@activity('GetSubFloders').output.childItems",
 						"type": "Expression"
 					},
-					"isSequential": false,
 					"activities": [
 						{
-							"name": "pl_ExecuteSubFolder",
-							"type": "ExecutePipeline",
+							"name": "GetSubFloderList",
+							"type": "GetMetadata",
 							"dependsOn": [],
 							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
 								"secureInput": false
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"pipeline": {
-									"referenceName": "Pln_GetHrSubFlodersList",
-									"type": "PipelineReference"
+								"dataset": {
+									"referenceName": "ds_SubFolderListBinary",
+									"type": "DatasetReference"
 								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"par_GetParentFolderName": {
-										"value": "@item()",
-										"type": "Expression"
-									}
+								"fieldList": [
+									"childItems"
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "BinaryReadSettings"
 								}
 							}
 						}
@@ -77,7 +89,7 @@
 			}
 		],
 		"parameters": {
-			"FileLoadType": {
+			"par_GetParentFolderName": {
 				"type": "string"
 			}
 		},
