@@ -107,11 +107,11 @@ def findNode(node, name, maxLevel=-1) -> Node:
 
 def duplicate_node(node, new_parent):
     # Create a new node with the same name and properties
-    new_node = Node(node.name, parent=new_parent)
+    new_node = Node(node.name, parent=new_parent, itemType=node.__dict__.get('itemType', ''), itemSource="DUPLICATE")
     
     # Recursively duplicate children
     for child in node.children:
-        duplicate_node(child, new_node)
+        duplicate_node(child, new_parent)
     return new_node
 
 # Function to get all pipeline names and their notebook references
@@ -189,4 +189,4 @@ def get_pipeline_references():
 root = get_pipeline_references()
 
 for pre, fill, node in RenderTree(root):
-    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')}")    
+    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")    
