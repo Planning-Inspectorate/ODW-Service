@@ -4,7 +4,7 @@ import re
 import json
 import jsonpath_rw_ext
 from jsonpath_ng.ext import parse
-from anytree import Node, RenderTree, AsciiStyle, findall
+from anytree import Node, RenderTree, AsciiStyle, findall,PreOrderIter
 
 from azure.identity import DefaultAzureCredential
 
@@ -94,12 +94,25 @@ def get_notebooks():
     else:
         raise Exception(f"Error retrieving notebooks")
 
-def findNode(node, name) -> Node:
-    foundNode = findall(node, filter_=lambda node: name in node.name)
+def findNode(node, name, maxLevel=-1) -> Node:
+    if (maxLevel > 0) :
+        foundNode = findall(node, maxlevel=maxLevel, filter_=lambda node: name in node.name)
+    else:
+        foundNode = findall(node, filter_=lambda node: name in node.name)
+
     if len(foundNode) == 0:
         return None
     else:
         return foundNode[0]
+
+def duplicate_node(node, new_parent):
+    # Create a new node with the same name and properties
+    new_node = Node(node.name, parent=new_parent)
+    
+    # Recursively duplicate children
+    for child in node.children:
+        duplicate_node(child, new_node)
+    return new_node
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
@@ -159,9 +172,12 @@ def get_pipeline_references():
 
 
         #go through the tree and rebuild it to properly take into account the parents
-        #check to see if the node already exists
-        #Node foundNode = findall(root, filter_=lambda node: node.name in (pipelineName))
-
+        #find all leaf nodes where the parents is not root
+        for leafNode in list(PreOrderIter(root, filter_=lambda node: node.is_leaf and node.root != workspace_name)):
+            foundNode = findNode(root, str(leafNode.name), 0)
+            if foundNode is not None and foundNode != leafNode:
+                print(f"Duplicating {foundNode} to {leafNode}")
+                duplicate_node(leafNode, foundNode)
     else:
         raise Exception(f"Error retrieving pipelines")
     return root
