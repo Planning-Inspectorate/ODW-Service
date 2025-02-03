@@ -93,11 +93,16 @@ def get_notebooks():
         return [notebook['name'] for notebook in notebooks]
     else:
         raise Exception(f"Error retrieving notebooks")
-    
+
+def findNode(node, name) -> Node:
+    foundNode = findall(node, filter_=lambda node: name in node.name)
+    if len(foundNode) == 0:
+        return None
+    else:
+        return foundNode[0]
+
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
-    pipeline_references = set()
-    pipeline_subreferences = set()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
     pipelines = read_paginated_data(pipelines_url, headers=headers)
@@ -114,22 +119,34 @@ def get_pipeline_references():
             
             if pipeline_def_response.status_code == 200:
                 pipeline_definition = pipeline_def_response.json()
-                level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE")
-
-                pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
-                pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
-
-                #get a list of the pipelines
-                for pipelineMatch in pipeline_matches:
-                    pipelineName = pipelineMatch.value
-                    level2Node = Node(pipelineName, parent=level1Node, itemType="PIPELINE")
-
-                notebook_jsonpath_expr = parse('$..notebook.referenceName')
-                notebook_matches = notebook_jsonpath_expr.find(pipeline_definition)
+                level1Node = None
                 
-                #get a list of the notebooks
-                for notebook in notebook_matches:
-                    level2Node = Node(pipelineMatch.value, parent=level1Node, itemType="NOTEBOOK")
+                foundNode = findNode(root, pipeline_name)
+                if foundNode is None:
+                    #this pipeline doesn't already exist
+                    level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE")
+
+                if level1Node is not None:
+
+                    pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
+                    pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
+
+                    #get a list of the pipelines
+                    for pipelineMatch in pipeline_matches:
+                        pipelineName = pipelineMatch.value
+                        foundNode = findNode(level1Node, pipelineName)
+                        if foundNode is None:
+                            #add a new node for pipeline
+                            level2Node = Node(pipelineName, parent=level1Node, itemType="PIPELINE")
+
+                    notebook_jsonpath_expr = parse('$..notebook.referenceName')
+                    notebook_matches = notebook_jsonpath_expr.find(pipeline_definition)
+                    
+                    #get a list of the notebooks
+                    for notebook in notebook_matches:
+                        foundNode = findNode(level1Node, str(notebook.value))
+                        if foundNode is None:
+                            level2Node = Node(notebook.value, parent=level1Node, itemType="NOTEBOOK")
 
             else:
                 print("FAILED TO READ PIPELINES")
