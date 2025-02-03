@@ -150,7 +150,7 @@ def get_pipeline_references():
                     pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
                     pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
 
-                    #get a list of the pipelines
+                    #get a list of the pipelines and add them to the tree
                     for pipelineMatch in pipeline_matches:
                         pipelineName = pipelineMatch.value
                         foundNode = findNode(level1Node, pipelineName)
@@ -161,7 +161,7 @@ def get_pipeline_references():
                     notebook_jsonpath_expr = parse('$..notebook.referenceName')
                     notebook_matches = notebook_jsonpath_expr.find(pipeline_definition)
                     
-                    #get a list of the notebooks
+                    #get a list of the notebooks and add them to the tree
                     for notebook in notebook_matches:
                         foundNode = findNode(level1Node, str(notebook.value))
                         if foundNode is None:
@@ -173,12 +173,14 @@ def get_pipeline_references():
 
         ##TODO - This needs to recurse?
 
-        #go through the tree and rebuild it to properly take into account the parents
+        #go through the tree. We need to go through each PIPLINE leaf node and find the corresponding node with all of the children and glue it on 
         #find all leaf nodes where the parents is not root
         for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.height >= 0 and node.__dict__.get('itemType', '') == 'PIPELINE'))):
             foundNode = findNode(root, str(leafNode.name), 0)
             if foundNode is not None and foundNode != leafNode:
-                #print(f"\t******* {RenderTree(foundNode, maxlevel=3)} ****************")
+                print('**************** Looking at the found node ***************')
+                print(f"{RenderTree(foundNode, maxlevel=3)}")
+                print('**************** End of looking at the found node ***************')
                 #copy the found node into the parent
                 duplicate_node(foundNode, leafNode.parent)
                 #remove leafNode
