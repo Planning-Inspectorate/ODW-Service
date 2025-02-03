@@ -106,7 +106,7 @@ def get_pipeline_references():
     if pipelines:
 
         #build the initial tree, things will need to be moved
-        root = Node("root")
+        root = Node("workspace")
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
             pipeline_definition_url = f'{base_url}pipelines/{pipeline_name}?api-version=2021-06-01'
@@ -114,7 +114,7 @@ def get_pipeline_references():
             
             if pipeline_def_response.status_code == 200:
                 pipeline_definition = pipeline_def_response.json()
-                level1Node = Node(pipeline_name, parent=root)
+                level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE")
 
                 pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
                 pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
@@ -122,14 +122,14 @@ def get_pipeline_references():
                 #get a list of the pipelines
                 for pipelineMatch in pipeline_matches:
                     pipelineName = pipelineMatch.value
-                    level2Node = Node(pipelineName, parent=level1Node, type="PIPELINE")
+                    level2Node = Node(pipelineName, parent=level1Node, itemType="PIPELINE")
 
                 notebook_jsonpath_expr = parse('$..notebook.referenceName')
                 notebook_matches = notebook_jsonpath_expr.find(pipeline_definition)
                 
                 #get a list of the notebooks
                 for notebook in notebook_matches:
-                    level2Node = Node(pipelineMatch.value, parent=level1Node, type="NOTEBOOK")
+                    level2Node = Node(pipelineMatch.value, parent=level1Node, itemType="NOTEBOOK")
 
             else:
                 print("FAILED TO READ PIPELINES")
@@ -150,5 +150,5 @@ pipeline_runs = get_pipeline_runs()
 
 root = get_pipeline_references()
 
-# Example usage
-print(RenderTree(root))
+for pre, fill, node in RenderTree(root):
+    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')})")    
