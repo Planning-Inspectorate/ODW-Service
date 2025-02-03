@@ -173,11 +173,10 @@ def get_pipeline_references():
 
         #go through the tree and rebuild it to properly take into account the parents
         #find all leaf nodes where the parents is not root
-        for leafNode in list(PreOrderIter(root, filter_=lambda node: node.is_leaf and node.root != workspace_name)):
+        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.root != workspace_name and node.__dict__.get('itemType', '') == 'PIPELINE'))):
             foundNode = findNode(root, str(leafNode.name), 0)
             if foundNode is not None and foundNode != leafNode:
-                print(f"Duplicating {foundNode} to {leafNode}")
-                duplicate_node(leafNode, foundNode)
+                duplicate_node(foundNode, leafNode)
     else:
         raise Exception(f"Error retrieving pipelines")
     return root
