@@ -171,22 +171,24 @@ def get_pipeline_references():
                 print("FAILED TO READ PIPELINES")
 
 
+        ##TODO - This needs to recurse?
+
         #go through the tree and rebuild it to properly take into account the parents
         #find all leaf nodes where the parents is not root
-        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.root != workspace_name and node.__dict__.get('itemType', '') == 'PIPELINE'))):
+        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.height >= 0 and node.__dict__.get('itemType', '') == 'PIPELINE'))):
             foundNode = findNode(root, str(leafNode.name), 0)
             if foundNode is not None and foundNode != leafNode:
-                duplicate_node(foundNode, leafNode)
+                #print(f"\t******* {RenderTree(foundNode, maxlevel=3)} ****************")
+                #copy the found node into the parent
+                duplicate_node(foundNode, leafNode.parent)
+                #remove leafNode
+                leafNode.parent = None
+            else:
+                print(f"Could not find node for {leafNode.name}")
     else:
         raise Exception(f"Error retrieving pipelines")
     return root
 
-#get a list of the pipelines and their last run times
-
-#for key in pipeline_runs.keys():
-#    print(f"{key}: {pipeline_runs[key]}")
-
 root = get_pipeline_references()
-
 for pre, fill, node in RenderTree(root):
-    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")    
+    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")
