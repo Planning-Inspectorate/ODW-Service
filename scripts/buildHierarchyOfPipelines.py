@@ -96,9 +96,9 @@ def get_notebooks():
 
 def findNode(node, name, maxLevel=-1) -> Node:
     if (maxLevel > 0) :
-        foundNode = findall(node, maxlevel=maxLevel, filter_=lambda node: name in node.name)
+        foundNode = findall(node, maxlevel=maxLevel, filter_=lambda node: name == node.name)
     else:
-        foundNode = findall(node, filter_=lambda node: name in node.name)
+        foundNode = findall(node, filter_=lambda node: name == node.name)
 
     if len(foundNode) == 0:
         return None
