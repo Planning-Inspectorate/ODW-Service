@@ -103,6 +103,7 @@ def findNode(node, name) -> Node:
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
+    pipeline_runs = get_pipeline_runs()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
     pipelines = read_paginated_data(pipelines_url, headers=headers)
@@ -111,7 +112,7 @@ def get_pipeline_references():
     if pipelines:
 
         #build the initial tree, things will need to be moved
-        root = Node("workspace")
+        root = Node(workspace_name, itemType="WORKSPACE")
         for pipeline in pipelines:
             pipeline_name = pipeline['name']
             pipeline_definition_url = f'{base_url}pipelines/{pipeline_name}?api-version=2021-06-01'
@@ -124,7 +125,12 @@ def get_pipeline_references():
                 foundNode = findNode(root, pipeline_name)
                 if foundNode is None:
                     #this pipeline doesn't already exist
-                    level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE")
+                    if pipeline_name in pipeline_runs:
+                        lastRun = pipeline_runs[pipeline_name]
+                    else:
+                        lastRun = ""
+
+                    level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE", lastRunTime=lastRun)
 
                 if level1Node is not None:
 
@@ -161,11 +167,11 @@ def get_pipeline_references():
     return root
 
 #get a list of the pipelines and their last run times
-pipeline_runs = get_pipeline_runs()
+
 #for key in pipeline_runs.keys():
 #    print(f"{key}: {pipeline_runs[key]}")
 
 root = get_pipeline_references()
 
 for pre, fill, node in RenderTree(root):
-    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')})")    
+    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')}")    
