@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b587b66b-974e-4114-b586-f04cd85865a3"
+				"spark.autotune.trackingId": "e9d3796a-affc-4601-85f0-1bd52badbc77"
 			}
 		},
 		"metadata": {
@@ -384,6 +384,48 @@
 				},
 				"source": [
 					"@logging_to_appins\n",
+					"def extract_and_filter_paths(files: list, filter_date: str):\n",
+					"    \"\"\"\n",
+					"    Takes a list of file paths and filters them to return the file paths greater than the filter_date\n",
+					"    \n",
+					"    Args:\n",
+					"        files: a list of file paths\n",
+					"        filter_date: a date to filter on\n",
+					"\n",
+					"    Returns:\n",
+					"        filtered_paths: a list of file paths greater than a given date\n",
+					"    \"\"\"\n",
+					"    timestamp_pattern: str = re.compile(r\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}[:_]\\d{2}[:_]\\d{2}[.\\d]*[+-]\\d{4})\")\n",
+					"    filter_datetime: datetime = datetime.strptime(filter_date, \"%Y-%m-%dT%H:%M:%S.%f%z\")\n",
+					"    filtered_paths: list = []\n",
+					"\n",
+					"    for file in files:\n",
+					"        match = timestamp_pattern.search(file)\n",
+					"        if match:\n",
+					"            timestamp_str = match.group(1).replace('_', ':')\n",
+					"            file_datetime = datetime.strptime(timestamp_str, \"%Y-%m-%dT%H:%M:%S.%f%z\")\n",
+					"            if file_datetime > filter_datetime:\n",
+					"                filtered_paths.append(file)\n",
+					"\n",
+					"    return filtered_paths"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\n",
 					"def ingest_adhoc(storage_account, \n",
 					"                    definition,\n",
 					"                    folder_path, \n",
@@ -490,7 +532,7 @@
 					"    sparkDF = sparkDF.withColumn(\"ingested_datetime\",lit(datetime.now()))\n",
 					"    sparkDF = sparkDF.withColumn(\"expected_from\",lit(expected_from))\n",
 					"    sparkDF = sparkDF.withColumn(\"expected_to\",lit(expected_to))\n",
-					"    ## add extra log columns here\n",
+					"    sparkDF = sparkDF.withColumn(\"file_name\", lit(filename)) \n",
 					"\n",
 					"\n",
 					"    ### change any array field to string\n",
