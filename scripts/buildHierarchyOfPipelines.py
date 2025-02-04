@@ -94,8 +94,8 @@ def get_notebooks():
     else:
         raise Exception(f"Error retrieving notebooks")
 
-def findNode(node, name, maxLevel=-1) -> Node:
-    if (maxLevel > 0) :
+def findNode(node, name, maxLevel=-1, mustHaveChilden=False) -> Node:
+    if (maxLevel >= 0) :
         foundNode = findall(node, maxlevel=maxLevel, filter_=lambda node: name == node.name)
     else:
         foundNode = findall(node, filter_=lambda node: name == node.name)
@@ -103,7 +103,16 @@ def findNode(node, name, maxLevel=-1) -> Node:
     if len(foundNode) == 0:
         return None
     else:
-        return foundNode[0]
+        if mustHaveChilden:
+            #look for a node with children
+            for node in foundNode:
+                if node.children:
+                    return node
+        else:
+            #just return the first one
+            return foundNode[0]
+
+        return None
 
 def duplicate_node(node, new_parent):
     # Create a new node with the same name and properties
@@ -175,22 +184,23 @@ def get_pipeline_references():
 
         #go through the tree. We need to go through each PIPLINE leaf node and find the corresponding node with all of the children and glue it on 
         #find all leaf nodes where the parents is not root
-        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.height >= 0 and node.__dict__.get('itemType', '') == 'PIPELINE'))):
-            foundNode = findNode(root, str(leafNode.name), 0)
+        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.__dict__.get('itemType', '') == 'PIPELINE'))):
+            foundNode = findNode(root, str(leafNode.name), mustHaveChilden=True)
             if foundNode is not None and foundNode != leafNode:
-                print('**************** Looking at the found node ***************')
-                print(f"{RenderTree(foundNode, maxlevel=3)}")
-                print('**************** End of looking at the found node ***************')
+                #print('**************** Looking at the found node ***************')
+                #print(f"{RenderTree(foundNode, maxlevel=3)}")
+                #print('**************** End of looking at the found node ***************')
                 #copy the found node into the parent
-                duplicate_node(foundNode, leafNode.parent)
-                #remove leafNode
-                leafNode.parent = None
-            else:
-                print(f"Could not find node for {leafNode.name}")
+                newNode = duplicate_node(foundNode, leafNode)
+                #remove leafNode - TODO this needs figuring out
+                #newNode.parent = leafNode.parent
+                #leafNode.parent = None
+            #else:
+                #print(f"Could not find node for {leafNode.name}")
     else:
         raise Exception(f"Error retrieving pipelines")
     return root
 
 root = get_pipeline_references()
 for pre, fill, node in RenderTree(root):
-    print(f"{pre} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")
+    print(f"{pre} {node.depth} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")
