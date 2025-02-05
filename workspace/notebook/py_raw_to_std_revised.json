@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f4a43937-63b3-4db9-833b-5032696aaf95"
+				"spark.autotune.trackingId": "46dfd3e9-a302-4675-bcde-240bb5b9b514"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.3",
+				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -81,24 +81,95 @@
 					}
 				},
 				"source": [
-					"%run utils/py_logging_decorator"
+					"%%configure -f\n",
+					"{\n",
+					"    \"conf\": {\n",
+					"        \"spark.kryoserializer.buffer.max\": \"2047m\",\n",
+					"        \"spark.driver.maxResultSize\": \"10g\",\n",
+					"        \"spark.rpc.message.maxSize\": \"1280\"\n",
+					"    }\n",
+					"}"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"entity_name = \"horizon-appeals-document-metadata\"\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Get the Storage Account"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
 				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"from notebookutils import mssparkutils\n",
 					"import json\n",
-					"from datetime import datetime, date\n",
-					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit, input_file_name\n",
-					"from pyspark.sql import DataFrame\n",
-					"from pyspark.sql.types import StructType,TimestampType\n",
-					"from pyspark.sql.functions import *\n",
-					"import re"
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"import pandas as pd\n",
+					"import os\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -114,79 +185,9 @@
 					}
 				},
 				"source": [
-					"entity_name = \"appeals-document\"\n",
-					""
+					"raw_container"
 				],
-				"execution_count": 9
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#####"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
-				],
-				"execution_count": 35
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Initialise the parameters"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
-					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"table_name: str = f\"odw_standardised_db.{entity_name.replace('-', '_')}\"\n",
-					"date_folder = datetime.now().date().strftime('%Y-%m-%d')\n",
-					"# if date_folder == '' else date_folder\n",
-					"source_path: str = f\"abfss://odw-raw@{storage_account}test_stef/{entity_name}/\"\n",
-					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\n",
-					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
-				],
-				"execution_count": 37
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -204,7 +205,44 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 38
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Initialise the parameters"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"date_folder=''\n",
+					"source_folder=''\n",
+					"source_frequency_folder=''\n",
+					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
+					"isMultiLine = True\n",
+					"delete_existing_table=False\n",
+					"dataAttribute = \"\""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -237,7 +275,7 @@
 					"\r\n",
 					"    return max_value"
 				],
-				"execution_count": 39
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -275,7 +313,7 @@
 					"    formatted_timestamp: str = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
 					"    return formatted_timestamp"
 				],
-				"execution_count": 40
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -318,7 +356,7 @@
 					"    \r\n",
 					"    return files"
 				],
-				"execution_count": 41
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -358,7 +396,7 @@
 					"\r\n",
 					"    return missing_files"
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -400,7 +438,7 @@
 					"\r\n",
 					"    return filtered_paths"
 				],
-				"execution_count": 43
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -443,7 +481,7 @@
 					"\n",
 					"    return df"
 				],
-				"execution_count": 44
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -478,7 +516,7 @@
 					"    return df\r\n",
 					""
 				],
-				"execution_count": 45
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -510,7 +548,7 @@
 					"    .saveAsTable(table_name)\r\n",
 					""
 				],
-				"execution_count": 46
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -541,7 +579,7 @@
 					"    \"\"\"\r\n",
 					"    return new_table_row_count == expected_new_count"
 				],
-				"execution_count": 47
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -599,7 +637,7 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting list of missing files:\\n{e}\")"
 				],
-				"execution_count": 48
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -644,7 +682,7 @@
 					"except Exception as e:\r\n",
 					"    logError(f\"Error deduping and generating counts:\\n{e}\")"
 				],
-				"execution_count": 49
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -682,7 +720,7 @@
 					"except Exception as e:\n",
 					"    logError(f\"Error appending rows:\\n{e}\")"
 				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -718,7 +756,7 @@
 					"else:\r\n",
 					"    logInfo(\"Rows appended successfully.\")"
 				],
-				"execution_count": 51
+				"execution_count": null
 			}
 		]
 	}
