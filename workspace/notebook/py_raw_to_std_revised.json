@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3750e110-c357-4ddf-b266-ebc038aea4e1"
+				"spark.autotune.trackingId": "5ec1ef18-2847-46b1-a0d5-134e13d5fc17"
 			}
 		},
 		"metadata": {
@@ -90,7 +90,7 @@
 					"    }\n",
 					"}"
 				],
-				"execution_count": 4
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -108,7 +108,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 5
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +168,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -186,7 +186,7 @@
 				"source": [
 					"raw_container"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -204,7 +204,153 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": null
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Rewriting ingest_adhoc function\n",
+					"\n",
+					"@logging_to_appins\n",
+					"def ingest_adhoc2(storage_account, \n",
+					"                    definition,\n",
+					"                    folder_path, \n",
+					"                    filename, \n",
+					"                    expected_from, \n",
+					"                    expected_to, \n",
+					"                    isMultilineJSON=False, \n",
+					"                    dataAttribute=None):\n",
+					"\n",
+					"    from pyspark.sql import SparkSession\n",
+					"    from notebookutils import mssparkutils\n",
+					"    import json\n",
+					"    from datetime import datetime\n",
+					"    import pandas as pd\n",
+					"    from pyspark.sql.functions import col, lit\n",
+					"    from pyspark.sql.types import StructType\n",
+					"    \n",
+					"    ingestion_failure = False\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\n",
+					"\n",
+					"    standardised_container = f\"abfss://odw-standardised@{storage_account}\"\n",
+					"    standardised_path = definition['Standardised_Path'] + \"/\"\n",
+					"    standardised_table_name = definition['Standardised_Table_Name']\n",
+					"    \n",
+					"    # Load standardised table schema\n",
+					"    if 'Standardised_Table_Definition' in definition:\n",
+					"        standardised_table_loc = f\"abfss://odw-config@{storage_account}{definition['Standardised_Table_Definition']}\"\n",
+					"        standardised_table_def_json = spark.read.text(standardised_table_loc, wholetext=True).first().value\n",
+					"    else:\n",
+					"        standardised_table_def_json = mssparkutils.notebook.run('/py_get_schema_from_url', 30, \n",
+					"                                                                {'db_name': 'odw_standardised_db', \n",
+					"                                                                 'entity_name': definition['Source_Frequency_Folder']})\n",
+					"\n",
+					"    # Create table if not exists\n",
+					"    if not any([table.name == standardised_table_name for table in spark.catalog.listTables('odw_standardised_db')]):\n",
+					"        create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name, \n",
+					"                                 standardised_container, standardised_path + standardised_table_name)   \n",
+					"\n",
+					"    # Ensure table is in Delta format\n",
+					"    table_metadata = spark.sql(f\"DESCRIBE EXTENDED odw_standardised_db.{standardised_table_name}\")\n",
+					"    data_format = table_metadata.filter(table_metadata.col_name == \"Provider\").collect()[0].data_type\n",
+					"\n",
+					"    if data_format == \"parquet\":\n",
+					"        spark.sql(f\"CONVERT TO DELTA odw_standardised_db.{standardised_table_name}\")\n",
+					"\n",
+					"    # Get table location\n",
+					"    try:\n",
+					"        standardised_table_location = spark.sql(f\"DESCRIBE FORMATTED odw_standardised_db.{standardised_table_name}\") \\\n",
+					"                    .filter(\"col_name = 'Location'\") \\\n",
+					"                    .select(\"data_type\") \\\n",
+					"                    .collect()[0][0]\n",
+					"    except:\n",
+					"        standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
+					"\n",
+					"    # Load existing standardised table\n",
+					"    standardised_table_df = spark.read.format(\"delta\").load(standardised_table_location)\n",
+					"\n",
+					"    # Check if the same expected_from and expected_to already exist\n",
+					"    rows = standardised_table_df.filter((col(\"expected_from\") == expected_from) & (col(\"expected_to\") == expected_to)).count()\n",
+					"\n",
+					"    logInfo(f\"Reading {filename}\")\n",
+					"\n",
+					"    # Read file\n",
+					"    file_path = f\"{folder_path}/{filename}\"\n",
+					"    if filename.lower().endswith(\".xlsx\"):\n",
+					"        sheet_name = definition.get('Source_Sheet_Name', 0)\n",
+					"        df = pd.read_excel(file_path, dtype=str, sheet_name=sheet_name, na_filter=False)\n",
+					"        sparkDF = spark.createDataFrame(df)\n",
+					"    elif filename.lower().endswith('.csv'):\n",
+					"        sparkDF = spark.read.options(quote='\"', escape='\\\\', encoding='utf8', header=True, multiLine=True, \n",
+					"                                     columnNameOfCorruptRecord='corrupted_records', mode=\"PERMISSIVE\").csv(file_path)\n",
+					"        if \"corrupted_records\" in sparkDF.columns:\n",
+					"            logError(f\"Corrupted Records detected from CSV ingestion in {filename}\")\n",
+					"            ingestion_failure = True\n",
+					"    elif filename.lower().endswith('.json'):\n",
+					"        if isMultilineJSON:\n",
+					"            logInfo(\"Reading multiline JSON\")\n",
+					"            sparkDF = spark.read.option(\"multiline\", \"true\").json(file_path)\n",
+					"            if dataAttribute:\n",
+					"                sparkDF = sparkDF.select(dataAttribute).rdd.flatMap(lambda row: row[dataAttribute]).toDF()\n",
+					"        else:\n",
+					"            sparkDF = spark.read.json(file_path)\n",
+					"    else:\n",
+					"        raise RuntimeError(f\"Unsupported file type for {filename}\")\n",
+					"\n",
+					"    # Drop unnamed columns (headerless)\n",
+					"    sparkDF = sparkDF.select([col for col in sparkDF.columns if not col.startswith('Unnamed')])\n",
+					"\n",
+					"    # Add metadata columns\n",
+					"    sparkDF = sparkDF.withColumn(\"ingested_datetime\", lit(datetime.now()))\n",
+					"    sparkDF = sparkDF.withColumn(\"expected_from\", lit(expected_from))\n",
+					"    sparkDF = sparkDF.withColumn(\"expected_to\", lit(expected_to))\n",
+					"    sparkDF = sparkDF.withColumn(\"file_name\", lit(filename))\n",
+					"\n",
+					"    # Ensure schema consistency\n",
+					"    schema = StructType.fromJson(json.loads(standardised_table_def_json))\n",
+					"    for field in schema.fields:\n",
+					"        if field.dataType.simpleString() == 'array':\n",
+					"            sparkDF = sparkDF.withColumn(field.name, col(field.name).cast(\"string\"))\n",
+					"\n",
+					"    # Rename columns for Delta compatibility\n",
+					"    new_columns = {c: re.sub(r'[^0-9a-zA-Z]+', '_', c).lower().rstrip('_') for c in sparkDF.columns}\n",
+					"    sparkDF = sparkDF.toDF(*[new_columns[c] for c in sparkDF.columns])\n",
+					"\n",
+					"    # Cast fields to match schema\n",
+					"    for field in schema.fields:\n",
+					"        if field.name in sparkDF.columns:\n",
+					"            sparkDF = sparkDF.withColumn(field.name, col(field.name).cast(field.dataType))\n",
+					"\n",
+					"    # Write to Delta table\n",
+					"    logInfo(f\"Writing data to odw_standardised_db.{standardised_table_name}\")\n",
+					"    sparkDF.write.option(\"mergeSchema\", \"true\").format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",
+					"\n",
+					"    # Validate rows written\n",
+					"    rows_new = spark.read.format(\"delta\").load(standardised_table_location) \\\n",
+					"        .filter((col(\"expected_from\") == expected_from) & (col(\"expected_to\") == expected_to)).count()\n",
+					"\n",
+					"    if rows_new >= sparkDF.count():\n",
+					"        logInfo(\"All rows successfully written\")\n",
+					"    else:\n",
+					"        logError(f\"Row count mismatch: Expected {sparkDF.count()}, Written {rows_new}\")\n",
+					"        ingestion_failure = True\n",
+					"\n",
+					"    return ingestion_failure, sparkDF.count()\n",
+					""
+				],
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -233,15 +379,122 @@
 					}
 				},
 				"source": [
-					"date_folder=''\n",
-					"source_folder=''\n",
+					"date_folder='2025-02-04'\n",
+					"source_folder='stef_test'\n",
 					"source_frequency_folder=''\n",
 					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
 					"isMultiLine = True\n",
 					"delete_existing_table=False\n",
 					"dataAttribute = \"\""
 				],
-				"execution_count": null
+				"execution_count": 37
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Ingest the data from the raw/source into the standardised table. \n",
+					"If the table doesn't already exist, this will create the table first and ingest the data."
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"if date_folder == '':\n",
+					"    date_folder = datetime.now().date()\n",
+					"else:\n",
+					"    date_folder = datetime.strptime(date_folder, \"%Y-%m-%d\")\n",
+					"\n",
+					"date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
+					"source_folder_path = source_folder if not source_frequency_folder else f\"{source_folder}/{source_frequency_folder}\"\n",
+					"\n",
+					"# READ ORCHESTRATION DATA\n",
+					"path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"source_path = f\"{raw_container}{source_folder_path}/{date_folder_str}\"\n",
+					"\n",
+					"try:\n",
+					"    logInfo(f\"Reading from {source_path}\")\n",
+					"    files = mssparkutils.fs.ls(source_path)\n",
+					"except Exception as e:\n",
+					"    logError(f\"Raw file not found at {source_path}\")\n",
+					"    logException(e)\n",
+					"    mssparkutils.notebook.exit(f\"Raw file not found at {source_path}\")\n",
+					"\n",
+					"\n",
+					"for file in files:\n",
+					"\n",
+					"    # ignore json raw files if source is service bus\n",
+					"    if source_folder == 'ServiceBus' and file.name.endswith('.json'):\n",
+					"        continue\n",
+					"\n",
+					"    # ignore files other than specified file \n",
+					"    if specific_file != '' and not file.name.startswith(specific_file + '.'):\n",
+					"        continue\n",
+					"        \n",
+					"    definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) \n",
+					"                        and (not source_frequency_folder or d['Source_Frequency_Folder'] == source_frequency_folder) \n",
+					"                        and file.name.startswith(d['Source_Filename_Start'])), None)\n",
+					"    \n",
+					"#     if definition:\n",
+					"#         expected_from = date_folder - timedelta(days=1)\n",
+					"#         expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"#         expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"\n",
+					"#         if delete_existing_table:\n",
+					"#             logInfo(f\"Deleting existing table if exists odw_standardised_db.{definition['Standardised_Table_Name']}\")\n",
+					"#             mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
+					"\n",
+					"#         logInfo(f\"Ingesting {file.name}\")\n",
+					"#         (ingestion_failure, row_count) = ingest_adhoc2(storage_account, definition, source_path, file.name, expected_from, expected_to, isMultiLine, dataAttribute)\n",
+					"#         logInfo(f\"Ingested {row_count} rows\")\n",
+					"\n",
+					"#         if ingestion_failure:\n",
+					"#             print(f\"Errors reported during Ingestion!!\")\n",
+					"#             raise RuntimeError(\"Ingestion Failure\")\n",
+					"#         else:\n",
+					"#             print(f\"No Errors reported during Ingestion\")\n",
+					"\n",
+					"#     else:\n",
+					"#         if specific_file != '':\n",
+					"#             raise ValueError(f\"No definition found for {specific_file}\")\n",
+					"#         else:\n",
+					"#             logError(\"No definition found\")\n",
+					""
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Extra functions"
+				]
 			},
 			{
 				"cell_type": "code",
