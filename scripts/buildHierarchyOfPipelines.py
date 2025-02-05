@@ -126,15 +126,16 @@ def findNode(node, name, maxLevel=-1, mustHaveChilden=False) -> Node:
 #├── Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_initial/pln_hr_ingestion_harmonised_and_measures/pln_hr_ingestion_harmonised_and_measures', itemSource='DUPLICATE', itemType='PIPELINE')
 #└── Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_initial/pln_hr_ingestion_harmonised_and_measures/py_harmonised_and_hr_measures_monthly', itemSource='DUPLICATE', itemType='NOTEBOOK')
 ###############
-def duplicate_node(node, new_parent):
+def duplicate_node(node : Node, new_parent: Node):
     
     # Create a new node with the same name and properties
     new_node = Node(node.name, parent=new_parent, itemType=node.__dict__.get('itemType', ''), itemSource="DUPLICATE")
     
+    #node.parent = new_parent
+    #node.__dict__['itemType'] = 'DUPLICATE'
     # Recursively duplicate children
     for child in node.children:
-         duplicate_node(child, new_parent)
-    return new_node
+         duplicate_node(child, new_node)
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
