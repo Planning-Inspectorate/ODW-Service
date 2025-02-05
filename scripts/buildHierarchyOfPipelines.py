@@ -5,6 +5,7 @@ import json
 import jsonpath_rw_ext
 from jsonpath_ng.ext import parse
 from anytree import Node, RenderTree, AsciiStyle, findall,PreOrderIter
+import copy
 
 from azure.identity import DefaultAzureCredential
 
@@ -114,13 +115,25 @@ def findNode(node, name, maxLevel=-1, mustHaveChilden=False) -> Node:
 
         return None
 
+
+###############
+#This function does not work right, the copy is bad and has an extra copy of the parent as a child..
+#BEFORE
+#Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_harmonised_and_measures', itemType='PIPELINE', lastRunTime='')
+#└── Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_harmonised_and_measures/py_harmonised_and_hr_measures_monthly', itemType='NOTEBOOK')
+#AFTER
+#Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_initial/pln_hr_ingestion_harmonised_and_measures', itemType='PIPELINE')
+#├── Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_initial/pln_hr_ingestion_harmonised_and_measures/pln_hr_ingestion_harmonised_and_measures', itemSource='DUPLICATE', itemType='PIPELINE')
+#└── Node('/pins-synw-odw-dev-uks/pln_hr_ingestion_initial/pln_hr_ingestion_harmonised_and_measures/py_harmonised_and_hr_measures_monthly', itemSource='DUPLICATE', itemType='NOTEBOOK')
+###############
 def duplicate_node(node, new_parent):
+    
     # Create a new node with the same name and properties
     new_node = Node(node.name, parent=new_parent, itemType=node.__dict__.get('itemType', ''), itemSource="DUPLICATE")
     
     # Recursively duplicate children
     for child in node.children:
-        duplicate_node(child, new_parent)
+         duplicate_node(child, new_parent)
     return new_node
 
 # Function to get all pipeline names and their notebook references
@@ -191,12 +204,20 @@ def get_pipeline_references():
                 #print(f"{RenderTree(foundNode, maxlevel=3)}")
                 #print('**************** End of looking at the found node ***************')
                 #copy the found node into the parent
+                
+                print('###############')
+                print("BEFORE")
+                print(RenderTree(foundNode, maxlevel=4))
                 newNode = duplicate_node(foundNode, leafNode)
+                print("AFTER")
+                print(RenderTree(leafNode, maxlevel=4))
+                print('###############')
                 #remove leafNode - TODO this needs figuring out
                 #newNode.parent = leafNode.parent
                 #leafNode.parent = None
             #else:
-                #print(f"Could not find node for {leafNode.name}")
+                #print(f"Could not find node for {leafNode.name}") 
+
     else:
         raise Exception(f"Error retrieving pipelines")
     return root
