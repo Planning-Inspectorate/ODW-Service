@@ -136,6 +136,7 @@ def duplicate_node(node : Node, new_parent: Node):
     # Recursively duplicate children
     for child in node.children:
          duplicate_node(child, new_node)
+    return new_node
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
@@ -206,16 +207,16 @@ def get_pipeline_references():
                 #print('**************** End of looking at the found node ***************')
                 #copy the found node into the parent
                 
-                print('###############')
-                print("BEFORE")
-                print(RenderTree(foundNode, maxlevel=4))
+                #print('###############')
+                #print("BEFORE")
+                #print(RenderTree(foundNode, maxlevel=4))
                 newNode = duplicate_node(foundNode, leafNode)
-                print("AFTER")
-                print(RenderTree(leafNode, maxlevel=4))
-                print('###############')
+                #print("AFTER")
+                #print(RenderTree(newNode, maxlevel=4))
+                #print('###############')
                 #remove leafNode - TODO this needs figuring out
-                #newNode.parent = leafNode.parent
-                #leafNode.parent = None
+                newNode.parent = leafNode.parent
+                leafNode.parent = None
             #else:
                 #print(f"Could not find node for {leafNode.name}") 
 
