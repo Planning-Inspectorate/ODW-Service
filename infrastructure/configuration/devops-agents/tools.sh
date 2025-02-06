@@ -46,8 +46,8 @@ sudo apt install -y --no-install-recommends \
 
 # Python
 sudo apt install -y --no-install-recommends \
-  python3.7 \
-  python3.7-distutils \
+  python3.10 \
+  python3.10-distutils \
   python3-pip
 
 # Terraform 1.9.6
@@ -56,8 +56,8 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get install -y terraform=1.9.6-1
 
 # Checkov
-python3.7 -m pip install --force-reinstall packaging==21
-python3.7 -m pip install -U checkov==2.2.94
+python3.10 -m pip install --force-reinstall packaging==21
+python3.10 -m pip install -U checkov==2.2.94
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
