@@ -129,7 +129,7 @@ def findNode(node, name, maxLevel=-1, mustHaveChilden=False) -> Node:
 def duplicate_node(node : Node, new_parent: Node):
     
     # Create a new node with the same name and properties
-    new_node = Node(node.name, parent=new_parent, itemType=node.__dict__.get('itemType', ''), itemSource="DUPLICATE")
+    new_node = Node(node.name, parent=new_parent, itemType=node.__dict__.get('itemType', ''), lastRunTime=node.__dict__.get('lastRunTime', ''))
     
     #node.parent = new_parent
     #node.__dict__['itemType'] = 'DUPLICATE'
@@ -174,6 +174,7 @@ def get_pipeline_references():
                     pipeline_jsonpath_expr = parse('$..pipeline.referenceName')
                     pipeline_matches = pipeline_jsonpath_expr.find(pipeline_definition)
 
+
                     #get a list of the pipelines and add them to the tree
                     for pipelineMatch in pipeline_matches:
                         pipelineName = pipelineMatch.value
@@ -187,9 +188,10 @@ def get_pipeline_references():
                     
                     #get a list of the notebooks and add them to the tree
                     for notebook in notebook_matches:
-                        foundNode = findNode(level1Node, str(notebook.value))
-                        if foundNode is None:
-                            level2Node = Node(notebook.value, parent=level1Node, itemType="NOTEBOOK")
+                        if "@concat" not in str(notebook.value):
+                            foundNode = findNode(level1Node, str(notebook.value))
+                            if foundNode is None:
+                                level2Node = Node(notebook.value, parent=level1Node, itemType="NOTEBOOK")
 
             else:
                 print("FAILED TO READ PIPELINES")
