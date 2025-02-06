@@ -13,7 +13,7 @@ import sys
 sys.stdout = open('hierarchy.txt','wt')
 
 # Replace these with your actual values
-environment = "dev"
+environment = "prod"
 subscription_id = 'ff442a29-fc06-4a13-8e3e-65fd5da513b3'
 resource_group_name = f'pins-rg-data-odw-{environment}-uks'
 workspace_name = f'pins-synw-odw-{environment}-uks'
@@ -140,6 +140,7 @@ def duplicate_node(node : Node, new_parent: Node):
 
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
+    not_run_list = []
     pipeline_runs = get_pipeline_runs()
     pipelines_url = f'{base_url}pipelines?api-version=2020-12-01'
     headers = {'Authorization': f'Bearer {token}'}
@@ -165,7 +166,8 @@ def get_pipeline_references():
                     if pipeline_name in pipeline_runs:
                         lastRun = pipeline_runs[pipeline_name]
                     else:
-                        lastRun = ""
+                        not_run_list.append(pipeline_name)
+                        lastRun = "[NOT RUN]"
 
                     level1Node = Node(pipeline_name, parent=root, itemType="PIPELINE", lastRunTime=lastRun)
 
@@ -196,9 +198,6 @@ def get_pipeline_references():
             else:
                 print("FAILED TO READ PIPELINES")
 
-
-        ##TODO - This needs to recurse?
-
         #go through the tree. We need to go through each PIPLINE leaf node and find the corresponding node with all of the children and glue it on 
         #find all leaf nodes where the parents is not root
         for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.__dict__.get('itemType', '') == 'PIPELINE'))):
@@ -224,8 +223,12 @@ def get_pipeline_references():
 
     else:
         raise Exception(f"Error retrieving pipelines")
-    return root
+    return (root, not_run_list)
 
-root = get_pipeline_references()
+(root, not_run_list) = get_pipeline_references()
 for pre, fill, node in RenderTree(root):
     print(f"{pre} {node.depth} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")
+
+print("\n\n****************************Not Run List****************************")
+for not_run in not_run_list:
+    print(not_run)
