@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "454d410c-f634-4e12-b038-503fd15ce0f0"
+				"spark.autotune.trackingId": "ffb95b00-4978-4c04-8d5d-231e2cedca1d"
 			}
 		},
 		"metadata": {
@@ -144,17 +144,8 @@
 					}
 				},
 				"source": [
-					"table_name_replace: str = entity_name.replace(\"-\", \"_\")\n",
-					"if db_name in (\"odw_curated_db\", \"odw_curated_migration_db\") or not is_horizon_schema:\n",
-					"\ttable_name: str = table_name_replace\n",
-					"else:\n",
-					"    table_name: str = f\"horizon_{table_name_replace}\"\n",
-					"\n",
-					"full_table_name: str = f\"{db_name}.{table_name}\"\n",
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration.json\"\n",
-					"print(path_to_orchestration_file)\n",
-					"print(storage_account)"
+					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration.json\""
 				],
 				"execution_count": 4
 			},
@@ -174,7 +165,6 @@
 				"source": [
 					"def get_table_name(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\r\n",
 					" \r\n",
-					"    try:\r\n",
 					"        spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\r\n",
 					"\r\n",
 					"        df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\r\n",
@@ -189,12 +179,9 @@
 					"                return None  # Table name not found for this entity\r\n",
 					"        else:\r\n",
 					"            return None  # Entity not found\r\n",
-					"\r\n",
-					"    except Exception as e:\r\n",
-					"        raise Exception(f\"Error reading orchestration file or processing JSON: {e}\")\r\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -210,10 +197,14 @@
 					}
 				},
 				"source": [
-					"result = get_table_name(entity_name,storage_account,path_to_orchestration_file)\r\n",
-					"print(result)"
+					"table_name: str = get_table_name(entity_name,storage_account,path_to_orchestration_file)\r\n",
+					"print(table_name)\r\n",
+					"\r\n",
+					"full_table_name: str = f\"{db_name}.{table_name}\"\r\n",
+					"print(full_table_name)\r\n",
+					""
 				],
-				"execution_count": 39
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -234,10 +225,9 @@
 					"    spark.sql(f\"USE {db_name}\")\n",
 					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\n",
 					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
-					"    print(table_names)\n",
 					"    return table_name in table_names"
 				],
-				"execution_count": 50
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -253,9 +243,10 @@
 					}
 				},
 				"source": [
-					"result = test_table_exists(db_name, table_name)"
+					"result=test_table_exists(db_name,table_name)\r\n",
+					"print(result)"
 				],
-				"execution_count": 51
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -277,7 +268,7 @@
 					"else:\n",
 					"    logInfo(f\"{db_name}.{table_name} Table does not already exist\")"
 				],
-				"execution_count": 38
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -301,25 +292,7 @@
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
 					"    return definition['Source_Filename_Start']  in definition "
 				],
-				"execution_count": 82
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"result = get_incremental_key(entity_name,storage_account,path_to_orchestration_file)"
-				],
-				"execution_count": 83
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
