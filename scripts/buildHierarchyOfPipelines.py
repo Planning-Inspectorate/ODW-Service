@@ -133,6 +133,20 @@ def duplicate_node(node : Node, new_parent: Node):
          duplicate_node(child, new_node)
     return new_node
 
+def rebuildTree(root: Node):
+    #go through the tree. We need to go through each PIPLINE leaf node and find the corresponding node with all of the children and glue it on 
+    #find all leaf nodes where the parents is not root
+    for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.__dict__.get('itemType', '') == 'PIPELINE'))):
+        foundNode = findNode(root, str(leafNode.name), mustHaveChilden=True)
+        if foundNode is not None and foundNode != leafNode:
+            #copy the found node into the parent
+            newNode = duplicate_node(foundNode, leafNode)
+            #remove leafNode
+            newNode.parent = leafNode.parent
+            leafNode.parent = None
+
+            rebuildTree(newNode)
+
 # Function to get all pipeline names and their notebook references
 def get_pipeline_references():
     not_run_list = []
@@ -155,7 +169,7 @@ def get_pipeline_references():
                 pipeline_definition = pipeline_def_response.json()
                 level1Node = None
                 
-                foundNode = findNode(root, pipeline_name)
+                foundNode = findNode(root, pipeline_name, 1)
                 if foundNode is None:
                     #this pipeline doesn't already exist
                     if pipeline_name in pipeline_runs:
@@ -193,28 +207,8 @@ def get_pipeline_references():
             else:
                 print("FAILED TO READ PIPELINES")
 
-        #go through the tree. We need to go through each PIPLINE leaf node and find the corresponding node with all of the children and glue it on 
-        #find all leaf nodes where the parents is not root
-        for leafNode in list(PreOrderIter(root, filter_=lambda node: (node.is_leaf and node.__dict__.get('itemType', '') == 'PIPELINE'))):
-            foundNode = findNode(root, str(leafNode.name), mustHaveChilden=True)
-            if foundNode is not None and foundNode != leafNode:
-                #print('**************** Looking at the found node ***************')
-                #print(f"{RenderTree(foundNode, maxlevel=3)}")
-                #print('**************** End of looking at the found node ***************')
-                #copy the found node into the parent
-                
-                #print('###############')
-                #print("BEFORE")
-                #print(RenderTree(foundNode, maxlevel=4))
-                newNode = duplicate_node(foundNode, leafNode)
-                #print("AFTER")
-                #print(RenderTree(newNode, maxlevel=4))
-                #print('###############')
-                #remove leafNode - TODO this needs figuring out
-                newNode.parent = leafNode.parent
-                leafNode.parent = None
-            #else:
-                #print(f"Could not find node for {leafNode.name}") 
+        #rebuild the tree so that the leaf nodes are all expanded
+        rebuildTree(root)
 
     else:
         raise Exception(f"Error retrieving pipelines")
