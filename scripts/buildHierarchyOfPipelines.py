@@ -1,15 +1,10 @@
 import requests
-import os
-import re
-import json
-import jsonpath_rw_ext
 from jsonpath_ng.ext import parse
 from anytree import Node, RenderTree, AsciiStyle, findall,PreOrderIter
 import copy
-
 from azure.identity import DefaultAzureCredential
-
 import sys
+
 sys.stdout = open('hierarchy.txt','wt')
 
 # Replace these with your actual values
@@ -225,10 +220,20 @@ def get_pipeline_references():
         raise Exception(f"Error retrieving pipelines")
     return (root, not_run_list)
 
+notebook_list = list(set(get_notebooks()))
+
 (root, not_run_list) = get_pipeline_references()
 for pre, fill, node in RenderTree(root):
     print(f"{pre} {node.depth} {node.name} ({node.__dict__.get('itemType', '')}) {node.__dict__.get('lastRunTime', '')} {node.__dict__.get('itemSource', '')}")
 
-print("\n\n****************************Not Run List****************************")
+print("\n\n****************************Not Run Pipeline List****************************")
 for not_run in not_run_list:
     print(not_run)
+print("\n\n****************************End of Not Run Pipeline List****************************")
+
+print("\n\n****************************Not Referenced Notebook List****************************")
+for notebook in notebook_list:
+    foundNode = findNode(root, notebook)
+    if foundNode is None:
+        print(notebook)
+print("\n\n***************************End of Not Referenced Notebook List****************************")
