@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5130921e-6648-4148-b5eb-ab3b59bdaad6"
+				"spark.autotune.trackingId": "1d299c4a-909d-4a4c-bf65-28d8a68afeac"
 			}
 		},
 		"metadata": {
@@ -535,6 +535,90 @@
 					"        logError(f\"All rows have NOT been successfully written. Expected {rows_raw} but {rows_new} written\")\n",
 					"        ingestion_failure = True\n",
 					"    return (ingestion_failure, rows_raw)\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\n",
+					"def ingest_adhoc2(storage_account, \n",
+					"                definition,\n",
+					"                folder_path, \n",
+					"                filename, \n",
+					"                expected_from, \n",
+					"                expected_to, \n",
+					"                isMultilineJSON=False, \n",
+					"                dataAttribute=None):\n",
+					"\n",
+					"    from pyspark.sql import SparkSession\n",
+					"    from notebookutils import mssparkutils\n",
+					"    import json\n",
+					"    from datetime import datetime\n",
+					"    import pandas as pd\n",
+					"    from pyspark.sql.types import StructType\n",
+					"    import re\n",
+					"    from pyspark.sql.functions import col, lit, input_file_name\n",
+					"\n",
+					"    ingestion_failure = False\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\n",
+					"\n",
+					"    standardised_container = f\"abfss://odw-standardised@{storage_account}\"\n",
+					"    standardised_path = definition['Standardised_Path'] + \"/\"\n",
+					"    standardised_table_name = definition['Standardised_Table_Name']\n",
+					"    audit_table_name = \"ingestion_audit\"\n",
+					"\n",
+					"    if not any([table.name == audit_table_name for table in spark.catalog.listTables('odw_audit_db')]):\n",
+					"        audit_schema = StructType().add(\"file_name\", \"string\")\\\n",
+					"                                    .add(\"ingestion_timestamp\", \"timestamp\")\\\n",
+					"                                    .add(\"row_count\", \"integer\")\\\n",
+					"                                    .add(\"status\", \"string\")\n",
+					"        spark.createDataFrame([], audit_schema)\\\n",
+					"            .write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"odw_audit_db.{audit_table_name}\")\n",
+					"    \n",
+					"    jobId = mssparkutils.env.getJobId()\n",
+					"    mount_storage(path=folder_path)\n",
+					"    logInfo(f\"Reading {filename}\")\n",
+					"\n",
+					"    if \".xlsx\" in filename.lower():\n",
+					"        sheet_name = definition.get('Source_Sheet_Name', 0)\n",
+					"        df = pd.read_excel(f\"/synfs/{jobId}/temp_raw/{filename}\", dtype=str, sheet_name=sheet_name, na_filter=False)\n",
+					"    elif \".csv\" in filename.lower():\n",
+					"        df = spark.read.options(quote='\"', escape='\\\\', encoding='utf8', header=True, multiLine=True).csv(f\"{folder_path}/{filename}\")\n",
+					"    elif \".json\" in filename.lower():\n",
+					"        df = spark.read.option(\"multiline\", \"true\").json(f\"{folder_path}/{filename}\") if isMultilineJSON else spark.read.json(f\"{folder_path}/{filename}\")\n",
+					"    else:\n",
+					"        raise RuntimeError(f\"Unsupported file type for {filename}\")\n",
+					"    \n",
+					"    sparkDF = df.withColumn(\"ingested_datetime\", lit(datetime.now()))\\\n",
+					"                 .withColumn(\"expected_from\", lit(expected_from))\\\n",
+					"                 .withColumn(\"expected_to\", lit(expected_to))\\\n",
+					"                 .withColumn(\"input_file\", input_file_name())\n",
+					"    \n",
+					"    rows_raw = sparkDF.count()\n",
+					"    unmount_storage()\n",
+					"\n",
+					"    sparkDF.write.option(\"mergeSchema\", \"true\").format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",
+					"    \n",
+					"    status = \"SUCCESS\" if rows_raw > 0 else \"FAILURE\"\n",
+					"    audit_entry = [(filename, datetime.now(), rows_raw, status)]\n",
+					"    auditDF = spark.createDataFrame(audit_entry, [\"file_name\", \"ingestion_timestamp\", \"row_count\", \"status\"])\n",
+					"    auditDF.write.mode(\"append\").format(\"delta\").saveAsTable(f\"odw_audit_db.{audit_table_name}\")\n",
+					"    \n",
+					"    return ingestion_failure, rows_raw\n",
 					""
 				],
 				"execution_count": null
