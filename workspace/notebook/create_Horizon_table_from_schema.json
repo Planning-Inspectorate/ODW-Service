@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "599c27c8-9943-4798-aa01-9dd1fc611d52"
+				"spark.autotune.trackingId": "9929c15b-a7b7-4663-87bf-fe310e6cab65"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -89,9 +89,10 @@
 					"from pyspark.sql.functions import col\n",
 					"from pyspark.sql import DataFrame\n",
 					"from notebookutils import mssparkutils\n",
-					"import pyspark.sql.utils"
+					"import pyspark.sql.utils\n",
+					"from pyspark.sql.functions import lit, regexp_replace"
 				],
-				"execution_count": 33
+				"execution_count": 72
 			},
 			{
 				"cell_type": "markdown",
@@ -124,10 +125,10 @@
 				},
 				"source": [
 					"db_name: str = 'odw_standardised_db'\n",
-					"entity_name: str = 'appeals_event_Test'\n",
+					"entity_name: str = 'HorizonAppealsEvent'\n",
 					"is_horizon_schema: bool = True"
 				],
-				"execution_count": 34
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
@@ -152,9 +153,69 @@
 					"full_table_name: str = f\"{db_name}.{table_name}\"\n",
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration.json\"\n",
-					"print(path_to_orchestration_file)"
+					"print(path_to_orchestration_file)\n",
+					"print(storage_account)"
 				],
-				"execution_count": 35
+				"execution_count": 74
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def get_table_name(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\r\n",
+					" \r\n",
+					"    try:\r\n",
+					"        spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\r\n",
+					"\r\n",
+					"        df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\r\n",
+					"        definitions: list = json.loads(df.toJSON().first())['definitions']\r\n",
+					"\r\n",
+					"        definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\r\n",
+					"\r\n",
+					"        for d in definitions:print(f\"Comparing entity_name: '{entity_name}' with Source_Filename_Start: '{d['Source_Filename_Start']}'\")  # Debug print\r\n",
+					"        if entity_name == d['Source_Filename_Start']: definition = d\r\n",
+					"       \r\n",
+					"        if definition:\r\n",
+					"            if 'Standardised_Table_Name' in definition:\r\n",
+					"                return definition['Standardised_Table_Name']\r\n",
+					"            else:\r\n",
+					"                return None  # Table name not found for this entity\r\n",
+					"        else:\r\n",
+					"            return None  # Entity not found\r\n",
+					"\r\n",
+					"    except Exception as e:\r\n",
+					"        raise Exception(f\"Error reading orchestration file or processing JSON: {e}\")\r\n",
+					""
+				],
+				"execution_count": 117
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"result = get_table_name(entity_name,storage_account,path_to_orchestration_file)"
+				],
+				"execution_count": 118
 			},
 			{
 				"cell_type": "code",
@@ -178,7 +239,7 @@
 					"    print(table_names)\n",
 					"    return table_name in table_names"
 				],
-				"execution_count": 36
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -196,7 +257,7 @@
 				"source": [
 					"result = test_table_exists(db_name, table_name)"
 				],
-				"execution_count": 37
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -240,9 +301,9 @@
 					"    df: DataFrame = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
 					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start']), None)\n",
-					"    return definition['Harmonised_Incremental_Key'] if definition and 'Harmonised_Incremental_Key' in definition else None"
+					"    return definition['Source_Filename_Start']  in definition "
 				],
-				"execution_count": 39
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -260,7 +321,7 @@
 				"source": [
 					"result = get_incremental_key(entity_name,storage_account,path_to_orchestration_file)"
 				],
-				"execution_count": 40
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
