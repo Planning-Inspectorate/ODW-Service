@@ -1,0 +1,157 @@
+{
+	"name": "SampleNB",
+	"properties": {
+		"folder": {
+			"name": "odw-raw"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "585cf00b-ac91-40f9-a319-4cf3c1cfe5f7"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.3",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"#import all libraries and initialise Spark Session\r\n",
+					"from collections.abc import Mapping\r\n",
+					"import json\r\n",
+					"import requests\r\n",
+					"from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType\r\n",
+					"from itertools import chain\r\n",
+					"from operator import add\r\n",
+					"#ignore FutureWarning messages \r\n",
+					"import warnings\r\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"from pprint import pprint as pp\r\n",
+					"import pyspark.sql.functions as F \r\n",
+					"import pandas as pd\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"# Load schema JSON from GitHub or local path\r\n",
+					"#df = spark.read.load('abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/Sample_Schema.json', format='json',multiLine=True)\r\n",
+					"#display(df)\r\n",
+					"schema_json_url = \"https://pinsstodwdevuks9h80mb.dfs.core.windows.net/odw-config/schema_creation/Sample_Schema.json\"\r\n",
+					"schema_data = requests.get(schema_json_url).json()\r\n",
+					""
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Function to convert JSON schema to PySpark StructType\r\n",
+					"def create_spark_schema(fields):\r\n",
+					"    return StructType([\r\n",
+					"        StructField(field[\"name\"],\r\n",
+					"                    IntegerType() if field[\"type\"] == \"integer\" else\r\n",
+					"                    StringType() if field[\"type\"] == \"string\" else\r\n",
+					"                    DoubleType(),\r\n",
+					"                    field[\"nullable\"])\r\n",
+					"        for field in fields\r\n",
+					"    ])"
+				],
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Loop through tables and create empty DataFrames\r\n",
+					"tables = schema_data.get(\"tables\", {})\r\n",
+					"for table_name, table_info in tables.items():\r\n",
+					"    schema = create_spark_schema(table_info[\"fields\"])\r\n",
+					"   \r\n",
+					"    # Create an empty DataFrame with the schema\r\n",
+					"    df = spark.createDataFrame([], schema)\r\n",
+					"    df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"odw_standardised_db.{table_name}\")\r\n",
+					"\r\n",
+					"spark.sparkContext.setLogLevel(\"ERROR\")"
+				],
+				"execution_count": 40
+			}
+		]
+	}
+}
