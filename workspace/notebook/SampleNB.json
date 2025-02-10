@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "94136402-4531-4fca-b417-514da3576dc2"
+				"spark.autotune.trackingId": "c2700f3f-69d6-485c-8bba-62398f7a9bf3"
 			}
 		},
 		"metadata": {
@@ -75,7 +75,7 @@
 					"import os\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -105,13 +105,13 @@
 					"schema_data = json.loads(schema_json)  \r\n",
 					"\r\n",
 					"# Print loaded schema\r\n",
-					"print(json.dumps(schema_data, indent=4))\r\n",
+					"#print(json.dumps(schema_data, indent=4))\r\n",
 					"\r\n",
 					"\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -140,7 +140,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -158,13 +158,13 @@
 				"source": [
 					"# Check existence\r\n",
 					"if table_exists(input_table_name, delta_table_path):\r\n",
-					"    print(f\"Table '{input_table_name}' already exists!\")\r\n",
+					"    print(f\"Table {input_table_name} already exists!\")\r\n",
 					"else:\r\n",
-					"    print(f\"Table '{input_table_name}' does not exist. Creating it...\")\r\n",
+					"    print(f\"Table {input_table_name} does not exist. Creating it...\")\r\n",
 					"\r\n",
 					"def create_delta_table(table_name, table_info, delta_path):\r\n",
 					"    schema_fields = []\r\n",
-					"    \r\n",
+					"    database_name = 'odw_standardised_db'\r\n",
 					"    # Convert JSON schema to PySpark schema\r\n",
 					"    for column in table_info[\"columns\"]:\r\n",
 					"        field_name = column[\"name\"]\r\n",
@@ -182,10 +182,16 @@
 					"        schema_fields.append(f\"{field_name} {field_type}\")\r\n",
 					"    \r\n",
 					"    schema_str = \", \".join(schema_fields)\r\n",
+					"    create_table_sql = f\"\"\"\r\n",
+					"    CREATE TABLE {database_name}.{input_table_name}.({schema_str})\r\n",
+					"    USING DELTA LOCATION {delta_path}\"\"\"\r\n",
+					"    # Execute SQL\r\n",
+					"    print(create_table_sql)\r\n",
+					"    spark.sql(create_table_sql)\r\n",
 					"\r\n",
-					""
+					"    print(f\"Table {input_table_name} created successfully!\")"
 				],
-				"execution_count": 23
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
@@ -201,21 +207,60 @@
 					}
 				},
 				"source": [
-					"# SQL command to create table\r\n",
-					"create_table_sql = f\"\"\"\r\n",
-					"    CREATE TABLE delta.'{delta_table_path}' ({schema_str})\r\n",
-					"    USING DELTA\r\n",
-					"    \"\"\"\r\n",
-					"# Execute SQL\r\n",
-					"spark.sql(create_table_sql)\r\n",
-					"print(f\"Table '{table_name}' created successfully!\")\r\n",
-					"\r\n",
-					"# Create table if not exists\r\n",
+					"DROP TABLE IF EXISTS odw_standardised_db.customers\r\n",
 					"if not table_exists(input_table_name, delta_table_path):\r\n",
 					"    create_delta_table(input_table_name, schema_data[\"tables\"][input_table_name], delta_table_path)\r\n",
+					"\r\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 97
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"CREATE TABLE odw_standardised_db.customer (CustomerID INT, Name STRING, Email STRING, Age INT, Country STRING)\r\n",
+					"    USING DELTA\r\n",
+					"    LOCATION \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/SAPHR/delta/Customers/\"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 93
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Create table if not exists\r\n",
+					"if not table_exists(input_table_name, delta_table_path):\r\n",
+					"    create_delta_table(input_table_name, schema_data[\"tables\"][input_table_name], delta_table_path)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
