@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "585cf00b-ac91-40f9-a319-4cf3c1cfe5f7"
+				"spark.autotune.trackingId": "3c0962a2-58e5-4d1a-9e06-b3be91da6402"
 			}
 		},
 		"metadata": {
@@ -70,9 +70,12 @@
 					"import pandas as pd\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"from pyspark.sql import SparkSession\r\n",
-					"spark = SparkSession.builder.getOrCreate()"
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"from delta.tables import DeltaTable\r\n",
+					"import os\r\n",
+					""
 				],
-				"execution_count": 36
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -89,14 +92,130 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Load schema JSON from GitHub or local path\r\n",
+					"# JSON schema file path\r\n",
 					"#df = spark.read.load('abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/Sample_Schema.json', format='json',multiLine=True)\r\n",
 					"#display(df)\r\n",
-					"schema_json_url = \"https://pinsstodwdevuks9h80mb.dfs.core.windows.net/odw-config/schema_creation/Sample_Schema.json\"\r\n",
-					"schema_data = requests.get(schema_json_url).json()\r\n",
+					"#schema_json_url = \"https://pinsstodwdevuks9h80mb.dfs.core.windows.net/odw-config/schema_creation/Sample_Schema.json\"\r\n",
+					"\r\n",
+					"json_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/Sample_Schema.json\"\r\n",
+					"\r\n",
+					"# Read JSON from ADLS Gen2\r\n",
+					"schema_df = spark.read.text(json_path)\r\n",
+					"schema_json = \"\".join([row.value for row in schema_df.collect()])  # Convert to string\r\n",
+					"schema_data = json.loads(schema_json)  \r\n",
+					"\r\n",
+					"# Print loaded schema\r\n",
+					"print(json.dumps(schema_data, indent=4))\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
 					""
 				],
-				"execution_count": 38
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"def table_exists(table_name, delta_path):\r\n",
+					"    try:\r\n",
+					"        DeltaTable.forPath(spark, delta_path)\r\n",
+					"        return True  # Table exists\r\n",
+					"    except:\r\n",
+					"        return False # Table does not exist\r\n",
+					"\r\n",
+					"# Define Delta table path\r\n",
+					"input_table_name ='Customers'\r\n",
+					"delta_table_path = f\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/SAPHR/delta/{input_table_name}/\"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Check existence\r\n",
+					"if table_exists(input_table_name, delta_table_path):\r\n",
+					"    print(f\"Table '{input_table_name}' already exists!\")\r\n",
+					"else:\r\n",
+					"    print(f\"Table '{input_table_name}' does not exist. Creating it...\")\r\n",
+					"\r\n",
+					"def create_delta_table(table_name, table_info, delta_path):\r\n",
+					"    schema_fields = []\r\n",
+					"    \r\n",
+					"    # Convert JSON schema to PySpark schema\r\n",
+					"    for column in table_info[\"columns\"]:\r\n",
+					"        field_name = column[\"name\"]\r\n",
+					"        field_type = column[\"type\"].upper()\r\n",
+					"            # Convert to Spark SQL data types\r\n",
+					"        if field_type == \"STRING\":\r\n",
+					"            field_type = \"STRING\"\r\n",
+					"        elif field_type.startswith(\"DECIMAL\"):\r\n",
+					"            field_type = field_type  # Keep DECIMAL(x,y)\r\n",
+					"        elif field_type == \"DATE\":\r\n",
+					"            field_type = \"DATE\"\r\n",
+					"        else:\r\n",
+					"            field_type = \"INT\"\r\n",
+					"\r\n",
+					"        schema_fields.append(f\"{field_name} {field_type}\")\r\n",
+					"    \r\n",
+					"    schema_str = \", \".join(schema_fields)\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# SQL command to create table\r\n",
+					"create_table_sql = f\"\"\"\r\n",
+					"    CREATE TABLE delta.'{delta_table_path}' ({schema_str})\r\n",
+					"    USING DELTA\r\n",
+					"    \"\"\"\r\n",
+					"# Execute SQL\r\n",
+					"spark.sql(create_table_sql)\r\n",
+					"print(f\"Table '{table_name}' created successfully!\")\r\n",
+					"\r\n",
+					"# Create table if not exists\r\n",
+					"if not table_exists(input_table_name, delta_table_path):\r\n",
+					"    create_delta_table(input_table_name, schema_data[\"tables\"][input_table_name], delta_table_path)\r\n",
+					""
+				],
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
