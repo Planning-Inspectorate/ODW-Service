@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "283c3018-cb7b-4dbb-aac6-cb1993cfef40"
+				"spark.autotune.trackingId": "51ec51c7-f060-4d40-ae71-fd0c187bf4e9"
 			}
 		},
 		"metadata": {
@@ -70,7 +70,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 10
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +88,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +106,7 @@
 				"source": [
 					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -400,7 +400,7 @@
 					"    import pandas as pd\n",
 					"    from pyspark.sql.types import StringType,DateType,TimestampType,IntegerType, FloatType, StructType, StructField\n",
 					"    import re\n",
-					"    from pyspark.sql.functions import col, lit, input_file_name\n",
+					"    from pyspark.sql.functions import col, lit, input_file_name, current_timestamp\n",
 					"    import pyspark.sql.types as types\n",
 					"    import uuid\n",
 					"\n",
@@ -422,8 +422,8 @@
 					"    else:\n",
 					"        standardised_table_def_json = mssparkutils.notebook.run('/py_get_schema_from_url', 30, {'db_name': 'odw_standardised_db', 'entity_name': definition['Source_Frequency_Folder']})\n",
 					" \n",
-					"    if not any([table.name == standardised_table_name for table in spark.catalog.listTables('odw_standardised_db')]):\n",
-					"        create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)   \n",
+					"    # if not any([table.name == standardised_table_name for table in spark.catalog.listTables('odw_standardised_db')]):\n",
+					"    #     create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)   \n",
 					"\n",
 					"    #Check that we're dealing with delta already. If not we will convert the table first\n",
 					"    table_metadata = spark.sql(f\"DESCRIBE EXTENDED odw_standardised_db.{standardised_table_name}\")\n",
@@ -532,16 +532,15 @@
 					"\n",
 					"    ### Generate a unique ID for the ingested file\n",
 					"    file_ID = str(uuid.uuid4())\n",
+					"    file_name_str = input_file_name() \n",
 					"    logInfo(f\"Generated unique file ingestion ID: {file_ID}\")\n",
 					"\n",
 					"    ### Define schema for the ingestion log table\n",
 					"    ingestion_log_schema = StructType([\n",
 					"        StructField(\"file_ID\", StringType(), False),\n",
 					"        StructField(\"table_name\", StringType(), False),\n",
-					"        StructField(\"ingestion_timestamp\", TimestampType(), False),\n",
 					"        StructField(\"row_count\", IntegerType(), False),\n",
-					"        StructField(\"file_name\", StringType(), False),\n",
-					"        StructField(\"timestamp\", TimestampType(), False)\n",
+					"        StructField(\"file_name\", StringType(), False)\n",
 					"    ])\n",
 					"\n",
 					"    ### Try loading the ingestion log table, if it exists\n",
@@ -554,8 +553,12 @@
 					"\n",
 					"    ### Creating a new log entry\n",
 					"    new_log_entry = spark.createDataFrame([\n",
-					"        (file_ID, standardised_table_name, current_timestamp(), rows_new, input_name, current_timestamp())\n",
+					"        (str(file_ID), str(standardised_table_name), int(rows_new), str(file_name_str))\n",
 					"    ], ingestion_log_schema)\n",
+					"\n",
+					"    # Add the current timestamp as a new column using lit()\n",
+					"    new_log_entry = new_log_entry.withColumn(\"ingestion_timestamp\", current_timestamp()) \\\n",
+					"                                .withColumn(\"timestamp\", current_timestamp())\n",
 					"\n",
 					"    if not table_exists:\n",
 					"        # Creating the ingestion log table if it does not exist\n",
@@ -576,25 +579,7 @@
 					"    return (ingestion_failure, rows_raw)\n",
 					""
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 9
 			}
 		]
 	}
