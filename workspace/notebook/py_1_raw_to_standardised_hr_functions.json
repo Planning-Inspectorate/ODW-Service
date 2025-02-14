@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "471a573e-b375-4f76-a736-724b59fe9131"
+				"spark.autotune.trackingId": "35dbac2a-9d1c-4887-bd45-4cb657399b8d"
 			}
 		},
 		"metadata": {
@@ -581,12 +581,16 @@
 					"\n",
 					"    if not table_exists:\n",
 					"        # Creating the ingestion log table if it does not exist\n",
-					"        new_log_entry.write.format(\"delta\").mode(\"overwrite\").save(ingestion_log_table_location)\n",
-					"        logInfo(f\"Created ingestion logging table at {ingestion_log_table_location} and added first entry.\")\n",
+					"        # First, ensure the destination directory exists\n",
+					"        mssparkutils.fs.mkdirs(f\"{logging_container}/{logging_path}\")\n",
+					"        \n",
+					"        # Create the table\n",
+					"        new_log_entry.write.format(\"delta\").saveAsTable(f\"logging.{logging_table_name}\")\n",
+					"        logInfo(f\"Created ingestion logging table logging.{logging_table_name} and added first entry.\")\n",
 					"    else:\n",
-					"        # Appending log entry to ingestion log table\n",
-					"        new_log_entry.write.format(\"delta\").mode(\"append\").save(ingestion_log_table_location)\n",
-					"        logInfo(f\"Updated ingestion logging table with {rows_new} new rows for {standardised_table_name} (File ID: {file_ID})\")\n",
+					"        # Appending log entry to existing table\n",
+					"        new_log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\n",
+					"        logInfo(f\"Appended to existing ingestion logging table with new entry for File ID: {file_ID}\")\n",
 					"\n",
 					"    ### Test correct number of rows have written\n",
 					"    if rows_raw <= rows_new:\n",
