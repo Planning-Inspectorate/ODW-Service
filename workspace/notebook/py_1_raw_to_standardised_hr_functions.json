@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "93699f1b-0d69-4370-8f04-8a8f9ec615fd"
+				"spark.autotune.trackingId": "20acb3d9-9131-401e-89d2-53b52aa2c591"
 			}
 		},
 		"metadata": {
@@ -417,9 +417,9 @@
 					"    standardised_table_name = f\"test_{definition['Standardised_Table_Name']}\"\n",
 					"    source_filename_start = definition['Source_Filename_Start']\n",
 					"\n",
+					"    logging_container = f\"abfss://logging@{storage_account}\"\n",
 					"    logging_table_name = 'tables_logging'\n",
-					"    ingestion_log_table_location = \"abfss://logging@\"+storage_account+'tables_logging'\n",
-					"\n",
+					"    ingestion_log_table_location = f\"{logging_container}/{logging_table_name}\"\n",
 					"\n",
 					"    if 'Standardised_Table_Definition' in definition:\n",
 					"        standardised_table_loc = \"abfss://odw-config@\"+storage_account + definition['Standardised_Table_Definition']\n",
@@ -576,6 +576,7 @@
 					"        \"source_system_type_code\"\n",
 					"    ).limit(1)\n",
 					"\n",
+					"\n",
 					"    # Check if logging table exists\n",
 					"    table_exists = False\n",
 					"    for db in spark.catalog.listDatabases():\n",
@@ -587,11 +588,11 @@
 					"\n",
 					"    if not table_exists:\n",
 					"        # Create the table\n",
-					"        new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(ingestion_log_table_location)\n",
-					"        logInfo(f\"Created ingestion logging table {ingestion_log_table_location} and added first entry.\")\n",
+					"        new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(f\"logging.{logging_table_name}\")\n",
+					"        logInfo(f\"Created ingestion logging table {logging_table_name} and added first entry.\")\n",
 					"    else:\n",
 					"        # Appending log entry to existing table - using the catalog directly\n",
-					"        new_log_entry.writeTo(ingestion_log_table_location).append()\n",
+					"        new_log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\n",
 					"        logInfo(f\"Appended to existing ingestion logging table with new entry for File ID: {file_ID}\")\n",
 					"\n",
 					"    ### Test correct number of rows have written\n",
