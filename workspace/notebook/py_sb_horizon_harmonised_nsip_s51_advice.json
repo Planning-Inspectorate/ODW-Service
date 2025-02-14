@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "12a46b0e-13ad-4e11-90e2-890e51236f32"
+				"spark.autotune.trackingId": "6dd44e27-0142-4a55-a192-5b236b63e0ad"
 			}
 		},
 		"metadata": {
@@ -335,25 +335,87 @@
 				},
 				"source": [
 					"%%sql\n",
-					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_s51_advice_calculations_base\n",
-					"AS\n",
-					"SELECT  \n",
-					"    row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
-					"    ,row_number() OVER(ORDER BY IngestionDate asc, adviceid asc) AS NSIPAdviceID\n",
-					"    ,adviceid\n",
-					"    ,IngestionDate\n",
-					"    ,ValidTo\n",
-					"    ,'0' AS Migrated\n",
-					"    ,CASE row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC)\n",
-					"        WHEN 1 THEN\n",
-					"            'Y'\n",
-					"        ELSE\n",
-					"            'N'\n",
-					"    END AS IsActive                \n",
-					"FROM\n",
-					"    odw_harmonised_db.nsip_s51_advice"
+					"-- CREATE OR REPLACE TEMPORARY VIEW vw_nsip_s51_advice_calculations_base\n",
+					"-- AS\n",
+					"-- SELECT  \n",
+					"--     row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed\n",
+					"--     ,row_number() OVER(ORDER BY IngestionDate asc, adviceid asc) AS NSIPAdviceID\n",
+					"--     ,adviceid\n",
+					"--     ,IngestionDate\n",
+					"--     ,ValidTo\n",
+					"--     ,'0' AS Migrated\n",
+					"--     ,CASE row_number() OVER(PARTITION BY adviceid ORDER BY IngestionDate DESC)\n",
+					"--         WHEN 1 THEN\n",
+					"--             'Y'\n",
+					"--         ELSE\n",
+					"--             'N'\n",
+					"--     END AS IsActive                \n",
+					"-- FROM\n",
+					"--     odw_harmonised_db.nsip_s51_advice"
 				],
 				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql \r\n",
+					"CREATE OR REPLACE TEMPORARY VIEW vw_nsip_s51_advice_calculations_base\r\n",
+					"AS\r\n",
+					"    with servicebus as \r\n",
+					"    (\r\n",
+					"        SELECT \r\n",
+					"            adviceId,\r\n",
+					"            adviceReference,\r\n",
+					"            CASE \r\n",
+					"                WHEN COUNT(CASE WHEN IsActive = 'Y' THEN 1 END) = 0 THEN 'N' \r\n",
+					"                ELSE 'Y' \r\n",
+					"            END AS IsActive\r\n",
+					"        FROM odw_harmonised_db.sb_s51_advice\r\n",
+					"        GROUP BY adviceId, adviceReference\r\n",
+					"    ),\r\n",
+					"\r\n",
+					"    base AS (\r\n",
+					"        SELECT  \r\n",
+					"            row_number() OVER (PARTITION BY adviceid ORDER BY IngestionDate DESC) AS ReverseOrderProcessed,\r\n",
+					"            row_number() OVER (ORDER BY IngestionDate ASC, adviceid ASC) AS NSIPAdviceID,\r\n",
+					"            adviceid,\r\n",
+					"            IngestionDate,\r\n",
+					"            ValidTo,\r\n",
+					"            '0' AS Migrated,\r\n",
+					"            CASE \r\n",
+					"                WHEN row_number() OVER (PARTITION BY adviceid ORDER BY IngestionDate DESC) = 1 \r\n",
+					"                THEN 'Y' \r\n",
+					"                ELSE 'N' \r\n",
+					"            END AS IsActive                \r\n",
+					"        FROM odw_harmonised_db.nsip_s51_advice\r\n",
+					"        )\r\n",
+					"\r\n",
+					"        SELECT base.ReverseOrderProcessed,\r\n",
+					"        base.NSIPAdviceID,\r\n",
+					"        base.adviceId,\r\n",
+					"        base.IngestionDate,\r\n",
+					"        base.ValidTo,\r\n",
+					"        base.Migrated,\r\n",
+					"        coalesce(servicebus.IsActive, 'Y') as IsActive\r\n",
+					"        FROM base\r\n",
+					"        LEFT JOIN servicebus\r\n",
+					"        ON base.adviceId = servicebus.adviceId"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
