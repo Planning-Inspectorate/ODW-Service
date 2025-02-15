@@ -60,17 +60,144 @@
 						"value": "@activity('GetSapHr_Folder_Path').output.childItems",
 						"type": "Expression"
 					},
+					"isSequential": true,
 					"activities": [
 						{
-							"name": "Wait1",
-							"type": "Wait",
+							"name": "GetSubFolderModifiedDate",
+							"type": "GetMetadata",
 							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
 							"userProperties": [],
 							"typeProperties": {
-								"waitTimeInSeconds": 1
+								"dataset": {
+									"referenceName": "ds_getSapHrBinarySubfolder",
+									"type": "DatasetReference",
+									"parameters": {
+										"Get_SubFolders_Name": {
+											"value": "@item().itemName",
+											"type": "Expression"
+										}
+									}
+								},
+								"fieldList": [
+									"itemName",
+									"lastModified"
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "BinaryReadSettings"
+								}
+							}
+						},
+						{
+							"name": "IfCon_find_latestSubfolder",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "GetSubFolderModifiedDate",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@greater(activity('GetSubFolderModifiedDate').output.lastModified,variables('pl_var_last_modified_date') )",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "SetVar_LatestFile",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "pl_var_recent_modified_date",
+											"value": {
+												"value": "@activity('GetSubFolderModifiedDate').output.itemName",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "SetVar_lastmodidiedSubfolder",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "SetVar_LatestFile",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "pl_var_last_modified_date",
+											"value": {
+												"value": "@activity('GetSubFolderModifiedDate').output.lastModified",
+												"type": "Expression"
+											}
+										}
+									}
+								]
 							}
 						}
 					]
+				}
+			},
+			{
+				"name": "GetSapHr_Folder_Path_copy1",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_GetLatestSubFolderName",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"itemName"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "BinaryReadSettings"
+					}
 				}
 			}
 		],
@@ -80,6 +207,14 @@
 			},
 			"Pl_Param_Folder_Path": {
 				"type": "string"
+			}
+		},
+		"variables": {
+			"pl_var_last_modified_date": {
+				"type": "String"
+			},
+			"pl_var_recent_modified_date": {
+				"type": "String"
 			}
 		},
 		"folder": {
