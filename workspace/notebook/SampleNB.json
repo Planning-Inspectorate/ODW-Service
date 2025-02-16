@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ef957038-5d43-4238-969a-96a3cf52a789"
+				"spark.autotune.trackingId": "ac5f3be8-2b95-4bbe-830e-c142c3cae2f0"
 			}
 		},
 		"metadata": {
@@ -69,10 +69,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"FeedFileFolder_Path = ''\r\n",
-					"JsonSchemaFolder_Path = 'SAPHR'"
+					"Param_FileFolder_Path = 'SapHrData'\r\n",
+					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"#JsonSchemaFolder_Path = 'SapHrData'"
 				],
-				"execution_count": 2
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -81,8 +82,8 @@
 				},
 				"source": [
 					"#import all libraries and initialise Spark Session\r\n",
-					"from collections.abc import Mapping\r\n",
 					"import json\r\n",
+					"import datetime\r\n",
 					"import requests\r\n",
 					"import pandas as pd\r\n",
 					"import pyspark.sql.functions as F \r\n",
@@ -90,6 +91,7 @@
 					"import re\r\n",
 					"#from pathlib import path\r\n",
 					"from itertools import chain\r\n",
+					"from collections.abc import Mapping\r\n",
 					"from operator import add\r\n",
 					"from notebookutils import mssparkutils\r\n",
 					"from pprint import pprint as pp\r\n",
@@ -102,7 +104,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -122,7 +124,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 4
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -138,16 +140,41 @@
 					}
 				},
 				"source": [
-					"import datetime\r\n",
+					"# Construct the odw-raw path dynamically\r\n",
+					"input_folder_path = \"abfss://odw-raw@\"+storage_account+Param_FileFolder_Path\r\n",
+					"Param_File_Load_Type = 'MONTHLY' # Change this to a string value to test\r\n",
+					"odw_raw_folder_path = f\"{input_folder_path}/{Param_File_Load_Type}/\" if Param_File_Load_Type else input_folder_path\r\n",
 					"\r\n",
+					"# Print the final folder path\r\n",
+					"print(\"Final Folder Path:\", odw_raw_folder_path)"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"\r\n",
 					"# Define the base directory where subfolders exist\r\n",
-					"base_dir = \"abfss://odw-raw@\"+storage_account+\"SapHrData/MONTHLY/\"  # Change this path as per your requirement\r\n",
+					"# Construct the odw-raw path dynamically\r\n",
+					"input_folder_path = \"abfss://odw-raw@\"+storage_account+Param_FileFolder_Path\r\n",
+					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"odw_raw_folder_path = f\"{input_folder_path}/{Param_File_Load_Type}/\" if Param_File_Load_Type else input_folder_path\r\n",
 					"\r\n",
-					"print(base_dir)\r\n",
+					"print(odw_raw_folder_path)\r\n",
 					"\r\n",
-					"# Get the list of subfolders in the directory\r\n",
-					"subfolders = [f.name for f in mssparkutils.fs.ls(base_dir) if f.isDir]\r\n",
+					"# Get the list of date wise subfolders in the odw-raw folderpath directory\r\n",
+					"subfolders = [f.name for f in mssparkutils.fs.ls(odw_raw_folder_path) if f.isDir]\r\n",
 					"\r\n",
 					"# Filter subfolders that match the date format (yyyy-MM-dd)\r\n",
 					"valid_dates = []\r\n",
@@ -166,7 +193,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found.\")"
 				],
-				"execution_count": 19
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
