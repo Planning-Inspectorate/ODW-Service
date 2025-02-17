@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e3678a3e-4660-4ea2-9f6b-77fdc9a7e893"
+				"spark.autotune.trackingId": "4b7d9dc4-ea78-4aaa-ae06-1630b89ed942"
 			}
 		},
 		"metadata": {
@@ -126,8 +126,8 @@
 					]
 				},
 				"source": [
-					"db_name: str = 'odw_standardised_db'\n",
-					"entity_name: str = 'CaseSiteStrings'\n",
+					"db_name: str = ''\n",
+					"entity_name: str = ''\n",
 					"is_horizon_schema: bool = True"
 				],
 				"execution_count": 28
@@ -179,6 +179,17 @@
 				},
 				"source": [
 					"def get_table_name(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\r\n",
+					"      \"\"\"\r\n",
+					"    Retrieves the standardized table name for a given Horizon entity from an orchestration file.\r\n",
+					"    \r\n",
+					"    Args:\r\n",
+					"    entity_name (str): The name of the entity to look up.\r\n",
+					"    storage_account (str): The storage account (not used in this function, consider removing if unnecessary).\r\n",
+					"    path_to_orchestration_file (str): The path to the JSON orchestration file.\r\n",
+					"    \r\n",
+					"    Returns:\r\n",
+					"    str: The standardized table name if found, None otherwise.\r\n",
+					"    \"\"\"\r\n",
 					" \r\n",
 					"        spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\r\n",
 					"\r\n",
@@ -245,6 +256,16 @@
 				"source": [
 					"@logging_to_appins\n",
 					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
+					"      \"\"\"\n",
+					"    Check if a table exists in the specified database.\n",
+					"\n",
+					"    Args:\n",
+					"    db_name (str): The name of the database to check.\n",
+					"    table_name (str): The name of the table to look for.\n",
+					"\n",
+					"    Returns:\n",
+					"    bool: True if the table exists, False otherwise.\n",
+					"    \"\"\"\n",
 					"    spark.sql(f\"USE {db_name}\")\n",
 					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\n",
 					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
@@ -266,11 +287,55 @@
 					}
 				},
 				"source": [
+					"@logging_to_appins\r\n",
+					"def test_table_exists(db_name: str, table_name: str) -> bool:\r\n",
+					"    # Function decorator for logging purposes\r\n",
+					"\r\n",
+					"    spark.sql(f\"USE {db_name}\")\r\n",
+					"    # Set the current database context to the specified db_name\r\n",
+					"\r\n",
+					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\r\n",
+					"    # Execute SQL command to get a list of all tables in the current database\r\n",
+					"    # Store the result in a DataFrame called tables_df\r\n",
+					"\r\n",
+					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\r\n",
+					"    # Extract the 'tableName' from each row in the DataFrame\r\n",
+					"    # Create a list of all table names in the database\r\n",
+					"\r\n",
+					"    return table_name in table_names\r\n",
+					"    # Check if the specified table_name exists in the list of table names\r\n",
+					"    # Return True if it exists, False otherwise"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Check if the specified table already exists in the database\n",
 					"if test_table_exists(db_name, table_name):\n",
+					"    # If the table exists: Log an informational message indicating the table's existence\n",
 					"    logInfo(f\"{db_name}.{table_name} Table already exists, exiting\")\n",
+					"    \n",
+					"    # Exit the notebook execution\n",
+					"    # This prevents any further code from running if the table already exists\n",
 					"    mssparkutils.notebook.exit('')\n",
 					"else:\n",
-					"    logInfo(f\"{db_name}.{table_name} Table does not already exist\")"
+					"    # If the table does not exist: Log an informational message indicating the table's absence\n",
+					"    logInfo(f\"{db_name}.{table_name} Table does not already exist\")\n",
+					"\n",
+					"# Execution continues here only if the table does not exist\n",
+					""
 				],
 				"execution_count": 37
 			},
@@ -402,7 +467,7 @@
 					"    create_spark_table(db_name, table_name, spark_dataframe)  # spark_dataframe is actually the StructType schema\r\n",
 					""
 				],
-				"execution_count": 36
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -418,8 +483,13 @@
 					}
 				},
 				"source": [
-					"tableExists:bool = test_table_exists(db_name, table_name)\n",
-					"logInfo(f\"{db_name}.{table_name} exists = {tableExists}\")"
+					"# Check if the table exists in the specified database\n",
+					"tableExists: bool = test_table_exists(db_name, table_name)\n",
+					"\n",
+					"# Log the result of the table existence check\n",
+					"# This provides information about whether the table exists or not\n",
+					"logInfo(f\"{db_name}.{table_name} exists = {tableExists}\")\n",
+					""
 				],
 				"execution_count": null
 			}
