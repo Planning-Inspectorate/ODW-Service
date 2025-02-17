@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "afd09ec0-232f-4f3a-880d-1696695e0835"
+				"spark.autotune.trackingId": "72d370da-ac30-4fd8-b539-0ef3d3417d36"
 			}
 		},
 		"metadata": {
@@ -71,10 +71,9 @@
 					"#Define Input Parameters to get values from the pipleline\r\n",
 					"Param_FileFolder_Path = 'SapHrData'\r\n",
 					"Param_File_Load_Type = 'MONTHLY'\r\n",
-					"#JsonSchemaFolder_Path = 'SapHrData'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 69
+				"execution_count": 88
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +105,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 70
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +125,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 71
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -177,7 +176,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 72
+				"execution_count": 91
 			},
 			{
 				"cell_type": "code",
@@ -226,7 +225,33 @@
 					"#print(json.dumps(schema_data, indent=4))\r\n",
 					""
 				],
-				"execution_count": 73
+				"execution_count": 92
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Create a function to check whether Delta table exist or not for a given filename\r\n",
+					"\r\n",
+					"def table_exists(table_name, delta_path):\r\n",
+					"    try:\r\n",
+					"        DeltaTable.forPath(spark, delta_path)\r\n",
+					"        return True  # Table exists\r\n",
+					"    except:\r\n",
+					"        return False # Table does not exist\r\n",
+					""
+				],
+				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -269,10 +294,84 @@
 					"\r\n",
 					"    print(f\"Excel files (.xlsx) cleaned: {cleaned_xlsx_files}\")\r\n",
 					"\r\n",
-					"\r\n",
+					"    \r\n",
 					""
 				],
-				"execution_count": 74
+				"execution_count": 93
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Complete step to create table based on files and insert records into delta table duplicate step\r\n",
+					"# Folder paths\r\n",
+					"odw_raw_folder_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/\"\r\n",
+					"delta_table_base_path = \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr\"\r\n",
+					"schema_file_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/saphr/create_schema.json\"\r\n",
+					"\r\n",
+					"# List all files in the folder\r\n",
+					"input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
+					"\r\n",
+					"# Filter out only files (ignore directories)\r\n",
+					"file_list = [f.name for f in input_data_files if not f.isDir]\r\n",
+					"\r\n",
+					"if not file_list:\r\n",
+					"    print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
+					"else:\r\n",
+					"    # Check if there are .xlsx or .csv files\r\n",
+					"    xlsx_files = [f for f in file_list if f.lower().endswith(\".xlsx\")]\r\n",
+					"\r\n",
+					"    # Clean .xlsx filenames by removing digits, spaces, and file extension, adding File_Load_Type frequency\r\n",
+					"    cleaned_xlsx_files = [re.sub(r'\\d+\\.xlsx$', '', f).replace(\" \", f\"_{Param_File_Load_Type}\").lower() for f in xlsx_files]\r\n",
+					"\r\n",
+					"    # Check if Delta Table exists for each cleaned filename\r\n",
+					"    for table_name in cleaned_xlsx_files:\r\n",
+					"        delta_table_path = f\"{delta_table_base_path}/{table_name}\"\r\n",
+					"\r\n",
+					"        # Check if Delta Table exists\r\n",
+					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
+					"            print(f\" Delta Table exists for {table_name}. Loading data...\")\r\n",
+					"\r\n",
+					"            # Load new data into the existing Delta Table\r\n",
+					"            df = spark.read.format(\"parquet\").load(odw_raw_folder_path) # Adjust format if needed\r\n",
+					"            df.write.format(\"delta\").mode(\"append\").save(delta_table_path)\r\n",
+					"\r\n",
+					"        else:\r\n",
+					"             print(f\" Delta Table does NOT exist for {table_name}. Creating table...\")\r\n",
+					"\r\n",
+					"             # Read schema from JSON file\r\n",
+					"             schema_df = spark.read.option(\"multiline\", \"true\").json(schema_file_path)\r\n",
+					"             schema_data = schema_df.collect()\r\n",
+					"\r\n",
+					"             if schema_data:\r\n",
+					"                schema_tables = schema_data[0].asDict().get(\"tables\", {})\r\n",
+					"\r\n",
+					"                if table_name in schema_tables:\r\n",
+					"                    columns = schema_tables[table_name][\"columns\"]\r\n",
+					"                    schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
+					"\r\n",
+					"                    # Create Delta Table\r\n",
+					"                    spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}' \"\"\")\r\n",
+					"\r\n",
+					"                    # Load data into Delta Table\r\n",
+					"                    df = spark.read.format(\"parquet\").load(f\"{odw_raw_folder_path}/*.xlsx\") # Adjust format if needed\r\n",
+					"                    df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"\r\n",
+					"                    print(f\" Delta Table created and data loaded for {table_name}.\")\r\n",
+					"                else:\r\n",
+					"                     print(f\" Schema not found for {table_name} in create_schema.json\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -317,40 +416,7 @@
 					"else:\r\n",
 					"     print(\" Schema JSON file is empty or not found.\")"
 				],
-				"execution_count": 79
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#Create a function to check whether Delta table exist or not for a given filename\r\n",
-					"\r\n",
-					"def table_exists(table_name, delta_path):\r\n",
-					"    try:\r\n",
-					"        DeltaTable.forPath(spark, delta_path)\r\n",
-					"        return True  # Table exists\r\n",
-					"    except:\r\n",
-					"        return False # Table does not exist\r\n",
-					"\r\n",
-					"# Define Delta table path\r\n",
-					"input_table_name ='Customers'\r\n",
-					"delta_table_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}/{input_table_name}/\"\r\n",
-					"print(delta_table_path)\r\n",
-					"\r\n",
-					"\r\n",
-					"#Create delta tables for a given filenames in the "
-				],
-				"execution_count": 88
+				"execution_count": 94
 			},
 			{
 				"cell_type": "code",
