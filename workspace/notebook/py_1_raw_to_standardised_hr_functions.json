@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8099b4db-c438-4dd3-9c9d-8e0913e0d5e1"
+				"spark.autotune.trackingId": "ab450a1c-9675-4f01-a1bd-6051e92bdc41"
 			}
 		},
 		"metadata": {
@@ -401,7 +401,7 @@
 					"    import pandas as pd\n",
 					"    from pyspark.sql.types import StringType,DateType,TimestampType,IntegerType, FloatType, StructType, StructField\n",
 					"    import re\n",
-					"    from pyspark.sql.functions import col, lit, input_file_name, current_timestamp, sha2, concat\n",
+					"    from pyspark.sql.functions import col, lit, input_file_name, current_timestamp, sha2, concat, count\n",
 					"    import pyspark.sql.types as types\n",
 					"\n",
 					"    ingestion_failure: bool = False\n",
@@ -504,7 +504,7 @@
 					"    sparkDF = sparkDF.withColumn(\"modified_datetime\", current_timestamp())\n",
 					"    sparkDF = sparkDF.withColumn(\"modified_by_process_name\", lit(process_name))\n",
 					"    sparkDF = sparkDF.withColumn(\"entity_name\", lit(source_filename_start))\n",
-					"    sparkDF = sparkDF.withColumn(\"file_ID\", sha2(concat(lit(input_file_name), current_timestamp().cast(\"string\")), 256))\n",
+					"    sparkDF = sparkDF.withColumn(\"file_ID\", sha2(concat(lit(input_file_name()), current_timestamp().cast(\"string\")), 256))\n",
 					"\n",
 					"\n",
 					"\n",
@@ -565,6 +565,10 @@
 					"        \"entity_name\"\n",
 					"    ).limit(1)\n",
 					"\n",
+					"    # Create a pivot table that counts occurrences of each file_ID by process_name\n",
+					"    pivot_table = sparkDF.groupBy(\"file_ID\", \"modified_by_process_name\").agg(count(\"*\").alias(\"count\"))\n",
+					"\n",
+					"\n",
 					"    if not table_exists:\n",
 					"        # Create the table\n",
 					"        new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(f\"logging.{logging_table_name}\")\n",
@@ -573,6 +577,10 @@
 					"        # Appending log entry to existing table - using the catalog directly\n",
 					"        new_log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\n",
 					"        logInfo(\"Appended to existing ingestion logging table with new entry\")\n",
+					"\n",
+					"    # Save the pivot table separately (optional)\n",
+					"    pivot_table.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"logging.{logging_table_name}_pivot\")\n",
+					"\n",
 					"\n",
 					"    ### Test correct number of rows have written\n",
 					"    if rows_raw <= rows_new:\n",
@@ -584,7 +592,7 @@
 					"    return (ingestion_failure, rows_raw)\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 3
 			}
 		]
 	}
