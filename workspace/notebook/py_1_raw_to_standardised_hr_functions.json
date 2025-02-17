@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ab450a1c-9675-4f01-a1bd-6051e92bdc41"
+				"spark.autotune.trackingId": "f313d3df-37fa-41b6-aecc-6479b2ec747d"
 			}
 		},
 		"metadata": {
@@ -494,7 +494,6 @@
 					"    rows_raw = sparkDF.count()\n",
 					"    unmount_storage()\n",
 					"\n",
-					"\n",
 					"    ### add date columns included with every standardised table\n",
 					"    sparkDF = sparkDF.withColumn(\"ingested_datetime\",current_timestamp())\n",
 					"    sparkDF = sparkDF.withColumn(\"ingested_by_process_name\", lit(process_name))\n",
@@ -505,8 +504,6 @@
 					"    sparkDF = sparkDF.withColumn(\"modified_by_process_name\", lit(process_name))\n",
 					"    sparkDF = sparkDF.withColumn(\"entity_name\", lit(source_filename_start))\n",
 					"    sparkDF = sparkDF.withColumn(\"file_ID\", sha2(concat(lit(input_file_name()), current_timestamp().cast(\"string\")), 256))\n",
-					"\n",
-					"\n",
 					"\n",
 					"    ### change any array field to string\n",
 					"    schema = json.loads(standardised_table_def_json)\n",
@@ -565,10 +562,6 @@
 					"        \"entity_name\"\n",
 					"    ).limit(1)\n",
 					"\n",
-					"    # Create a pivot table that counts occurrences of each file_ID by process_name\n",
-					"    pivot_table = sparkDF.groupBy(\"file_ID\", \"modified_by_process_name\").agg(count(\"*\").alias(\"count\"))\n",
-					"\n",
-					"\n",
 					"    if not table_exists:\n",
 					"        # Create the table\n",
 					"        new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(f\"logging.{logging_table_name}\")\n",
@@ -577,10 +570,6 @@
 					"        # Appending log entry to existing table - using the catalog directly\n",
 					"        new_log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\n",
 					"        logInfo(\"Appended to existing ingestion logging table with new entry\")\n",
-					"\n",
-					"    # Save the pivot table separately (optional)\n",
-					"    pivot_table.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"logging.{logging_table_name}_pivot\")\n",
-					"\n",
 					"\n",
 					"    ### Test correct number of rows have written\n",
 					"    if rows_raw <= rows_new:\n",
