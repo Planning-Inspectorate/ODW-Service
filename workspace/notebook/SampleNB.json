@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "53e5bcb2-b880-43c8-9b5f-0c9df656885e"
+				"spark.autotune.trackingId": "84ce5c77-5caa-4a3e-ac75-2541775b365e"
 			}
 		},
 		"metadata": {
@@ -425,9 +425,14 @@
 					"                        # Create Delta Table\r\n",
 					"                        spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}' \"\"\")\r\n",
 					"\r\n",
-					"                        # Load data into Delta Table\r\n",
-					"                        #df = spark.read.format(\"parquet\").load(f\"{odw_raw_folder_path}/*.xlsx\") # Adjust format if needed\r\n",
-					"                        #df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"                        # Load .csv file data into Delta Table\r\n",
+					"                        df_csv_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/SAP_Email_20250217.xlsx\")\r\n",
+					"\r\n",
+					"                        # remove all special chracters from the spreadsheet dataframe column name\r\n",
+					"                        df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"                        \r\n",
+					"                        # Overwrite Delta Table with new data\r\n",
+					"                        df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/{table_name}\")\r\n",
 					"\r\n",
 					"                        print(f\" Delta Table created and data loaded for {table_name}.\")\r\n",
 					"                    else:\r\n",
