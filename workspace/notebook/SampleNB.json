@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "57bf5973-55c1-4f23-b86c-78e28fd84c6a"
+				"spark.autotune.trackingId": "283a9dba-56d7-4dd2-b371-dc9df2a050eb"
 			}
 		},
 		"metadata": {
@@ -141,14 +141,34 @@
 					}
 				},
 				"source": [
+					"# Define all Folder paths used in the notebook\r\n",
+					"\r\n",
+					"odw_raw_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\r\n",
+					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}\"\r\n",
+					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\""
+				],
+				"execution_count": 59
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"\r\n",
 					"# Define the base directory where subfolders exist\r\n",
 					"# Construct the odw-raw path dynamically\r\n",
-					"input_folder_path = \"abfss://odw-raw@\"+storage_account+Param_FileFolder_Path\r\n",
-					"\r\n",
 					"\r\n",
 					"# Check if notebook parameter Param_File_Load_Type is not null then construct the odw-raw path dynamically\r\n",
-					"odw_raw_folder_path = f\"{input_folder_path}/{Param_File_Load_Type}/\" if Param_File_Load_Type else input_folder_path\r\n",
+					"odw_raw_folder_path = f\"{odw_raw_folder_path}{Param_File_Load_Type}/\" if Param_File_Load_Type else odw_raw_folder_path\r\n",
 					"\r\n",
 					"print(odw_raw_folder_path)\r\n",
 					"\r\n",
@@ -176,7 +196,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 47
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -226,32 +246,6 @@
 					""
 				],
 				"execution_count": 48
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"#Create a function to check whether Delta table exist or not for a given filename\r\n",
-					"\r\n",
-					"def table_exists(table_name, delta_path):\r\n",
-					"    try:\r\n",
-					"        DeltaTable.forPath(spark, delta_path)\r\n",
-					"        return True  # Table exists\r\n",
-					"    except:\r\n",
-					"        return False # Table does not exist\r\n",
-					""
-				],
-				"execution_count": 96
 			},
 			{
 				"cell_type": "code",
@@ -318,12 +312,8 @@
 					}
 				},
 				"source": [
-					"#Complete step to create table based on files and load data into delta tables\r\n",
-					"\r\n",
-					"# Folder paths\r\n",
-					"#odw_raw_folder_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/\"\r\n",
-					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}\"\r\n",
-					"#schema_file_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/saphr/create_schema.json\"\r\n",
+					"# Steps to create Delta tables based on files  using create_schema.json file and load data into delta tables using odw-raw file location\r\n",
+					"# This step caters two file types ->.xlsx and .csv file\r\n",
 					"\r\n",
 					"# List all files in the folder\r\n",
 					"input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
