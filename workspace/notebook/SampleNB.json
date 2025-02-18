@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "84ce5c77-5caa-4a3e-ac75-2541775b365e"
+				"spark.autotune.trackingId": "f717dea1-9517-47d6-bac4-1ff792db51ed"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 					"Param_File_Load_Type = 'MONTHLY'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 28
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -125,7 +125,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 17
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -144,10 +144,12 @@
 					"# Define all Folder paths used in the notebook\r\n",
 					"\r\n",
 					"odw_raw_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\r\n",
-					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}\"\r\n",
-					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\""
+					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}\"\r\n",
+					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\r\n",
+					"\r\n",
+					"print(delta_table_base_path)"
 				],
-				"execution_count": 59
+				"execution_count": 90
 			},
 			{
 				"cell_type": "code",
@@ -196,7 +198,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 60
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -216,6 +218,7 @@
 					"#Build JSON Schema file path if create_schema.json file exist in odw-config location\r\n",
 					"\r\n",
 					"json_file_path =f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}\"\r\n",
+					"                \r\n",
 					"\r\n",
 					"json_file_name = \"create_schema.json\"\r\n",
 					"\r\n",
@@ -224,7 +227,7 @@
 					"# List the contents of the folder\r\n",
 					"json_file = mssparkutils.fs.ls(json_file_path)\r\n",
 					"\r\n",
-					"#print(json_file)\r\n",
+					"print(json_file)\r\n",
 					"\r\n",
 					"# Check if there are any files (excluding subdirectories)\r\n",
 					"json_file_exists = any(f.name == json_file_name for f in json_file)\r\n",
@@ -245,7 +248,7 @@
 					"#print(json.dumps(schema_data, indent=4))\r\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -296,7 +299,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 49
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -312,6 +315,142 @@
 					}
 				},
 				"source": [
+					"### New Code!!\r\n",
+					"# List all files in the folder\r\n",
+					"input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
+					"\r\n",
+					"# Filter out only files (ignore directories)\r\n",
+					"file_list = [f.name for f in input_data_files if not f.isDir]\r\n",
+					"\r\n",
+					"if not file_list:\r\n",
+					"    print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
+					"else:\r\n",
+					"    # Process Excel files (.xlsx)\r\n",
+					"    xlsx_files = [f for f in file_list if f.lower().endswith(\".xlsx\")]\r\n",
+					"\r\n",
+					"    if xlsx_files:\r\n",
+					"        # Create a mapping: Original filename -> Cleaned table name\r\n",
+					"        cleaned_xlsx_files = {f: re.sub(r'\\d+', '', f).replace(\".xlsx\", f\"{Param_File_Load_Type}\").lower() for f in xlsx_files}\r\n",
+					"\r\n",
+					"        for original_filename in xlsx_files:\r\n",
+					"            table_name = cleaned_xlsx_files[original_filename]  # Fetch cleaned name from mapping\r\n",
+					"            delta_table_path = f\"{delta_table_base_path}/{table_name}\"\r\n",
+					"            print(delta_table_path)\r\n",
+					"\r\n",
+					"            # Check if Delta Table exists\r\n",
+					"            if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
+					"                print(f\"Delta Table exists for {table_name}. Loading data from {original_filename}\")\r\n",
+					"\r\n",
+					"                # Read the corresponding Excel file using its original name\r\n",
+					"                df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
+					"\r\n",
+					"                # Clean column names\r\n",
+					"                df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"\r\n",
+					"                # Overwrite Delta Table with new data\r\n",
+					"                df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"           \r\n",
+					"            else:\r\n",
+					"                print(f\"Delta Table does NOT exist for {table_name}. Creating table using {original_filename}\")\r\n",
+					"\r\n",
+					"                # Read schema from JSON file\r\n",
+					"                schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
+					"                schema_data = schema_df.collect()\r\n",
+					"\r\n",
+					"                if schema_data:\r\n",
+					"                    schema_tables = schema_data[0].asDict().get(\"tables\", {})\r\n",
+					"\r\n",
+					"                    if table_name in schema_tables:\r\n",
+					"                        columns = schema_tables[table_name][\"columns\"]\r\n",
+					"                        schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
+					"\r\n",
+					"                        # Create Delta Table\r\n",
+					"                        spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
+					"\r\n",
+					"                        # Load .xlsx file data into Delta Table using original filename\r\n",
+					"                        df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"false\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
+					"\r\n",
+					"                        # Clean column names\r\n",
+					"                        df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"\r\n",
+					"                        # Overwrite Delta Table with new data\r\n",
+					"                        df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"\r\n",
+					"                        print(f\"Delta Table created and data loaded for {table_name} using {original_filename}.\")\r\n",
+					"                    else:\r\n",
+					"                        print(f\"Schema not found for {table_name} in create_schema.json\")\r\n",
+					"\r\n",
+					"    else:\r\n",
+					"        # Process CSV files\r\n",
+					"        csv_files = [f for f in file_list if f.lower().endswith(\".csv\")]\r\n",
+					"\r\n",
+					"        if csv_files:\r\n",
+					"            cleaned_csv_files = {f: re.sub(r'\\d+', '', f).replace(\".csv\", f\"{Param_File_Load_Type}\").lower() for f in csv_files}\r\n",
+					"\r\n",
+					"            for original_filename in csv_files:\r\n",
+					"                table_name = cleaned_csv_files[original_filename]  # Fetch cleaned name\r\n",
+					"                delta_table_path = f\"{delta_table_base_path}/{table_name}\"\r\n",
+					"\r\n",
+					"                if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
+					"                    print(f\"Delta Table exists for {table_name}. Loading data from {original_filename}\")\r\n",
+					"\r\n",
+					"                    # Read CSV file using its original name\r\n",
+					"                    df_csv_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
+					"\r\n",
+					"                    # Clean column names\r\n",
+					"                    df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"\r\n",
+					"                    # Overwrite Delta Table with new data\r\n",
+					"                    df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"\r\n",
+					"                else:\r\n",
+					"                    print(f\"Delta Table does NOT exist for {table_name}. Creating table using {original_filename}\")\r\n",
+					"\r\n",
+					"                    # Read schema from JSON file\r\n",
+					"                    schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
+					"                    schema_data = schema_df.collect()\r\n",
+					"\r\n",
+					"                    if schema_data:\r\n",
+					"                        schema_tables = schema_data[0].asDict().get(\"tables\", {})\r\n",
+					"\r\n",
+					"                        if table_name in schema_tables:\r\n",
+					"                            columns = schema_tables[table_name][\"columns\"]\r\n",
+					"                            schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
+					"\r\n",
+					"                            # Create Delta Table\r\n",
+					"                            spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
+					"\r\n",
+					"                            # Read CSV file data into Delta Table using original filename\r\n",
+					"                            df_csv_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
+					"\r\n",
+					"                            # Clean column names\r\n",
+					"                            df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"\r\n",
+					"                            # Overwrite Delta Table with new data\r\n",
+					"                            df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"\r\n",
+					"                            print(f\"Delta Table created and data loaded for {table_name} using {original_filename}.\")\r\n",
+					"                        else:\r\n",
+					"                            print(f\"Schema not found for {table_name} in create_schema.json\")\r\n",
+					""
+				],
+				"execution_count": 88
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"### Old Code!!\r\n",
 					"# Steps to create Delta tables based on files  using create_schema.json file and load data into delta tables using odw-raw file location\r\n",
 					"# This step caters two file types ->.xlsx and .csv file\r\n",
 					"\r\n",
@@ -777,7 +916,7 @@
 					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
 					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_email_monthly\")"
 				],
-				"execution_count": 46
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -803,11 +942,14 @@
 					"\r\n",
 					"# Read new daily data\r\n",
 					"#df = spark.read.format(\"parquet\").load(data_path)  # Use \"csv\" or \"delta\" based on format\r\n",
-					"df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/SAP_Email_20250217.xlsx\")\r\n",
+					"df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/HR_Absence_20250217.xlsx\")\r\n",
 					"\r\n",
 					"df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"#display(df)\r\n",
+					"df.printSchema()\r\n",
+					"\r\n",
 					"# Overwrite Delta Table with new data\r\n",
-					"df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")\r\n",
+					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")\r\n",
 					"\r\n",
 					"# Remove the first row by filtering out index 0\r\n",
 					"# df = df.rdd.zipWithIndex().filter(lambda row: row[1] > 0).map(lambda row: row[0]).toDF(df.schema)\r\n",
@@ -815,9 +957,9 @@
 					"#display(df)\r\n",
 					"\r\n",
 					"# Overwrite Delta Table with new data\r\n",
-					"df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
+					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
 				],
-				"execution_count": 52
+				"execution_count": 85
 			}
 		]
 	}
