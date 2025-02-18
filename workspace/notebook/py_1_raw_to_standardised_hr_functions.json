@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f313d3df-37fa-41b6-aecc-6479b2ec747d"
+				"spark.autotune.trackingId": "a1a11858-0f30-498e-aefc-559570dcc544"
 			}
 		},
 		"metadata": {
@@ -43,7 +43,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.3",
+				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -562,6 +562,10 @@
 					"        \"entity_name\"\n",
 					"    ).limit(1)\n",
 					"\n",
+					"    new_log_entry = new_log_entry.withColumn(\"rows_raw\" = sparkDF.count())\n",
+					"    new_log_entry = new_log_entry.withColumn(\"rows_new\" = standardised_table_df.filter((standardised_table_df.expected_from == expected_from) &  (standardised_table_df.expected_to == expected_to)).count()\n",
+					"\n",
+					"\n",
 					"    if not table_exists:\n",
 					"        # Create the table\n",
 					"        new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(f\"logging.{logging_table_name}\")\n",
@@ -582,6 +586,47 @@
 					""
 				],
 				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\n",
+					"def log_ingestion_metrics(storage_account, tables_log):\n",
+					"    \"\"\"\n",
+					"    Inserts audit log records into the audit_log dataframe using values from tables_log and saves it as a Delta table.\n",
+					"    \"\"\"\n",
+					"\n",
+					"    new_records = []\n",
+					"    for log_entry in tables_log:\n",
+					"        new_records.append({\n",
+					"            \"rows_ingested\": log_entry.get(\"rows_ingested\", 0),\n",
+					"            \"value\": log_entry.get(\"rows_count\", \"unknown\"),\n",
+					"        })\n",
+					"\n",
+					"    # Append new records to the audit_log DataFrame\n",
+					"    audit_log = pd.concat([audit_log, pd.DataFrame(new_records)], ignore_index=True)\n",
+					"\n",
+					"    # Convert the audit_log DataFrame to a Spark DataFrame\n",
+					"    spark_df = spark.createDataFrame(audit_log)\n",
+					"\n",
+					"    # Specify the path where the Delta table will be saved\n",
+					"    delta_table_path = f\"abfss://{storage_account}/audit_log_delta_table\"\n",
+					"\n",
+					"    # Save the DataFrame as a Delta table in the same storage container\n",
+					"    spark_df.write.format(\"delta\").mode(\"append\").save(delta_table_path)"
+				],
+				"execution_count": null
 			}
 		]
 	}
