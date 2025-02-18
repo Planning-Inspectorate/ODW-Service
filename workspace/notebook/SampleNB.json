@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1f0377f3-83a0-45b3-8f80-24d75fc9d601"
+				"spark.autotune.trackingId": "57bf5973-55c1-4f23-b86c-78e28fd84c6a"
 			}
 		},
 		"metadata": {
@@ -176,7 +176,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 18
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -225,7 +225,7 @@
 					"#print(json.dumps(schema_data, indent=4))\r\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -302,7 +302,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -350,9 +350,15 @@
 					"\r\n",
 					"            # Check if Delta Table exists\r\n",
 					"            if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
-					"                print(f\" Delta Table exists for {table_name}. Loading data...\")\r\n",
+					"                df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/SAP_Email_20250217.xlsx\")\r\n",
 					"\r\n",
-					"                # Load new data into the existing Delta Table\r\n",
+					"                # remove all special chracters from the spreadsheet dataframe column name\r\n",
+					"                \r\n",
+					"                df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"                # Overwrite Delta Table with new data\r\n",
+					"                df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")\r\n",
+					"\r\n",
+					"                \r\n",
 					"                #df = spark.read.format(\"parquet\").load(odw_raw_folder_path) # Adjust format if needed\r\n",
 					"                #df.write.format(\"delta\").mode(\"append\").save(delta_table_path)\r\n",
 					"\r\n",
@@ -432,7 +438,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 33
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -769,7 +775,7 @@
 					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
 					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_email_monthly\")"
 				],
-				"execution_count": 38
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -795,34 +801,21 @@
 					"\r\n",
 					"# Read new daily data\r\n",
 					"#df = spark.read.format(\"parquet\").load(data_path)  # Use \"csv\" or \"delta\" based on format\r\n",
-					"df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"false\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/SAP_Email_20250217.xlsx\")\r\n",
+					"df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/SAP_Email_20250217.xlsx\")\r\n",
 					"\r\n",
-					"#display(df)\r\n",
-					"\r\n",
-					"df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"_\", c) for c in df.columns])\r\n",
-					"\r\n",
-					"#display(df)\r\n",
-					"\r\n",
-					"# Upgrade table if it exists\r\n",
-					"#spark.sql(f\"\"\"\r\n",
-					"#    ALTER TABLE delta.`{delta_table_path}/sap_email_monthly`\r\n",
-					"#    SET TBLPROPERTIES (\r\n",
-					"#       'delta.columnMapping.mode' = 'name',\r\n",
-					"#       'delta.minReaderVersion' = '2',\r\n",
-					"#       'delta.minWriterVersion' = '5'\r\n",
-					"#    )\r\n",
-					"#\"\"\")\r\n",
-					"\r\n",
+					"df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"# Overwrite Delta Table with new data\r\n",
+					"df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")\r\n",
 					"\r\n",
 					"# Remove the first row by filtering out index 0\r\n",
-					"df = df.rdd.zipWithIndex().filter(lambda row: row[1] > 0).map(lambda row: row[0]).toDF(df.schema)\r\n",
+					"# df = df.rdd.zipWithIndex().filter(lambda row: row[1] > 0).map(lambda row: row[0]).toDF(df.schema)\r\n",
 					"\r\n",
 					"#display(df)\r\n",
 					"\r\n",
 					"# Overwrite Delta Table with new data\r\n",
-					"df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_path}/sap_email_monthly\")"
+					"df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
 				],
-				"execution_count": 37
+				"execution_count": 52
 			}
 		]
 	}
