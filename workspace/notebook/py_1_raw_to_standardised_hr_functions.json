@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "db0cf772-eb69-4e96-8b79-0c9b194d08c6"
+				"spark.autotune.trackingId": "c67feb26-ee21-4f53-b18a-fa08ac866d7a"
 			}
 		},
 		"metadata": {
@@ -603,7 +603,6 @@
 				"source": [
 					"@logging_to_appins\n",
 					"def log_ingestion_metrics(storage_account, process_name):\n",
-					"\n",
 					"    from pyspark.sql import SparkSession\n",
 					"    from notebookutils import mssparkutils\n",
 					"    from pyspark.sql.types import StringType, IntegerType, StructType, StructField\n",
@@ -626,7 +625,7 @@
 					"        StructField(\"value\", IntegerType(), True)\n",
 					"    ])\n",
 					"\n",
-					"        # Try loading the ingestion log table\n",
+					"    # Try loading the ingestion log table\n",
 					"    try:\n",
 					"        ingestion_log_df = spark.read.format(\"delta\").load(ingestion_log_table_location)\n",
 					"    except Exception as e:\n",
@@ -636,19 +635,19 @@
 					"    # Calculate metrics for each file_ID\n",
 					"    file_ids = ingestion_log_df.select(\"file_ID\").distinct()\n",
 					"\n",
-					"    # Create DataFrame for metrics\n",
-					"    metrics_df = file_ids.select(\n",
+					"    # Join file_ids with ingestion_log_df to access rows_raw and rows_new\n",
+					"    metrics_df = file_ids.join(ingestion_log_df, on=\"file_ID\").select(\n",
 					"        col(\"file_ID\"),\n",
 					"        lit(\"Records loaded\").alias(\"metric_name\"),\n",
 					"        col(\"rows_raw\").alias(\"value\")\n",
 					"    ).union(\n",
-					"        file_ids.select(\n",
+					"        file_ids.join(ingestion_log_df, on=\"file_ID\").select(\n",
 					"            col(\"file_ID\"),\n",
 					"            lit(\"Records inserted\").alias(\"metric_name\"),\n",
 					"            col(\"rows_new\").alias(\"value\")\n",
 					"        )\n",
 					"    ).union(\n",
-					"        file_ids.select(\n",
+					"        file_ids.join(ingestion_log_df, on=\"file_ID\").select(\n",
 					"            col(\"file_ID\"),\n",
 					"            lit(\"Records rejected\").alias(\"metric_name\"),\n",
 					"            (col(\"rows_raw\") - col(\"rows_new\")).alias(\"value\")\n",
@@ -657,9 +656,10 @@
 					"\n",
 					"    # Write metrics to the metrics table\n",
 					"    metrics_df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"logging.{metrics_table_name}\")\n",
-					"    logInfo(f\"Metrics table {metrics_table_name} updated successfully.\")"
+					"    logInfo(f\"Metrics table {metrics_table_name} updated successfully.\")\n",
+					""
 				],
-				"execution_count": 1
+				"execution_count": null
 			}
 		]
 	}
