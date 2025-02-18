@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8bead7ee-2a26-40fe-a37b-df1276b20057"
+				"spark.autotune.trackingId": "f2969b44-e688-4f8b-b4c3-8ba8b630082c"
 			}
 		},
 		"metadata": {
@@ -146,10 +146,11 @@
 					"odw_raw_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\r\n",
 					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}\"\r\n",
 					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\r\n",
+					"database_name = \"odw_standardised_db\"\r\n",
 					"\r\n",
 					"#print(delta_table_base_path)"
 				],
-				"execution_count": 90
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -335,11 +336,11 @@
 					"        for original_filename in xlsx_files:\r\n",
 					"            table_name = cleaned_xlsx_files[original_filename]  # Fetch cleaned name from mapping\r\n",
 					"            delta_table_path = f\"{delta_table_base_path}/{table_name}\"\r\n",
-					"            print(delta_table_path)\r\n",
+					"            full_table_name = f\"{database_name}.{table_name}\"  # Include database name\r\n",
 					"\r\n",
 					"            # Check if Delta Table exists\r\n",
 					"            if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
-					"                print(f\"Delta Table exists for {table_name}. Loading data from {original_filename}\")\r\n",
+					"                print(f\"Delta Table exists for {full_table_name}. Loading data from {original_filename}\")\r\n",
 					"\r\n",
 					"                # Read the corresponding Excel file using its original name\r\n",
 					"                df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
@@ -351,7 +352,7 @@
 					"                df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"           \r\n",
 					"            else:\r\n",
-					"                print(f\"Delta Table does NOT exist for {table_name}. Creating table using {original_filename}\")\r\n",
+					"                print(f\"Delta Table does NOT exist for {full_table_name}. Creating table using {original_filename}\")\r\n",
 					"\r\n",
 					"                # Read schema from JSON file\r\n",
 					"                schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
@@ -366,7 +367,7 @@
 					"                        schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
 					"\r\n",
 					"                        # Create Delta Table\r\n",
-					"                        spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
+					"                        spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {full_table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
 					"\r\n",
 					"                        # Load .xlsx file data into Delta Table using original filename\r\n",
 					"                        df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
@@ -391,6 +392,7 @@
 					"            for original_filename in csv_files:\r\n",
 					"                table_name = cleaned_csv_files[original_filename]  # Fetch cleaned name\r\n",
 					"                delta_table_path = f\"{delta_table_base_path}/{table_name}\"\r\n",
+					"                full_table_name = f\"{database_name}.{table_name}\"  # Include database name\r\n",
 					"\r\n",
 					"                if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
 					"                    print(f\"Delta Table exists for {table_name}. Loading data from {original_filename}\")\r\n",
@@ -405,7 +407,7 @@
 					"                    df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"\r\n",
 					"                else:\r\n",
-					"                    print(f\"Delta Table does NOT exist for {table_name}. Creating table using {original_filename}\")\r\n",
+					"                    print(f\"Delta Table does NOT exist for {full_table_name}. Creating table using {original_filename}\")\r\n",
 					"\r\n",
 					"                    # Read schema from JSON file\r\n",
 					"                    schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
@@ -419,7 +421,7 @@
 					"                            schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
 					"\r\n",
 					"                            # Create Delta Table\r\n",
-					"                            spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
+					"                            spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {full_table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
 					"\r\n",
 					"                            # Read CSV file data into Delta Table using original filename\r\n",
 					"                            df_csv_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(f\"{odw_raw_folder_path}/{original_filename}\")\r\n",
