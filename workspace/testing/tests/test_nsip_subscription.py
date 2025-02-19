@@ -43,3 +43,4 @@ def test_nsip_project_notebook(credential_name, azure_credential, synapse_endpoi
 def run_before_and_after_tests():
     yield
     print("Before and After running")
+
