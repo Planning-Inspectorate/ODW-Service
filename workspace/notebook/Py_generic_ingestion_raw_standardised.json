@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8a63d5d0-feb8-4581-9bd9-b5437b8289c9"
+				"spark.autotune.trackingId": "ae6ec302-c9ab-4192-98ff-67ac3d5de568"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"Param_File_Load_Type = 'MONTHLY'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 18
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -109,6 +109,7 @@
 					"from collections.abc import Mapping\r\n",
 					"from operator import add\r\n",
 					"from notebookutils import mssparkutils\r\n",
+					"from pyspark.sql.functions import lit \r\n",
 					"from pprint import pprint as pp\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"#import pyspark.sql.functions import regexp_replace, col\r\n",
@@ -120,7 +121,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -140,7 +141,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 20
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -166,7 +167,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_folder_path)"
 				],
-				"execution_count": 27
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -218,7 +219,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 30
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -268,7 +269,7 @@
 					"#print(json.dumps(schema_data, indent=4))\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
@@ -319,7 +320,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -845,10 +846,22 @@
 					"\r\n",
 					"# Read new daily data\r\n",
 					"#df = spark.read.format(\"parquet\").load(data_path)  # Use \"csv\" or \"delta\" based on format\r\n",
-					"#df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/HR_Absence_20250217.xlsx\")\r\n",
+					"df_csv_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/HR_Absence_20250217.xlsx\")\r\n",
 					"\r\n",
-					"#df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
-					"#display(df)\r\n",
+					"df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"\r\n",
+					"#df_csv_file = df_csv_file.withColumn(\"ingested_datetime\", lit(datetime.now()))\r\n",
+					"#df_csv_file = df_csv_file.withColumn(\"expected_from\", lit(datetime.now() - timedelta(days=1).strftime('%Y-%m-%d')))\r\n",
+					"#df_csv_file = df_csv_file.withColumn(\"expected_to\", lit(datetime.now().strftime('%Y-%m-%d')))\r\n",
+					"\r\n",
+					"# Convert datetime values to PySpark Columns using lit()\r\n",
+					"df_csv_file = df_csv_file.withColumn(\"ingested_datetime\", lit(datetime.now()))\r\n",
+					"df_csv_file = df_csv_file.withColumn(\"expected_from\", lit((datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')))\r\n",
+					"df_csv_file = df_csv_file.withColumn(\"expected_to\", lit(datetime.now().strftime('%Y-%m-%d')))\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"display(df_csv_file)\r\n",
 					"#df.printSchema()\r\n",
 					"\r\n",
 					"# Overwrite Delta Table with new data\r\n",
@@ -862,7 +875,7 @@
 					"# Overwrite Delta Table with new data\r\n",
 					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
 				],
-				"execution_count": 14
+				"execution_count": 52
 			}
 		]
 	}
