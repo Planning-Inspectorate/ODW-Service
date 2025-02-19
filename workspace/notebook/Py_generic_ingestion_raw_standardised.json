@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c35a9006-aed2-4f6d-89b2-9ed56fe364da"
+				"spark.autotune.trackingId": "2fd87bc1-43f9-4e92-8d29-6bfd0aab4c3f"
 			}
 		},
 		"metadata": {
@@ -52,22 +52,17 @@
 		},
 		"cells": [
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
 				"metadata": {
-					"editable": true,
-					"run_control": {
-						"frozen": false
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
 					}
 				},
 				"source": [
-					"# #################################################################################################################################################################\r\n",
-					"#\r\n",
-					"#\r\n",
-					"#\r\n",
-					"#\r\n",
-					"# #################################################################################################################################################################"
-				],
-				"execution_count": null
+					"                            # **This is a genertic notebook to process .csv/.xlsx files from odw-raw to odw-standardised layer**"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -91,7 +86,7 @@
 					"Param_File_Load_Type = 'MONTHLY'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 117
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -101,7 +96,9 @@
 				"source": [
 					"#import all libraries and initialise Spark Session\r\n",
 					"import json\r\n",
-					"import datetime\r\n",
+					"#import datetime\r\n",
+					"import calendar\r\n",
+					"from datetime import datetime, timedelta, date\r\n",
 					"import requests\r\n",
 					"import pandas as pd\r\n",
 					"import pyspark.sql.functions as F \r\n",
@@ -123,7 +120,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 118
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -143,7 +140,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 119
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +165,7 @@
 					"\r\n",
 					"print(delta_table_base_path)"
 				],
-				"execution_count": 120
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -217,7 +214,7 @@
 					"else:\r\n",
 					"    print(\"No valid date folders found. Unable to construct odw-raw folder path\")"
 				],
-				"execution_count": 121
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -267,7 +264,7 @@
 					"#print(json.dumps(schema_data, indent=4))\r\n",
 					""
 				],
-				"execution_count": 122
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -318,7 +315,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 123
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -366,8 +363,16 @@
 					"                # Clean column names\r\n",
 					"                df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
 					"\r\n",
+					"                # add date columns included with every standardised table\r\n",
+					"                df_xlsx_file = df_xlsx_file.withColumn(\"ingested_datetime\", datetime.now()))\r\n",
+					"                df_xlsx_file = df_xlsx_file.withColumn(\"expected_from\", datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))\r\n",
+					"                df_xlsx_file = df_xlsx_file.withColumn(\"expected_to\", datetime.now().strftime('%Y-%m-%d'))\r\n",
+					"\r\n",
 					"                # Overwrite Delta Table with new data\r\n",
 					"                df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"                \r\n",
+					"\r\n",
+					"\r\n",
 					"           \r\n",
 					"            else:\r\n",
 					"                print(f\"Delta Table does NOT exist for {full_table_name}. Creating table using {original_filename}\")\r\n",
@@ -392,6 +397,11 @@
 					"\r\n",
 					"                        # Clean column names\r\n",
 					"                        df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"\r\n",
+					"                        # add date columns included with every standardised table\r\n",
+					"                        df_xlsx_file = df_xlsx_file.withColumn(\"ingested_datetime\", datetime.now()))\r\n",
+					"                        df_xlsx_file = df_xlsx_file.withColumn(\"expected_from\", datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))\r\n",
+					"                        df_xlsx_file = df_xlsx_file.withColumn(\"expected_to\", datetime.now().strftime('%Y-%m-%d'))\r\n",
 					"\r\n",
 					"                        # Overwrite Delta Table with new data\r\n",
 					"                        df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
@@ -421,6 +431,11 @@
 					"                    # Clean column names\r\n",
 					"                    df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
 					"\r\n",
+					"                    # add date columns included with every standardised table\r\n",
+					"                    df_csv_file = df_csv_file.withColumn(\"ingested_datetime\", datetime.now()))\r\n",
+					"                    df_csv_file = df_csv_file.withColumn(\"expected_from\", datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))\r\n",
+					"                    df_csv_file = df_csv_file.withColumn(\"expected_to\", datetime.now().strftime('%Y-%m-%d'))\r\n",
+					"\r\n",
 					"                    # Overwrite Delta Table with new data\r\n",
 					"                    df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"\r\n",
@@ -446,6 +461,11 @@
 					"\r\n",
 					"                            # Clean column names\r\n",
 					"                            df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"                            \r\n",
+					"                            # add date columns included with every standardised table\r\n",
+					"                            df_csv_file = df_csv_file.withColumn(\"ingested_datetime\", datetime.now()))\r\n",
+					"                            df_csv_file = df_csv_file.withColumn(\"expected_from\", datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))\r\n",
+					"                            df_csv_file = df_csv_file.withColumn(\"expected_to\", datetime.now().strftime('%Y-%m-%d'))\r\n",
 					"\r\n",
 					"                            # Overwrite Delta Table with new data\r\n",
 					"                            df_csv_file.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
@@ -809,7 +829,12 @@
 					"collapsed": false
 				},
 				"source": [
-					"#date_folder = datetime.now().date()\r\n",
+					"print(datetime.now())\r\n",
+					"\r\n",
+					"print(datetime.now().strftime('%Y-%m-%d'))\r\n",
+					"\r\n",
+					"print((datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'))\r\n",
+					"\r\n",
 					"#abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-17/SAP_Email 20250213.xlsx\r\n",
 					"\r\n",
 					"#odw_raw_folder_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/\"\r\n",
@@ -818,11 +843,11 @@
 					"\r\n",
 					"# Read new daily data\r\n",
 					"#df = spark.read.format(\"parquet\").load(data_path)  # Use \"csv\" or \"delta\" based on format\r\n",
-					"df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/HR_Absence_20250217.xlsx\")\r\n",
+					"#df = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(f\"{odw_raw_folder_path}/HR_Absence_20250217.xlsx\")\r\n",
 					"\r\n",
-					"df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"#df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
 					"#display(df)\r\n",
-					"df.printSchema()\r\n",
+					"#df.printSchema()\r\n",
 					"\r\n",
 					"# Overwrite Delta Table with new data\r\n",
 					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")\r\n",
@@ -835,7 +860,7 @@
 					"# Overwrite Delta Table with new data\r\n",
 					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
 				],
-				"execution_count": 85
+				"execution_count": 14
 			}
 		]
 	}
