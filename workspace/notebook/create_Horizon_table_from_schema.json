@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3f9ca858-373b-4853-b174-be94b43465d0"
+				"spark.autotune.trackingId": "61117952-537f-41f3-a663-b17af75a22c4"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.3",
+				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -67,7 +67,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 59
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -90,9 +90,10 @@
 					"from notebookutils import mssparkutils\n",
 					"import pyspark.sql.utils\n",
 					"from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType, DateType, TimestampType\n",
+					"import os\n",
 					"import requests"
 				],
-				"execution_count": 60
+				"execution_count": 55
 			},
 			{
 				"cell_type": "markdown",
@@ -125,10 +126,10 @@
 				},
 				"source": [
 					"db_name: str = 'odw_standardised_db'\n",
-					"entity_name: str = 'vw_AddAdditionalData'\n",
+					"entity_name: str = 'HorizonAppealsEvent_Test'\n",
 					"is_horizon_schema: bool = True"
 				],
-				"execution_count": 61
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -145,9 +146,10 @@
 				},
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
+					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration.json\"\n",
+					"# path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 62
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -176,34 +178,34 @@
 					}
 				},
 				"source": [
-					"def get_table_name(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\r\n",
-					"    \"\"\"\r\n",
-					"    Retrieves the standardized table name for a given Horizon entity from an orchestration file.\r\n",
-					"    \r\n",
-					"    Args:\r\n",
-					"    entity_name (str): The name of the entity to look up.\r\n",
-					"    storage_account (str): The storage account (not used in this function, consider removing if unnecessary).\r\n",
-					"    path_to_orchestration_file (str): The path to the JSON orchestration file.\r\n",
-					"    \r\n",
-					"    Returns:\r\n",
-					"    str: The standardized table name if found, None otherwise.\r\n",
-					"    \"\"\"\r\n",
-					"    spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\r\n",
-					"    \r\n",
-					"    df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\r\n",
-					"    definitions: list = json.loads(df.toJSON().first())['definitions']\r\n",
-					"\r\n",
-					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start'] and d.get('Source_Folder') == \"Horizon\"), None)\r\n",
-					"   \r\n",
-					"    if definition:\r\n",
-					"        if 'Standardised_Table_Name' in definition.keys():\r\n",
-					"            return definition['Standardised_Table_Name']\r\n",
-					"        else:\r\n",
-					"            return None  # Table name not found for this entity\r\n",
-					"    else:\r\n",
-					"        return None  # Entity not found"
+					"# def get_table_name(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> str:\n",
+					"#     \"\"\"\n",
+					"#     Retrieves the standardized table name for a given Horizon entity from an orchestration file.\n",
+					"    \n",
+					"#     Args:\n",
+					"#     entity_name (str): The name of the entity to look up.\n",
+					"#     storage_account (str): The storage account (not used in this function, consider removing if unnecessary).\n",
+					"#     path_to_orchestration_file (str): The path to the JSON orchestration file.\n",
+					"    \n",
+					"#     Returns:\n",
+					"#     str: The standardized table name if found, None otherwise.\n",
+					"#     \"\"\"\n",
+					"#     spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\n",
+					"    \n",
+					"#     df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\n",
+					"#     definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"#     definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
+					"   \n",
+					"#     if definition:\n",
+					"#         if 'Standardised_Table_Name' in definition.keys():\n",
+					"#             return definition['Standardised_Table_Name']\n",
+					"#         else:\n",
+					"#             return None  # Table name not found for this entity\n",
+					"#     else:\n",
+					"#         return None  # Entity not found"
 				],
-				"execution_count": 63
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -219,9 +221,51 @@
 					}
 				},
 				"source": [
-					"   table_name: str = get_table_name(entity_name,storage_account,path_to_orchestration_file)"
+					"   # table_name: str = get_table_name(entity_name,storage_account,path_to_orchestration_file)"
 				],
-				"execution_count": 64
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def get_table_info(entity_name: str, storage_account: str, path_to_orchestration_file: str) -> tuple:\n",
+					"    \"\"\"\n",
+					"    Retrieves the standardized table name and definition for a given Horizon entity from an orchestration file.\n",
+					"    \n",
+					"    Args:\n",
+					"    entity_name (str): The name of the entity to look up.\n",
+					"    storage_account (str): The storage account (not used in this function, consider removing if unnecessary).\n",
+					"    path_to_orchestration_file (str): The path to the JSON orchestration file.\n",
+					"    \n",
+					"    Returns:\n",
+					"    tuple: A tuple containing (Standardised_Table_Name, Standardised_Table_Definition) if found, (None, None) otherwise.\n",
+					"    \"\"\"\n",
+					"    spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\n",
+					"    \n",
+					"    df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\n",
+					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"    definition: dict = next((d for d in definitions if entity_name == d['Source_Filename_Start'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
+					"   \n",
+					"    if definition:\n",
+					"        table_name = definition.get('Standardised_Table_Name')\n",
+					"        table_definition = definition.get('Standardised_Table_Definition')\n",
+					"        return (table_name, table_definition)\n",
+					"    else:\n",
+					"        return (None, None)  # Entity not found or missing required fields\n",
+					""
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_name, table_definition = get_table_info(entity_name, storage_account, path_to_orchestration_file)\n",
+					"table_definition: str = \"abfss://odw-config@\"+storage_account+table_definition\n",
+					"print(table_definition)\n",
+					"print(path_to_orchestration_file)"
+				],
+				"execution_count": 60
 			},
 			{
 				"cell_type": "markdown",
@@ -268,42 +312,7 @@
 					"    return table_name in table_names\n",
 					""
 				],
-				"execution_count": 65
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"@logging_to_appins\r\n",
-					"def test_table_exists(db_name: str, table_name: str) -> bool:\r\n",
-					"    # Function decorator for logging purposes\r\n",
-					"\r\n",
-					"    spark.sql(f\"USE {db_name}\")\r\n",
-					"    # Set the current database context to the specified db_name\r\n",
-					"\r\n",
-					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\r\n",
-					"    # Execute SQL command to get a list of all tables in the current database\r\n",
-					"    # Store the result in a DataFrame called tables_df\r\n",
-					"\r\n",
-					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\r\n",
-					"    # Extract the 'tableName' from each row in the DataFrame\r\n",
-					"    # Create a list of all table names in the database\r\n",
-					"\r\n",
-					"    return table_name in table_names\r\n",
-					"    # Check if the specified table_name exists in the list of table names\r\n",
-					"    # Return True if it exists, False otherwise"
-				],
-				"execution_count": 66
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
@@ -329,12 +338,12 @@
 					"    mssparkutils.notebook.exit('')\n",
 					"else:\n",
 					"    # If the table does not exist: Log an informational message indicating the table's absence\n",
-					"    logInfo(f\"{db_name}.{table_name} Table does not already exist\")\n",
+					"    logInfo(f\"{db_name}.{table_name} Table does not exist\")\n",
 					"\n",
 					"# Execution continues here only if the table does not exist\n",
 					""
 				],
-				"execution_count": 67
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -346,56 +355,56 @@
 					}
 				},
 				"source": [
-					" ### Build Spark Schema and Table from JSON URL"
+					" ### Build Spark Schema and Table from JSON definition"
 				]
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
 				"source": [
-					"def create_schema_from_url(url, table_name):\r\n",
-					"    # Fetch JSON schema from URL\r\n",
-					"    response = requests.get(url)\r\n",
-					"    json_schema = json.loads(response.text)\r\n",
-					"    \r\n",
-					"    # Map JSON types to Spark types\r\n",
-					"    type_mapping = {\r\n",
-					"        \"string\": StringType(),\r\n",
-					"        \"integer\": IntegerType(),\r\n",
-					"        \"number\": DoubleType(),\r\n",
-					"        \"double\": DoubleType(),\r\n",
-					"        \"boolean\": BooleanType(),\r\n",
-					"        \"date\": DateType(),\r\n",
-					"        \"timestamp\": TimestampType()\r\n",
-					"    }\r\n",
-					"    \r\n",
-					"    # Create Spark StructType schema\r\n",
-					"    fields = []\r\n",
-					"    for field in json_schema[\"fields\"]:\r\n",
-					"        name = field[\"name\"]\r\n",
-					"        json_type = field[\"type\"]\r\n",
-					"        nullable = field.get(\"nullable\", True)\r\n",
-					"        spark_type = type_mapping.get(json_type.lower(), StringType())\r\n",
-					"        fields.append(StructField(name, spark_type, nullable))\r\n",
-					"    \r\n",
-					"    spark_schema = StructType(fields)\r\n",
-					"    \r\n",
-					"    # Create table using the schema\r\n",
-					"    spark.createDataFrame([], schema=spark_schema).createOrReplaceTempView(table_name)\r\n",
-					"    \r\n",
-					"    return spark_schema"
+					"from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType, DateType, TimestampType\n",
+					"import json\n",
+					"\n",
+					"def create_schema_from_definition(table_definition, table_name):\n",
+					"#     # Fetch JSON schema from URL\n",
+					"    response = requests.get(table_definition)\n",
+					"    json_schema = json.loads(response.text)\n",
+					"    \n",
+					"#     # Map JSON types to Spark types\n",
+					"    type_mapping = {\n",
+					"        \"string\": StringType(),\n",
+					"        \"integer\": IntegerType(),\n",
+					"        \"number\": DoubleType(),\n",
+					"        \"double\": DoubleType(),\n",
+					"        \"boolean\": BooleanType(),\n",
+					"        \"date\": DateType(),\n",
+					"        \"timestamp\": TimestampType()\n",
+					"    }\n",
+					"    \n",
+					"    # Create Spark StructType schema\n",
+					"    fields = []\n",
+					"    for field in json_schema[\"fields\"]:\n",
+					"        name = field[\"name\"]\n",
+					"        json_type = field[\"type\"]\n",
+					"        nullable = field.get(\"nullable\", True)\n",
+					"        spark_type = type_mapping.get(json_type.lower(), StringType())\n",
+					"        fields.append(StructField(name, spark_type, nullable))\n",
+					"    \n",
+					"    spark_schema = StructType(fields)\n",
+					"    \n",
+					"    # Create table using the schema\n",
+					"    spark.createDataFrame([], schema=spark_schema).createOrReplaceTempView(table_name)\n",
+					"    \n",
+					"    return spark_schema\n",
+					"\n",
+					"# Usage\n",
+					"table_definition = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/standardised_table_definitions/Horizon/HorizonAppealsEvent.json\"\n",
+					"spark_schema = create_schema_from_definition(table_definition, table_name)\n",
+					"if spark_schema:\n",
+					"    print(spark_schema)\n",
+					"else:\n",
+					"    print(\"Failed to create schema\")"
 				],
-				"execution_count": 68
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -411,11 +420,59 @@
 					}
 				},
 				"source": [
-					"# Usage\r\n",
-					"url = f\"https://raw.githubusercontent.com/Planning-Inspectorate/odw-config/refs/heads/main/data-lake/standardised_table_definitions/Horizon/{entity_name}.json\"\r\n",
-					"spark_dataframe = create_schema_from_url(url, table_name)"
+					"# def create_schema_from_url(url, table_name):\n",
+					"#     # Fetch JSON schema from URL\n",
+					"#     response = requests.get(url)\n",
+					"#     json_schema = json.loads(response.text)\n",
+					"    \n",
+					"#     # Map JSON types to Spark types\n",
+					"#     type_mapping = {\n",
+					"#         \"string\": StringType(),\n",
+					"#         \"integer\": IntegerType(),\n",
+					"#         \"number\": DoubleType(),\n",
+					"#         \"double\": DoubleType(),\n",
+					"#         \"boolean\": BooleanType(),\n",
+					"#         \"date\": DateType(),\n",
+					"#         \"timestamp\": TimestampType()\n",
+					"#     }\n",
+					"    \n",
+					"#     # Create Spark StructType schema\n",
+					"#     fields = []\n",
+					"#     for field in json_schema[\"fields\"]:\n",
+					"#         name = field[\"name\"]\n",
+					"#         json_type = field[\"type\"]\n",
+					"#         nullable = field.get(\"nullable\", True)\n",
+					"#         spark_type = type_mapping.get(json_type.lower(), StringType())\n",
+					"#         fields.append(StructField(name, spark_type, nullable))\n",
+					"    \n",
+					"#     spark_schema = StructType(fields)\n",
+					"    \n",
+					"#     # Create table using the schema\n",
+					"#     spark.createDataFrame([], schema=spark_schema).createOrReplaceTempView(table_name)\n",
+					"    \n",
+					"#     return spark_schema"
 				],
-				"execution_count": 69
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# # Usage\n",
+					"# url = f\"https://raw.githubusercontent.com/Planning-Inspectorate/odw-config/refs/heads/main/data-lake/standardised_table_definitions/Horizon/{entity_name}.json\"\n",
+					"# spark_dataframe = create_schema_from_url(url, table_name)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -444,24 +501,24 @@
 					}
 				},
 				"source": [
-					"@logging_to_appins\r\n",
-					"def create_spark_table(db_name: str, table_name: str, schema: StructType) -> None:\r\n",
-					"    # Create an empty DataFrame with the given schema\r\n",
-					"    empty_df = spark.createDataFrame([], schema=schema)\r\n",
-					"    \r\n",
-					"    # Write the empty DataFrame as a Delta table\r\n",
-					"    empty_df.write.format(\"delta\").saveAsTable(f\"{db_name}.{table_name}\")\r\n",
-					"    \r\n",
-					"    logInfo(f\"{db_name}.{table_name} Table created\")\r\n",
-					"\r\n",
-					"# Usage\r\n",
-					"try:\r\n",
-					"    create_spark_table(db_name, table_name, spark_dataframe)  # spark_dataframe is actually the StructType schema\r\n",
-					"except pyspark.sql.utils.AnalysisException as e:\r\n",
-					"    table_loc = f\"abfss://{db_name}@{storage_account}{table_name}\"\r\n",
-					"    logError(f\"Unable to create table because the location ({table_loc}) is not empty. Emptying the location and retrying\")\r\n",
-					"    mssparkutils.fs.rm(table_loc, True)\r\n",
-					"    create_spark_table(db_name, table_name, spark_dataframe)  # spark_dataframe is actually the StructType schema\r\n",
+					"@logging_to_appins\n",
+					"def create_spark_table(db_name: str, table_name: str, schema: StructType) -> None:\n",
+					"    # Create an empty DataFrame with the given schema\n",
+					"    empty_df = spark.createDataFrame([], schema=schema)\n",
+					"    \n",
+					"    # Write the empty DataFrame as a Delta table\n",
+					"    empty_df.write.format(\"delta\").saveAsTable(f\"{db_name}.{table_name}\")\n",
+					"    \n",
+					"    logInfo(f\"{db_name}.{table_name} Table created\")\n",
+					"\n",
+					"# Usage\n",
+					"try:\n",
+					"    create_spark_table(db_name, table_name, spark_dataframe)  # spark_dataframe is actually the StructType schema\n",
+					"except pyspark.sql.utils.AnalysisException as e:\n",
+					"    table_loc = f\"abfss://{db_name}@{storage_account}{table_name}\"\n",
+					"    logError(f\"Unable to create table because the location ({table_loc}) is not empty. Emptying the location and retrying\")\n",
+					"    mssparkutils.fs.rm(table_loc, True)\n",
+					"    create_spark_table(db_name, table_name, spark_dataframe)  # spark_dataframe is actually the StructType schema\n",
 					""
 				],
 				"execution_count": null
