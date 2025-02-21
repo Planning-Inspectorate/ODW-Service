@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1c3c1032-0c1f-4ce7-8e28-5422b943f300"
+				"spark.autotune.trackingId": "9bdf1580-2c3f-4c09-bb9c-63bf57442723"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 					"Param_File_Load_Type = ''\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 12
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -109,7 +109,7 @@
 					"from collections.abc import Mapping\r\n",
 					"from operator import add\r\n",
 					"from notebookutils import mssparkutils\r\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date \r\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5\r\n",
 					"from pprint import pprint as pp\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"#import pyspark.sql.functions import regexp_replace, col\r\n",
@@ -121,7 +121,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -943,6 +943,36 @@
 					"#df.write.format(\"delta\").mode(\"overwrite\").save(f\"{delta_table_base_path}/sap_email_monthly\")"
 				],
 				"execution_count": 53
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Sample Source DataFrame with column names\r\n",
+					"data = [(1, \"Alice\", 30), (2, \"Bob\", 25)]\r\n",
+					"source_df = spark.createDataFrame(data, [\"id\", \"name\", \"age\"])\r\n",
+					"\r\n",
+					"# Simulate Delta Table Column Names\r\n",
+					"delta_table_columns = [\"ID\", \"FULL_NAME\", \"AGE_YEARS\"]\r\n",
+					"\r\n",
+					"# Compute hex values of column names\r\n",
+					"source_hex_mapping = {col: source_df.select(expr(f\"md5('{col}') as hex\")).collect()[0][\"hex\"] for col in source_df.columns}\r\n",
+					"target_hex_mapping = {col: spark.createDataFrame([(col,)], [\"col\"]).select(expr(f\"md5(col) as hex\")).collect()[0][\"hex\"] for col in delta_table_columns}\r\n",
+					"\r\n",
+					"# Match source columns to delta table columns\r\n",
+					"column_aliases = {src_col: tgt_col for src_col, src_hex in source_hex_mapping.items() for tgt_col, tgt_hex in target_hex_mapping.items() if src_hex == tgt_hex}\r\n",
+					"\r\n",
+					"# Rename columns dynamically\r\n",
+					"renamed_df = source_df.select([expr(f\"`{col}` as `{column_aliases.get(col, col)}`\") for col in source_df.columns])\r\n",
+					"\r\n",
+					"# Show results\r\n",
+					"print(\"Original Source DataFrame:\")\r\n",
+					"source_df.show()\r\n",
+					"\r\n",
+					"print(\"Renamed DataFrame to match Delta Table:\")\r\n",
+					"renamed_df.show()\r\n",
+					""
+				],
+				"execution_count": 7
 			}
 		]
 	}
