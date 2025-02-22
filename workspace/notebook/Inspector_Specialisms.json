@@ -1,0 +1,344 @@
+{
+	"name": "Inspector_Specialisms",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "3809ac2a-b920-4de1-83f9-cb3191b27e8c"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Inspector Specialism "
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%pyspark\n",
+					"\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.types import StructType, StructField, StringType, TimestampType\n",
+					"from pyspark.sql.functions import col, trim, regexp_replace\n",
+					"\n",
+					"# Initialize Spark Session\n",
+					"spark = SparkSession.builder.appName(\"LakeDB_Transfer\").getOrCreate()"
+				],
+				"execution_count": 59
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.transform_inspector_Specialisms (\n",
+					"\n",
+					"    StaffNumber string,\n",
+					"    Firstname string,\n",
+					"    Lastname string,\n",
+					"    QualificationName string,\n",
+					"    Proficien string,\n",
+					"    ValidFrom  string,\n",
+					"\tValidTo  string,\n",
+					"\tCurrent  string,\n",
+					"\tValHashKey string,\n",
+					"    LastUpdated string\n",
+					" )\n",
+					"    USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 60
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.inspector_Specialisms (\n",
+					"\n",
+					"    StaffNumber string,\n",
+					"    Firstname string,\n",
+					"    Lastname string,\n",
+					"    QualificationName string,\n",
+					"    Proficien string,\n",
+					"    ValidFrom  string,\n",
+					"\tValidTo  string,\n",
+					"\tCurrent  string,\n",
+					"\tValHashKey string,\n",
+					"    LastUpdated string\n",
+					" )\n",
+					"    USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 61
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"DELETE from odw_harmonised_db.transform_inspector_Specialisms;\n",
+					"\n",
+					"insert into odw_harmonised_db.transform_inspector_Specialisms\n",
+					"\t(\n",
+					"    StaffNumber ,\n",
+					"    Firstname ,\n",
+					"    Lastname ,\n",
+					"    QualificationName ,\n",
+					"    Proficien,\n",
+					"    ValidFrom ,\n",
+					"\tValidTo  ,\n",
+					"\tCurrent  ,\n",
+					"\tValHashKey ,\n",
+					"    LastUpdated \n",
+					"\t)\n",
+					"select \n",
+					"\tcase len(StaffNumber)\n",
+					"\t when 6 then\n",
+					"\tcase when StaffNumber like '50%' then concat('00',StaffNumber) \n",
+					"\twhen StaffNumber like '42%' then concat('50',StaffNumber)  \n",
+					"\telse StaffNumber -- RV added length part for 6 and 8 \n",
+					"\tend \n",
+					"\t when 8 then StaffNumber\n",
+					"\telse StaffNumber end as\n",
+					"\t\tStaffNumber,\n",
+					"\t\tFirstname ,\n",
+					"\t\tLastname ,\n",
+					"\t\tQualificationName ,\n",
+					"\t\tProficien ,\n",
+					"\t\tnull as ValidFrom ,\n",
+					"\tnull as ValidTo  ,\n",
+					"\tnull as Current  ,\n",
+					"\tnull as ValHashKey ,\n",
+					"    null as LastUpdated \n",
+					"\tfrom odw_standardised_db.inspector_specialisms_monthly t1\n",
+					"\twhere StaffNumber is not null\n",
+					""
+				],
+				"execution_count": 62
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"UPDATE odw_harmonised_db.transform_inspector_Specialisms\n",
+					"SET ValHashKey = md5(concat_ws('|', \n",
+					"    coalesce(cast(StaffNumber as string), ''), \n",
+					"    coalesce(cast(Firstname as string), ''), \n",
+					"    coalesce(cast(Lastname as string), ''), \n",
+					"    coalesce(cast(QualificationName as string), ''), \n",
+					"    coalesce(cast(Proficien as string), '')\n",
+					"))"
+				],
+				"execution_count": 63
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Update Statements"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"MERGE INTO odw_harmonised_db.inspector_Specialisms AS target\n",
+					"USING (\n",
+					"\n",
+					"    SELECT oldSpe.StaffNumber, oldSpe.QualificationName\n",
+					"\n",
+					"    FROM odw_harmonised_db.inspector_Specialisms oldSpe\n",
+					"\n",
+					"    LEFT OUTER JOIN odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"\n",
+					"        ON oldSpe.StaffNumber = souSpe.StaffNumber\n",
+					"\n",
+					"        AND oldSpe.QualificationName = souSpe.QualificationName\n",
+					"\n",
+					"    WHERE souSpe.StaffNumber IS NULL\n",
+					"\n",
+					") AS source\n",
+					"\n",
+					"ON target.StaffNumber = source.StaffNumber\n",
+					"\n",
+					"   AND target.QualificationName = source.QualificationName\n",
+					"\n",
+					"   AND target.Current = 1\n",
+					"\n",
+					"WHEN MATCHED THEN\n",
+					"\n",
+					"UPDATE SET \n",
+					"\n",
+					"    target.Current = 0,\n",
+					"\n",
+					"    target.ValidTo = CURRENT_DATE();"
+				],
+				"execution_count": 64
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"insert INTO odw_harmonised_db.inspector_Specialisms (StaffNumber, Firstname, Lastname, QualificationName, Proficien, ValidFrom, ValidTo, Current, ValHashKey, LastUpdated)\n",
+					"select souSpe.StaffNumber, souSpe.Firstname, souSpe.Lastname, souSpe.QualificationName, souSpe.Proficien, current_date(), '9999-12-31', 1, souSpe.ValHashKey, current_date()\n",
+					"from odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"left outer join odw_harmonised_db.inspector_Specialisms tarSpe\n",
+					"\ton souSpe.StaffNumber = tarSpe.StaffNumber\n",
+					"\tand tarSpe.Current = 1\n",
+					"\tand souSpe.QualificationName = tarSpe.QualificationName\n",
+					"where tarSpe.StaffNumber is null\n",
+					""
+				],
+				"execution_count": 65
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"insert INTO odw_harmonised_db.inspector_Specialisms (StaffNumber, Firstname, Lastname, QualificationName, Proficien, ValidFrom, ValidTo, Current, ValHashKey, LastUpdated)\n",
+					"select souSpe.StaffNumber, souSpe.Firstname, souSpe.Lastname, souSpe.QualificationName, souSpe.Proficien, current_date(), '9999-12-31', 1, souSpe.ValHashKey, current_date()\n",
+					"from odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"inner join odw_harmonised_db.inspector_Specialisms tarSpe\n",
+					"\ton souSpe.StaffNumber = tarSpe.StaffNumber\n",
+					"\tand tarSpe.Current = 1\n",
+					"\tand souSpe.QualificationName = tarSpe.QualificationName\n",
+					"where tarSpe.ValHashKey <> souSpe.ValHashKey\n",
+					""
+				],
+				"execution_count": 66
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"MERGE INTO odw_harmonised_db.inspector_Specialisms AS oldSpe\n",
+					"\n",
+					"USING odw_harmonised_db.inspector_Specialisms AS newSpe\n",
+					"\n",
+					"ON oldSpe.StaffNumber = newSpe.StaffNumber\n",
+					"\n",
+					"   AND oldSpe.QualificationName = newSpe.QualificationName\n",
+					"\n",
+					"   AND oldSpe.Current = 1\n",
+					"\n",
+					"   AND newSpe.Current = 1\n",
+					"\n",
+					"   AND newSpe.ValidFrom = CURRENT_DATE()\n",
+					"\n",
+					"   AND oldSpe.ValidFrom < CURRENT_DATE()\n",
+					"\n",
+					"WHEN MATCHED THEN\n",
+					"\n",
+					"UPDATE SET \n",
+					"\n",
+					"   oldSpe.Current = 0,\n",
+					"\n",
+					"   oldSpe.ValidTo = CURRENT_DATE();"
+				],
+				"execution_count": 67
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_harmonised_db.transform_inspector_Specialisms"
+				],
+				"execution_count": 68
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_harmonised_db.inspector_Specialisms"
+				],
+				"execution_count": 69
+			}
+		]
+	}
+}
