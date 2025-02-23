@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b1e83606-dd09-4578-a645-047020c819b8"
+				"spark.autotune.trackingId": "d3a01552-01b7-4221-899f-7402064b75fb"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,14 @@
 					}
 				},
 				"source": [
-					"                            # **This is a genertic notebook to process .csv/.xlsx files from odw-raw to odw-standardised layer**"
+					"\r\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \r\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;19-Jan-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is generic to cater to `.xlsx` and `.csv` files for creating Delta Tables.\r\n",
+					"\r\n",
+					"##### The input parameters are:\r\n",
+					"###### Param_FileFolder_Path => This is a mandatory parameter which refers to a folder path of the entities like 'Timesheets', 'SapHrData'\r\n",
+					"###### Param_File_Load_Type  => This is an optional parameter refers to a subfolders if there is any like Monthly,Daily, Quarterly etc.\r\n",
+					"###### Param_Json_SchemaFolder_Name => This is a mandatory parameter which refers to a schema file in json format required to create delta tables."
 				]
 			},
 			{
@@ -87,6 +94,19 @@
 					"Param_Json_SchemaFolder_Name = 'timesheets'"
 				],
 				"execution_count": 15
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Import all required Python Libraries"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -121,6 +141,19 @@
 				"execution_count": 16
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get Storage account"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -139,6 +172,19 @@
 					"#print(storage_account)"
 				],
 				"execution_count": 17
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all required folder paths"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -165,6 +211,19 @@
 					"print(odw_raw_base_folder_path)"
 				],
 				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Find the recent Date subfolder path and construct the odw-raw path dynamically"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -221,6 +280,19 @@
 				"execution_count": 19
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Build JSON Schema file path if create_schema.json file exist in odw-config location"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -271,6 +343,19 @@
 				"execution_count": 20
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Check whether .xlsx or .csv files exist in the recent date subfolder path location"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -315,9 +400,22 @@
 				"execution_count": 21
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all file and dataframe processing related functions"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
-					"\r\n",
+					"# Create File list\r\n",
 					"def list_files(folder_path):\r\n",
 					"    \"\"\"Returns a list of file names in the given folder.\"\"\"\r\n",
 					"    try:\r\n",
@@ -326,6 +424,7 @@
 					"        print(f\"Error listing files in {folder_path}: {e}\")\r\n",
 					"        return []\r\n",
 					"\r\n",
+					"# Clean all column names from the souce file dataframe by removing special character like \".\",\":\" \" \" \r\n",
 					"def clean_column_names(df):\r\n",
 					"    \"\"\"Removes special characters from column names.\"\"\"\r\n",
 					"    try:\r\n",
@@ -335,6 +434,7 @@
 					"        print(f\"Error cleaning column names: {e}\")\r\n",
 					"        return df\r\n",
 					"\r\n",
+					"# Add additional metadata columns for Standardised_db Lakehouse database\r\n",
 					"def add_metadata_columns(df):\r\n",
 					"    \"\"\"Adds standard metadata columns to the DataFrame.\"\"\"\r\n",
 					"    try:\r\n",
@@ -347,6 +447,7 @@
 					"        print(f\"Error adding metadata columns: {e}\")\r\n",
 					"        return df\r\n",
 					"\r\n",
+					"# Reorder dataframe columns to bring additional metadata columns to the front\r\n",
 					"def reorder_columns(df):\r\n",
 					"    \"\"\"Reorders the columns so that metadata columns come first.\"\"\"\r\n",
 					"    try:\r\n",
@@ -357,6 +458,7 @@
 					"        print(f\"Error reordering columns: {e}\")\r\n",
 					"        return df\r\n",
 					"\r\n",
+					"# Load file dataframe in preparedness to load data into Standerdised_DB database Delta Table.\r\n",
 					"def load_file(file_path, file_type):\r\n",
 					"    \"\"\"Reads a file into a PySpark DataFrame based on file type.\"\"\"\r\n",
 					"    try:\r\n",
@@ -370,6 +472,19 @@
 					""
 				],
 				"execution_count": 24
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Load all files dataframe into Standerdised_DB database Delta Tables."
+				]
 			},
 			{
 				"cell_type": "code",
