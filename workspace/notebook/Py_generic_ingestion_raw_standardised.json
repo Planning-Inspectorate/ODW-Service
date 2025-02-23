@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f81a9417-00b7-4f85-9e48-617b043c52cc"
+				"spark.autotune.trackingId": "b1e83606-dd09-4578-a645-047020c819b8"
 			}
 		},
 		"metadata": {
@@ -380,22 +380,26 @@
 					"        table_name = re.sub(r'\\d+', '', original_filename).replace(f\".{file_type}\", f\"{Param_File_Load_Type}\").lower()\r\n",
 					"        delta_table_path = f\"{delta_base_path}/{table_name}\"\r\n",
 					"        full_table_name = f\"{database_name}.{table_name}\"\r\n",
-					"       \r\n",
+					"        \r\n",
 					"        file_path = f\"{folder_path}/{original_filename}\"\r\n",
 					"        df = load_file(file_path, file_type)\r\n",
 					"        if df is None:\r\n",
 					"            return\r\n",
+					"        file_record_count = df.count()\r\n",
 					"        df = clean_column_names(df)\r\n",
 					"        df = add_metadata_columns(df)\r\n",
 					"        df = reorder_columns(df)\r\n",
-					"       \r\n",
+					"        \r\n",
 					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
 					"            print(f\"Delta Table exists for {full_table_name}. Loading data from {original_filename}\")\r\n",
+					"            target_df = spark.read.format(\"delta\").load(delta_table_path)\r\n",
+					"            target_record_count = target_df.count()\r\n",
 					"        else:\r\n",
 					"            print(f\"Delta Table does NOT exist for {full_table_name}. Creating table using {original_filename}\")\r\n",
+					"            target_record_count = 0\r\n",
 					"            schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
 					"            schema_data = schema_df.collect()\r\n",
-					"           \r\n",
+					"            \r\n",
 					"            if schema_data:\r\n",
 					"                schema_tables = schema_data[0].asDict().get(\"table_name\", {})\r\n",
 					"                if table_name in schema_tables:\r\n",
@@ -405,9 +409,10 @@
 					"                else:\r\n",
 					"                    print(f\"Schema not found for {table_name} in create_schema.json\")\r\n",
 					"                    return\r\n",
-					"       \r\n",
+					"        \r\n",
 					"        df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"        print(f\"Data successfully loaded for {table_name} using {original_filename}.\")\r\n",
+					"        print(f\"File Record Count: {file_record_count}, Target Table Record Count: {target_record_count}\")\r\n",
 					"    except Exception as e:\r\n",
 					"        print(f\"Error processing file {original_filename}: {e}\")\r\n",
 					"\r\n",
@@ -424,7 +429,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": 25
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
