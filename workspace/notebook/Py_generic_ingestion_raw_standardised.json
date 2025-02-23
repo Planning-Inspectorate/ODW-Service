@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "76fcb4c4-85ca-42c5-aaa4-013b034cc655"
+				"spark.autotune.trackingId": "f243cb31-305f-442c-b104-1ca11b6a686c"
 			}
 		},
 		"metadata": {
@@ -91,11 +91,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"Param_FileFolder_Path = 'Timesheets'\r\n",
-					"Param_File_Load_Type = ''\r\n",
-					"Param_Json_SchemaFolder_Name = 'timesheets'"
+					"Param_FileFolder_Path = 'SapHrData'\r\n",
+					"Param_File_Load_Type = 'WEEKLY'\r\n",
+					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 15
+				"execution_count": 41
 			},
 			{
 				"cell_type": "markdown",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -173,7 +173,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 17
+				"execution_count": 43
 			},
 			{
 				"cell_type": "markdown",
@@ -212,7 +212,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_base_folder_path)"
 				],
-				"execution_count": 18
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
@@ -280,7 +280,7 @@
 					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -312,38 +312,42 @@
 				"source": [
 					"#Build JSON Schema file path if create_schema.json file exist in odw-config location\r\n",
 					"\r\n",
-					"json_file_path =f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}\"\r\n",
-					"                \r\n",
+					"try:\r\n",
+					"    json_file_path =f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}\"\r\n",
+					"                    \r\n",
 					"\r\n",
-					"json_file_name = \"create_schema.json\"\r\n",
+					"    json_file_name = \"create_schema.json\"\r\n",
 					"\r\n",
-					"#print(json_file_path)\r\n",
+					"    #print(json_file_path)\r\n",
 					"\r\n",
-					"# List the contents of the folder\r\n",
-					"json_file = mssparkutils.fs.ls(json_file_path)\r\n",
+					"    # List the contents of the folder\r\n",
+					"    json_file = mssparkutils.fs.ls(json_file_path)\r\n",
 					"\r\n",
-					"print(json_file)\r\n",
+					"    print(json_file)\r\n",
 					"\r\n",
-					"# Check if there are any files (excluding subdirectories)\r\n",
-					"json_file_exists = any(f.name == json_file_name for f in json_file)\r\n",
+					"    # Check if there are any files (excluding subdirectories)\r\n",
+					"    json_file_exists = any(f.name == json_file_name for f in json_file)\r\n",
 					"\r\n",
-					"# Print result\r\n",
-					"if json_file_exists:\r\n",
-					"    json_file_path = f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}/{json_file_name}\"\r\n",
-					"    print(f\"Files exist in the folder: {json_file_path}\")\r\n",
-					"else:\r\n",
-					"    print(f\"No files found in the folder: {json_file_path}\")\r\n",
+					"    # Print result\r\n",
+					"    if json_file_exists:\r\n",
+					"        json_file_path = f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}/{json_file_name}\"\r\n",
+					"        print(f\"Files exist in the folder: {json_file_path}\")\r\n",
+					"    else:\r\n",
+					"        print(f\"No files found in the folder: {json_file_path}\")\r\n",
 					"\r\n",
-					"# Read JSON from ADLS Gen2\r\n",
-					"schema_df = spark.read.text(json_file_path)\r\n",
-					"schema_json = \"\".join([row.value for row in schema_df.collect()])  # Convert to string\r\n",
-					"schema_data = json.loads(schema_json)  \r\n",
+					"    # Read JSON from ADLS Gen2\r\n",
+					"    schema_df = spark.read.text(json_file_path)\r\n",
+					"    schema_json = \"\".join([row.value for row in schema_df.collect()])  # Convert to string\r\n",
+					"    schema_data = json.loads(schema_json)  \r\n",
 					"\r\n",
-					"# Print loaded schema\r\n",
-					"#print(json.dumps(schema_data, indent=4))\r\n",
+					"    # Print loaded schema\r\n",
+					"    #print(json.dumps(schema_data, indent=4))\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -375,32 +379,37 @@
 					"# Check whether .xlsx or .csv files exist in odw-raw folder path location\r\n",
 					"\r\n",
 					"# List all files in the folder\r\n",
-					"input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
 					"\r\n",
-					"# Filter out only files (ignore directories)\r\n",
-					"file_list = [f.name for f in input_data_files if not f.isDir]\r\n",
+					"try:\r\n",
 					"\r\n",
-					"if not file_list:\r\n",
-					"    print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
-					"else:\r\n",
-					"    # Check if there are .xlsx or .csv files\r\n",
-					"    xlsx_files = [f for f in file_list if f.lower().endswith(\".xlsx\")]    \r\n",
-					"    cleaned_xlsx_files = [re.sub(r'\\d+','', f).replace(\".xlsx\",f\"{Param_File_Load_Type}\").lower() for f in xlsx_files]   \r\n",
+					"    input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
 					"\r\n",
-					"    csv_files = [f for f in file_list if f.lower().endswith(\".csv\")]\r\n",
-					"    # cleaned .csv file by removing digits, space and file extention\r\n",
-					"    cleaned_csv_files = [re.sub(r'\\d+\\.csv$','', f).replace(\" \",\"\").lower() for f in csv_files]\r\n",
+					"    # Filter out only files (ignore directories)\r\n",
+					"    file_list = [f.name for f in input_data_files if not f.isDir]\r\n",
 					"\r\n",
-					"    print(f\"Total files found: {len(file_list)}\")\r\n",
-					"    print(f\"Excel files (.xlsx): {xlsx_files if xlsx_files else 'None'}\")\r\n",
-					"    print(f\"CSV files (.csv): {csv_files if csv_files else 'None'}\")\r\n",
+					"    if not file_list:\r\n",
+					"        print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
+					"    else:\r\n",
+					"        # Check if there are .xlsx or .csv files\r\n",
+					"        xlsx_files = [f for f in file_list if f.lower().endswith(\".xlsx\")]    \r\n",
+					"        cleaned_xlsx_files = [re.sub(r'\\d+','', f).replace(\".xlsx\",f\"{Param_File_Load_Type}\").lower() for f in xlsx_files]   \r\n",
 					"\r\n",
-					"    print(f\"Excel files (.xlsx) cleaned: {cleaned_xlsx_files}\")\r\n",
+					"        csv_files = [f for f in file_list if f.lower().endswith(\".csv\")]\r\n",
+					"        # cleaned .csv file by removing digits, space and file extention\r\n",
+					"        cleaned_csv_files = [re.sub(r'\\d+\\.csv$','', f).replace(\" \",\"\").lower() for f in csv_files]\r\n",
 					"\r\n",
+					"        print(f\"Total files found: {len(file_list)}\")\r\n",
+					"        print(f\"Excel files (.xlsx): {xlsx_files if xlsx_files else 'None'}\")\r\n",
+					"        print(f\"CSV files (.csv): {csv_files if csv_files else 'None'}\")\r\n",
+					"\r\n",
+					"        print(f\"Excel files (.xlsx) cleaned: {cleaned_xlsx_files}\")\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Error getting files from the {odw_raw_folder_path} folder path: {e}\")\r\n",
 					"    \r\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 47
 			},
 			{
 				"cell_type": "markdown",
@@ -412,7 +421,7 @@
 					}
 				},
 				"source": [
-					"##### Define all file and dataframe processing related functions"
+					"##### Define all files and dataframe processing related functions"
 				]
 			},
 			{
@@ -474,7 +483,7 @@
 					"        return None\r\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 48
 			},
 			{
 				"cell_type": "markdown",
@@ -483,10 +492,14 @@
 						"transient": {
 							"deleting": false
 						}
-					}
+					},
+					"run_control": {
+						"frozen": false
+					},
+					"editable": true
 				},
 				"source": [
-					"##### Load all files dataframe into Standerdised_DB database Delta Tables."
+					"##### Load all files dataframe into Standerdised_db database Delta Tables."
 				]
 			},
 			{
@@ -547,7 +560,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": 26
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
