@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "618a0c71-6a0a-4a21-a628-ee961b8a46ae"
+				"spark.autotune.trackingId": "d50abb75-e1f7-4d61-a0d4-ae368807738b"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"Param_FileFolder_Path = ''\r\n",
 					"Param_Json_SchemaFolder_Name = ''"
 				],
-				"execution_count": 34
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -129,7 +129,7 @@
 					"from collections.abc import Mapping\r\n",
 					"from operator import add\r\n",
 					"from notebookutils import mssparkutils\r\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5\r\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format\r\n",
 					"from pprint import pprint as pp\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"from pyspark.sql import SparkSession\r\n",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -626,6 +626,32 @@
 					""
 				],
 				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# Read the Excel file\r\n",
+					"df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/Inspector_Addresses_20250221.xlsx\")\r\n",
+					"\r\n",
+					"# Standardize column names (remove special characters)\r\n",
+					"df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"\r\n",
+					"# Identify columns that are already DateType\r\n",
+					"date_columns = [field.name for field in df_xlsx_file.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
+					"\r\n",
+					"print(\"Detected Date Columns:\", date_columns)\r\n",
+					"\r\n",
+					"# Convert and format only DateType columns dynamically\r\n",
+					"for col_name in date_columns:\r\n",
+					"    df_xlsx_file = df_xlsx_file.withColumn(col_name, date_format(col(col_name), \"dd-MM-yyyy\"))  # Ensure correct display format\r\n",
+					"\r\n",
+					"# Display the corrected DataFrame\r\n",
+					"display(df_xlsx_file)"
+				],
+				"execution_count": 59
 			}
 		]
 	}
