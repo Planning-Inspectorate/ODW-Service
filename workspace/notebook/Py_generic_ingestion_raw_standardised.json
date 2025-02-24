@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d50abb75-e1f7-4d61-a0d4-ae368807738b"
+				"spark.autotune.trackingId": "37117154-9da2-4208-819a-c77f25b66f9f"
 			}
 		},
 		"metadata": {
@@ -91,11 +91,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"Param_File_Load_Type = ''\r\n",
-					"Param_FileFolder_Path = ''\r\n",
-					"Param_Json_SchemaFolder_Name = ''"
+					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"Param_FileFolder_Path = 'SapHrData'\r\n",
+					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 8
+				"execution_count": 71
 			},
 			{
 				"cell_type": "markdown",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": 72
 			},
 			{
 				"cell_type": "markdown",
@@ -173,7 +173,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 36
+				"execution_count": 73
 			},
 			{
 				"cell_type": "markdown",
@@ -212,7 +212,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_base_folder_path)"
 				],
-				"execution_count": 37
+				"execution_count": 74
 			},
 			{
 				"cell_type": "markdown",
@@ -287,7 +287,7 @@
 					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 40
+				"execution_count": 85
 			},
 			{
 				"cell_type": "markdown",
@@ -354,7 +354,7 @@
 					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 41
+				"execution_count": 86
 			},
 			{
 				"cell_type": "markdown",
@@ -416,7 +416,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 43
+				"execution_count": 87
 			},
 			{
 				"cell_type": "markdown",
@@ -447,7 +447,18 @@
 					"def clean_column_names(df):\r\n",
 					"    \"\"\"Removes special characters from column names.\"\"\"\r\n",
 					"    try:\r\n",
-					"        return df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"        df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df.columns])\r\n",
+					"\r\n",
+					"        # Identify columns that are already DateType\r\n",
+					"        date_columns = [field.name for field in df.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
+					"\r\n",
+					"        #print(\"Detected Date Columns:\", date_columns)\r\n",
+					"\r\n",
+					"        # Convert and format only DateType columns dynamically\r\n",
+					"        for col_name in date_columns:\r\n",
+					"            df = df.withColumn(col_name, date_format(col(col_name), \"dd/MM/yyyy\"))  # Ensure correct display format\r\n",
+					"\r\n",
+					"        return df\r\n",
 					"        #return df.toDF(*[re.sub(r\"[^a-zA-Z0-9]\", \"\", c) for c in df.columns])\r\n",
 					"    except Exception as e:\r\n",
 					"        print(f\"Error cleaning column names: {e}\")\r\n",
@@ -482,15 +493,15 @@
 					"    \"\"\"Reads a file into a PySpark DataFrame based on file type.\"\"\"\r\n",
 					"    try:\r\n",
 					"        if file_type == \"xlsx\":\r\n",
-					"            return spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\r\n",
+					"            return spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\r\n",
 					"        elif file_type == \"csv\":\r\n",
-					"            return spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\r\n",
+					"            return spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\r\n",
 					"    except Exception as e:\r\n",
 					"        print(f\"Error loading file {file_path}: {e}\")\r\n",
 					"        return None\r\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 94
 			},
 			{
 				"cell_type": "markdown",
@@ -523,9 +534,8 @@
 					"        delta_table_path = f\"{delta_base_path}/{table_name}\"\r\n",
 					"        full_table_name = f\"{database_name}.{table_name}\"\r\n",
 					"        \r\n",
-					"        print(f\" Rohitfull_table_name : {full_table_name}\")\r\n",
-					"\r\n",
 					"        file_path = f\"{folder_path}/{original_filename}\"\r\n",
+					"        \r\n",
 					"        df = load_file(file_path, file_type)\r\n",
 					"        if df is None:\r\n",
 					"            return\r\n",
@@ -574,7 +584,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": 127
+				"execution_count": 107
 			},
 			{
 				"cell_type": "code",
@@ -590,12 +600,16 @@
 					}
 				},
 				"source": [
-					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
-					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_email_monthly\")\r\n",
-					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.inspector_specialisms_monthly\")\r\n",
-					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_protected_monthly\")"
+					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
+					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_history_monthly\")\r\n",
+					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_leavers_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_protected_monthly\")\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					""
 				],
-				"execution_count": 103
+				"execution_count": 106
 			},
 			{
 				"cell_type": "code",
@@ -633,8 +647,10 @@
 					"collapsed": false
 				},
 				"source": [
+					"#schema_str = 'StreetandHouseNumber string,2ndAddressLine string,City string,District string,PostalCode string,RegionStateProvinceCount string,StartDate string,EndDate string,ChartingOfficer string,ChartingOfficerforInspector string,SubsPSgroup string,TelNo string,PersonalMobile string,WorkMobile string,StaffNumber string,Chngdon string'\r\n",
+					"\r\n",
 					"# Read the Excel file\r\n",
-					"df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/Inspector_Addresses_20250221.xlsx\")\r\n",
+					"df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/SAP_HR_History_20250224.xlsx\")\r\n",
 					"\r\n",
 					"# Standardize column names (remove special characters)\r\n",
 					"df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
@@ -648,10 +664,16 @@
 					"for col_name in date_columns:\r\n",
 					"    df_xlsx_file = df_xlsx_file.withColumn(col_name, date_format(col(col_name), \"dd-MM-yyyy\"))  # Ensure correct display format\r\n",
 					"\r\n",
+					"#spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS odw_standardised_db.Inspector_Addresses ({schema_str}) USING DELTA LOCATION 'abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/Inspector_Addresses/'\"\"\")\r\n",
+					"\r\n",
+					"#df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/Inspector_Addresses/\")\r\n",
+					"\r\n",
 					"# Display the corrected DataFrame\r\n",
-					"display(df_xlsx_file)"
+					"df_xlsx_file.printSchema()\r\n",
+					"#display(df_xlsx_file)\r\n",
+					""
 				],
-				"execution_count": 59
+				"execution_count": 105
 			}
 		]
 	}
