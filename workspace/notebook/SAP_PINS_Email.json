@@ -1,0 +1,123 @@
+{
+	"name": "SAP_PINS_Email",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "46ab71b9-9c8c-4021-9901-523ea0abef23"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Entity Name : SAP_PINS_email"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%pyspark\n",
+					"\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.types import StructType, StructField, StringType, TimestampType\n",
+					"from pyspark.sql.functions import col, trim, regexp_replace\n",
+					"\n",
+					"# Initialize Spark Session\n",
+					"spark = SparkSession.builder.appName(\"LakeDB_Transfer\").getOrCreate()"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Create harmonised Lake DB table if it doesn't exist\n",
+					"spark.sql(\"\"\"\n",
+					"    CREATE TABLE IF NOT EXISTS odw_harmonised_db.SAP_PINS_email (\n",
+					"        StaffNumber STRING,\n",
+					"        Nickname STRING,\n",
+					"        Lastname STRING,\n",
+					"        EmailAddress STRING\n",
+					"    )\n",
+					"    USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df_standardized = spark.sql(\"SELECT StaffNumber,Firstname,Lastname,EmailAddress FROM odw_standardised_db.sap_email_monthly\")\n",
+					""
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col\n",
+					"\n",
+					"# Rename Firstname to Nickname\n",
+					"df_to_harmonised = df_standardized.withColumnRenamed(\"Firstname\", \"Nickname\")\n",
+					"\n",
+					"# Write the DataFrame with overwrite mode\n",
+					"df_to_harmonised.write.format(\"delta\") \\\n",
+					"    .mode(\"overwrite\") \\\n",
+					"    .option(\"overwriteSchema\", \"true\") \\\n",
+					"    .saveAsTable(\"odw_harmonised_db.SAP_PINS_email\")"
+				],
+				"execution_count": 4
+			}
+		]
+	}
+}
