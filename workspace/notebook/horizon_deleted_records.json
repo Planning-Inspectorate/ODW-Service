@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bf0acafc-e1db-4dea-b905-e2b4e1ad5586"
+				"spark.autotune.trackingId": "8de59c66-2d17-4034-a245-a6eb6f6a2be0"
 			}
 		},
 		"metadata": {
@@ -65,7 +65,9 @@
 					"service_bus_table = \"odw_harmonised_db.sb_s51_advice\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_nsip_advice\"\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_s51_advice\"\n",
-					"curated_migration_table = \"odw_curated_migration_db.s51_advice\""
+					"curated_migration_table = \"odw_curated_migration_db.s51_advice\"\n",
+					"horizon_primary_key = \"advicenodeid\"\n",
+					"servicebus_primary_key = \"adviceId\""
 				],
 				"execution_count": null
 			},
@@ -75,7 +77,7 @@
 					"servicebus_df = spark.table(service_bus_table)\n",
 					"horizon_df = spark.table(horizon_table)\n",
 					"horizon_latest_df = spark.sql(f\"select * from {horizon_table} where ingested_datetime = (select max(ingested_datetime) from {horizon_table})\")\n",
-					"horizon_deleted = horizon_df.join(horizon_latest_df, on=\"advicenodeid\", how=\"left_anti\").select(\"advicenodeid\").distinct()\n",
+					"horizon_deleted = horizon_df.join(horizon_latest_df, on=horizon_primary_key, how=\"left_anti\").select(horizon_primary_key).distinct()\n",
 					"harmonised_df = spark.table(spark_table_final)\n",
 					"curated_migration_df = spark.table(curated_migration_table)"
 				],
@@ -84,14 +86,14 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"def test_no_deleted_horizon_records_in_harmonised(horizon_latest_df: DataFrame, harmonised_df: DataFrame) -> bool:\n",
+					"def test_no_deleted_horizon_records_in_harmonised(horizon_latest_df: DataFrame, harmonised_df: DataFrame, horizon_primary_key: str, servicebus_primary_key: str) -> bool:\n",
 					"    \"\"\"\n",
 					"    Tests if there are any records in harmonised that have been deleted from Horizon\n",
 					"    \"\"\"\n",
 					"    harmonised_df: DataFrame = harmonised_df.filter(\"ODTSourceSystem = 'Horizon' and IsActive = 'Y'\")\n",
 					"    result_df: DataFrame = harmonised_df.join(\n",
 					"        horizon_latest_df, \n",
-					"        on=harmonised_df.adviceId==horizon_latest_df.advicenodeid,\n",
+					"        on=col(servicebus_primary_key)==col(horizon_primary_key),\n",
 					"        how=\"left_anti\"\n",
 					"    )\n",
 					"    return result_df.count() == 0\n",
@@ -102,45 +104,38 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"def test_valid_to_set_for_inactive_records(harmonised_df: DataFrame) -> bool:\n",
+					"def test_valid_to_set_for_inactive_records(df: DataFrame) -> bool:\n",
 					"    \"\"\"\n",
 					"    Tests if the ValidTo date is populated for all inactive records\n",
 					"    \"\"\"\n",
-					"    harmonised_df.filter(\"IsActive = 'N' and ValidTo is null\")\n",
-					"    return harmonised_df.count() == 0"
+					"    results = df.filter(\"IsActive = 'N' and ValidTo is null\")\n",
+					"    return results.count() == 0"
 				],
 				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"def test_valid_to_not_set_for_active_records(harmonised_df: DataFrame) -> bool:\n",
+					"def test_valid_to_not_set_for_active_records(df: DataFrame) -> bool:\n",
 					"    \"\"\"\n",
 					"    Tests if the ValidTo date is not populated for active records\n",
 					"    \"\"\"\n",
-					"    harmonised_df.filter(\"IsActive = 'Y' and ValidTo is not null\")\n",
-					"    return harmonised_df.count() == 0"
+					"    results = df.filter(\"IsActive = 'Y' and ValidTo is not null\")\n",
+					"    return results.count() == 0"
 				],
 				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, harmonised_df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"test_valid_to_set_for_inactive_records(harmonised_df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"test_valid_to_not_set_for_active_records(harmonised_df)"
+					"test_results = [\n",
+					"    ((\"test_no_deleted_horizon_records_in_harmonised\", test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, harmonised_df, horizon_primary_key, servicebus_primary_key))),\n",
+					"    ((\"test_valid_to_set_for_inactive_records\", test_valid_to_set_for_inactive_records(harmonised_df))),\n",
+					"    ((\"test_valid_to_not_set_for_active_records\", test_valid_to_not_set_for_active_records(harmonised_df)))\n",
+					"    ]\n",
+					"\n",
+					"results = spark.createDataFrame(test_results, schema=[\"test\", \"result\"])\n",
+					"results.show()"
 				],
 				"execution_count": null
 			},
@@ -150,12 +145,20 @@
 					"collapsed": false
 				},
 				"source": [
-					"deleted_advice_ids = [row[0] for row in horizon_deleted.collect()]\n",
+					"# Get deleted primary keys into a list\n",
+					"deleted_ids = [row[0] for row in horizon_deleted.collect()]\n",
 					"\n",
+					"# Set IsActive to N if the primary key has been deleted from Horizon\n",
 					"hrm_updated = harmonised_df.withColumn(\n",
-					"    \"IsActive\", when(col(\"adviceId\").isin(deleted_advice_ids), \"N\").otherwise(col(\"IsActive\"))\n",
+					"    \"IsActive\", when(col(\"adviceId\").isin(deleted_ids), \"N\").otherwise(col(\"IsActive\"))\n",
 					")\n",
 					"\n",
+					"# Set ValidTo to null if IsActive = Y\n",
+					"hrm_updated = hrm_updated.withColumn(\n",
+					"    \"ValidTo\", when(col(\"IsActive\") == \"Y\", None).otherwise(col(\"ValidTo\"))\n",
+					")\n",
+					"\n",
+					"# Set ValidTo if IsActive = N to the IngestionDate + 1 day\n",
 					"hrm_final = hrm_updated.withColumn(\n",
 					"    \"ValidTo\", when((col(\"ValidTo\").isNull()) & (col(\"IsActive\") == \"N\"), date_add(col(\"IngestionDate\"), 1).cast(\"timestamp\")).otherwise(col(\"ValidTo\"))\n",
 					")"
@@ -164,35 +167,15 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
 				"source": [
-					"test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, hrm_final)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"test_valid_to_set_for_inactive_records(hrm_final)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"test_valid_to_not_set_for_active_records(hrm_final)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"display(hrm_final.filter(\"ValidTo is not null and IsActive = 'Y'\"))"
+					"new_test_results = [\n",
+					"    ((\"test_no_deleted_horizon_records_in_harmonised\", test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, hrm_final))),\n",
+					"    ((\"test_valid_to_set_for_inactive_records\", test_valid_to_set_for_inactive_records(hrm_final))),\n",
+					"    ((\"test_valid_to_not_set_for_active_records\", test_valid_to_not_set_for_active_records(hrm_final)))\n",
+					"    ]\n",
+					"\n",
+					"new_results = spark.createDataFrame(new_test_results, schema=[\"test\", \"result\"])\n",
+					"new_results.show()"
 				],
 				"execution_count": null
 			}
