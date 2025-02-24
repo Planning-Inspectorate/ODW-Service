@@ -1,0 +1,140 @@
+{
+	"name": "Notebook 1",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "b4017888-80f7-49ae-bd89-83140f56efb1"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"dbs = spark.catalog.listDatabases()"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"dbs[0].name"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"curated_tables = spark.catalog.listTables('odw_curated_db')"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"curated_tables"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"def get_metadata(db_name, table_name):\n",
+					"    df = spark.sql(f\"DESCRIBE FORMATTED {db_name}.{table_name}\")\n",
+					"\n",
+					"    # Convert to dictionary\n",
+					"    metadata = (\n",
+					"        df.filter(df.col_name.isin(\"Type\", \"Provider\", \"Location\"))\n",
+					"        .rdd.map(lambda row: (row[\"col_name\"], row[\"data_type\"]))\n",
+					"        .collectAsMap()\n",
+					"    )\n",
+					"\n",
+					"    return {\n",
+					"        \"type\": metadata.get(\"Type\"),\n",
+					"        \"format\": metadata.get(\"Provider\"),\n",
+					"        \"location\": metadata.get(\"Location\"),\n",
+					"        \"db_name\": db_name,\n",
+					"        \"table_name\": table_name\n",
+					"    }"
+				],
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"databases: list = spark.catalog.listDatabases()\n",
+					"\n",
+					"metadata_list: list = []\n",
+					"\n",
+					"for db in databases:\n",
+					"    if db.name == 'odw_curated_db':\n",
+					"        tables: list = spark.catalog.listTables(db.name)\n",
+					"        for table in tables:\n",
+					"            metadata_list.append(get_metadata(db.name, table.name))"
+				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"final_df = spark.createDataFrame(metadata_list)\n",
+					""
+				],
+				"execution_count": 27
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"display(final_df)"
+				],
+				"execution_count": 28
+			}
+		]
+	}
+}
