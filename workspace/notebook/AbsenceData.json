@@ -1,0 +1,167 @@
+{
+	"name": "AbsenceData",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "7f70889c-997a-44bb-a969-a85bddda25be"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.absence_all (\n",
+					"   \n",
+					"   \n",
+					"   StaffNumber              STRING,\n",
+					"\tAbsType                 STRING,\n",
+					"\tSicknessGroup           STRING,\n",
+					"\tStartDate               DATE ,\n",
+					"\tEndDate                 DATE ,\n",
+					"\tAttendanceorAbsenceType STRING,\n",
+					"\tDays                    double,\n",
+					"\tHrs                     double,\n",
+					"\tStart                   date,\n",
+					"\tEndtime                 date,\n",
+					"\tCaldays                 double ,\n",
+					"\tWorkScheduleRule        STRING ,\n",
+					"\tWkhrs                   double ,\n",
+					"\tHrsDay                  double ,\n",
+					"\tWkDys                   double ,\n",
+					"\tAnnuaLeaveStart         date\n",
+					"\n",
+					"    )\n",
+					"USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"delete from  odw_harmonised_db.absence_all ;\n",
+					"\n",
+					"\n",
+					"INSERT INTO odw_harmonised_db.absence_all\n",
+					"(   \n",
+					"StaffNumber,            \n",
+					"AbsType,                \n",
+					"SicknessGroup,          \n",
+					"StartDate,              \n",
+					"EndDate,                \n",
+					"AttendanceorAbsenceType,\n",
+					"Days,                   \n",
+					"Hrs,                    \n",
+					"Start,                  \n",
+					"Endtime,                \n",
+					"Caldays,                \n",
+					"WorkScheduleRule,       \n",
+					"Wkhrs,                  \n",
+					"HrsDay,                 \n",
+					"WkDys,                  \n",
+					"AnnuaLeaveStart      \n",
+					"  )\n",
+					"\n",
+					"SELECT  StaffNumber\n",
+					"      ,coalesce(AbsType,'')\n",
+					"      ,coalesce(SicknessGroup,'')\n",
+					"      ,cast(StartDate as date)\n",
+					"      ,cast(EndDate as date)\n",
+					"      ,AttendanceorAbsenceType\n",
+					"      ,Days\n",
+					"      ,Hrs\n",
+					"      ,to_date(DATETIME2, case when Start='1899-12-31' Then Start+' 00:00:00.000' Else Start end) Start\n",
+					"      ,to_date(DATETIME2, case when Endtime='1899-12-31' Then Endtime+' 00:00:00.000' Else Start end)  \n",
+					"      ,Caldays\n",
+					"      ,WorkScheduleRule\n",
+					"      ,Wkhrs\n",
+					"      ,HrsDay\n",
+					"      ,WkDys\n",
+					"      ,AnnuaLeaveStart\n",
+					"  FROM odw_standardised_db.hr_absence_monthly;\n",
+					"\n",
+					"\n",
+					"-----Remove nulls and duplicates from HR Absence Data load\n",
+					"Delete From \n",
+					"odw_harmonised_db.absence_all\n",
+					"where\n",
+					"\tStaffNumber is null\n",
+					"\tor StartDate is null\n",
+					"\tor EndDate is null;\n",
+					"\n",
+					"\n",
+					"DELETE DUP\n",
+					"FROM\n",
+					"(\n",
+					" SELECT ROW_NUMBER() OVER (PARTITION BY StaffNumber, StartDate\n",
+					"\t\t\t\t\t\t\tORDER BY StaffNumber, StartDate)\n",
+					"\t\t\t\t\t\t\tAS Val, *\n",
+					" FROM odw_harmonised_db.absence_all\n",
+					") DUP\n",
+					"WHERE DUP.Val > 1;\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": 7
+			}
+		]
+	}
+}
