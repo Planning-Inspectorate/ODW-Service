@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "078b651d-79be-4bba-aff9-9d51755ffcde"
+				"spark.autotune.trackingId": "f1eca817-386c-4bf0-9b4f-c1760f108b09"
 			}
 		},
 		"metadata": {
@@ -118,6 +118,68 @@
 					"from odw_standardised_db.sap_protected_monthly\n",
 					"\n",
 					")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# PC_INSERT_DELETE"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"\n",
+					" WITH pc AS (\n",
+					"            SELECT \n",
+					"                [file_name] AS [file],\n",
+					"                CONVERT(varchar(7), CONVERT(date, RIGHT(REPLACE([file_name], '.xlsx', ''), 8), 103), 126) AS [file_name],\n",
+					"                COUNT(*) AS s_count\n",
+					"            FROM [sap_hr].[SAP_HR_PC]\n",
+					"            WHERE [Ref Number] IS NOT NULL\n",
+					"            GROUP BY [file_name], CONVERT(varchar(7), CONVERT(date, RIGHT(REPLACE([file_name], '.xlsx', ''), 8), 103), 126)\n",
+					"        ),\n",
+					"        x2 AS (\n",
+					"            SELECT \n",
+					"                LEFT(CAST(h.Report_MonthEnd_Date AS varchar(10)), 7) AS r_month, \n",
+					"                COUNT(*) AS history_rows\n",
+					"            FROM \n",
+					"                Hist.SAP_HR h \n",
+					"            WHERE \n",
+					"                LEFT(CAST(Report_MonthEnd_Date AS varchar(10)), 7) > '2019-03' \n",
+					"                AND h.[Payroll Area] = 'PINS'\n",
+					"            GROUP BY \n",
+					"                LEFT(CAST(Report_MonthEnd_Date AS varchar(10)), 7)\n",
+					"        )\n",
+					"\n",
+					"        -- Delete operation\n",
+					"        DELETE FROM sap_hr.protected_data\n",
+					"        WHERE [file_name] IN (\n",
+					"            SELECT pc.[file]\n",
+					"            FROM pc \n",
+					"            INNER JOIN x2 ON pc.[file_name] = x2.r_month\n",
+					"            WHERE pc.s_count = x2.history_rows\n",
+					"        );\n",
+					"\n",
+					"        -- Insert operation\n",
+					"        INSERT INTO sap_hr.protected_data\n",
+					"        SELECT * \n",
+					"        FROM sap_hr.SAP_HR_PC\n",
+					"        WHERE [file_name] IN (\n",
+					"            SELECT pc.[file]\n",
+					"            FROM pc \n",
+					"            INNER JOIN x2 ON pc.[file_name] = x2.r_month\n",
+					"            WHERE pc.s_count = x2.history_rows\n",
+					"        );"
 				],
 				"execution_count": null
 			},
