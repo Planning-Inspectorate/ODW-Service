@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cd116f40-c882-43ce-81c7-e06574f393aa"
+				"spark.autotune.trackingId": "0f4ab1a2-2efd-4aee-8b82-b9a041e891a1"
 			}
 		},
 		"metadata": {
@@ -52,15 +52,52 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# SAP_HR_MONTHLY"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Intialisations\n",
+					""
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
-					"%%pyspark\n",
+					"from pyspark.sql.functions import udf\n",
+					"from pyspark.sql.types import DateType\n",
+					"from datetime import datetime\n",
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql import Window\n",
+					"from pyspark.sql.functions import row_number\n",
+					"from pyspark.sql.types import StructType, StructField, TimestampType, StringType"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"\n",
 					"from pyspark.sql import SparkSession\n",
 					"from pyspark.sql.types import StructType, StructField, StringType\n",
-					"from pyspark.sql.functions import col, trim, regexp_replace\n",
-					"\n",
-					"spark = SparkSession.builder.appName(\"LakeDB_Transfer\").getOrCreate()"
+					"from pyspark.sql.functions import col, trim, regexp_replace"
 				],
 				"execution_count": null
 			},
@@ -81,7 +118,7 @@
 					"%%sql\n",
 					"drop table odw_harmonised_db.sap_hr"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -176,17 +213,20 @@
 					"USING delta\n",
 					"LOCATION 'abfss://odw-harmonised@pinsstodwdevuks9h80mb.dfs.core.windows.net/sap_hr';"
 				],
-				"execution_count": 11
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
 					"%%sql\n",
 					"\n",
-					"select * FROM odw_standardised_db.sap_hr_history_monthly\n",
+					"select * FROM odw_standardised_db.sap_hr_history_monthly  limit 2\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -362,7 +402,19 @@
 					"FROM odw_standardised_db.sap_hr_history_monthly\n",
 					"\"\"\")"
 				],
-				"execution_count": null
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * FROM odw_harmonised_db.sap_hr  limit 2"
+				],
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -388,9 +440,9 @@
 					", StaffCost AS (\n",
 					"    SELECT DISTINCT\n",
 					"        h.PersNo AS staff_number,\n",
-					"        h.PS_group AS grade,\n",
+					"        h.PSgroup AS grade,\n",
 					"        h.Annual_salary AS salary,\n",
-					"        CAST(h.Annual_salary AS DOUBLE) / (365.0 * 7.4) AS hourly_rate,\n",
+					"        CAST(h.Annualsalary AS DOUBLE) / (365.0 * 7.4) AS hourly_rate,\n",
 					"        CASE \n",
 					"            WHEN datediff(le.Ded_from, fd.file_date) >= 0 THEN le.Ded_from\n",
 					"            ELSE date_add(le.Ded_from, -365)\n",
@@ -427,9 +479,9 @@
 					"        ) / 364.25) % 1)) AS percent_leave_year_remaining,\n",
 					"        h.Contract_Type\n",
 					"    FROM \n",
-					"        load.sap_hr h\n",
+					"        odw_harmonised_db.SAP_HR h\n",
 					"    LEFT JOIN \n",
-					"        sap_hr.leave_entitlement le \n",
+					"        odw_standardised_db.leave_entitlement le \n",
 					"    ON \n",
 					"        h.PersNo = CASE \n",
 					"            WHEN LEFT(CAST(le.Staff_Number AS STRING), 1) = '4' THEN CONCAT('50', le.Staff_Number)\n",
@@ -451,9 +503,9 @@
 					"            ELSE le.Number\n",
 					"        END AS carried_over_hours\n",
 					"    FROM \n",
-					"        load.sap_hr h\n",
+					"        odw_harmonised_db.SAP_HR h\n",
 					"    LEFT JOIN \n",
-					"        sap_hr.leave_entitlement le \n",
+					"        odw_standardised_db.leave_entitlement le \n",
 					"    ON \n",
 					"        h.PersNo = CASE \n",
 					"            WHEN LEFT(CAST(le.Staff_Number AS STRING), 1) = '4' THEN CONCAT('50', le.Staff_Number)\n",
@@ -470,9 +522,9 @@
 					"        h.PersNo AS staff_number,\n",
 					"        SUM(f.absence_hours) AS leave_hours_taken\n",
 					"    FROM \n",
-					"        load.sap_hr h\n",
+					"        odw_harmonised_db.SAP_HR h\n",
 					"    LEFT JOIN \n",
-					"        sap_hr.fact_absence_all f \n",
+					"        odw_harmonised_db.fact_absence_all f \n",
 					"    ON \n",
 					"        h.PersNo = f.staff_number\n",
 					"    LEFT JOIN \n",
@@ -494,90 +546,90 @@
 					"INSERT INTO Hist.SAP_HR\n",
 					"SELECT \n",
 					"    h.PersNo,\n",
-					"    h.First_name,\n",
-					"    h.Last_name,\n",
-					"    h.Employee_No,\n",
+					"    h.Firstname,\n",
+					"    h.Lastname,\n",
+					"    h.EmployeeNo,\n",
 					"    h.CoCd,\n",
-					"    h.Company_Code,\n",
+					"    h.CompanyCode,\n",
 					"    h.PA,\n",
-					"    h.Personnel_Area,\n",
+					"    h.PersonnelArea,\n",
 					"    h.PSubarea,\n",
-					"    h.Personnel_Subarea,\n",
-					"    h.Org_unit,\n",
-					"    h.Organizational_Unit,\n",
-					"    h.Organizational_key,\n",
-					"    h.Organizational_Key1,\n",
+					"    h.PersonnelSubarea,\n",
+					"    h.Orgunit,\n",
+					"    h.OrganizationalUnit,\n",
+					"    h.Organizationalkey,\n",
+					"    h.OrganizationalKey1,\n",
 					"    h.WorkC,\n",
-					"    h.Work_Contract,\n",
+					"    h.WorkContract,\n",
 					"    h.CT,\n",
-					"    h.Contract_Type,\n",
-					"    h.PS_group,\n",
-					"    h.Pay_Band_Description,\n",
+					"    h.ContractType,\n",
+					"    h.PSgroup,\n",
+					"    h.PayBandDescription,\n",
 					"    h.FTE,\n",
-					"    h.Wk_hrs,\n",
-					"    h.Indicator_Part_Time_Employee,\n",
+					"    h.Wkhrs,\n",
+					"    h.IndicatorPartTimeEmployee,\n",
 					"    h.S,\n",
-					"    h.Employment_Status,\n",
-					"    h.Gender_Key,\n",
-					"    h.TRA_Start_Date,\n",
-					"    h.TRA_End_Date,\n",
-					"    h.TRA_Status,\n",
-					"    h.TRA_Grade,\n",
-					"    h.Prev_PersNo,\n",
+					"    h.EmploymentStatus,\n",
+					"    h.GenderKey,\n",
+					"    h.TRAStart_Date,\n",
+					"    h.TRAEnd_Date,\n",
+					"    h.TRAStatus,\n",
+					"    h.TRAGrade,\n",
+					"    h.PrevPersNo,\n",
 					"    h.ActR,\n",
-					"    h.Reason_for_Action,\n",
+					"    h.ReasonforAction,\n",
 					"    h.Position,\n",
 					"    h.Position1,\n",
-					"    h.Cost_Ctr,\n",
-					"    h.Cost_Centre,\n",
-					"    h.Civil_Service_Start,\n",
-					"    h.Date_to_Current_Job,\n",
+					"    h.CostCtr,\n",
+					"    h.CostCentre,\n",
+					"    h.CivilServiceStart,\n",
+					"    h.DatetoCurrent_Job,\n",
 					"    h.Seniority_Date,\n",
-					"    h.Date_to_Subst_Grade,\n",
+					"    h.DatetoSubstGrade,\n",
 					"    h.PersNo1,\n",
-					"    h.Name_of_Manager_OM,\n",
-					"    h.Manager_Position,\n",
-					"    h.Manager_Position_Text,\n",
-					"    h.Counter_Sign_Manager,\n",
+					"    h.NameofManagerOM,\n",
+					"    h.ManagerPosition,\n",
+					"    h.ManagerPositionText,\n",
+					"    h.CounterSignManager,\n",
 					"    h.Loc,\n",
 					"    h.Location,\n",
-					"    h.Org_Start_Date,\n",
-					"    h.Fix_Term_End_Date,\n",
-					"    h.Loan_Start_Date,\n",
-					"    h.Loan_End_Date,\n",
+					"    h.OrgStartDate,\n",
+					"    h.FixTermEndDate,\n",
+					"    h.LoanStartDate,\n",
+					"    h.LoanEndDate,\n",
 					"    h.EEGrp,\n",
-					"    h.Employee_Group,\n",
-					"    h.Annual_salary,\n",
+					"    h.EmployeeGroup,\n",
+					"    h.Annualsalary,\n",
 					"    h.Curr,\n",
-					"    h.NI_number,\n",
-					"    h.Birth_date,\n",
-					"    h.Age_of_employee,\n",
+					"    h.NInumber,\n",
+					"    h.Birthdate,\n",
+					"    h.Ageofemployee,\n",
 					"    h.EO,\n",
 					"    h.Ethnic_origin,\n",
 					"    h.NID,\n",
 					"    h.Rel,\n",
-					"    h.Religious_Denomination_Key,\n",
+					"    h.ReligiousDenominationKey,\n",
 					"    h.SxO,\n",
-					"    h.Wage_Type,\n",
-					"    h.Employee_Subgroup,\n",
-					"    h.LOA_Abs_Type,\n",
-					"    h.LOA_Absence_Type_Text,\n",
-					"    h.Scheme_reference,\n",
-					"    h.Pension_Scheme_Name,\n",
-					"    h.Disability_Code,\n",
-					"    h.Disability_Text,\n",
-					"    h.Disability_Code_Description,\n",
+					"    h.WageType,\n",
+					"    h.EmployeeSubgroup,\n",
+					"    h.LOAAbsType,\n",
+					"    h.LOAAbsenceTypeText,\n",
+					"    h.Schemereference,\n",
+					"    h.PensionSchemeName,\n",
+					"    h.DisabilityCode,\n",
+					"    h.DisabilityText,\n",
+					"    h.DisabilityCodeDescription,\n",
 					"    h.PArea,\n",
-					"    h.Payroll_Area,\n",
-					"    h.Assignment_Number,\n",
-					"    h.FTE_2,\n",
+					"    h.PayrollArea,\n",
+					"    h.AssignmentNumber,\n",
+					"    h.FTE2,\n",
 					"    h.Report_MonthEnd_Date,\n",
 					"    COALESCE(sc.leave_allowance, 0) + COALESCE(co.carried_over_hours, 0) AS leave_entitlement_hrs,\n",
 					"    COALESCE(lt.leave_hours_taken, 0) AS leave_taken_hrs,\n",
 					"    ROUND((COALESCE(sc.leave_allowance, 0) + COALESCE(co.carried_over_hours, 0) - COALESCE(sc.expected_leave_hours_remaining, 0) - COALESCE(lt.leave_hours_taken, 0)), 2) AS leave_remaining_hours,\n",
 					"    COALESCE(ROUND(sc.expected_leave_hours_remaining, 2), 0) AS leave_remaining_prorata_hours\n",
 					"FROM \n",
-					"    load.SAP_HR h\n",
+					"    odw_harmonised_db.SAP_HR h\n",
 					"LEFT JOIN \n",
 					"    StaffCost sc \n",
 					"ON \n",
