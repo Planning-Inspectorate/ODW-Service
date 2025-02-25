@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8de59c66-2d17-4034-a245-a6eb6f6a2be0"
+				"spark.autotune.trackingId": "982052ce-b5cf-4f5a-8638-2fa62fd2898f"
 			}
 		},
 		"metadata": {
@@ -86,18 +86,28 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"def test_no_deleted_horizon_records_in_harmonised(horizon_latest_df: DataFrame, harmonised_df: DataFrame, horizon_primary_key: str, servicebus_primary_key: str) -> bool:\n",
+					"def test_no_deleted_horizon_records_in_harmonised(\n",
+					"    horizon_latest_df: DataFrame, \n",
+					"    harmonised_df: DataFrame, \n",
+					"    horizon_primary_key: str, \n",
+					"    servicebus_primary_key: str\n",
+					") -> bool:\n",
 					"    \"\"\"\n",
-					"    Tests if there are any records in harmonised that have been deleted from Horizon\n",
+					"    Tests if there are any records in harmonised that have been deleted from Horizon.\n",
+					"    Returns True if no deleted records exist, otherwise False.\n",
 					"    \"\"\"\n",
-					"    harmonised_df: DataFrame = harmonised_df.filter(\"ODTSourceSystem = 'Horizon' and IsActive = 'Y'\")\n",
-					"    result_df: DataFrame = harmonised_df.join(\n",
-					"        horizon_latest_df, \n",
-					"        on=col(servicebus_primary_key)==col(horizon_primary_key),\n",
+					"    harmonised_alias = harmonised_df.alias(\"hrm\")\n",
+					"    horizon_alias = horizon_latest_df.alias(\"hzn\")\n",
+					"\n",
+					"    harmonised_filtered = harmonised_alias.filter(\"ODTSourceSystem = 'Horizon' and IsActive = 'Y'\")\n",
+					"\n",
+					"    result_df = harmonised_filtered.join(\n",
+					"        horizon_alias, \n",
+					"        on=col(f\"hrm.{servicebus_primary_key}\") == col(f\"hzn.{horizon_primary_key}\"),\n",
 					"        how=\"left_anti\"\n",
 					"    )\n",
-					"    return result_df.count() == 0\n",
-					""
+					"\n",
+					"    return result_df.count() == 0"
 				],
 				"execution_count": null
 			},
@@ -169,7 +179,7 @@
 				"cell_type": "code",
 				"source": [
 					"new_test_results = [\n",
-					"    ((\"test_no_deleted_horizon_records_in_harmonised\", test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, hrm_final))),\n",
+					"    ((\"test_no_deleted_horizon_records_in_harmonised\", test_no_deleted_horizon_records_in_harmonised(horizon_latest_df, hrm_final, horizon_primary_key, servicebus_primary_key))),\n",
 					"    ((\"test_valid_to_set_for_inactive_records\", test_valid_to_set_for_inactive_records(hrm_final))),\n",
 					"    ((\"test_valid_to_not_set_for_active_records\", test_valid_to_not_set_for_active_records(hrm_final)))\n",
 					"    ]\n",
