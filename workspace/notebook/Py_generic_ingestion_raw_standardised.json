@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "69c47cfe-f233-4995-baec-d953d0611e52"
+				"spark.autotune.trackingId": "7ee2d163-2564-4126-9cfe-9e8e51e01f40"
 			}
 		},
 		"metadata": {
@@ -419,7 +419,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 58
+				"execution_count": 68
 			},
 			{
 				"cell_type": "markdown",
@@ -498,13 +498,13 @@
 					"        if file_type == \"xlsx\":\r\n",
 					"            return spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\r\n",
 					"        elif file_type == \"csv\":\r\n",
-					"            return spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\r\n",
+					"            return spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\r\n",
 					"    except Exception as e:\r\n",
 					"        print(f\"Error loading file {file_path}: {e}\")\r\n",
 					"        return None\r\n",
 					""
 				],
-				"execution_count": 47
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -587,7 +587,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": 48
+				"execution_count": 83
 			},
 			{
 				"cell_type": "code",
@@ -603,8 +603,8 @@
 					}
 				},
 				"source": [
-					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
-					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_weekly\")\r\n",
+					"spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.Calendar\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_weekly\")\r\n",
 					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_leavers_monthly\")\r\n",
 					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_protected_monthly\")\r\n",
 					"\r\n",
@@ -612,7 +612,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 82
 			},
 			{
 				"cell_type": "code",
@@ -655,24 +655,26 @@
 					"#CSV files (.csv): None\r\n",
 					"#Excel files (.xlsx) cleaned: ['inspector_addresses_weekly', 'inspector_specialisms_weekly', 'sap_emailweekly', 'sap_hrweekly']\r\n",
 					"\r\n",
-					" ['Calendar.csv', 'Employee.csv', 'Segment_Type_Reference.csv', 'Work_Segment_File.csv', 'Work_Segment_Lock.csv']\r\n",
+					" #['Calendar.csv', 'Employee.csv', 'Segment_Type_Reference.csv', 'Work_Segment_File.csv', 'Work_Segment_Lock.csv']\r\n",
 					"\r\n",
 					"#schema_str = 'StreetandHouseNumber string,2ndAddressLine string,City string,District string,PostalCode string,RegionStateProvinceCount string,StartDate string,EndDate string,ChartingOfficer string,ChartingOfficerforInspector string,SubsPSgroup string,TelNo string,PersonalMobile string,WorkMobile string,StaffNumber string,Chngdon string'\r\n",
 					"\r\n",
 					"# Read the Excel file\r\n",
-					"df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/SAP_HR_History_20250224.xlsx\")\r\n",
+					"#df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Timesheets/2025-02-14/\")\r\n",
+					"\r\n",
+					"df_xlsx_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Timesheets/2025-02-14/Calendar.csv\")\r\n",
 					"\r\n",
 					"# Standardize column names (remove special characters)\r\n",
-					"df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"#df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
 					"\r\n",
 					"# Identify columns that are already DateType\r\n",
-					"date_columns = [field.name for field in df_xlsx_file.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
+					"#date_columns = [field.name for field in df_xlsx_file.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
 					"\r\n",
-					"print(\"Detected Date Columns:\", date_columns)\r\n",
+					"#print(\"Detected Date Columns:\", date_columns)\r\n",
 					"\r\n",
 					"# Convert and format only DateType columns dynamically\r\n",
-					"for col_name in date_columns:\r\n",
-					"    df_xlsx_file = df_xlsx_file.withColumn(col_name, date_format(col(col_name), \"dd-MM-yyyy\"))  # Ensure correct display format\r\n",
+					"##for col_name in date_columns:\r\n",
+					"#    df_xlsx_file = df_xlsx_file.withColumn(col_name, date_format(col(col_name), \"dd-MM-yyyy\"))  # Ensure correct display format\r\n",
 					"\r\n",
 					"#spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS odw_standardised_db.Inspector_Addresses ({schema_str}) USING DELTA LOCATION 'abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/Inspector_Addresses/'\"\"\")\r\n",
 					"\r\n",
@@ -683,7 +685,7 @@
 					"#display(df_xlsx_file)\r\n",
 					""
 				],
-				"execution_count": 105
+				"execution_count": 84
 			}
 		]
 	}
