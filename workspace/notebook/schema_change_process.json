@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fb608ea5-a1dc-48e9-982a-57e031f5e17e"
+				"spark.autotune.trackingId": "2c7fbc28-35a1-4a72-9194-1f06e49b473e"
 			}
 		},
 		"metadata": {
@@ -63,38 +63,9 @@
 				},
 				"source": [
 					"#### Notebook to be used to make schema changes to tables\n",
-					"Define the parameters  \n",
-					"Scroll down and make sure you amend the column names accordingly\n",
 					"\n",
-					"TODO: add column name paremeters so this can be run in a pipeline in all 3 environments"
+					"In order to keep it simple and to run easily in test and prod environment, please hardcode the changes you need to make into this notebook and add it to a release pipeline and then post deployment."
 				]
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Define parameters, or pass them in a pipeline or other notebook"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"tags": [
-						"parameters"
-					]
-				},
-				"source": [
-					"db_name = \"odw_standardised_db\"\n",
-					"entity_name = \"appeal-has\"\n",
-					"table_name = \"sb_appeal_has\""
-				],
-				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -106,7 +77,6 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"full_table_name = f\"{db_name}.{table_name}\"\n",
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
@@ -179,14 +149,103 @@
 					}
 				},
 				"source": [
+					"#### Amend appeal_has tables"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define table details"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": []
+				},
+				"source": [
+					"std_db = \"odw_standardised_db\"\n",
+					"hrm_db = \"odw_harmonised_db\"\n",
+					"entity_name = \"appeal-has\"\n",
+					"std_table_name = \"sb_appeal_has\"\n",
+					"hrm_table_name = \"sb_appeal_has\"\n",
+					"std_full_table_name = f\"{std_db}.{std_table_name}\"\n",
+					"hrm_full_table_name = f\"{hrm_db}.{hrm_table_name}\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable column mapping on the table you want to change\n",
+					"\n",
+					"NB: only needs running the very first time on a table"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# standardised\n",
+					"\n",
+					"spark.sql(f\"\"\" \n",
+					"ALTER TABLE {std_full_table_name} SET TBLPROPERTIES (\n",
+					"'delta.minReaderVersion' = '2',\n",
+					"'delta.minWriterVersion' = '5',\n",
+					"'delta.columnMapping.mode' = 'name'\n",
+					")\n",
+					"\"\"\"\n",
+					")\n",
+					"\n",
+					"# harmonised\n",
+					"\n",
+					"spark.sql(f\"\"\" \n",
+					"ALTER TABLE {hrm_full_table_name} SET TBLPROPERTIES (\n",
+					"'delta.minReaderVersion' = '2',\n",
+					"'delta.minWriterVersion' = '5',\n",
+					"'delta.columnMapping.mode' = 'name'\n",
+					")\n",
+					"\"\"\"\n",
+					")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
 					"##### Define the two schemas to compare"
 				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"data_model_schema = create_spark_schema(db_name, entity_name)\n",
-					"table_schema = spark.table(full_table_name).schema"
+					"# standardised\n",
+					"std_data_model_schema = create_spark_schema(std_db, entity_name)\n",
+					"std_table_schema = spark.table(std_full_table_name).schema\n",
+					"\n",
+					"# harmonised\n",
+					"hrm_data_model_schema = create_spark_schema(hrm_db, entity_name)\n",
+					"hrm_table_schema = spark.table(hrm_full_table_name).schema"
 				],
 				"execution_count": null
 			},
@@ -209,34 +268,9 @@
 					"collapsed": false
 				},
 				"source": [
-					"test_compare_schemas(data_model_schema, table_schema)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Enable column mapping on the table you want to change"
-				]
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"  spark.sql(f\"\"\" \n",
-					"    ALTER TABLE {full_table_name} SET TBLPROPERTIES (\n",
-					"        'delta.minReaderVersion' = '2',\n",
-					"        'delta.minWriterVersion' = '5',\n",
-					"        'delta.columnMapping.mode' = 'name'\n",
-					"    )\n",
-					"  \"\"\"\n",
-					"  )"
+					"results = [((test_compare_schemas(std_data_model_schema, std_table_schema), test_compare_schemas(hrm_data_model_schema, hrm_table_schema)))]\n",
+					"result = spark.createDataFrame(results, schema=[\"std\", \"hrm\"])\n",
+					"result.show()"
 				],
 				"execution_count": null
 			},
@@ -260,8 +294,14 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"# standardised\n",
 					"spark.sql(f\"\"\"\n",
-					"    ALTER TABLE {full_table_name} ADD COLUMNS (reasonForNeighbourVisits string AFTER neighbouringSiteAddresses, typeOfPlanningApplication string AFTER lpaCostsAppliedFor) \n",
+					"    ALTER TABLE {std_full_table_name} ADD COLUMNS (reasonForNeighbourVisits string AFTER neighbouringSiteAddresses, typeOfPlanningApplication string AFTER lpaCostsAppliedFor) \n",
+					"\"\"\")\n",
+					"\n",
+					"# harmonised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {hrm_full_table_name} ADD COLUMNS (reasonForNeighbourVisits string AFTER neighbouringSiteAddresses, typeOfPlanningApplication string AFTER lpaCostsAppliedFor) \n",
 					"\"\"\")"
 				],
 				"execution_count": null
@@ -276,16 +316,193 @@
 					}
 				},
 				"source": [
-					"##### Re-order a column\n",
-					"https://docs.delta.io/latest/delta-batch.html#change-column-comment-or-ordering  "
+					"##### Re-run tests"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# standardised\n",
+					"std_data_model_schema = create_spark_schema(std_db, entity_name)\n",
+					"std_table_schema = spark.table(std_full_table_name).schema\n",
+					"\n",
+					"# harmonised\n",
+					"hrm_data_model_schema = create_spark_schema(hrm_db, entity_name)\n",
+					"hrm_table_schema = spark.table(hrm_full_table_name).schema\n",
+					"\n",
+					"# test again to see if schemas now match\n",
+					"results = [((test_compare_schemas(std_data_model_schema, std_table_schema), test_compare_schemas(hrm_data_model_schema, hrm_table_schema)))]\n",
+					"result = spark.createDataFrame(results, schema=[\"std\", \"hrm\"])\n",
+					"result.show()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Set user-defined metadata"
 				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"spark.sql(f\"\"\"\n",
-					"    ALTER TABLE {full_table_name} ALTER COLUMN appellantProofsSubmittedDate AFTER typeOfPlanningApplication\n",
-					"\"\"\")"
+					"# standardised\n",
+					"df = spark.table(std_full_table_name)\n",
+					"\n",
+					"df.write.format(\"delta\") \\\n",
+					"  .mode(\"overwrite\") \\\n",
+					"  .option(\"userMetadata\", \"THEODW-1648 schema changes for appeal-has\") \\\n",
+					"  .saveAsTable(std_full_table_name)\n",
+					"\n",
+					"# harmonised\n",
+					"df = spark.table(hrm_full_table_name)\n",
+					"\n",
+					"df.write.format(\"delta\") \\\n",
+					"  .mode(\"overwrite\") \\\n",
+					"  .option(\"userMetadata\", \"THEODW-1648 schema changes for appeal-has\") \\\n",
+					"  .saveAsTable(hrm_full_table_name)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Amend appeal_s78 tables"
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define table details"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"std_db = \"odw_standardised_db\"\n",
+					"hrm_db = \"odw_harmonised_db\"\n",
+					"entity_name = \"appeal-s78\"\n",
+					"std_table_name = \"sb_appeal_s78\"\n",
+					"hrm_table_name = \"sb_appeal_s78\"\n",
+					"std_full_table_name = f\"{std_db}.{std_table_name}\"\n",
+					"hrm_full_table_name = f\"{hrm_db}.{hrm_table_name}\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable column mapping\n",
+					"\n",
+					"NB: only needs running the very first time on a table"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# standardised\n",
+					"\n",
+					"spark.sql(f\"\"\" \n",
+					"ALTER TABLE {std_full_table_name} SET TBLPROPERTIES (\n",
+					"'delta.minReaderVersion' = '2',\n",
+					"'delta.minWriterVersion' = '5',\n",
+					"'delta.columnMapping.mode' = 'name'\n",
+					")\n",
+					"\"\"\"\n",
+					")\n",
+					"\n",
+					"# harmonised\n",
+					"\n",
+					"spark.sql(f\"\"\" \n",
+					"ALTER TABLE {hrm_full_table_name} SET TBLPROPERTIES (\n",
+					"'delta.minReaderVersion' = '2',\n",
+					"'delta.minWriterVersion' = '5',\n",
+					"'delta.columnMapping.mode' = 'name'\n",
+					")\n",
+					"\"\"\"\n",
+					")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define the two schemas to compare"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# standardised\n",
+					"std_data_model_schema = create_spark_schema(std_db, entity_name)\n",
+					"std_table_schema = spark.table(std_full_table_name).schema\n",
+					"\n",
+					"# harmonised\n",
+					"hrm_data_model_schema = create_spark_schema(hrm_db, entity_name)\n",
+					"hrm_table_schema = spark.table(hrm_full_table_name).schema"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Test schemas match"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"results = [((test_compare_schemas(std_data_model_schema, std_table_schema), test_compare_schemas(hrm_data_model_schema, hrm_table_schema)))]\n",
+					"result = spark.createDataFrame(results, schema=[\"std\", \"hrm\"])\n",
+					"result.show()"
 				],
 				"execution_count": null
 			},
@@ -306,9 +523,16 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"# standardised\n",
 					"spark.sql(f\"\"\"\n",
-					"    ALTER TABLE {full_table_name} DROP COLUMN (appellantProofsSubmittedDate) \n",
-					"\"\"\")"
+					"    ALTER TABLE {std_full_table_name} DROP COLUMN (consultedBodiesDetails) \n",
+					"\"\"\")\n",
+					"\n",
+					"# harmonised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {hrm_full_table_name} DROP COLUMN (consultedBodiesDetails) \n",
+					"\"\"\")\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -329,14 +553,83 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"spark.read.table(full_table_name) \\\n",
-					"  .withColumnRenamed(\"old_name\", \"new_name\") \\\n",
+					"# standardised\n",
+					"spark.read.table(std_full_table_name) \\\n",
+					"  .withColumnRenamed(\"eiaConsultedBodiesDetails\", \"consultedBodiesDetails\") \\\n",
 					"  .write \\\n",
 					"  .format(\"delta\") \\\n",
 					"  .mode(\"overwrite\") \\\n",
 					"  .option(\"overwriteSchema\", \"true\") \\\n",
-					"#   .option(\"userMetadata\", \"THEODW-1647 schema changes\") \\\n",
-					"  .saveAsTable(full_table_name)"
+					"  .option(\"userMetadata\", \"THEODW-1647 schema changes\") \\\n",
+					"  .saveAsTable(std_full_table_name)\n",
+					"\n",
+					"# harmonised\n",
+					"spark.read.table(hrm_full_table_name) \\\n",
+					"  .withColumnRenamed(\"eiaConsultedBodiesDetails\", \"consultedBodiesDetails\") \\\n",
+					"  .write \\\n",
+					"  .format(\"delta\") \\\n",
+					"  .mode(\"overwrite\") \\\n",
+					"  .option(\"overwriteSchema\", \"true\") \\\n",
+					"  .option(\"userMetadata\", \"THEODW-1647 schema changes\") \\\n",
+					"  .saveAsTable(hrm_full_table_name)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Re-order a column\n",
+					"https://docs.delta.io/latest/delta-batch.html#change-column-comment-or-ordering  "
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# standardised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {std_full_table_name} ALTER COLUMN appellantProofsSubmittedDate AFTER appellantStatementSubmittedDate\n",
+					"\"\"\")\n",
+					"\n",
+					"# harmonised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {hrm_full_table_name} ALTER COLUMN appellantProofsSubmittedDate AFTER appellantStatementSubmittedDate\n",
+					"\"\"\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Add columns"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# standardised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {std_full_table_name} ADD COLUMNS (reasonForNeighbourVisits string AFTER neighbouringSiteAddresses, developmentType string AFTER typeOfPlanningApplication, appellantProofsSubmittedDate string AFTER appellantStatementSubmittedDate) \n",
+					"\"\"\")\n",
+					"\n",
+					"# harmonised\n",
+					"spark.sql(f\"\"\"\n",
+					"    ALTER TABLE {hrm_full_table_name} ADD COLUMNS (reasonForNeighbourVisits string AFTER neighbouringSiteAddresses, developmentType string AFTER typeOfPlanningApplication, appellantProofsSubmittedDate string AFTER appellantStatementSubmittedDate) \n",
+					"\"\"\")\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -358,12 +651,21 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"df = spark.table(full_table_name)\n",
+					"# standardised\n",
+					"df = spark.table(std_full_table_name)\n",
 					"\n",
 					"df.write.format(\"delta\") \\\n",
 					"  .mode(\"overwrite\") \\\n",
-					"  .option(\"userMetadata\", \"THEODW-1648 schema changes for appeal-has\") \\\n",
-					"  .saveAsTable(full_table_name)"
+					"  .option(\"userMetadata\", \"THEODW-1647 schema changes for appeal-s78\") \\\n",
+					"  .saveAsTable(std_full_table_name)\n",
+					"\n",
+					"# harmonised\n",
+					"df = spark.table(hrm_full_table_name)\n",
+					"\n",
+					"df.write.format(\"delta\") \\\n",
+					"  .mode(\"overwrite\") \\\n",
+					"  .option(\"userMetadata\", \"THEODW-1647 schema changes for appeal-s78\") \\\n",
+					"  .saveAsTable(hrm_full_table_name)"
 				],
 				"execution_count": null
 			},
@@ -382,9 +684,22 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
-					"table_schema = spark.table(full_table_name).schema\n",
-					"test_compare_schemas(data_model_schema, table_schema)"
+					"# standardised\n",
+					"std_data_model_schema = create_spark_schema(std_db, entity_name)\n",
+					"std_table_schema = spark.table(std_full_table_name).schema\n",
+					"\n",
+					"# harmonised\n",
+					"hrm_data_model_schema = create_spark_schema(hrm_db, entity_name)\n",
+					"hrm_table_schema = spark.table(hrm_full_table_name).schema\n",
+					"\n",
+					"# test again to see if schemas now match\n",
+					"results = [((test_compare_schemas(std_data_model_schema, std_table_schema), test_compare_schemas(hrm_data_model_schema, hrm_table_schema)))]\n",
+					"result = spark.createDataFrame(results, schema=[\"std\", \"hrm\"])\n",
+					"result.show()"
 				],
 				"execution_count": null
 			}
