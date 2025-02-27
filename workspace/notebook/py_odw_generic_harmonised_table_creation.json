@@ -1,0 +1,241 @@
+{
+	"name": "py_odw_generic_harmonised_table_creation",
+	"properties": {
+		"description": "This is a python script which automates the creation of tables, for data which was moved from odw_harmoised to odw_config ",
+		"folder": {
+			"name": "2-odw-standardised-to-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "e6ba2848-4a37-4901-869e-3765f161a69d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%run  /0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"specific_table = \"\""
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"@logging_to_appins\r\n",
+					"def automation_table_creation():\r\n",
+					"    '''\r\n",
+					"    This function check for existing table for specific json file in a delta folder and if the data has been already used, \r\n",
+					"    the message Table already exists with correct location will be displayed.\r\n",
+					"    Otherwise, the tables will be created using the create_table_from_schema schema \r\n",
+					"    '''\r\n",
+					"\r\n",
+					"    ### establish connection to azure files and create client\r\n",
+					"    from pyspark.sql import SparkSession\r\n",
+					"    spark = SparkSession.builder.getOrCreate()\r\n",
+					"\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"\r\n",
+					"   \r\n",
+					"    #asigning the location of the container and the folder for the parquete files \r\n",
+					"    harmonised_storage_container = 'abfss://odw-harmonised@' + storage_account\r\n",
+					"    harmonised_storage_delta_folder = 'lib/'\r\n",
+					"    delta_lake_database_name = \"odw_harmonised_db\"\r\n",
+					"\r\n",
+					"\r\n",
+					"    #asigning a value/loaction for the schemas\r\n",
+					"    config_storage_container = 'abfss://odw-config@' + storage_account\r\n",
+					"    json_schema_folder='harmonised_table_definitions'\r\n",
+					"\r\n",
+					"\r\n",
+					"    #import of utilities\r\n",
+					"    from notebookutils import mssparkutils\r\n",
+					"    #asigning a path to find the schema files \r\n",
+					"    json_schema_path = config_storage_container + '/' + json_schema_folder\r\n",
+					"\r\n",
+					"    logInfo('json_schema_path '+json_schema_path)\r\n",
+					"\r\n",
+					"    files = mssparkutils.fs.ls(json_schema_path)\r\n",
+					"    tablesCreated:bool = False\r\n",
+					"\r\n",
+					"    #looping through the files \r\n",
+					"    for file in files:\r\n",
+					"        if specific_table == \"\":\r\n",
+					"            logInfo(file)\r\n",
+					"            #json_schema=spark.read.text(\"abfss://odw-config@\"+storage_acc_name+\".dfs.core.windows.net/[enter path here]\", wholetext=True).first().value\r\n",
+					"            #asigning the path to each json_schema from the contents of the each file\r\n",
+					"            json_schema=spark.read.text(file.path, wholetext=True).first().value\r\n",
+					"            #creating table while looping through the files so we can change the schemas, file name, and folder based on the file info\r\n",
+					"            create_table_from_schema(json_schema, delta_lake_database_name,file.name.lower().split('.json')[0],harmonised_storage_container+\"/\",harmonised_storage_delta_folder+file.name.lower().split('.json')[0]) \r\n",
+					"            tablesCreated = True\r\n",
+					"            logInfo(f\"Table created from {file.name}\")\r\n",
+					"        else:\r\n",
+					"            if specific_table + '.json' == file.name.lower():\r\n",
+					"                logInfo(f\"Reading {file.path}\")\r\n",
+					"                json_schema=spark.read.text(file.path, wholetext=True).first().value\r\n",
+					"                #creating table while looping through the files so we can change the schemas, file name, and folder based on the file info\r\n",
+					"                create_table_from_schema(json_schema, delta_lake_database_name,file.name.lower().split('.json')[0],harmonised_storage_container+\"/\",harmonised_storage_delta_folder+file.name.lower().split('.json')[0]) \r\n",
+					"                tablesCreated = True\r\n",
+					"                logInfo(f\"Table created for {specific_table}\")\r\n",
+					"    \r\n",
+					"    if tablesCreated == False:\r\n",
+					"        logError(f\"No tables created\")\r\n",
+					"\r\n",
+					"   \r\n",
+					"#calling the function \r\n",
+					"automation_table_creation()\r\n",
+					"   "
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# New Code added Convert JSON schema to PySpark StructType, pass schema file\r\n",
+					"def get_json_schema(schema_json):\r\n",
+					"    fields = []\r\n",
+					"    for field in schema_json[\"fields\"]:\r\n",
+					"        if field[\"type\"] == \"string\":\r\n",
+					"            dtype = StringType()\r\n",
+					"        elif field[\"type\"] == \"timestamp\":\r\n",
+					"            dtype = TimestampType()\r\n",
+					"        else:\r\n",
+					"            dtype = StringType()  # Default type\r\n",
+					"        fields.append(StructField(field[\"name\"], dtype, field[\"nullable\"]))\r\n",
+					"    return StructType(fields)\r\n",
+					"\r\n",
+					"target_schema = get_json_schema(schema_json)\r\n",
+					"\r\n",
+					"# Define source and target table names\r\n",
+					"source_table = f\"odw_standardised_db.{source_table_name}\"\r\n",
+					"target_table = f\"odw_harmonised_db.{target_table_name}\"\r\n",
+					"\r\n",
+					"# Check if target table exists; if not, create it\r\n",
+					"if not spark.catalog._jcatalog.tableExists(target_table):\r\n",
+					"    spark.sql(f\"\"\"\r\n",
+					"        CREATE TABLE {target_table} \r\n",
+					"        ({\", \".join([f\"{field.name} {field.dataType.simpleString()}\" for field in target_schema.fields])})\r\n",
+					"        USING DELTA\r\n",
+					"    \"\"\")\r\n",
+					"\r\n",
+					"# Read source data\r\n",
+					"source_df = spark.read.format(\"delta\").table(source_table)\r\n",
+					"\r\n",
+					"# Select and cast columns to match schema\r\n",
+					"for field in target_schema.fields:\r\n",
+					"    source_df = source_df.withColumnRenamed(field.name, field.name).cast(field.dataType)\r\n",
+					"\r\n",
+					"# Write data to the target table\r\n",
+					"source_df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(target_table)\r\n",
+					"\r\n",
+					"print(f\"Data successfully written to {target_table}\")\r\n",
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
