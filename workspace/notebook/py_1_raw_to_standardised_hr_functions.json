@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c81bfc91-029a-4475-a5dd-c42edc04a447"
+				"spark.autotune.trackingId": "a27b9dc3-783f-49b7-bfd5-8fbcf1b83eea"
 			}
 		},
 		"metadata": {
@@ -411,7 +411,7 @@
 					"\n",
 					"    standardised_container = \"abfss://odw-standardised@\"+storage_account\n",
 					"    standardised_path = definition['Standardised_Path'] + \"/\"\n",
-					"    standardised_table_name = \"alex_\" + definition['Standardised_Table_Name']\n",
+					"    standardised_table_name = definition['Standardised_Table_Name']\n",
 					"    source_filename_start = definition['Source_Filename_Start']\n",
 					"\n",
 					"    logging_container = f\"abfss://logging@{storage_account}\"\n",
@@ -424,7 +424,7 @@
 					"    else:\n",
 					"        standardised_table_def_json = mssparkutils.notebook.run('/py_get_schema_from_url', 30, {'db_name': 'odw_standardised_db', 'entity_name': definition['Source_Frequency_Folder']})\n",
 					" \n",
-					"    if not any([table.name.lower() == standardised_table_name.lower() for table in spark.catalog.listTables('odw_standardised_db')]):\n",
+					"    if not any([table.name == standardised_table_name for table in spark.catalog.listTables('odw_standardised_db')]):\n",
 					"        create_table_from_schema(standardised_table_def_json, \"odw_standardised_db\", standardised_table_name,standardised_container , standardised_path+standardised_table_name)   \n",
 					"\n",
 					"    #Check that we're dealing with delta already. If not we will convert the table first\n",
@@ -637,8 +637,7 @@
 					"    metrics_schema = StructType([\n",
 					"        StructField(\"file_ID\", StringType(), True),\n",
 					"        StructField(\"metric_name\", StringType(), True),\n",
-					"        StructField(\"value\", IntegerType(), True),\n",
-					"        StructField(\"process_name\", StringType(), True)\n",
+					"        StructField(\"value\", IntegerType(), True)\n",
 					"    ])\n",
 					"\n",
 					"    # Try loading the ingestion log table\n",
@@ -672,8 +671,8 @@
 					"\n",
 					"    metrics_df = metrics_df.withColumn(\"process_name\", lit(process_name))\n",
 					"\n",
-					"    # Write metrics to the metrics table\n",
-					"    metrics_df.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{metrics_table_name}\")\n",
+					"    # Write (append) metrics to the metrics table\n",
+					"    metrics_df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(f\"logging.{metrics_table_name}\")\n",
 					"    logInfo(f\"Metrics table {metrics_table_name} updated successfully.\")\n",
 					""
 				],
