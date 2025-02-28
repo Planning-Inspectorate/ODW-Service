@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2be84efd-1b5b-4cb9-b1a3-4cf94bf90ddd"
+				"spark.autotune.trackingId": "5bf03a62-6794-4d18-bf68-409f8bf35697"
 			}
 		},
 		"metadata": {
@@ -88,7 +88,7 @@
 					"from pyspark.sql.functions import row_number\n",
 					"from pyspark.sql.types import StructType, StructField, TimestampType, StringType"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -99,7 +99,7 @@
 					"%%sql\n",
 					"drop table odw_harmonised_db.absence_all"
 				],
-				"execution_count": 14
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -129,7 +129,19 @@
 					"USING DELTA\n",
 					"\"\"\")"
 				],
-				"execution_count": 15
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
+				],
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -164,28 +176,35 @@
 					")\n",
 					"SELECT  \n",
 					"    StaffNumber,\n",
-					"    coalesce(AbsType, '') AS AbsType,\n",
-					"    coalesce(SicknessGroup, '') AS SicknessGroup,\n",
-					"    cast(StartDate as date) AS StartDate,\n",
-					"    cast(EndDate as date) AS EndDate,\n",
+					"    COALESCE(AbsType, '') AS AbsType,\n",
+					"    COALESCE(SicknessGroup, '') AS SicknessGroup,\n",
+					"    to_date(StartDate,'M/d/yy') as StartDate,\n",
+					"    to_date(StartDate,'M/d/yy') as EndDate,\n",
 					"    AttendanceorAbsenceType,\n",
-					"    Days,\n",
-					"    Hrs,\n",
-					"    CASE \n",
-					"        WHEN Start = '1899-12-31' THEN to_timestamp(Start || ' 00:00:00.000', 'yyyy-MM-dd HH:mm:ss.SSS')\n",
-					"        ELSE to_timestamp(Start, 'yyyy-MM-dd HH:mm:ss.SSS')\n",
-					"    END AS Start,\n",
-					"    CASE \n",
-					"        WHEN Endtime = '1899-12-31' THEN to_timestamp(Endtime || ' 00:00:00.000', 'yyyy-MM-dd HH:mm:ss.SSS')\n",
-					"        ELSE to_timestamp(Endtime, 'yyyy-MM-dd HH:mm:ss.SSS')\n",
-					"    END AS Endtime,  \n",
+					"    REPLACE(Days, ',', '') AS Days,  -- Remove commas before casting\n",
+					"    REPLACE(Hrs, ',', '') AS Hrs,    -- Remove commas before casting\n",
+					"    to_date('31/12/1899','dd/mm/yyyy')  as StartTime,\n",
+					"    to_date('31/12/1899','dd/mm/yyyy')  as Endtime,  \n",
 					"    Caldays,\n",
 					"    WorkScheduleRule,\n",
-					"    Wkhrs,\n",
-					"    HrsDay,\n",
-					"    WkDys,\n",
-					"    cast(AnnualLeaveStart as date) as AnnualLeaveStart\n",
+					"    TRY_CAST(REPLACE(Wkhrs, ',', '') AS DOUBLE) AS Wkhrs,  -- Use TRY_CAST for safety\n",
+					"    TRY_CAST(REPLACE(HrsDay, ',', '') AS DOUBLE) AS HrsDay,  -- Use TRY_CAST for safety\n",
+					"    TRY_CAST(REPLACE(WkDys, ',', '') AS DOUBLE) AS WkDys,  -- Use TRY_CAST for safety\n",
+					"    \n",
+					"     to_date(AnnualLeaveStart,'M/d/yy')  AS AnnualLeaveStart\n",
 					"FROM odw_standardised_db.hr_absence_monthly;\n",
+					"\n",
+					""
+				],
+				"execution_count": 64
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
 					"\n",
 					"-- Step 3: Remove rows with null values in key columns\n",
 					"DELETE FROM odw_harmonised_db.absence_all\n",
@@ -208,7 +227,18 @@
 					"    AND source.Val > 1\n",
 					"WHEN MATCHED THEN DELETE;"
 				],
-				"execution_count": 22
+				"execution_count": 67
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from odw_harmonised_db.absence_all"
+				],
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
