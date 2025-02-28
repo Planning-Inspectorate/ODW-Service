@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c81bfc91-029a-4475-a5dd-c42edc04a447"
+				"spark.autotune.trackingId": "08c6501e-60f7-4edb-8d1a-962759116601"
 			}
 		},
 		"metadata": {
@@ -563,7 +563,12 @@
 					"    ).limit(1)\n",
 					"\n",
 					"    new_log_entry = new_log_entry.withColumn(\"rows_raw\", lit(sparkDF.count()))\n",
-					"    new_log_entry = new_log_entry.withColumn(\"rows_new\", lit(standardised_table_df.filter((standardised_table_df.expected_from == expected_from) &  (standardised_table_df.expected_to == expected_to)).count()))\n",
+					"    new_log_entry = new_log_entry.withColumn(\"rows_new\", lit(standardised_table_df.filter(\n",
+					"                                                                (standardised_table_df.expected_from == expected_from) &  \n",
+					"                                                                (standardised_table_df.expected_to == expected_to)\n",
+					"                                                            ).count()\n",
+					"                                                        )\n",
+					"                                            )\n",
 					"\n",
 					"\n",
 					"    if not table_exists:\n",
@@ -603,13 +608,16 @@
 				"source": [
 					"@logging_to_appins\n",
 					"def log_ingestion_metrics(storage_account, process_name):\n",
+					"    logInfo(f\"Metrics table {metrics_table_name} is now a VIEW.\")\n",
+					"    return\n",
+					"\n",
 					"    from pyspark.sql import SparkSession\n",
 					"    from notebookutils import mssparkutils\n",
 					"    from pyspark.sql.types import StringType, IntegerType, StructType, StructField\n",
 					"    from pyspark.sql.functions import col, lit\n",
 					"\n",
 					"    spark = SparkSession.builder.getOrCreate()\n",
-					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\n",
+					"    #spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\n",
 					"\n",
 					"    logging_container = f\"abfss://logging@{storage_account}\"\n",
 					"    logging_table_name = 'tables_logs'\n",
@@ -623,7 +631,7 @@
 					"        StructField(\"file_ID\", StringType(), True),\n",
 					"        StructField(\"metric_name\", StringType(), True),\n",
 					"        StructField(\"value\", IntegerType(), True),\n",
-					"        StructField(\"process_name\", StringType(), True)\n",
+					"        StructField(\\\"process_name\\\", StringType(), True)\n",
 					"    ])\n",
 					"\n",
 					"    # Try loading the ingestion log table\n",
@@ -657,7 +665,7 @@
 					"\n",
 					"    metrics_df = metrics_df.withColumn(\"process_name\", lit(process_name))\n",
 					"\n",
-					"    # Write metrics to the metrics table\n",
+					"    # Write (append) metrics to the metrics table\n",
 					"    metrics_df.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{metrics_table_name}\")\n",
 					"    logInfo(f\"Metrics table {metrics_table_name} updated successfully.\")\n",
 					""
