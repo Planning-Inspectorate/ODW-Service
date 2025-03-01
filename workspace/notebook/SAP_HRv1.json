@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "abe0a7e0-33a3-47d1-b3c6-4ad02968a044"
+				"spark.autotune.trackingId": "b0b2589b-47c4-4f18-951e-0ab8dbc536cd"
 			}
 		},
 		"metadata": {
@@ -862,6 +862,24 @@
 					"collapsed": false
 				},
 				"source": [
+					"    %%sql\n",
+					"    SELECT \n",
+					"        PersNo,\n",
+					"        PSGroup,\n",
+					"        PersonnelArea,\n",
+					"        PersonnelSubarea,\n",
+					"        Report_MonthEnd_Date \n",
+					"    FROM \n",
+					"        odw_harmonised_db.hist_SAP_HR"
+				],
+				"execution_count": 52
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
 					"%%sql\n",
 					"\n",
 					"MERGE INTO odw_harmonised_db.fact_absence_all AS target\n",
@@ -873,9 +891,9 @@
 					"        PersonnelSubarea,\n",
 					"        Report_MonthEnd_Date \n",
 					"    FROM \n",
-					"        odw_harmonised_db.load_SAP_HR\n",
+					"        odw_harmonised_db.hist_SAP_HR\n",
 					") AS source\n",
-					"ON target.staffnumber = source.PersNo\n",
+					"ON cast(target.staffnumber  as int) = source.PersNo\n",
 					"--AND target.absence_date >= DATEADD(m, -1, DATEADD(d, 1, source.Report_MonthEnd_Date))\n",
 					"WHEN MATCHED THEN\n",
 					"    UPDATE SET \n",
@@ -884,7 +902,19 @@
 					"        target.PersonnelSubarea = source.PersonnelSubarea;\n",
 					""
 				],
-				"execution_count": 38
+				"execution_count": 55
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from odw_harmonised_db.fact_absence_all"
+				],
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -916,28 +946,31 @@
 					"            Report_MonthEnd_Date \n",
 					"        FROM \n",
 					"            odw_harmonised_db.Hist_SAP_HR \n",
-					"        WHERE \n",
-					"            Report_MonthEnd_Date < (SELECT MAX(Report_MonthEnd_Date) FROM odw_harmonised_db.Hist_SAP_HR)\n",
+					"       -- WHERE \n",
+					"          --  Report_MonthEnd_Date < (SELECT MAX(Report_MonthEnd_Date) FROM odw_harmonised_db.Hist_SAP_HR)\n",
 					"    ) p\n",
-					"    ON a.staffnumber = p.PersNo\n",
-					"    AND a.absence_date BETWEEN p.Report_MonStart_Date AND p.Report_MonthEnd_Date\n",
+					"    ON cast(a.staffnumber as date) = p.PersNo\n",
+					"    --AND a.absence_date BETWEEN p.Report_MonStart_Date AND p.Report_MonthEnd_Date\n",
 					") AS source\n",
-					"ON target.staffnumber = source.staffnumber\n",
+					"ON cast(target.staffnumber  as int) = source.staffnumber\n",
 					"WHEN MATCHED THEN\n",
 					"    UPDATE SET \n",
 					"        target.PSGroup = source.PSGroup,\n",
 					"        target.PersonnelArea = source.PersonnelArea,\n",
 					"        target.PersonnelSubarea = source.PersonnelSubarea;"
 				],
-				"execution_count": 46
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
 					"%%sql\n",
 					"select * from odw_harmonised_db.fact_absence_all"
 				],
-				"execution_count": null
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
