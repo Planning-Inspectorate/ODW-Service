@@ -1,0 +1,141 @@
+{
+	"name": "Py_generate_json_schema",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "c3edb68b-ca6e-4538-ae9b-9bd8a28758e8"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"csv_folder_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/StaticTables/2025-02-27/\"\n",
+					"json_output_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/create_schema.json\""
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.types import StructType, StructField, StringType\n",
+					"import json\n",
+					"import re\n",
+					"from notebookutils import mssparkutils \n",
+					"\n",
+					"#spark = SparkSession.builder.appName(\"CSV to JSON Schema\").getOrCreate()"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Get list of CSV files from ADLS\n",
+					"try:\n",
+					"    csv_files = [f.name for f in mssparkutils.fs.ls(csv_folder_path) if f.name.endswith(\".csv\")]\n",
+					"except Exception as e:\n",
+					"    print(f\"Error accessing folder: {csv_folder_path}\\nException: {e}\")\n",
+					"    csv_files = []\n",
+					"\n",
+					"# Dictionary to store schemas for all CSV files\n",
+					"all_schemas = {\"tables\": []}\n",
+					"\n",
+					"# Function to generate schema from a CSV file\n",
+					"def generate_schema(csv_file):\n",
+					"    file_path = csv_folder_path + csv_file # Full file path in ADLS\n",
+					"\n",
+					"    # Extract table name from CSV file \n",
+					"    table_name = csv_file.replace(\".csv\", \"\").replace(\" \", \"_\").lower()\n",
+					"\n",
+					"    # Read CSV file with header\n",
+					"    df = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\n",
+					"\n",
+					"    # Standardize column names by replacing spaces and special characters\n",
+					"    df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c.replace(\" \",\"\")) for c in df.columns])\n",
+					"\n",
+					"    # Convert schema to JSON format\n",
+					"    schema_json = {\n",
+					"        \"table_name\": table_name,\n",
+					"        \"columns\": []\n",
+					"    }\n",
+					"\n",
+					"    for field in df.schema.fields:\n",
+					"        schema_json[\"columns\"].append({\n",
+					"            \"name\": field.name,\n",
+					"            \"type\": field.dataType.simpleString(),\n",
+					"            \"nullable\": field.nullable\n",
+					"        })\n",
+					"\n",
+					"    # Add schema to the combined dictionary\n",
+					"    all_schemas[\"tables\"].append(schema_json)\n",
+					"\n",
+					"# Process all CSV files\n",
+					"if csv_files:\n",
+					"    for csv_file in csv_files:\n",
+					"        generate_schema(csv_file)\n",
+					"\n",
+					"    # Convert JSON to a string\n",
+					"    json_string = json.dumps(all_schemas, indent=4)\n",
+					"\n",
+					"    # Write the combined JSON schema to ADLS\n",
+					"    mssparkutils.fs.put(json_output_path, json_string, True)\n",
+					"\n",
+					"    print(f\" Combined schema file saved as {json_output_path}\")\n",
+					"else:\n",
+					"    print(\" No CSV files found in the given path.\")\n",
+					"\n",
+					"print(\" Schema generation completed.\")\n",
+					""
+				],
+				"execution_count": 10
+			}
+		]
+	}
+}
