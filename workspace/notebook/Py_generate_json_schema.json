@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c3edb68b-ca6e-4538-ae9b-9bd8a28758e8"
+				"spark.autotune.trackingId": "2f9c203b-5daa-4711-8f08-5d0da63c5515"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"csv_folder_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/StaticTables/2025-02-27/\"\n",
 					"json_output_path = \"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/schema_creation/create_schema.json\""
 				],
-				"execution_count": 5
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -72,7 +72,7 @@
 					"\n",
 					"#spark = SparkSession.builder.appName(\"CSV to JSON Schema\").getOrCreate()"
 				],
-				"execution_count": 8
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -84,8 +84,8 @@
 					"    print(f\"Error accessing folder: {csv_folder_path}\\nException: {e}\")\n",
 					"    csv_files = []\n",
 					"\n",
-					"# Dictionary to store schemas for all CSV files\n",
-					"all_schemas = {\"tables\": []}\n",
+					"# List to store schemas for all CSV files\n",
+					"schema_list = []\n",
 					"\n",
 					"# Function to generate schema from a CSV file\n",
 					"def generate_schema(csv_file):\n",
@@ -95,26 +95,29 @@
 					"    table_name = csv_file.replace(\".csv\", \"\").replace(\" \", \"_\").lower()\n",
 					"\n",
 					"    # Read CSV file with header\n",
-					"    df = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(file_path)\n",
+					"    df = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\n",
 					"\n",
 					"    # Standardize column names by replacing spaces and special characters\n",
 					"    df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c.replace(\" \",\"\")) for c in df.columns])\n",
 					"\n",
-					"    # Convert schema to JSON format\n",
-					"    schema_json = {\n",
+					"    # Add default audit columns\n",
+					"    default_columns = [\n",
+					"        {\"name\": \"ingested_datetime\", \"type\": \"timestamp\", \"constraints\": False},\n",
+					"        {\"name\": \"expected_from\", \"type\": \"timestamp\", \"constraints\": False},\n",
+					"        {\"name\": \"expected_to\", \"type\": \"timestamp\", \"constraints\": False}\n",
+					"    ]\n",
+					"\n",
+					"    # Convert schema to JSON format    \n",
+					"    table_schema = {\n",
 					"        \"table_name\": table_name,\n",
-					"        \"columns\": []\n",
+					"        \"columns\": default_columns + [\n",
+					"            {\"name\": field.name, \"type\": field.dataType.simpleString(), \"nullable\": field.nullable}\n",
+					"            for field in df.schema.fields\n",
+					"        ]\n",
 					"    }\n",
 					"\n",
-					"    for field in df.schema.fields:\n",
-					"        schema_json[\"columns\"].append({\n",
-					"            \"name\": field.name,\n",
-					"            \"type\": field.dataType.simpleString(),\n",
-					"            \"nullable\": field.nullable\n",
-					"        })\n",
-					"\n",
-					"    # Add schema to the combined dictionary\n",
-					"    all_schemas[\"tables\"].append(schema_json)\n",
+					"    # Add schema to the list\n",
+					"    schema_list.append(table_schema)\n",
 					"\n",
 					"# Process all CSV files\n",
 					"if csv_files:\n",
@@ -122,7 +125,7 @@
 					"        generate_schema(csv_file)\n",
 					"\n",
 					"    # Convert JSON to a string\n",
-					"    json_string = json.dumps(all_schemas, indent=4)\n",
+					"    json_string = json.dumps(schema_list, indent=4)\n",
 					"\n",
 					"    # Write the combined JSON schema to ADLS\n",
 					"    mssparkutils.fs.put(json_output_path, json_string, True)\n",
@@ -134,7 +137,7 @@
 					"print(\" Schema generation completed.\")\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 7
 			}
 		]
 	}
