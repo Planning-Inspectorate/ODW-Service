@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8b3d6c8a-c918-419d-9d71-ce814b3ae8e0"
+				"spark.autotune.trackingId": "e4fb4578-3a94-4040-a927-375696ed56fb"
 			}
 		},
 		"metadata": {
@@ -330,7 +330,50 @@
 					"FROM \n",
 					"    odw_standardised_db.sap_hr_leavers_monthly;"
 				],
-				"execution_count": 79
+				"execution_count": 28
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select Leaving from odw_standardised_db.sap_hr_leavers_monthly  limit 5"
+				],
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"to_date('2024-01-31','yyyy-MM-dd')"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select \n",
+					"CASE \n",
+					"    WHEN instr(to_date(Leaving,'yyyy-MM-dd') '/') = 0 THEN CAST(Leaving AS DATE)\n",
+					"    ELSE CAST(\n",
+					"        concat(\n",
+					"            substring(to_date(Leaving,'yyyy-MM-dd'), length(to_date(Leaving,'yyyy-MM-dd')) - 3 + 1, 4), '-', \n",
+					"            substring(to_date(Leaving,'yyyy-MM-dd'), instr(to_date(Leaving,'yyyy-MM-dd'), '/') + 1, 2), '-', \n",
+					"            substring(to_date(Leaving,'yyyy-MM-dd'), 1, instr(to_date(Leaving,'yyyy-MM-dd'), '/') - 1)\n",
+					"        ) AS DATE\n",
+					"    )\n",
+					"END AS Leaving\n",
+					"\n",
+					"from odw_harmonised_db.stage_SAP_HR_Leavers"
+				],
+				"execution_count": 40
 			},
 			{
 				"cell_type": "markdown",
@@ -402,6 +445,17 @@
 				"execution_count": 83
 			},
 			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"delete from odw_harmonised_db.SAP_HR_Leavers"
+				],
+				"execution_count": 33
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -453,7 +507,110 @@
 					"# Step 4: Insert records into SAP_HR_Leavers\n",
 					"df_filtered.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_harmonised_db.SAP_HR_Leavers\")"
 				],
-				"execution_count": 84
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql import Window\n",
+					"from pyspark.sql.functions import row_number, col\n",
+					"\n",
+					"# Step 1: Update Annualsalary to null\n",
+					"delta_table = DeltaTable.forName(spark, \"odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
+					"delta_table.update(\"Annualsalary IS NOT NULL\", {\"Annualsalary\": \"null\"})\n",
+					"\n",
+					"# Step 2: Delete duplicates\n",
+					"# Create a DataFrame from the Delta table\n",
+					"df = delta_table.toDF()\n",
+					"\n",
+					"# Add a row number column to identify duplicates\n",
+					"window_spec = Window.partitionBy(\"PersNo\", \"Leaving\").orderBy(\"PersNo\", \"Leaving\")\n",
+					"df_with_row_number = df.withColumn(\"val\", row_number().over(window_spec))\n",
+					"\n",
+					"# Filter out duplicates (keep only the first occurrence)\n",
+					"df_filtered = df_with_row_number.filter(col(\"val\") == 1).drop(\"val\")\n",
+					"\n",
+					"# Overwrite the Delta table with the cleaned data\n",
+					"df_filtered.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
+					"\n",
+					"# Step 3: Delete records from SAP_HR_Leavers based on PersNo in the cleaned data\n",
+					"# Extract unique PersNo values from the cleaned DataFrame\n",
+					"persno_list = df_filtered.select(\"PersNo\").distinct().rdd.flatMap(lambda x: x).collect()\n",
+					"\n",
+					"# Delete records from the target table where PersNo matches the cleaned data\n",
+					"target_table = DeltaTable.forName(spark, \"odw_harmonised_db.SAP_HR_Leavers\")\n",
+					"target_table.delete(f\"PersNo IN ({','.join(map(str, persno_list))})\")\n",
+					"\n",
+					"# Step 4: Delete records from SAP_HR_Leavers within the date range\n",
+					"# Calculate min and max dates\n",
+					"min_year = df.selectExpr(\"YEAR(MIN(Leaving))\").collect()[0][0]\n",
+					"max_year = df.selectExpr(\"YEAR(MAX(Leaving))\").collect()[0][0]\n",
+					"mindate = f\"{min_year}-04-01\"\n",
+					"maxdate = f\"{max_year + 1}-03-31\"\n",
+					"\n",
+					"# Delete records from the target table within the date range\n",
+					"target_table.delete(f\"Leaving BETWEEN '{mindate}' AND '{maxdate}'\")\n",
+					"\n",
+					"# Step 5: Insert records into SAP_HR_Leavers\n",
+					"df_filtered.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_harmonised_db.SAP_HR_Leavers\")"
+				],
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql import Window\n",
+					"from pyspark.sql.functions import row_number, col\n",
+					"\n",
+					"# Step 1: Update Annualsalary to null\n",
+					"delta_table = DeltaTable.forName(spark, \"odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
+					"delta_table.update(\"Annualsalary IS NOT NULL\", {\"Annualsalary\": \"null\"})\n",
+					"\n",
+					"# Step 2: Delete duplicates\n",
+					"# Create a DataFrame from the Delta table\n",
+					"df = delta_table.toDF()\n",
+					"\n",
+					"# Add a row number column to identify duplicates\n",
+					"window_spec = Window.partitionBy(\"PersNo\", \"Leaving\").orderBy(\"PersNo\", \"Leaving\")\n",
+					"df_with_row_number = df.withColumn(\"val\", row_number().over(window_spec))\n",
+					"\n",
+					"# Filter out duplicates (keep only the first occurrence)\n",
+					"df_filtered = df_with_row_number.filter(col(\"val\") == 1).drop(\"val\")\n",
+					"\n",
+					"# Overwrite the Delta table with the cleaned data\n",
+					"df_filtered.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
+					"\n",
+					"# Step 3: Delete records from SAP_HR_Leavers based on PersNo in the cleaned data\n",
+					"# Extract unique PersNo values from the cleaned DataFrame\n",
+					"persno_list = df_filtered.select(\"PersNo\").distinct().rdd.flatMap(lambda x: x).collect()\n",
+					"\n",
+					"# Delete records from the target table where PersNo matches the cleaned data\n",
+					"target_table = DeltaTable.forName(spark, \"odw_harmonised_db.SAP_HR_Leavers\")\n",
+					"target_table.delete(f\"PersNo IN ({','.join(map(str, persno_list))})\")\n",
+					"\n",
+					"# Step 4: Delete records from SAP_HR_Leavers within the date range\n",
+					"# Calculate min and max dates\n",
+					"min_year_result = df.selectExpr(\"YEAR(MIN(Leaving))\").collect()[0][0]\n",
+					"max_year_result = df.selectExpr(\"YEAR(MAX(Leaving))\").collect()[0][0]\n",
+					"\n",
+					"# Handle cases where min_year or max_year is None\n",
+					"if min_year_result is None or max_year_result is None:\n",
+					"    print(\"No valid dates found in the 'Leaving' column. Skipping deletion and insertion steps.\")\n",
+					"else:\n",
+					"    min_year = int(min_year_result)\n",
+					"    max_year = int(max_year_result)\n",
+					"    mindate = f\"{min_year}-04-01\"\n",
+					"    maxdate = f\"{max_year + 1}-03-31\"\n",
+					"\n",
+					"    # Delete records from the target table within the date range\n",
+					"    target_table.delete(f\"Leaving BETWEEN '{mindate}' AND '{maxdate}'\")\n",
+					"\n",
+					"    # Step 5: Insert records into SAP_HR_Leavers\n",
+					"    df_filtered.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_harmonised_db.SAP_HR_Leavers\")"
+				],
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -463,9 +620,9 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"select top 2 * from odw_harmonised_db.stage_SAP_HR_Leavers "
+					"select count(*) from odw_harmonised_db.stage_SAP_HR_Leavers "
 				],
-				"execution_count": 85
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -475,9 +632,9 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"select top 2 * from odw_harmonised_db.SAP_HR_Leavers "
+					"select count(*) from odw_harmonised_db.SAP_HR_Leavers "
 				],
-				"execution_count": 86
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
