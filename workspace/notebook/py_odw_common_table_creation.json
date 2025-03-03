@@ -22,7 +22,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "24a3c2b6-949a-4556-b442-b878f612b7f9"
+				"spark.autotune.trackingId": "cf26076f-833b-4e0e-99bb-fcd69b42b8a2"
 			}
 		},
 		"metadata": {
@@ -62,10 +62,67 @@
 				},
 				"source": [
 					"# Input parameters\r\n",
-					"json_folder_path = \"abfss://your-container@your-storage-account.dfs.core.windows.net/path-to-json-folder/\"\r\n",
-					"database_name = \"your_database_name\" "
+					"param_json_folder_name = \"harmonised_table_definitions/saphr\"\r\n",
+					"param_database_name = \"odw_harmonised_db\" \r\n",
+					"\r\n",
+					"q = param_json_folder_name.rsplit(\"/\", 1)[-1] \r\n",
+					"\r\n",
+					"print(q)"
 				],
-				"execution_count": null
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#import all libraries and initialise Spark Session\r\n",
+					"import json\r\n",
+					"import calendar\r\n",
+					"from datetime import datetime, timedelta, date\r\n",
+					"import requests\r\n",
+					"#import pandas as pd\r\n",
+					"import pyspark.sql.functions as F \r\n",
+					"import os\r\n",
+					"import re\r\n",
+					"from itertools import chain\r\n",
+					"from collections.abc import Mapping\r\n",
+					"from operator import add\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format\r\n",
+					"from pprint import pprint as pp\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"from delta.tables import DeltaTable\r\n",
+					"#ignore FutureWarning messages \r\n",
+					"import warnings\r\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Get Storage account name\r\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"print(storage_account)"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Define all Folder paths used in the notebook\r\n",
+					"\r\n",
+					"schema_folder_name = param_json_folder_name.rsplit(\"/\",1)[-1]\r\n",
+					"odw_json_folder_path = f\"abfss://odw-config@{storage_account}{param_json_folder_name}/\"\r\n",
+					"delta_table_base_path = f\"abfss://odw-harmonised@{storage_account}{schema_folder_name}\"\r\n",
+					"#schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\r\n",
+					"database_name = \"odw_standardised_db\"\r\n",
+					"\r\n",
+					"print(odw_json_folder_path)\r\n",
+					"print(delta_table_base_path)"
+				],
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -99,16 +156,6 @@
 					}
 				},
 				"source": [
-					"from pyspark.sql import SparkSession\r\n",
-					"from pyspark.sql.types import StructType, StructField, StringType, TimestampType\r\n",
-					"import json\r\n",
-					"import os\r\n",
-					"from notebookutils import mssparkutils  # Required for Synapse\r\n",
-					"\r\n",
-					"# Initialize Spark session\r\n",
-					"spark = SparkSession.builder.appName(\"JSON to Delta Table Creator\").getOrCreate()\r\n",
-					"\r\n",
-					"\r\n",
 					"\r\n",
 					"# Function to read JSON schema and create Delta tables\r\n",
 					"def create_delta_table_from_json(json_file_path, table_name):\r\n",
