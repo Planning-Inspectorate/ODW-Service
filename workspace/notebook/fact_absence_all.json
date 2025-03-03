@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3605808e-94d9-49ff-8146-906b28afa57b"
+				"spark.autotune.trackingId": "184f5dd1-40a1-4e08-8ace-dcd24ba5cab4"
 			}
 		},
 		"metadata": {
@@ -397,6 +397,26 @@
 					"collapsed": false
 				},
 				"source": [
+					" %%sql\n",
+					" \n",
+					" select ROUND(CASE\n",
+					"                       WHEN (AbsType = 'CB01'\n",
+					"                          AND Days = 0) THEN 1\n",
+					"                       WHEN (AbsType = 'MT01'\n",
+					"                          AND Days = 0) THEN 1\n",
+					"                       WHEN (AttendanceorAbsenceType = 'Spec u/p-up to 3mths'\n",
+					"                          AND Days = 0) THEN 1\n",
+					"                       WHEN Caldays = 0 THEN Hrs / HrsDay\n",
+					"                       ELSE 1 END, 2) AS Leave  from  odw_harmonised_db.absence_all"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
 					"%%sql\n",
 					"CREATE OR REPLACE TEMPORARY VIEW Numbers AS\n",
 					"SELECT sequence_id AS n\n",
@@ -505,15 +525,24 @@
 					"        AbsType,\n",
 					"        SicknessGroup,\n",
 					"        AttendanceorAbsenceType,\n",
-					"        CASE\n",
-					"            WHEN AbsType = 'CB01' AND Days = 0 THEN 1\n",
-					"            WHEN AbsType = 'MT01' AND Days = 0 THEN 1\n",
-					"            WHEN AttendanceorAbsenceType = 'Spec u/p-up to 3mths' AND Days = 0 THEN 1\n",
-					"            WHEN cal_days = 0 THEN Hrs / NULLIF(Hrs, 0)\n",
-					"            ELSE 1\n",
-					"        END AS Leave\n",
+					"        ROUND(CASE\n",
+					"            WHEN (AbsType = 'CB01' AND Days = 0) THEN 1\n",
+					"            WHEN (AbsType = 'MT01' AND Days = 0) THEN 1\n",
+					"            WHEN (AttendanceorAbsenceType = 'Spec u/p-up to 3mths' AND Days = 0) THEN 1\n",
+					"            WHEN cal_days = 0 THEN \n",
+					"                CASE dow\n",
+					"                    WHEN 2 THEN Hrs / Mo\n",
+					"                    WHEN 3 THEN Hrs / Tu\n",
+					"                    WHEN 4 THEN Hrs / We\n",
+					"                    WHEN 5 THEN Hrs / Th\n",
+					"                    WHEN 6 THEN Hrs / Fr\n",
+					"                    ELSE 1\n",
+					"                END\n",
+					"            ELSE 1 \n",
+					"        END, 2) AS Leave\n",
 					"    FROM\n",
 					"        ProcessedAbsence\n",
+					"\n",
 					")\n",
 					"-- Step 5: Insert into temporary table\n",
 					"INSERT INTO odw_harmonised_db.fact_absence_all_TEMP (\n",
@@ -571,7 +600,7 @@
 					"SELECT\n",
 					"    absence_date,\n",
 					"    absence_hours,\n",
-					"    staffnumber,\n",
+					"    cast(staffnumber as int),\n",
 					"    WorkScheduleRule,\n",
 					"    AbsType,\n",
 					"    SicknessGroup,\n",
@@ -591,7 +620,7 @@
 					"DELETE FROM odw_harmonised_db.fact_absence_all\n",
 					"WHERE staffnumber IN ('50410587', '50422294');"
 				],
-				"execution_count": 84
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -636,7 +665,7 @@
 					"\n",
 					"select * from odw_harmonised_db.fact_absence_all"
 				],
-				"execution_count": 87
+				"execution_count": 11
 			}
 		]
 	}
