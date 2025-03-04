@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bb8e48bc-2381-447d-9b48-f7e2cc388e58"
+				"spark.autotune.trackingId": "d873d844-dfd9-44bc-b007-b22901543bb0"
 			}
 		},
 		"metadata": {
@@ -363,19 +363,6 @@
 				"execution_count": 12
 			},
 			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"**TO BE CHANGED: FOR SPECIFCIC PRIMARY ID**"
-				]
-			},
-			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -407,19 +394,6 @@
 					"    exitCode += 1"
 				],
 				"execution_count": 36
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"to BE CHANGED WITH PRIMARY KEY."
-				]
 			},
 			{
 				"cell_type": "code",
@@ -586,6 +560,266 @@
 					"# Visual checks moved to below notebook exit\n",
 					"This is so they won't run when notebook is called during automation run"
 				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Below you will find a bit of EDA on horizon data as of now ( 4/3/2025)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def check_count_match(hzn_table: str, hzn_table_2: str, primary_k_1:str, primary_k_2:str) -> tuple: \n",
+					"    df_hzn_1: Dataframe = spark.sql(f\"\"\"\n",
+					"                                SELECT DISTINCT {primary_k_1}\n",
+					"                                FROM odw_standardised_db.{hzn_table}\n",
+					"                            \"\"\")\n",
+					"\n",
+					"    df_hzn_2: Dataframe = spark.sql(f\"\"\"\n",
+					"                                SELECT DISTINCT {primary_k_2}\n",
+					"                                FROM odw_standardised_db.{hzn_table_2}\n",
+					"                                \n",
+					"                            \"\"\")\n",
+					"\n",
+					"    return df_hzn_1.count(), df_hzn_2.count(), df_hzn_1.count() == df_hzn_2.count()\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### All tables are expected to not have the same amount of records from the master table `horizon_Cases_s78` eg. for every caseunique id in case specialism there could be from 0-3 records.\n",
+					"##### All tables that have primary key = casenodeid they have same amount records and are expected to have duplicates as they are pivot tables confirmed with Gareth. (10/02/2025)\n",
+					"##### Also will not check if the count macth for typeofprocedure and horizon_typeofreasonforcase as they are reference tables and also they are not directly connected with horizon cases_s78."
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','cases_specialisms','casereference','caseReference')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of cases_specialisms: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','casesitestrings','caseuniqueid','casenodeid')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of casesitestrings: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','casedocumentdatesdates','caseuniqueid','casenodeid')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of casedocumentdatesdates: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','vw_case_dates','caseuniqueid','casenodeid')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of vw_case_dates: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','vw_addadditionaldata','caseuniqueid','AppealRefNumber')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of vw_addadditionaldata: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					"\n",
+					"count_hzn_1, count_hzn_2, count_records = check_count_match('horizoncases_s78','vw_additionalfields','caseuniqueid','AppealRefNumber')\n",
+					"print(f\"Count of horizon_cases_s78: {count_hzn_1}, Count of vw_additionalfields: {count_hzn_2}, Does the count match?: {count_records}\")\n",
+					"\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def check_dupl_records(hzn_table:str, primary_k:str)->True:\n",
+					"        df: Dataframe = spark.sql(f\"\"\"\n",
+					"                                SELECT distinct 1\n",
+					"                                FROM odw_standardised_db.{hzn_table}\n",
+					"                                GROUP BY {primary_k}\n",
+					"                                HAVING COUNT(*) > 1 \n",
+					"                                Limit 1\n",
+					"                            \"\"\")\n",
+					"        # If df is empty, no duplicates; otherwise, duplicates exist\n",
+					"        return  df.count() != 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"print('Does cases_specialism have duplicates?:', check_dupl_records('cases_specialisms','caseReference'))\n",
+					"print('Does horizoncases_s78 have duplicates?:',check_dupl_records('horizoncases_s78','casereference'))\n",
+					"print('Does casesitestrings have duplicates?:', check_dupl_records('casesitestrings','casenodeid'))\n",
+					"print('Does casedocumentdatesdates have duplicates?:',check_dupl_records('casedocumentdatesdates','casenodeid'))\n",
+					"print('Does vw_case_dates have duplicates?:', check_dupl_records('vw_case_dates','casenodeid'))\n",
+					"print('Does vw_addadditionaldata have duplicates?:',check_dupl_records('vw_addadditionaldata','AppealRefNumber'))\n",
+					"print('Does vw_additionalfields have duplicates?:',check_dupl_records('vw_additionalfields','AppealRefNumber'))\n",
+					"print('Does typeofprocedure have duplicates?:',check_dupl_records('typeofprocedure','Name'))\n",
+					"print('Does horizon_typeofreasonforcase have duplicates?:',check_dupl_records('horizon_typeofreasonforcase','Id'))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Trace some records to see if they exists in all horizon tables in phase 1. Below you will see SQL queries.\n",
+					"###### We are going to take `casereference = 'APP/B3030/W/17/3184391'` or  `'APP/L2630/W/16/3155500'` from horizon_cases_s78 and check if records exists in the following tables. Each table I am checking I am using their primary key to check accordingly."
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.horizoncases_s78\n",
+					"-- where casereference = 'APP/B3030/W/17/3184391'\n",
+					"where casereference = 'APP/L2630/W/16/3155500'\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"## expected to see multiple rows for each casereference.\n",
+					"%%sql\n",
+					"select  distinct * from odw_standardised_db.cases_specialisms\n",
+					"where casereference = '3155500'\n",
+					"--where casereference = '3184391'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.casesitestrings\n",
+					"--where casenodeid = '23849934'\n",
+					"where casenodeid = '17248610'\n",
+					"    "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.casedocumentdatesdates\n",
+					"--where casenodeid = '23849934'\n",
+					"where casenodeid = '17248610'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.vw_case_dates\n",
+					"-- where casenodeid = '23849934'\n",
+					"where casenodeid = '17248610'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.vw_addadditionaldata\n",
+					"-- where appealrefnumber = '3184391'\n",
+					"where appealrefnumber = '3155500'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.vw_additionalfields\n",
+					"-- where appealrefnumber = '3184391'\n",
+					" where appealrefnumber = '3155500'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### This table `horizon_appeal_s78_final` is the merged table that includes all horizon data tables. For this `casereference = 'APP/L2630/W/16/3155500'` we are expected to see 2 records per casereference as in `casespecialism` table there are 2 different info for casespecialism ( 1 to many relationship)"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.horizon_appeal_s78_final\n",
+					"-- where casereference = 'APP/B3030/W/17/3184391'\n",
+					"where casereference = 'APP/L2630/W/16/3155500'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The below two tables are reference tables and thats why we dont have that many records. There will be joining in the next phase with other tables. After that we can do some record tracing.\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.typeofprocedure\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%%sql\n",
+					"SELECT *\n",
+					"FROM odw_standardised_db.horizon_typeofreasonforcase"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
