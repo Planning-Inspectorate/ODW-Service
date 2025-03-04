@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a71904fe-fa4e-4717-a6e7-cb1816ec7770"
+				"spark.autotune.trackingId": "386d3088-88ef-472e-8593-2618503f9fe4"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,7 @@
 					"from collections.abc import Mapping\n",
 					"from operator import add\n",
 					"from notebookutils import mssparkutils\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast\n",
 					"from pprint import pprint as pp\n",
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql import SparkSession\n",
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"target_delta_table = f\"{target_database_name}.sap_hr_weekly\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}/{target_delta_table}\""
 				],
-				"execution_count": 8
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -167,8 +167,8 @@
 					"    col(\"S\"),\n",
 					"    col(\"EmploymentStatus\"),\n",
 					"    col(\"GenderKey\"),\n",
-					"    col(\"TRAStartDate\"),\n",
-					"    col(\"TRAEndDate\"),\n",
+					"    when(col(\"TRAStartDate\") == \"00/00/0000\", lit(\"0000-00-00\")).otherwise(to_date(col(\"TRAStartDate\"), \"M/d/yyyy\")).alias(\"TRAStartDate\"),  \n",
+					"    when(col(\"TRAEndDate\") == \"00/00/0000\", lit(\"0000-00-00\")).otherwise(to_date(col(\"TRAEndDate\"), \"M/d/yyyy\")).alias(\"TRAEndDate\"),\n",
 					"    col(\"TRAStatus\"),\n",
 					"    col(\"TRAGrade\"),\n",
 					"    col(\"PrevPersNo\"),\n",
@@ -197,7 +197,7 @@
 					"    col(\"EmployeeGroup\"),\n",
 					"    col(\"Annualsalary\"),\n",
 					"    col(\"Curr\"),\n",
-					"    lit(None).alias(\"NInumber\"), # Avoid adding duplicates\n",
+					"    lit(None).alias(\"NInumber\"),\n",
 					"    col(\"Birthdate\"),\n",
 					"    col(\"Ageofemployee\"),\n",
 					"    col(\"EO\"),\n",
@@ -219,15 +219,16 @@
 					"    col(\"PayrollArea\"),\n",
 					"    col(\"AssignmentNumber\"),\n",
 					"    col(\"FTE2\").cast(\"float\"),\n",
-					"    # Additional Audit Columns\n",
 					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
 					"    current_timestamp().alias(\"IngestionDate\"),\n",
 					"    current_date().alias(\"ValidTo\"),\n",
 					"    md5(concat(*[col(c).cast(\"string\") for c in rowid_columns])).alias(\"RowID\"),\n",
 					"    lit(\"Y\").alias(\"IsActive\")\n",
-					")"
+					")\n",
+					"\n",
+					"display(target_sap_hr_weekly_df)"
 				],
-				"execution_count": 14
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
