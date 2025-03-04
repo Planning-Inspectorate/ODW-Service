@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "58bfd43e-a59f-40d2-9fae-24e060ae82a9"
+				"spark.autotune.trackingId": "13fa34d9-49b0-463d-a7ed-e49afd43d745"
 			}
 		},
 		"metadata": {
@@ -128,11 +128,13 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"SET spark.sql.legacy.timeParserPolicy = LEGACY; -- Enables support for flexible date parsing;\n",
+					"SET spark.sql.legacy.timeParserPolicy = LEGACY; -- Enables support for flexible date parsing\n",
 					"\n",
-					"delete from odw_harmonised_db.stage_SAP_HR_Leavers where PersNo is null;\n",
+					"-- Delete records where PersNo is null\n",
+					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers \n",
+					"WHERE PersNo IS NULL;\n",
 					"\n",
-					"\n",
+					"-- Insert data into the harmonised table\n",
 					"INSERT INTO odw_harmonised_db.stage_SAP_HR_Leavers\n",
 					"(\n",
 					"    PersNo,            \n",
@@ -196,21 +198,20 @@
 					"    PersonnelSubarea,   \n",
 					"    WorkC,              \n",
 					"    WorkContract,  \n",
-					"  CASE \n",
-					"    WHEN OrgStartDate IS NULL OR trim(OrgStartDate) = '' THEN NULL -- Handle NULL or empty values\n",
-					"    WHEN OrgStartDate LIKE '%/%' THEN \n",
-					"      to_date(OrgStartDate, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
-					"    ELSE \n",
-					"      to_date(OrgStartDate, 'yyyy-MM-dd') -- Convert dates with dashes (standard format)\n",
-					"  END AS OrgStartDate,\n",
-					"\n",
-					"  CASE \n",
-					"    WHEN Leaving IS NULL OR trim(Leaving) = '' THEN NULL -- Handle NULL or empty values\n",
-					"    WHEN Leaving LIKE '%/%' THEN \n",
-					"      to_date(Leaving, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
-					"    ELSE \n",
-					"      to_date(Leaving, 'yyyy-MM-dd') -- Convert dates with dashes (standard format)\n",
-					"  END AS Leaving,\n",
+					"    CASE \n",
+					"        WHEN OrgStartDate IS NULL OR TRIM(OrgStartDate) = '' THEN NULL -- Handle NULL or empty values\n",
+					"        WHEN OrgStartDate LIKE '%/%' THEN \n",
+					"            TO_DATE(OrgStartDate, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"        ELSE \n",
+					"            TO_DATE(OrgStartDate, 'yyyy-MM-dd') -- Convert dates with dashes \n",
+					"    END AS OrgStartDate,\n",
+					"    CASE \n",
+					"        WHEN Leaving IS NULL OR TRIM(Leaving) = '' THEN NULL -- Handle NULL \n",
+					"        WHEN Leaving LIKE '%/%' THEN \n",
+					"            TO_DATE(Leaving, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"        ELSE \n",
+					"            TO_DATE(Leaving, 'yyyy-MM-dd') -- Convert dates with dashes (standard format)\n",
+					"    END AS Leaving,\n",
 					"    Act,                \n",
 					"    ActionType,         \n",
 					"    ActR,               \n",
@@ -220,7 +221,7 @@
 					"    EmployeeNo,         \n",
 					"    Position,           \n",
 					"    Position1, \n",
-					"    null as   Annualsalary,       \n",
+					"    NULL AS Annualsalary,       \n",
 					"    Curr,               \n",
 					"    UserID,             \n",
 					"    EmailAddress,       \n",
@@ -229,17 +230,15 @@
 					"    ManagerPosition,    \n",
 					"    ManagerPositionText,  -- Corrected column name\n",
 					"    LMEmail,\n",
-					"    'saphr' as             SourceSystemID,\n",
-					"    current_date()  as        IngestionDate,\n",
-					"    current_timestamp() as   ValidTo,\n",
-					"    null    as             RowID,\n",
-					"    'Y' as                 IsActive\n",
-					"\n",
+					"    'saphr' AS SourceSystemID,\n",
+					"    CURRENT_DATE() AS IngestionDate,\n",
+					"    CURRENT_TIMESTAMP() AS ValidTo,\n",
+					"    NULL AS RowID,\n",
+					"    'Y' AS IsActive\n",
 					"FROM \n",
-					"    odw_standardised_db.sap_hr_leavers_monthly;\n",
-					""
+					"    odw_standardised_db.sap_hr_leavers_monthly;"
 				],
-				"execution_count": 28
+				"execution_count": 37
 			},
 			{
 				"cell_type": "markdown",
@@ -253,18 +252,6 @@
 				"source": [
 					"# Update Statements"
 				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from  odw_harmonised_db.stage_SAP_HR_Leavers"
-				],
-				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -321,6 +308,19 @@
 					" set Annualsalary = null;"
 				],
 				"execution_count": 33
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# HashKey Build"
+				]
 			},
 			{
 				"cell_type": "code",
