@@ -46,12 +46,12 @@ sudo apt install -y --no-install-recommends \
 
 # Python
 sudo apt install -y --no-install-recommends \
-  python3.10 \
-  python3.10-distutils \
+  python3.7 \
+  python3.7-distutils \
   python3-pip
 
-# Install html5lib via pip
-python3.10 -m pip install html5lib
+# # Install html5lib via pip
+# python3.10 -m pip install html5lib
 
 # Terraform 1.10.5
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
@@ -59,8 +59,8 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get install -y terraform=1.10.5-1 # the hyphen is needed
 
 # Checkov
-python3.10 -m pip install --force-reinstall packaging==21
-python3.10 -m pip install -U checkov==3.2.378
+python3.7 -m pip install --force-reinstall packaging==21
+python3.7 -m pip install -U checkov==3.2.378
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
