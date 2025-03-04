@@ -48,7 +48,8 @@ sudo apt install -y --no-install-recommends \
 sudo apt install -y --no-install-recommends \
   python3.10 \
   python3.10-distutils \
-  python3-pip
+  python3-pip \
+  python3.10 -m pip install
 
 # Terraform 1.10.5
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
