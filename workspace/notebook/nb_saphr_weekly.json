@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6618b6e4-3248-4b6a-bf1b-ddaa22fac55f"
+				"spark.autotune.trackingId": "a71904fe-fa4e-4717-a6e7-cb1816ec7770"
 			}
 		},
 		"metadata": {
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -105,19 +105,136 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Define delta table names, database name and table paths\n",
-					"source_database_name = \"odw_standrdised_db\"\n",
+					"source_database_name = \"odw_standardised_db\"\n",
 					"target_database_name = \"odw_harmonised_db\"\n",
-					"target_delta_table = f\"{source_database_name}.sap_hr_weekly\"\n",
+					"source_delta_table = f\"{source_database_name}.sap_hr_weekly\"\n",
 					"target_delta_table = f\"{target_database_name}.sap_hr_weekly\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}/{target_delta_table}\""
 				],
-				"execution_count": 1
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# Load the source tables\n",
+					"df_source_sap_wwekly = spark.read.format(\"delta\").table(source_delta_table)\n",
+					"\n",
+					"print(df_source_sap_wwekly.count())\n",
+					"\n",
+					"# Remove rows where 'PersNo' is null\n",
+					"df_source_sap_wwekly = df_source_sap_wwekly.filter(col(\"PersNo\").isNotNull())\n",
+					"\n",
+					"print(df_source_sap_wwekly.count())\n",
+					"\n",
+					"# Define columns list to be used for RowID hash\n",
+					"rowid_columns = []\n",
+					"\n",
+					"#display(df_source_sap_wwekly)\n",
+					"\n",
+					"target_sap_hr_weekly_df = df_source_sap_wwekly.select(\n",
+					"    col(\"PersNo\"),\n",
+					"    col(\"Firstname\"),\n",
+					"    col(\"Lastname\"),\n",
+					"    col(\"EmployeeNo\"),\n",
+					"    col(\"CoCd\"),\n",
+					"    col(\"CompanyCode\"),\n",
+					"    col(\"PA\"),\n",
+					"    col(\"PersonnelArea\"),\n",
+					"    col(\"PSubarea\"),\n",
+					"    col(\"PersonnelSubarea\"),\n",
+					"    col(\"Orgunit\"),\n",
+					"    col(\"OrganizationalUnit\"),\n",
+					"    col(\"Organizationalkey\"),\n",
+					"    col(\"OrganizationalKey1\"),\n",
+					"    col(\"WorkC\"),\n",
+					"    col(\"WorkContract\"),\n",
+					"    col(\"CT\"),\n",
+					"    col(\"ContractType\"),\n",
+					"    col(\"PSgroup\"),\n",
+					"    col(\"PayBandDescription\"),\n",
+					"    col(\"FTE\").cast(\"float\"),\n",
+					"    col(\"Wkhrs\").cast(\"float\"),\n",
+					"    col(\"IndicatorPartTimeEmployee\"),\n",
+					"    col(\"S\"),\n",
+					"    col(\"EmploymentStatus\"),\n",
+					"    col(\"GenderKey\"),\n",
+					"    col(\"TRAStartDate\"),\n",
+					"    col(\"TRAEndDate\"),\n",
+					"    col(\"TRAStatus\"),\n",
+					"    col(\"TRAGrade\"),\n",
+					"    col(\"PrevPersNo\"),\n",
+					"    col(\"ActR\"),\n",
+					"    col(\"ReasonforAction\"),\n",
+					"    col(\"Position\"),\n",
+					"    col(\"Position1\"),\n",
+					"    col(\"CostCtr\"),\n",
+					"    col(\"CostCentre\"),\n",
+					"    col(\"CivilServiceStart\"),\n",
+					"    col(\"DatetoCurrentJob\"),\n",
+					"    col(\"SeniorityDate\"),\n",
+					"    col(\"DatetoSubstGrade\"),\n",
+					"    col(\"PersNo1\"),\n",
+					"    col(\"NameofManagerOM\"),\n",
+					"    col(\"ManagerPosition\"),\n",
+					"    col(\"ManagerPositionText\"),\n",
+					"    col(\"CounterSignManager\"),\n",
+					"    col(\"Loc\"),\n",
+					"    col(\"Location\"),\n",
+					"    col(\"OrgStartDate\"),\n",
+					"    col(\"FixTermEndDate\"),\n",
+					"    col(\"LoanStartDate\"),\n",
+					"    col(\"LoanEndDate\"),\n",
+					"    col(\"EEGrp\"),\n",
+					"    col(\"EmployeeGroup\"),\n",
+					"    col(\"Annualsalary\"),\n",
+					"    col(\"Curr\"),\n",
+					"    lit(None).alias(\"NInumber\"), # Avoid adding duplicates\n",
+					"    col(\"Birthdate\"),\n",
+					"    col(\"Ageofemployee\"),\n",
+					"    col(\"EO\"),\n",
+					"    col(\"Ethnicorigin\"),\n",
+					"    col(\"NID\"),\n",
+					"    col(\"Rel\"),\n",
+					"    col(\"ReligiousDenominationKey\"),\n",
+					"    col(\"SxO\"),\n",
+					"    col(\"WageType\"),\n",
+					"    col(\"EmployeeSubgroup\"),\n",
+					"    col(\"LOAAbsType\"),\n",
+					"    col(\"LOAAbsenceTypeText\"),\n",
+					"    col(\"Schemereference\"),\n",
+					"    col(\"PensionSchemeName\"),\n",
+					"    col(\"DisabilityCode\"),\n",
+					"    col(\"DisabilityText\"),\n",
+					"    col(\"DisabilityCodeDescription\"),\n",
+					"    col(\"PArea\"),\n",
+					"    col(\"PayrollArea\"),\n",
+					"    col(\"AssignmentNumber\"),\n",
+					"    col(\"FTE2\").cast(\"float\"),\n",
+					"    # Additional Audit Columns\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    current_date().alias(\"ValidTo\"),\n",
+					"    md5(concat(*[col(c).cast(\"string\") for c in rowid_columns])).alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")"
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
