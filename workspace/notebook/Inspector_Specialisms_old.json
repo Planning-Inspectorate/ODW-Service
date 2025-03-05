@@ -1,5 +1,5 @@
 {
-	"name": "Inspector_Specialisms",
+	"name": "Inspector_Specialisms_old",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2db3b1f3-515f-4146-bd24-c8fa629284f8"
+				"spark.autotune.trackingId": "d2ec6f15-4b7f-44d8-9212-95b38a472a25"
 			}
 		},
 		"metadata": {
@@ -103,7 +103,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 12
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -119,18 +119,6 @@
 				]
 			},
 			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"describe odw_harmonised_db.transform_inspector_Specialisms"
-				],
-				"execution_count": 7
-			},
-			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -142,6 +130,40 @@
 				"source": [
 					"## Create Table inspector_Specialisms"
 				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.inspector_Specialisms (\n",
+					"\n",
+					"    StaffNumber         string,\n",
+					"    Firstname           string,\n",
+					"    Lastname            string,\n",
+					"    QualificationName   string,\n",
+					"    Proficien           string,\n",
+					"    ValidFrom           string,\n",
+					"\tValidTo             string,\n",
+					"\tCurrent             string,\n",
+					"\tValHashKey          string,\n",
+					"    LastUpdated         Date\n",
+					" )\n",
+					"    USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select  * from odw_harmonised_db.transform_inspector_Specialisms limit 2"
+				],
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -160,11 +182,11 @@
 					"    Lastname ,\n",
 					"    QualificationName ,\n",
 					"    Proficien,\n",
-					"\tSourceSystemID,\n",
-					"\tIngestionDate,\n",
-					"    ValidTo  ,\n",
-					"\tRowID ,\n",
-					"    IsActive \n",
+					"    ValidFrom ,\n",
+					"\tValidTo  ,\n",
+					"\tCurrent  ,\n",
+					"\tValHashKey ,\n",
+					"    LastUpdated \n",
 					"\t)\n",
 					"select \n",
 					"\tcase len(StaffNumber)\n",
@@ -180,28 +202,16 @@
 					"\t\t\t\t\t\t\t\t\tLastname ,\n",
 					"\t\t\t\t\t\t\t\t\tQualificationName ,\n",
 					"\t\t\t\t\t\t\t\t\tProficien ,\n",
-					"\t\t\t\t\t\t\t\t\t'saphr' as SourceSystemID,\n",
-					"\t\t\t\t\t\t\t\t\tcurrent_date() as IngestionDate ,\n",
-					"\t\t\t\t\t\t\t\t\tcurrent_date() as ValidTo  ,\n",
-					"\t\t\t\t\t\t\t\t\tnull as RowID ,\n",
-					"   \t\t\t\t\t\t\t\t    'Y' as IsActive \n",
+					"\t\t\t\t\t\t\t\t\tnull as ValidFrom ,\n",
+					"\t\t\t\t\t\t\t\t\tnull as ValidTo  ,\n",
+					"\t\t\t\t\t\t\t\t\tnull as Current  ,\n",
+					"\t\t\t\t\t\t\t\t\tnull as ValHashKey ,\n",
+					"   \t\t\t\t\t\t\t\t    null as LastUpdated \n",
 					"\tfrom odw_standardised_db.inspector_specialisms_monthly t1\n",
 					"\twhere StaffNumber is not null\n",
 					""
 				],
-				"execution_count": 36
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"describe odw_standardised_db.inspector_specialisms"
-				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -212,7 +222,7 @@
 					"%%sql\n",
 					"\n",
 					"UPDATE odw_harmonised_db.transform_inspector_Specialisms\n",
-					"SET RowID = md5(concat_ws('|', \n",
+					"SET ValHashKey = md5(concat_ws('|', \n",
 					"    coalesce(cast(StaffNumber as string), ''), \n",
 					"    coalesce(cast(Firstname as string), ''), \n",
 					"    coalesce(cast(Lastname as string), ''), \n",
@@ -220,19 +230,7 @@
 					"    coalesce(cast(Proficien as string), '')\n",
 					"))"
 				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"drop table  odw_harmonised_db.inspector_Specialisms"
-				],
-				"execution_count": 1
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -279,7 +277,7 @@
 					"    target.Current = 0,\n",
 					"    target.ValidTo = CURRENT_DATE();"
 				],
-				"execution_count": 29
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -289,43 +287,17 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"INSERT INTO odw_harmonised_db.inspector_Specialisms (\n",
-					"    StaffNumber, \n",
-					"    Firstname, \n",
-					"    Lastname, \n",
-					"    QualificationName, \n",
-					"    Proficien, \n",
-					"    SourceSystemID, \n",
-					"    IngestionDate, \n",
-					"    ValidFrom, \n",
-					"    ValidTo, \n",
-					"    Current, \n",
-					"    RowID, \n",
-					"    IsActive, \n",
-					"    LastUpdated\n",
-					")\n",
-					"SELECT \n",
-					"    souSpe.StaffNumber, \n",
-					"    souSpe.Firstname, \n",
-					"    souSpe.Lastname, \n",
-					"    souSpe.QualificationName, \n",
-					"    souSpe.Proficien, \n",
-					"    'saphr', \n",
-					"    current_date(), \n",
-					"    current_date(), \n",
-					"    '9999-12-31', \n",
-					"    1, \n",
-					"    souSpe.RowID, \n",
-					"    'Y', \n",
-					"    current_date()\n",
-					"FROM odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
-					"LEFT OUTER JOIN odw_harmonised_db.inspector_Specialisms tarSpe\n",
-					"    ON souSpe.StaffNumber = tarSpe.StaffNumber\n",
-					"    AND tarSpe.Current = 1\n",
-					"    AND souSpe.QualificationName = tarSpe.QualificationName\n",
-					"WHERE tarSpe.StaffNumber IS NULL;"
+					"insert INTO odw_harmonised_db.inspector_Specialisms (StaffNumber, Firstname, Lastname, QualificationName, Proficien, ValidFrom, ValidTo, Current, ValHashKey, LastUpdated)\n",
+					"select souSpe.StaffNumber, souSpe.Firstname, souSpe.Lastname, souSpe.QualificationName, souSpe.Proficien, current_date(), '9999-12-31', 1, souSpe.ValHashKey, current_date()\n",
+					"from odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"left outer join odw_harmonised_db.inspector_Specialisms tarSpe\n",
+					"\ton souSpe.StaffNumber = tarSpe.StaffNumber\n",
+					"\tand tarSpe.Current = 1\n",
+					"\tand souSpe.QualificationName = tarSpe.QualificationName\n",
+					"where tarSpe.StaffNumber is null\n",
+					""
 				],
-				"execution_count": 26
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -335,43 +307,17 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"INSERT INTO odw_harmonised_db.inspector_Specialisms (\n",
-					"    StaffNumber, \n",
-					"    Firstname, \n",
-					"    Lastname, \n",
-					"    QualificationName, \n",
-					"    Proficien, \n",
-					"    SourceSystemID, \n",
-					"    IngestionDate, \n",
-					"    ValidFrom, \n",
-					"    ValidTo, \n",
-					"    Current, \n",
-					"    RowID, \n",
-					"    IsActive, \n",
-					"    LastUpdated\n",
-					")\n",
-					"SELECT \n",
-					"    souSpe.StaffNumber, \n",
-					"    souSpe.Firstname, \n",
-					"    souSpe.Lastname, \n",
-					"    souSpe.QualificationName, \n",
-					"    souSpe.Proficien, \n",
-					"    'saphr', \n",
-					"    current_date(), \n",
-					"    current_date(), \n",
-					"    '9999-12-31', \n",
-					"    1, \n",
-					"    souSpe.RowID, \n",
-					"    'Y', \n",
-					"    current_date()\n",
-					"FROM odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
-					"LEFT OUTER JOIN odw_harmonised_db.inspector_Specialisms tarSpe\n",
-					"    ON souSpe.StaffNumber = tarSpe.StaffNumber\n",
-					"    AND tarSpe.Current = 1\n",
-					"    AND souSpe.QualificationName = tarSpe.QualificationName\n",
-					"WHERE tarSpe.RowID <> souSpe.RowID"
+					"insert INTO odw_harmonised_db.inspector_Specialisms (StaffNumber, Firstname, Lastname, QualificationName, Proficien, ValidFrom, ValidTo, Current, ValHashKey, LastUpdated)\n",
+					"select souSpe.StaffNumber, souSpe.Firstname, souSpe.Lastname, souSpe.QualificationName, souSpe.Proficien, current_date(), '9999-12-31', 1, souSpe.ValHashKey, current_date()\n",
+					"from odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"inner join odw_harmonised_db.inspector_Specialisms tarSpe\n",
+					"\ton souSpe.StaffNumber = tarSpe.StaffNumber\n",
+					"\tand tarSpe.Current = 1\n",
+					"\tand souSpe.QualificationName = tarSpe.QualificationName\n",
+					"where tarSpe.ValHashKey <> souSpe.ValHashKey\n",
+					""
 				],
-				"execution_count": 28
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -413,7 +359,7 @@
 					"    oldSpe.Current = 0,\n",
 					"    oldSpe.ValidTo = CURRENT_DATE();"
 				],
-				"execution_count": 30
+				"execution_count": 9
 			}
 		]
 	}
