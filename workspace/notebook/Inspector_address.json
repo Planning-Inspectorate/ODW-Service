@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4e85b6c9-e753-4dea-8381-ce199a0798d7"
+				"spark.autotune.trackingId": "f0c8a8e9-6872-4065-b859-44390441fa71"
 			}
 		},
 		"metadata": {
@@ -153,6 +153,7 @@
 				},
 				"source": [
 					"%%sql\n",
+					"SET spark.sql.legacy.timeParserPolicy = LEGACY;\n",
 					"\n",
 					"delete from odw_harmonised_db.inspector_address;\n",
 					"\n",
@@ -175,7 +176,11 @@
 					"    PersonalMobile,\n",
 					"    WorkMobile,\n",
 					"    Chngdon,\n",
-					"    ValHashKey\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive\n",
 					")\n",
 					"SELECT \n",
 					"    StaffNumber,\n",
@@ -185,30 +190,48 @@
 					"    District,\n",
 					"    PostalCode,\n",
 					"    RegionStateProvinceCount,\n",
-					"    -- Parse StartDate in 'dd/MM/yyyy' format\n",
-					"    CASE \n",
-					"        WHEN StartDate IS NOT NULL AND TRIM(StartDate) != '' \n",
-					"        THEN to_date(REGEXP_REPLACE(TRIM(StartDate), '[^0-9/]', ''), 'dd/MM/yyyy')\n",
-					"        ELSE NULL\n",
-					"    END AS StartDate,\n",
-					"    -- Parse EndDate in 'dd/MM/yyyy' format and handle '31/12/9999'\n",
-					"    CASE \n",
-					"        WHEN EndDate IS NOT NULL AND TRIM(StartDate) != '' \n",
-					"        THEN to_date(REGEXP_REPLACE(TRIM(EndDate), '[^0-9/]', ''), 'dd/MM/yyyy')\n",
-					"        ELSE NULL\n",
-					"    END AS EndDate,\n",
-					"    -- Parse EndDate in 'dd/MM/yyyy' format and handle '31/12/9999' EndDate,\n",
+					"    \n",
+					"TO_DATE(StartDate, 'M/d/yy') as  StartDate,\n",
+					"TO_DATE(EndDate, 'M/d/yy') as  StartDate,    \n",
+					"\n",
 					"    ChartingOfficer,\n",
 					"    ChartingOfficerforInspector,\n",
 					"    SubsPSgroup,\n",
 					"    TelNo,\n",
 					"    PersonalMobile,\n",
 					"    WorkMobile,\n",
-					"    Chngdon,\n",
-					"    NULL AS ValHashKey  -- Ensure this is acceptable for your use case\n",
+					"   \n",
+					"    TO_DATE(Chngdon, 'M/d/yy') as Chngdon,\n",
+					"    'saphr' as SourceSystemID,\n",
+					"    current_timestamp() as IngestionDate,\n",
+					"    current_date() as ValidTo,\n",
+					"    NULL AS RowID ,\n",
+					"    'Y' as IsActive\n",
 					"FROM odw_standardised_db.inspector_addresses_monthly;"
 				],
-				"execution_count": 173
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_standardised_db.inspector_addresses_monthly;"
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select * from  odw_harmonised_db.inspector_address"
+				],
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -232,7 +255,7 @@
 					"%%sql\n",
 					"\n",
 					"UPDATE odw_harmonised_db.inspector_address\n",
-					"SET ValHashKey = md5(\n",
+					"SET RowID = md5(\n",
 					"    concat_ws('|',\n",
 					"        StaffNumber,\n",
 					"        StreetandHouseNumber,\n",
@@ -253,7 +276,7 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 174
+				"execution_count": 14
 			}
 		]
 	}
