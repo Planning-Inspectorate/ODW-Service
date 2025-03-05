@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "947bda17-4cca-47a7-ab61-fb7013a9c954"
+				"spark.autotune.trackingId": "37f58225-8aea-467a-9b67-06cd2c5b67f8"
 			}
 		},
 		"metadata": {
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"target_delta_table = f\"{target_database_name}.sap_hr_weekly\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}/{target_delta_table}\""
 				],
-				"execution_count": 5
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -198,7 +198,7 @@
 					"    col(\"Annualsalary\"),\n",
 					"    col(\"Curr\"),\n",
 					"    lit(None).alias(\"NInumber\"),  #Avoid added any duplicates Data to NI number Column for weekly SAP HR loads \n",
-					"    to_date(col(\"Birthdate\"), \"M/d/yyyy\").alias(\"Birthdate\"),\n",
+					"    col(\"Birthdate\"),\n",
 					"    col(\"Ageofemployee\"),\n",
 					"    col(\"EO\"),\n",
 					"    col(\"Ethnicorigin\"),\n",
@@ -219,6 +219,8 @@
 					"    col(\"PayrollArea\"),\n",
 					"    col(\"AssignmentNumber\"),\n",
 					"    col(\"FTE2\").cast(\"float\"),\n",
+					"    current_date().alias(\"Report_MonthEnd_Date\"),\n",
+					"    current_timestamp().alias(\"PDAC_ETL_Date\"),\n",
 					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
 					"    current_timestamp().alias(\"IngestionDate\"),\n",
 					"    current_date().alias(\"ValidTo\"),\n",
@@ -226,9 +228,21 @@
 					"    lit(\"Y\").alias(\"IsActive\")\n",
 					")\n",
 					"\n",
-					"display(target_sap_hr_weekly_df)"
+					"# Write data to Delta table odw_harmonised_db.sap_hr_weekly\n",
+					"try:\n",
+					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
+					"    print(f\"Data successfully written to {target_delta_table}\")\n",
+					"except Exception as e:\n",
+					"    print(f\"Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					"\n",
+					"data_loaded = target_sap_hr_weekly_df.count()\n",
+					"\n",
+					"print(f\"SAP Employee Hierarchy Weekly Processing Completed.{data_loaded} records loaded Successfully\")\n",
+					"#display(target_sap_hr_weekly_df)"
 				],
-				"execution_count": 10
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
