@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b57c924c-95dd-44cd-b5a3-2a9bf87ca61f"
+				"spark.autotune.trackingId": "cb7b9245-a0a0-4a04-8280-62975194f399"
 			}
 		},
 		"metadata": {
@@ -68,7 +68,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": 45
 			},
 			{
 				"cell_type": "markdown",
@@ -100,7 +100,7 @@
 					"from notebookutils import mssparkutils\n",
 					"\n",
 					"db_name: str = 'odw_harmonised_db'\n",
-					"table_name: str = 'pins_inspectors'\n",
+					"table_name: str = 'pins_inspector'\n",
 					"\n",
 					"@logging_to_appins\n",
 					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
@@ -116,7 +116,7 @@
 					"    mssparkutils.notebook.run(\"/py_odw_harmonised_table_creation\",300,{'specific_table': table_name } )\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 46
 			},
 			{
 				"cell_type": "markdown",
@@ -158,11 +158,11 @@
 					"-- gets data that is in the target but not in source. Flags as \"DeletedData\"\n",
 					"\n",
 					"SELECT DISTINCT\n",
-					"    CASE\n",
-					"        WHEN T1.horizonId IS NULL\n",
-					"        THEN T2.inspectorsId\n",
-					"        ELSE NULL\n",
-					"    END                             AS inspectorsId,\n",
+					"    -- CASE\n",
+					"    --     WHEN T1.horizonId IS NULL\n",
+					"    --     THEN T2.horizonId\n",
+					"    --     ELSE NULL\n",
+					"    -- END                             AS inspectorsId,\n",
 					"    T1.horizonId                    AS horizonId,\n",
 					"    T1.firstName                    AS firstName,\n",
 					"    T1.lastName                     AS lastName,\n",
@@ -192,7 +192,7 @@
 					"    T2.IsActive                     AS HistoricIsActive\n",
 					"\n",
 					"FROM odw_standardised_db.pins_inspector T1\n",
-					"FULL JOIN odw_harmonised_db.pins_inspectors T2 ON T1.horizonId = T2.horizonId AND T2.IsActive = 'Y'\n",
+					"FULL JOIN odw_harmonised_db.pins_inspector T2 ON T1.horizonId = T2.horizonId AND T2.IsActive = 'Y'\n",
 					"WHERE\n",
 					"    -- flags new data        \n",
 					"    (CASE\n",
@@ -217,7 +217,7 @@
 					"    AND T1.expected_from = (SELECT MAX(expected_from) FROM odw_standardised_db.pins_inspector)\n",
 					";"
 				],
-				"execution_count": 3
+				"execution_count": 47
 			},
 			{
 				"cell_type": "markdown",
@@ -260,7 +260,7 @@
 					"    AS\n",
 					"-- gets updated, deleted and new rows \n",
 					"Select \n",
-					"    inspectorsId,\n",
+					"    -- inspectorsId,\n",
 					"    horizonId,\n",
 					"    firstName,\n",
 					"    lastName,\n",
@@ -283,7 +283,7 @@
 					"\n",
 					"-- gets original versions of updated rows so we can update EndDate and set IsActive flag to 'N'\n",
 					"SELECT\n",
-					"    inspectorsId,\n",
+					"    -- inspectorsId,\n",
 					"    horizonId,\n",
 					"    firstName,\n",
 					"    lastName,\n",
@@ -300,10 +300,10 @@
 					"    RowID,\n",
 					"    IsActive\n",
 					"    \n",
-					"FROM odw_harmonised_db.pins_inspectors\n",
+					"FROM odw_harmonised_db.pins_inspector\n",
 					"WHERE horizonId IN (SELECT horizonId FROM pins_inspectors_new WHERE horizonId IS NOT NULL) AND IsActive = 'Y'; "
 				],
-				"execution_count": 4
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -339,7 +339,7 @@
 					"CREATE OR REPLACE TEMPORARY VIEW pins_inspectors_changed_rows_final\n",
 					"    AS\n",
 					"SELECT \n",
-					"    inspectorsId,\n",
+					"    -- inspectorsId,\n",
 					"    horizonId,\n",
 					"    firstName,\n",
 					"    lastName,\n",
@@ -359,7 +359,7 @@
 					"FROM pins_inspectors_changed_rows T1\n",
 					"FULL JOIN Loading_month T2 ON T1.IsActive = T2.IsActive"
 				],
-				"execution_count": 5
+				"execution_count": 49
 			},
 			{
 				"cell_type": "markdown",
@@ -398,7 +398,7 @@
 					"%%sql\n",
 					"\n",
 					"-- merge into dim table\n",
-					"MERGE INTO odw_harmonised_db.pins_inspectors AS Target\n",
+					"MERGE INTO odw_harmonised_db.pins_inspector AS Target\n",
 					"USING pins_inspectors_changed_rows_final AS Source\n",
 					"\n",
 					"ON Source.postName = Target.postName AND Target.IsActive = 'Y'\n",
@@ -415,7 +415,7 @@
 					"\n",
 					"WHEN NOT MATCHED \n",
 					"    THEN INSERT (\n",
-					"        inspectorsId,\n",
+					"        -- inspectorsId,\n",
 					"        horizonId,\n",
 					"        firstName,\n",
 					"        lastName,\n",
@@ -432,7 +432,7 @@
 					"        RowID,\n",
 					"        IsActive)\n",
 					"    VALUES (\n",
-					"        Source.inspectorsId,\n",
+					"        -- Source.inspectorsId,\n",
 					"        Source.horizonId,\n",
 					"        Source.firstName,\n",
 					"        Source.lastName,\n",
@@ -450,7 +450,7 @@
 					"        Source.IsActive)\n",
 					"     ;   "
 				],
-				"execution_count": 6
+				"execution_count": 50
 			},
 			{
 				"cell_type": "markdown",
@@ -489,11 +489,12 @@
 					"%%sql\n",
 					"-- Insert new pins_inspectors\n",
 					"\n",
-					"INSERT OVERWRITE odw_harmonised_db.pins_inspectors\n",
+					"INSERT OVERWRITE odw_harmonised_db.pins_inspector\n",
 					"\n",
 					"SELECT \n",
-					"    ROW_NUMBER() OVER (ORDER BY inspectorsId NULLS LAST) AS inspectorsId,\n",
-					"    horizonId,\n",
+					"    -- ROW_NUMBER() OVER (ORDER BY inspectorsId NULLS LAST) AS inspectorsId,\n",
+					"    ROW_NUMBER() OVER (ORDER BY horizonId NULLS LAST) AS horizonId,\n",
+					"    -- horizonId,\n",
 					"    firstName,\n",
 					"    lastName,\n",
 					"    postName,\n",
@@ -510,10 +511,10 @@
 					"    RowID,\n",
 					"    IsActive\n",
 					"    \n",
-					"FROM odw_harmonised_db.pins_inspectors;\n",
+					"FROM odw_harmonised_db.pins_inspector;\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -531,7 +532,7 @@
 				"source": [
 					"logInfo(f\"{db_name}.{table_name} populated\")"
 				],
-				"execution_count": 8
+				"execution_count": 52
 			}
 		]
 	}
