@@ -83,6 +83,20 @@ resource "azurerm_monitor_metric_alert" "synapse_pipeline_runs_failed" {
       operator = "Include"
       values   = ["Failed"]
     }
+
+    dimension {
+      name     = "Pipeline"
+      operator = "Include"
+      values   = [
+      "pln_master", 
+      "pln_horizon", 
+      "pln_horizon_2", 
+      "pln_service_bus", 
+      "pln_curated", 
+      "pln_curated_migration", 
+      "pln_curated_mipins"
+      ]
+    }
   }
 
   action {
