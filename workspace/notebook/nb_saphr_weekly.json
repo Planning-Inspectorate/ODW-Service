@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e2e4731b-a219-48dc-ad60-106503f4b6c9"
+				"spark.autotune.trackingId": "56445b56-12c5-40ad-b8fd-88b0867c5c88"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,7 @@
 					"from collections.abc import Mapping\n",
 					"from operator import add\n",
 					"from notebookutils import mssparkutils\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace\n",
 					"from pprint import pprint as pp\n",
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql import SparkSession\n",
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 16
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 34
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -129,14 +129,67 @@
 				},
 				"source": [
 					"# Load the source tables\n",
-					"df_source_sap_wwekly = spark.read.format(\"delta\").option(\"inferschema\",\"false\").table(source_delta_table)\n",
+					"#df_source_sap_wwekly = spark.read.format(\"delta\").option(\"inferschema\",\"true\").table(source_delta_table)\n",
+					"df_source_sap_weekly = spark.read.format(\"delta\").table(source_delta_table)\n",
 					"\n",
-					"print(df_source_sap_wwekly.count())\n",
+					"print(df_source_sap_weekly.count())\n",
 					"\n",
 					"# Remove rows where 'PersNo' is null\n",
-					"df_source_sap_wwekly = df_source_sap_wwekly.filter(col(\"PersNo\").isNotNull())\n",
+					"df_source_sap_wwekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
+					"\n",
+					"df_source_sap_weekly = spark.sql(\"SELECT * FROM  odw_standardised_db.sap_hr_weekly\"\")\n",
+					"\n",
+					"df_source_sap_weekly = df_source_sap_weekly.withColumn(\n",
+					"    \"Birthdate\",\n",
+					"    to_date(regexp_replace(col(\"Birthdate\"), \"^(\\\\d{1,2})/(\\\\d{1,2})/(\\\\d{2})$\", \"0$1/0$2/19$3\"), \"dd/MM/yyyy\")\n",
+					")\n",
+					"\n",
+					"#df_source_sap_weekly = df_source_sap_weekly.withColumn(\n",
+					"#    \"Birthdate\",\n",
+					"#    when(col(\"Birthdate\").rlike(\"^[0-9]{2}/[0-9]{2}/[0-9]{4}$\"), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"))\n",
+					"#    .when(col(\"Birthdate\").rlike(\"^[0-9]{2}/[0-9]{2}/[0-9]{2}$\"), to_date(col(\"Birthdate\"), \"dd/MM/yy\"))\n",
+					"#    .when(col(\"Birthdate\").rlike(\"^[0-9]/[0-9]/[0-9]{2}$\"), to_date(col(\"Birthdate\"), \"d/M/yy\"))\n",
+					"#    .otherwise(None)\n",
+					"#)\n",
+					"\n",
 					"\n",
 					"print(df_source_sap_wwekly.count())\n",
+					"\n",
+					"display(df_source_sap_weekly)"
+				],
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# Load the source tables\n",
+					"#df_source_sap_wwekly = spark.read.format(\"delta\").option(\"inferschema\",\"true\").table(source_delta_table)\n",
+					"df_source_sap_weekly = spark.read.format(\"delta\").table(source_delta_table)\n",
+					"\n",
+					"print(df_source_sap_weekly.count())\n",
+					"\n",
+					"# Remove rows where 'PersNo' is null\n",
+					"df_source_sap_wwekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
+					"\n",
+					"df_source_sap_wwekly = df_source_sap_weekly.withColumn(\n",
+					"    \"Birthdate\",\n",
+					"    expr(\n",
+					"        \"\"\"CASE\n",
+					"            WHEN Birthdate IS NULL THEN NULL\n",
+					"            WHEN Birthdate RLIKE '\\\\d{2}/\\\\d{2}/\\\\d{4}' THEN to_date(Birthdate, 'dd/MM/yyyy')\n",
+					"            WHEN Birthdate RLIKE '\\\\d{2}/\\\\d{2}/\\\\d{2}' THEN to_date(Birthdate, 'dd/MM/yy')\n",
+					"            WHEN Birthdate RLIKE '\\\\d/\\\\d/\\\\d{2}' THEN to_date(Birthdate, 'd/M/yy')\n",
+					"            ELSE NULL\n",
+					"        END\"\"\"\n",
+					"    )\n",
+					")\n",
+					"\n",
+					"print(df_source_sap_wwekly.count())\n",
+					"\n",
+					"display(df_source_sap_wwekly)\n",
 					"\n",
 					"# Define columns list to be used for RowID hash\n",
 					"rowid_columns = []\n",
@@ -165,13 +218,12 @@
 					"    col(\"PSgroup\"),\n",
 					"    col(\"PayBandDescription\"),\n",
 					"    col(\"FTE\").cast(\"double\"),\n",
-					"    #col(\"FTE\"),\n",
 					"    col(\"Wkhrs\").cast(\"double\"),\n",
 					"    col(\"IndicatorPartTimeEmployee\"),\n",
 					"    col(\"S\"),\n",
 					"    col(\"EmploymentStatus\"),\n",
 					"    col(\"GenderKey\"),\n",
-					"    when(col(\"TRAStartDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"TRAStartDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"TRAStartDate\"),  \n",
+					"    when(col(\"TRAStartDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"TRAStartDate\"), \"dd/MM/yyyy\")).alias(\"TRAStartDate\"),  \n",
 					"    when(col(\"TRAEndDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"TRAEndDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"TRAEndDate\"),\n",
 					"    col(\"TRAStatus\"),\n",
 					"    col(\"TRAGrade\"),\n",
@@ -203,6 +255,11 @@
 					"    col(\"Curr\"),\n",
 					"    lit(None).alias(\"NInumber\"),  #Avoid added any duplicates Data to NI number Column for weekly SAP HR loads \n",
 					"    col(\"Birthdate\"),\n",
+					"    #when(col(\"Birthdate\").cast(\"date\") == to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\")).otherwise(to_date(col(\"Birthdate\"), \"dd/MM/yy\")).otherwise(to_date(col(\"Birthdate\"), \"d/M/yy\")).cast(\"string\").alias(\"BirthdateDup\"),\n",
+					"    when(to_date(col(\"Birthdate\"), \"dd/MM/yyyy\").isNotNull(), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"))\n",
+					"    .when(to_date(col(\"Birthdate\"), \"dd/MM/yy\").isNotNull(), to_date(col(\"Birthdate\"), \"dd/MM/yy\"))\n",
+					"    .when(to_date(col(\"Birthdate\"), \"d/M/yy\").isNotNull(), to_date(col(\"Birthdate\"), \"d/M/yy\"))\n",
+					"    .otherwise(None).alias(\"BirthdateDup\"),\n",
 					"    col(\"Ageofemployee\").cast(\"double\").alias(\"Ageofemployee\"),\n",
 					"    col(\"EO\").cast(\"double\").alias(\"EO\"),\n",
 					"    col(\"Ethnicorigin\").cast(\"double\").alias(\"Ethnicorigin\"),\n",
@@ -233,20 +290,21 @@
 					")\n",
 					"\n",
 					"# Write data to Delta table odw_harmonised_db.sap_hr_weekly\n",
-					"try:\n",
-					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
-					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
-					"    print(f\"Data successfully written to {target_delta_table}\")\n",
-					"except Exception as e:\n",
-					"    print(f\"Error writing to {target_delta_table}: {str(e)}\")\n",
-					"    raise\n",
+					"#try:\n",
+					"#    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"#    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
+					"#    print(f\"Data successfully written to {target_delta_table}\")\n",
+					"#except Exception as e:\n",
+					"#    print(f\"Error writing to {target_delta_table}: {str(e)}\")\n",
+					"#    raise\n",
 					"\n",
-					"data_loaded = target_sap_hr_weekly_df.count()\n",
+					"#data_loaded = target_sap_hr_weekly_df.count()\n",
 					"\n",
-					"print(f\"SAP Employee Hierarchy Weekly Processing Completed.{data_loaded} records loaded Successfully\")\n",
-					"#display(target_sap_hr_weekly_df)"
+					"#print(f\"SAP Employee Hierarchy Weekly Processing Completed.{data_loaded} records loaded Successfully\")\n",
+					"display(target_sap_hr_weekly_df)\n",
+					"#display(df_source_sap_wwekly)"
 				],
-				"execution_count": 74
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
