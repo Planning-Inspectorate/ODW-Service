@@ -63,9 +63,6 @@ sudo apt install -y --no-install-recommends \
   python3-setuptools \
   python3-apt
 
-# set python 3.8
-sudo ln -sf /usr/bin/python3.8 /usr/bin/python3
-
 # python 3.13 as default
 sudo ln -sf /usr/bin/python3.13 /usr/bin/python3
 
