@@ -61,6 +61,8 @@ sudo apt install -y --no-install-recommends \
 sudo apt-get install unixodbc-dev
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
 # Python set default
+sudo rm /usr/bin/python3
+sudo ln -s /usr/bin/python3.13
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
