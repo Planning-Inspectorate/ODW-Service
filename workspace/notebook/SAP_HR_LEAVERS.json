@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5ce3735d-d9f8-4a52-9486-a6fd7072f277"
+				"spark.autotune.trackingId": "09051b3d-1141-4e2b-ba4a-838823c79170"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,25 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 27
+				"execution_count": 51
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"editable": false,
+					"run_control": {
+						"frozen": true
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers "
+				],
+				"execution_count": 36
 			},
 			{
 				"cell_type": "markdown",
@@ -123,6 +141,9 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -198,20 +219,20 @@
 					"    PersonnelSubarea,   \n",
 					"    WorkC,              \n",
 					"    WorkContract,  \n",
-					"    CASE \n",
+					"CASE \n",
 					"        WHEN OrgStartDate IS NULL OR TRIM(OrgStartDate) = '' THEN NULL -- Handle NULL or empty values\n",
+					"        WHEN OrgStartDate ='0000/00/00' THEN '0000/00/00'\n",
 					"        WHEN OrgStartDate LIKE '%/%' THEN \n",
-					"            TO_DATE(OrgStartDate, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"            TO_DATE(OrgStartDate, 'M/d/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
 					"        ELSE \n",
 					"            TO_DATE(OrgStartDate, 'yyyy-MM-dd') -- Convert dates with dashes \n",
 					"    END AS OrgStartDate,\n",
 					"    CASE \n",
 					"        WHEN Leaving IS NULL OR TRIM(Leaving) = '' THEN NULL -- Handle NULL \n",
 					"        WHEN Leaving LIKE '%/%' THEN \n",
-					"            TO_DATE(Leaving, 'd/M/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"            TO_DATE(Leaving, 'M/d/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
 					"        ELSE \n",
-					"            TO_DATE(Leaving, 'yyyy-MM-dd') -- Convert dates with dashes (standard format)\n",
-					"    END AS Leaving,\n",
+					"            TO_DATE(Leaving, 'yyyy-MM-dd') END AS Leaving, -- Convert dates with dashes (standard format)\n",
 					"    Act,                \n",
 					"    ActionType,         \n",
 					"    ActR,               \n",
@@ -238,7 +259,43 @@
 					"FROM \n",
 					"    odw_standardised_db.sap_hr_leavers_monthly;"
 				],
-				"execution_count": 37
+				"execution_count": 52
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"editable": false,
+					"run_control": {
+						"frozen": true
+					},
+					"collapsed": false
+				},
+				"source": [
+					"    %%sql\n",
+					"   \n",
+					"    select  PersNo,OrgStartDate,Leaving,CASE \n",
+					"        WHEN OrgStartDate IS NULL OR TRIM(OrgStartDate) = '' THEN NULL -- Handle NULL or empty values\n",
+					"        WHEN OrgStartDate ='0000/00/00' THEN '0000/00/00'\n",
+					"        WHEN OrgStartDate LIKE '%/%' THEN \n",
+					"            TO_DATE(OrgStartDate, 'M/d/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"        ELSE \n",
+					"            TO_DATE(OrgStartDate, 'yyyy-MM-dd') -- Convert dates with dashes \n",
+					"    END AS OrgStartDate,\n",
+					"    CASE \n",
+					"        WHEN Leaving IS NULL OR TRIM(Leaving) = '' THEN NULL -- Handle NULL \n",
+					"        WHEN Leaving LIKE '%/%' THEN \n",
+					"            TO_DATE(Leaving, 'M/d/yy') -- Convert dates with slashes (handles single-digit days/months)\n",
+					"        ELSE \n",
+					"            TO_DATE(Leaving, 'yyyy-MM-dd') -- Convert dates with dashes (standard format)\n",
+					"    END AS Leaving\n",
+					"\n",
+					"    FROM \n",
+					"    odw_standardised_db.sap_hr_leavers_monthly --where PersNo =00500003"
+				],
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -256,6 +313,9 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -266,11 +326,14 @@
 					"where EmployeeNo is null\n",
 					""
 				],
-				"execution_count": 30
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -279,11 +342,14 @@
 					"set Leaving = '2024-02-29'\n",
 					" where PersNo = '50426514'"
 				],
-				"execution_count": 31
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -294,11 +360,14 @@
 					"set Leaving = current_date()\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -307,7 +376,7 @@
 					"update odw_harmonised_db.stage_SAP_HR_Leavers \n",
 					" set Annualsalary = null;"
 				],
-				"execution_count": 33
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -325,6 +394,9 @@
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
@@ -353,18 +425,21 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 34
+				"execution_count": 58
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
 					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"delete   from odw_harmonised_db.SAP_HR_Leavers"
 				],
-				"execution_count": 35
+				"execution_count": 59
 			},
 			{
 				"cell_type": "markdown",
@@ -418,7 +493,7 @@
 					"# Step 4: Insert records into SAP_HR_Leavers\n",
 					"df_filtered.write.format(\"delta\").mode(\"append\").saveAsTable(\"odw_harmonised_db.SAP_HR_Leavers\")"
 				],
-				"execution_count": 36
+				"execution_count": 60
 			}
 		]
 	}
