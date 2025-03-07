@@ -1,5 +1,7 @@
 export DEBIAN_FRONTEND=noninteractive
 
+# APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+
 sudo echo 'APT::Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries
 sudo echo "APT::Get::Assume-Yes \"true\";" > /etc/apt/apt.conf.d/90assumeyes
 
@@ -60,14 +62,14 @@ sudo apt install -y --no-install-recommends \
 # Python Testing
 # sudo apt-get install unixodbc-dev ### already on the system
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
-# Set yython 3.13 as default
+# Set python 3.13 as default
 echo "==================== PYTHON DEFAULT VERSION ===================="
 # sudo rm /usr/bin/python3
 # sudo ln -s /usr/bin/python3.13
 
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 2
-sudo update-alternatives --set python3
+sudo update-alternatives --set python3 /usr/bin/python3.13
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
