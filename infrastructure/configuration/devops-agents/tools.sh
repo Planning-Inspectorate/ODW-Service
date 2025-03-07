@@ -46,9 +46,9 @@ sudo apt install -y --no-install-recommends \
 
 # Python
 sudo apt install -y --no-install-recommends \
-  python3.7 \
-  python3.7-distutils \
-  python3-pip
+  python3-pip \
+  python3.13 \
+  python3-setuptools
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
@@ -56,6 +56,10 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get install -y terraform=1.9.6-1
 
 # Checkov
+sudo apt install -y --no-install-recommends \
+  python3.7 \
+  python3.7-distutils \
+
 python3.7 -m pip install --force-reinstall packaging==21
 python3.7 -m pip install -U checkov==2.2.94
 
