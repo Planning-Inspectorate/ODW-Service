@@ -1,5 +1,7 @@
 export DEBIAN_FRONTEND=noninteractive
 
+# APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1
+
 sudo echo 'APT::Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries
 sudo echo "APT::Get::Assume-Yes \"true\";" > /etc/apt/apt.conf.d/90assumeyes
 
@@ -44,20 +46,34 @@ sudo apt install -y --no-install-recommends \
   git-lfs \
   git-ftp
 
-# Python
+# Checkov
 sudo apt install -y --no-install-recommends \
+  python3-pip \
   python3.7 \
-  python3.7-distutils \
-  python3-pip
+  python3.7-distutils
+python3.7 -m pip install --force-reinstall packaging==21
+python3.7 -m pip install -U checkov==2.2.94
+
+# Python Installation
+sudo apt install -y --no-install-recommends \
+  python3.13 \
+  python3-setuptools \
+  python3-apt
+
+# python 3.13 as default
+sudo ln -sf /usr/bin/python3.13 /usr/bin/python3
+
+# python version
+echo "==================== PYTHON DEFAULT VERSION ===================="
+python3 --version
+echo "=============================================================="
+
+# sudo curl -fsSL https://aka.ms/install-azd.sh | bash
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
 sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo apt-get install -y terraform=1.9.6-1
-
-# Checkov
-python3.7 -m pip install --force-reinstall packaging==21
-python3.7 -m pip install -U checkov==2.2.94
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
@@ -85,6 +101,12 @@ sudo apt-get update; \
 # PowerShell Modules
 pwsh -c "& {Install-Module -Name Az -Scope AllUsers -Repository PSGallery -Force -Verbose}"
 pwsh -c "& {Get-Module -ListAvailable}"
+
+# Python default version
+echo "==================== PYTHON VERSION CHECK ===================="
+python3 --version
+echo "=============================================================="
+
 
 # Sysprep
 /usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync
