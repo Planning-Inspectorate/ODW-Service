@@ -52,6 +52,9 @@ sudo apt install -y --no-install-recommends \
 # Python Testing
 sudo apt-get install unixodbc-dev
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
+# Python - set default
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1
+sudo update-alternatives --config python3 <<< '1'
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
@@ -94,7 +97,10 @@ pwsh -c "& {Install-Module -Name Az -Scope AllUsers -Repository PSGallery -Force
 pwsh -c "& {Get-Module -ListAvailable}"
 
 # Python default version
+echo "==================== PYTHON VERSION CHECK ===================="
 python3 --version
+echo "=============================================================="
+
 
 # Sysprep
 /usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync
