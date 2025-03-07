@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ede1ba4b-5ea2-4901-8b4a-cf8fc231e25d"
+				"spark.autotune.trackingId": "06ceca1f-8ecd-4ebe-90a4-243f9ae5d41a"
 			}
 		},
 		"metadata": {
@@ -107,37 +107,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 1
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"describe  odw_harmonised_db.load_sap_hr_monthly"
-				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from odw_harmonised_db.load_sap_hr_monthly limit 500 "
-				],
-				"execution_count": 3
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -164,7 +134,7 @@
 					"%%sql\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
 				],
-				"execution_count": 7
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -345,7 +315,7 @@
 					"    PayrollArea,\n",
 					"    AssignmentNumber,\n",
 					"    CASE WHEN FTE2 = '' THEN NULL ELSE TRY_CAST(FTE2 AS FLOAT) END AS FTE2,\n",
-					"    NULL AS Report_MonthEnd_Date,\n",
+					"     cast(Report_MonthEnd_Date as date) as Report_MonthEnd_Date,\n",
 					"    CURRENT_TIMESTAMP() AS PDAC_ETL_Date,\n",
 					"    'saphr' AS SourceSystemID,\n",
 					"    CURRENT_DATE() AS IngestionDate,\n",
@@ -354,7 +324,7 @@
 					"    'Y' AS IsActive\n",
 					"FROM odw_standardised_db.sap_hr_history_monthly"
 				],
-				"execution_count": 8
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -464,7 +434,7 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 9
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -478,16 +448,18 @@
 					"%%sql\n",
 					"\n",
 					"-- Step 1: Delete all records from the table (for testing purposes)\n",
-					"DELETE FROM odw_harmonised_db.hist_SAP_HR;\n",
+					"--DELETE FROM odw_harmonised_db.hist_SAP_HR;\n",
 					"\n",
 					"-- Step 2: Create a temporary table to store Report_MonthEnd_Date values\n",
 					"CREATE OR REPLACE TEMPORARY VIEW MonthEndDates AS\n",
-					"SELECT Report_MonthEnd_Date\n",
+					"SELECT cast(Report_MonthEnd_Date as date)\n",
 					"FROM odw_harmonised_db.load_sap_hr_monthly\n",
 					"GROUP BY Report_MonthEnd_Date;\n",
 					"\n",
-					"--DELETE FROM odw_harmonised_db.hist_SAP_HR\n",
-					"--WHERE Report_MonthEnd_Date IN (SELECT Report_MonthEnd_Date FROM MonthEndDates);\n",
+					"MERGE INTO odw_harmonised_db.hist_SAP_HR AS target\n",
+					"USING MonthEndDates AS source\n",
+					"ON target.Report_MonthEnd_Date = source.Report_MonthEnd_Date\n",
+					"WHEN MATCHED THEN DELETE;\n",
 					"\n",
 					"-- Step 3: Extract file date from the source file name\n",
 					"CREATE OR REPLACE TEMPORARY VIEW FileDate AS\n",
@@ -716,7 +688,7 @@
 					"---WHERE \n",
 					"  --  RIGHT(CAST(Report_MonthEnd_Date AS STRING), 5) IN ('01-31', '02-28', '02-29', '03-31', '04-30', '05-31', '06-30', '07-31', '08-31', '09-30', '10-31', '11-30', '12-31');"
 				],
-				"execution_count": 10
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -749,7 +721,7 @@
 					"        target.PersonnelSubarea = source.PersonnelSubarea;\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -797,7 +769,7 @@
 					"        target.PersonnelArea = source.PersonnelArea,\n",
 					"        target.PersonnelSubarea = source.PersonnelSubarea;"
 				],
-				"execution_count": 12
+				"execution_count": 73
 			}
 		]
 	}
