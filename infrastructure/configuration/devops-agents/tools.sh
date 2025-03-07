@@ -44,6 +44,14 @@ sudo apt install -y --no-install-recommends \
   git-lfs \
   git-ftp
 
+# Checkov
+sudo apt install -y --no-install-recommends \
+  python3.7 \
+  python3.7-distutils \
+
+python3.7 -m pip install --force-reinstall packaging==21
+python3.7 -m pip install -U checkov==2.2.94
+
 # Python
 sudo apt install -y --no-install-recommends \
   python3-pip \
@@ -53,21 +61,11 @@ sudo apt install -y --no-install-recommends \
 sudo apt-get install unixodbc-dev
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
 # Python - set default
-sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1
-sudo update-alternatives --config python3 <<< '1'
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
 sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
 sudo apt-get install -y terraform=1.9.6-1
-
-# Checkov
-sudo apt install -y --no-install-recommends \
-  python3.7 \
-  python3.7-distutils \
-
-python3.7 -m pip install --force-reinstall packaging==21
-python3.7 -m pip install -U checkov==2.2.94
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
