@@ -58,9 +58,10 @@ sudo apt install -y --no-install-recommends \
   python3.13 \
   python3-setuptools
 # Python Testing
-sudo apt-get install unixodbc-dev
+# sudo apt-get install unixodbc-dev ### already on the system
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
 # Python set default
+echo "==================== PYTHON DEFAULT VERSION ===================="
 sudo rm /usr/bin/python3
 sudo ln -s /usr/bin/python3.13
 
