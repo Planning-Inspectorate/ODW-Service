@@ -58,7 +58,8 @@ python3.7 -m pip install -U checkov==2.2.94
 # Python
 sudo apt install -y --no-install-recommends \
   python3.13 \
-  python3-setuptools
+  python3-setuptools \
+  python3-apt
 # Python Testing
 # sudo apt-get install unixodbc-dev ### already on the system
 sudo curl -fsSL https://aka.ms/install-azd.sh | bash
@@ -70,6 +71,16 @@ echo "==================== PYTHON DEFAULT VERSION ===================="
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 1
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 2
 sudo update-alternatives --set python3 /usr/bin/python3.13
+
+# Verify Python default version
+echo "==================== PYTHON DEFAULT VERSION ===================="
+python3 --version
+echo "=============================================================="
+
+sudo apt-get install
+
+
+
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
