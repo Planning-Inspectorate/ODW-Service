@@ -68,7 +68,7 @@ echo "==================== PYTHON DEFAULT VERSION ===================="
 python3 --version
 echo "=============================================================="
 
-sudo curl -fsSL https://aka.ms/install-azd.sh | bash
+# sudo curl -fsSL https://aka.ms/install-azd.sh | bash
 
 # Terraform 1.9.6
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
