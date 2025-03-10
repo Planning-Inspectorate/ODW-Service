@@ -1,0 +1,132 @@
+{
+	"name": "pl_SapHrFilesto_PinsDatalabOdwRaw",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy_SapHrFilestoArchives",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "BinarySource",
+						"storeSettings": {
+							"type": "AzureFileStorageReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@concat(pipeline().parameters.FolderPath,'/',pipeline().parameters.FileLoad_Type)",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*.csv",
+							"deleteFilesAfterCompletion": false
+						},
+						"formatSettings": {
+							"type": "BinaryReadSettings"
+						}
+					},
+					"sink": {
+						"type": "BinarySink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "Ds_HrSapCopyAFSource",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileLoadType": {
+								"value": "@pipeline().parameters.FileLoad_Type",
+								"type": "Expression"
+							},
+							"FolderPath": {
+								"value": "@pipeline().parameters.FolderPath",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "Ds_SapHrBinary_OdwRawDest",
+						"type": "DatasetReference",
+						"parameters": {
+							"Load_FileType": {
+								"value": "@pipeline().parameters.FileLoad_Type",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "DeleteFilesFromAFSOdw",
+				"type": "Delete",
+				"dependsOn": [
+					{
+						"activity": "Copy_SapHrFilestoArchives",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "Ds_HrSapCopyAFSource",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileLoadType": {
+								"value": "@pipeline().parameters.FileLoad_Type",
+								"type": "Expression"
+							},
+							"FolderPath": {
+								"value": "@pipeline().parameters.FolderPath",
+								"type": "Expression"
+							}
+						}
+					},
+					"enableLogging": false,
+					"storeSettings": {
+						"type": "AzureFileStorageReadSettings",
+						"recursive": true,
+						"wildcardFileName": {
+							"value": "*.csv",
+							"type": "Expression"
+						},
+						"enablePartitionDiscovery": false
+					}
+				}
+			}
+		],
+		"parameters": {
+			"FileLoad_Type": {
+				"type": "string"
+			},
+			"FolderPath": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "saphr/layers/0-raw"
+		},
+		"annotations": []
+	}
+}
