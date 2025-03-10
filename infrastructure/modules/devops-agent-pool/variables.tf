@@ -5,7 +5,7 @@ variable "deploy_agent_pool" {
 }
 
 variable "devops_agent_image_prefix" {
-  default     = "devops-agents"
+  default     = "devops-agents-20241114130855" 
   description = "The name prefix used to identify the devops agent image"
   type        = string
 }
