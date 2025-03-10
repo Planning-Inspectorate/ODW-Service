@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8248f46e-14b6-4c2b-b1ba-a625f2367cef"
+				"spark.autotune.trackingId": "78ba6ed1-c72d-4768-88aa-b4c6c60fcb62"
 			}
 		},
 		"metadata": {
@@ -91,11 +91,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"Param_File_Load_Type = ''\r\n",
-					"Param_FileFolder_Path = 'StaticTables'\r\n",
-					"Param_Json_SchemaFolder_Name = 'statictables'"
+					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"Param_FileFolder_Path = 'SapHrData'\r\n",
+					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 37
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -129,7 +129,7 @@
 					"from collections.abc import Mapping\r\n",
 					"from operator import add\r\n",
 					"from notebookutils import mssparkutils\r\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format\r\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format, when, length, lpad\r\n",
 					"from pprint import pprint as pp\r\n",
 					"from pyspark.sql.types import *\r\n",
 					"from pyspark.sql import SparkSession\r\n",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 38
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -173,7 +173,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 39
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -212,7 +212,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_base_folder_path)"
 				],
-				"execution_count": 40
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -290,7 +290,7 @@
 					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 41
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -357,7 +357,7 @@
 					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 43
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -419,7 +419,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -460,9 +460,10 @@
 					"\r\n",
 					"        #print(\"Detected Date Columns:\", date_columns)\r\n",
 					"\r\n",
-					"        #Convert and format only DateType columns dynamically \r\n",
-					"        #for col_name in date_columns:\r\n",
-					"        #    df = df.withColumn(col_name, date_format(col(col_name), \"yyyy-MM-dd\"))  # Ensure correct display format\r\n",
+					"        # If PersNo or StaffNumber exists, add leading zeros for values with exactly 6 characters \r\n",
+					"        for column in [\"PersNo\", \"StaffNumber\"]: \r\n",
+					"            if column in df.columns: \r\n",
+					"                df = df.withColumn(column, when(length(col(column)) == 6, lpad(col(column), 8, \"0\")).otherwise(col(column)))\r\n",
 					"\r\n",
 					"        return df\r\n",
 					"        \r\n",
@@ -507,7 +508,7 @@
 					"        return None\r\n",
 					""
 				],
-				"execution_count": 44
+				"execution_count": 36
 			},
 			{
 				"cell_type": "markdown",
@@ -590,7 +591,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": 46
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
