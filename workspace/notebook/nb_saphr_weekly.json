@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "56445b56-12c5-40ad-b8fd-88b0867c5c88"
+				"spark.autotune.trackingId": "83536d65-607c-4e7e-8aaa-96a5953fa807"
 			}
 		},
 		"metadata": {
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 34
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 35
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -136,60 +136,6 @@
 					"\n",
 					"# Remove rows where 'PersNo' is null\n",
 					"df_source_sap_wwekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
-					"\n",
-					"df_source_sap_weekly = spark.sql(\"SELECT * FROM  odw_standardised_db.sap_hr_weekly\"\")\n",
-					"\n",
-					"df_source_sap_weekly = df_source_sap_weekly.withColumn(\n",
-					"    \"Birthdate\",\n",
-					"    to_date(regexp_replace(col(\"Birthdate\"), \"^(\\\\d{1,2})/(\\\\d{1,2})/(\\\\d{2})$\", \"0$1/0$2/19$3\"), \"dd/MM/yyyy\")\n",
-					")\n",
-					"\n",
-					"#df_source_sap_weekly = df_source_sap_weekly.withColumn(\n",
-					"#    \"Birthdate\",\n",
-					"#    when(col(\"Birthdate\").rlike(\"^[0-9]{2}/[0-9]{2}/[0-9]{4}$\"), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"))\n",
-					"#    .when(col(\"Birthdate\").rlike(\"^[0-9]{2}/[0-9]{2}/[0-9]{2}$\"), to_date(col(\"Birthdate\"), \"dd/MM/yy\"))\n",
-					"#    .when(col(\"Birthdate\").rlike(\"^[0-9]/[0-9]/[0-9]{2}$\"), to_date(col(\"Birthdate\"), \"d/M/yy\"))\n",
-					"#    .otherwise(None)\n",
-					"#)\n",
-					"\n",
-					"\n",
-					"print(df_source_sap_wwekly.count())\n",
-					"\n",
-					"display(df_source_sap_weekly)"
-				],
-				"execution_count": 47
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"# Load the source tables\n",
-					"#df_source_sap_wwekly = spark.read.format(\"delta\").option(\"inferschema\",\"true\").table(source_delta_table)\n",
-					"df_source_sap_weekly = spark.read.format(\"delta\").table(source_delta_table)\n",
-					"\n",
-					"print(df_source_sap_weekly.count())\n",
-					"\n",
-					"# Remove rows where 'PersNo' is null\n",
-					"df_source_sap_wwekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
-					"\n",
-					"df_source_sap_wwekly = df_source_sap_weekly.withColumn(\n",
-					"    \"Birthdate\",\n",
-					"    expr(\n",
-					"        \"\"\"CASE\n",
-					"            WHEN Birthdate IS NULL THEN NULL\n",
-					"            WHEN Birthdate RLIKE '\\\\d{2}/\\\\d{2}/\\\\d{4}' THEN to_date(Birthdate, 'dd/MM/yyyy')\n",
-					"            WHEN Birthdate RLIKE '\\\\d{2}/\\\\d{2}/\\\\d{2}' THEN to_date(Birthdate, 'dd/MM/yy')\n",
-					"            WHEN Birthdate RLIKE '\\\\d/\\\\d/\\\\d{2}' THEN to_date(Birthdate, 'd/M/yy')\n",
-					"            ELSE NULL\n",
-					"        END\"\"\"\n",
-					"    )\n",
-					")\n",
-					"\n",
-					"print(df_source_sap_wwekly.count())\n",
-					"\n",
-					"display(df_source_sap_wwekly)\n",
 					"\n",
 					"# Define columns list to be used for RowID hash\n",
 					"rowid_columns = []\n",
@@ -223,8 +169,8 @@
 					"    col(\"S\"),\n",
 					"    col(\"EmploymentStatus\"),\n",
 					"    col(\"GenderKey\"),\n",
-					"    when(col(\"TRAStartDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"TRAStartDate\"), \"dd/MM/yyyy\")).alias(\"TRAStartDate\"),  \n",
-					"    when(col(\"TRAEndDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"TRAEndDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"TRAEndDate\"),\n",
+					"    col(\"TRAStartDate\"),  \n",
+					"    col(\"TRAEndDate\"),\n",
 					"    col(\"TRAStatus\"),\n",
 					"    col(\"TRAGrade\"),\n",
 					"    col(\"PrevPersNo\"),\n",
@@ -235,8 +181,8 @@
 					"    col(\"CostCtr\"),\n",
 					"    col(\"CostCentre\"),\n",
 					"    to_date(col(\"CivilServiceStart\"), \"M/d/yyyy\").cast(\"timestamp\").alias(\"CivilServiceStart\"),\n",
-					"    col(\"DatetoCurrentJob\"),\n",
-					"    col(\"SeniorityDate\"),\n",
+					"    to_date(col(\"DatetoCurrentJob\"), \"M/d/yyyy\").cast(\"timestamp\").alias(\"DatetoCurrentJob\"),\n",
+					"    to_date(col(\"SeniorityDate\"), \"M/d/yyyy\").cast(\"timestamp\").alias(\"SeniorityDate\"),\n",
 					"    col(\"DatetoSubstGrade\").cast(\"timestamp\").alias(\"DatetoSubstGrade\"),\n",
 					"    col(\"PersNo1\"),\n",
 					"    col(\"NameofManagerOM\"),\n",
@@ -246,20 +192,15 @@
 					"    col(\"Loc\"),\n",
 					"    col(\"Location\"),\n",
 					"    to_date(col(\"OrgStartDate\"), \"d/M/yyyy\").cast(\"timestamp\").alias(\"OrgStartDate\"),\n",
-					"    when(col(\"FixTermEndDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"FixTermEndDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"FixTermEndDate\"),  \n",
-					"    when(col(\"LoanStartDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"LoanStartDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"LoanStartDate\"),  \n",
-					"    when(col(\"LoanEndDate\") == \"00/00/0000\", None).otherwise(to_date(col(\"LoanEndDate\"), \"M/d/yyyy\")).cast(\"string\").alias(\"LoanEndDate\"),  \n",
+					"    col(\"FixTermEndDate\"),  \n",
+					"    col(\"LoanStartDate\"),  \n",
+					"    col(\"LoanEndDate\"),  \n",
 					"    col(\"EEGrp\"),\n",
 					"    col(\"EmployeeGroup\"),\n",
 					"    col(\"Annualsalary\").cast(\"double\").alias(\"Annualsalary\"),\n",
 					"    col(\"Curr\"),\n",
 					"    lit(None).alias(\"NInumber\"),  #Avoid added any duplicates Data to NI number Column for weekly SAP HR loads \n",
-					"    col(\"Birthdate\"),\n",
-					"    #when(col(\"Birthdate\").cast(\"date\") == to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\")).otherwise(to_date(col(\"Birthdate\"), \"dd/MM/yy\")).otherwise(to_date(col(\"Birthdate\"), \"d/M/yy\")).cast(\"string\").alias(\"BirthdateDup\"),\n",
-					"    when(to_date(col(\"Birthdate\"), \"dd/MM/yyyy\").isNotNull(), to_date(col(\"Birthdate\"), \"dd/MM/yyyy\"))\n",
-					"    .when(to_date(col(\"Birthdate\"), \"dd/MM/yy\").isNotNull(), to_date(col(\"Birthdate\"), \"dd/MM/yy\"))\n",
-					"    .when(to_date(col(\"Birthdate\"), \"d/M/yy\").isNotNull(), to_date(col(\"Birthdate\"), \"d/M/yy\"))\n",
-					"    .otherwise(None).alias(\"BirthdateDup\"),\n",
+					"    to_date(col(\"Birthdate\"), \"dd/MM/yyyy\").cast(\"timestamp\").alias(\"Birthdate\"),    \n",
 					"    col(\"Ageofemployee\").cast(\"double\").alias(\"Ageofemployee\"),\n",
 					"    col(\"EO\").cast(\"double\").alias(\"EO\"),\n",
 					"    col(\"Ethnicorigin\").cast(\"double\").alias(\"Ethnicorigin\"),\n",
@@ -304,7 +245,7 @@
 					"display(target_sap_hr_weekly_df)\n",
 					"#display(df_source_sap_wwekly)"
 				],
-				"execution_count": 32
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
