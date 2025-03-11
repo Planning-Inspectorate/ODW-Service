@@ -69,6 +69,7 @@
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql import DataFrame\n",
 					"import pprint\n",
+					"from pyspark.sql.functions import *\n",
 					"\n",
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
@@ -688,6 +689,71 @@
 					"    non_zero_differences: DataFrame = comparison_df.filter(\"count_difference > 0\")\n",
 					"\n",
 					"    return non_zero_differences.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### Test for custom / combined harmonised tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def test_no_deleted_horizon_records_in_harmonised(\n",
+					"    horizon_latest_df: DataFrame, \n",
+					"    harmonised_df: DataFrame, \n",
+					"    horizon_primary_key: str, \n",
+					"    servicebus_primary_key: str\n",
+					") -> bool:\n",
+					"    \"\"\"\n",
+					"    Tests if there are any records in harmonised that have been deleted from Horizon.\n",
+					"    Returns True if no deleted records exist, otherwise False.\n",
+					"    \"\"\"\n",
+					"    harmonised_alias = harmonised_df.alias(\"hrm\")\n",
+					"    horizon_alias = horizon_latest_df.alias(\"hzn\")\n",
+					"\n",
+					"    harmonised_filtered = harmonised_alias.filter(\"ODTSourceSystem = 'Horizon' and IsActive = 'Y'\")\n",
+					"\n",
+					"    result_df = harmonised_filtered.join(\n",
+					"        horizon_alias, \n",
+					"        on=col(f\"hrm.{servicebus_primary_key}\") == col(f\"hzn.{horizon_primary_key}\"),\n",
+					"        how=\"left_anti\"\n",
+					"    )\n",
+					"\n",
+					"    return result_df.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def test_valid_to_set_for_inactive_records(df: DataFrame) -> bool:\n",
+					"    \"\"\"\n",
+					"    Tests if the ValidTo date is populated for all inactive records\n",
+					"    \"\"\"\n",
+					"    results = df.filter(\"IsActive = 'N' and ValidTo is null\")\n",
+					"    return results.count() == 0"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def test_valid_to_not_set_for_active_records(df: DataFrame) -> bool:\n",
+					"    \"\"\"\n",
+					"    Tests if the ValidTo date is not populated for active records\n",
+					"    \"\"\"\n",
+					"    results = df.filter(\"IsActive = 'Y' and ValidTo is not null\")\n",
+					"    return results.count() == 0"
 				],
 				"execution_count": null
 			},
