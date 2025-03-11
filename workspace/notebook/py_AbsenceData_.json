@@ -1,0 +1,269 @@
+{
+	"name": "py_AbsenceData_",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "52625f89-7ae2-4408-94c0-ce5981a381f3"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Entity : absence_all\n",
+					"###### Author: Prathap A\n",
+					"###### Date: 25/02/2025\n",
+					"\n",
+					"###### version : 0001\n",
+					"###### <u>Description</u>:\n",
+					"This template is designed to facilitate the monthly processing and harmonization of absence data. It includes steps for initializing the environment, creating and managing Delta tables, and inserting data into harmonized tables. The template ensures that absence data is accurately transformed, stored, and made available for reporting and analysis."
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Intialisations"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import udf, col, lit, when, coalesce, concat, sum, avg, max, min, count, countDistinct, date_format, to_date, datediff, months_between, year, month,  hour, minute, second, expr, asc, desc\n",
+					"from pyspark.sql.types import DateType, TimestampType, StringType, IntegerType, FloatType, DoubleType, BooleanType, StructType, StructField, ArrayType, MapType\n",
+					"from pyspark.sql.window import Window\n",
+					"from pyspark.sql.functions import row_number, rank, dense_rank, lag, lead, ntile\n",
+					"from pyspark.sql import SQLContext\n",
+					"from pyspark.sql import DataFrame\n",
+					"from pyspark.sql import functions as F\n",
+					"from pyspark.sql.avro.functions import from_avro, to_avro\n",
+					"from pyspark.sql.streaming import DataStreamReader, DataStreamWriter\n",
+					"from pyspark.sql.utils import AnalysisException\n",
+					"from pyspark.sql.catalog import Catalog\n",
+					"from pyspark.sql.column import Column\n",
+					"from pyspark.sql.group import GroupedData\n",
+					"from pyspark.sql.pandas.functions import pandas_udf\n",
+					"\n",
+					"from datetime import datetime, timedelta\n",
+					"import pandas as pd"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"drop table odw_harmonised_db.absence_all"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.absence_all (\n",
+					"   \n",
+					"   \n",
+					"   StaffNumber              STRING,\n",
+					"\tAbsType                 STRING,\n",
+					"\tSicknessGroup           STRING,\n",
+					"\tStartDate               DATE ,\n",
+					"\tEndDate                 DATE ,\n",
+					"\tAttendanceorAbsenceType STRING,\n",
+					"\tDays                    double,\n",
+					"\tHrs                     double,\n",
+					"\tStart                   date,\n",
+					"\tEndtime                 date,\n",
+					"\tCaldays                 double ,\n",
+					"\tWorkScheduleRule        STRING ,\n",
+					"\tWkhrs                   double ,\n",
+					"\tHrsDay                  double ,\n",
+					"\tWkDys                   double ,\n",
+					"\tAnnualLeaveStart         date\n",
+					"\n",
+					"    )\n",
+					"USING DELTA\n",
+					"\"\"\")"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"-- Step 1: Delete all rows from the target table\n",
+					"DELETE FROM odw_harmonised_db.absence_all;\n",
+					"\n",
+					"-- Step 2: Insert data into the target table\n",
+					"INSERT INTO odw_harmonised_db.absence_all\n",
+					"(   \n",
+					"    StaffNumber,            \n",
+					"    AbsType,                \n",
+					"    SicknessGroup,          \n",
+					"    StartDate,              \n",
+					"    EndDate,                \n",
+					"    AttendanceorAbsenceType,\n",
+					"    Days,                   \n",
+					"    Hrs,                    \n",
+					"    Start,                  \n",
+					"    Endtime,                \n",
+					"    Caldays,                \n",
+					"    WorkScheduleRule,       \n",
+					"    Wkhrs,                  \n",
+					"    HrsDay,                 \n",
+					"    WkDys,                  \n",
+					"    AnnualLeaveStart      \n",
+					")\n",
+					"SELECT  \n",
+					"    StaffNumber,\n",
+					"    COALESCE(AbsType, '')       AS AbsType,\n",
+					"    COALESCE(SicknessGroup, '') AS SicknessGroup,\n",
+					"    to_date(StartDate,'M/d/yy') as StartDate,\n",
+					"    to_date(StartDate,'M/d/yy') as EndDate,\n",
+					"    AttendanceorAbsenceType,\n",
+					"    REPLACE(Days, ',', '') AS Days,  -- Remove commas before casting\n",
+					"    REPLACE(Hrs, ',', '') AS Hrs,    -- Remove commas before casting\n",
+					"    to_date('31/12/1899','dd/mm/yyyy')  as StartTime,\n",
+					"    to_date('31/12/1899','dd/mm/yyyy')  as Endtime,  \n",
+					"    Caldays,\n",
+					"    WorkScheduleRule,\n",
+					"    TRY_CAST(REPLACE(Wkhrs, ',', '') AS DOUBLE) AS Wkhrs,  \n",
+					"    TRY_CAST(REPLACE(HrsDay, ',', '') AS DOUBLE) AS HrsDay,  \n",
+					"    TRY_CAST(REPLACE(WkDys, ',', '') AS DOUBLE) AS WkDys,  \n",
+					"    to_date(AnnualLeaveStart,'M/d/yy')  AS AnnualLeaveStart\n",
+					"    \n",
+					"FROM odw_standardised_db.hr_absence_monthly;\n",
+					"\n",
+					""
+				],
+				"execution_count": 64
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"---- Step 3: Remove rows with null values in key columns\n",
+					"DELETE FROM odw_harmonised_db.absence_all\n",
+					"WHERE\n",
+					"    StaffNumber IS NULL\n",
+					"    OR StartDate IS NULL\n",
+					"    OR EndDate IS NULL;\n",
+					"\n",
+					"---- Step 4: Use MERGE to remove duplicates\n",
+					"MERGE INTO odw_harmonised_db.absence_all AS target\n",
+					"USING (\n",
+					"    SELECT \n",
+					"        StaffNumber, \n",
+					"        StartDate, \n",
+					"        ROW_NUMBER() OVER (PARTITION BY StaffNumber, StartDate ORDER BY StaffNumber, StartDate) AS Val\n",
+					"    FROM odw_harmonised_db.absence_all\n",
+					") AS source\n",
+					"ON target.StaffNumber = source.StaffNumber\n",
+					"    AND target.StartDate = source.StartDate\n",
+					"    AND source.Val > 1\n",
+					"WHEN MATCHED THEN DELETE;"
+				],
+				"execution_count": 67
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
