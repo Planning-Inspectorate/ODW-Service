@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "52625f89-7ae2-4408-94c0-ce5981a381f3"
+				"spark.autotune.trackingId": "20bb3e18-1d0b-4d24-897d-5eeaa7837f10"
 			}
 		},
 		"metadata": {
@@ -104,51 +104,7 @@
 					"from datetime import datetime, timedelta\n",
 					"import pandas as pd"
 				],
-				"execution_count": 1
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"drop table odw_harmonised_db.absence_all"
-				],
-				"execution_count": 5
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"spark.sql(\"\"\"\n",
-					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.absence_all (\n",
-					"   \n",
-					"   \n",
-					"   StaffNumber              STRING,\n",
-					"\tAbsType                 STRING,\n",
-					"\tSicknessGroup           STRING,\n",
-					"\tStartDate               DATE ,\n",
-					"\tEndDate                 DATE ,\n",
-					"\tAttendanceorAbsenceType STRING,\n",
-					"\tDays                    double,\n",
-					"\tHrs                     double,\n",
-					"\tStart                   date,\n",
-					"\tEndtime                 date,\n",
-					"\tCaldays                 double ,\n",
-					"\tWorkScheduleRule        STRING ,\n",
-					"\tWkhrs                   double ,\n",
-					"\tHrsDay                  double ,\n",
-					"\tWkDys                   double ,\n",
-					"\tAnnualLeaveStart         date\n",
-					"\n",
-					"    )\n",
-					"USING DELTA\n",
-					"\"\"\")"
-				],
-				"execution_count": 6
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -163,7 +119,7 @@
 					"\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
 				],
-				"execution_count": 23
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -177,10 +133,10 @@
 					"%%sql\n",
 					"\n",
 					"-- Step 1: Delete all rows from the target table\n",
-					"DELETE FROM odw_harmonised_db.absence_all;\n",
+					"DELETE FROM odw_harmonised_db.sap_hr_absence_all;\n",
 					"\n",
 					"-- Step 2: Insert data into the target table\n",
-					"INSERT INTO odw_harmonised_db.absence_all\n",
+					"INSERT INTO odw_harmonised_db.sap_hr_absence_all\n",
 					"(   \n",
 					"    StaffNumber,            \n",
 					"    AbsType,                \n",
@@ -197,7 +153,13 @@
 					"    Wkhrs,                  \n",
 					"    HrsDay,                 \n",
 					"    WkDys,                  \n",
-					"    AnnualLeaveStart      \n",
+					"    AnnualLeaveStart,\n",
+					"    SourceSystemID,\n",
+					"     IngestionDate,\n",
+					"      ValidTo,\n",
+					"      RowID,\n",
+					"      IsActive\n",
+					"\n",
 					")\n",
 					"SELECT  \n",
 					"    StaffNumber,\n",
@@ -215,13 +177,17 @@
 					"    TRY_CAST(REPLACE(Wkhrs, ',', '') AS DOUBLE) AS Wkhrs,  \n",
 					"    TRY_CAST(REPLACE(HrsDay, ',', '') AS DOUBLE) AS HrsDay,  \n",
 					"    TRY_CAST(REPLACE(WkDys, ',', '') AS DOUBLE) AS WkDys,  \n",
-					"    to_date(AnnualLeaveStart,'M/d/yy')  AS AnnualLeaveStart\n",
-					"    \n",
+					"    to_date(AnnualLeaveStart,'M/d/yy')  AS AnnualLeaveStart,\n",
+					"    'saphr' AS SourceSystemID,\n",
+					"    CURRENT_DATE() AS IngestionDate,\n",
+					"    CURRENT_TIMESTAMP() AS ValidTo,\n",
+					"    NULL AS RowID,\n",
+					"    'Y' AS IsActive\n",
 					"FROM odw_standardised_db.hr_absence_monthly;\n",
 					"\n",
 					""
 				],
-				"execution_count": 64
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -235,7 +201,7 @@
 					"%%sql\n",
 					"\n",
 					"---- Step 3: Remove rows with null values in key columns\n",
-					"DELETE FROM odw_harmonised_db.absence_all\n",
+					"DELETE FROM odw_harmonised_db.sap_hr_absence_all\n",
 					"WHERE\n",
 					"    StaffNumber IS NULL\n",
 					"    OR StartDate IS NULL\n",
@@ -248,14 +214,65 @@
 					"        StaffNumber, \n",
 					"        StartDate, \n",
 					"        ROW_NUMBER() OVER (PARTITION BY StaffNumber, StartDate ORDER BY StaffNumber, StartDate) AS Val\n",
-					"    FROM odw_harmonised_db.absence_all\n",
+					"    FROM odw_harmonised_db.sap_hr_absence_all\n",
 					") AS source\n",
 					"ON target.StaffNumber = source.StaffNumber\n",
 					"    AND target.StartDate = source.StartDate\n",
 					"    AND source.Val > 1\n",
 					"WHEN MATCHED THEN DELETE;"
 				],
-				"execution_count": 67
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"UPDATE odw_harmonised_db.sap_hr_absence_all\n",
+					"SET RowID = md5(\n",
+					"    concat_ws('|',\n",
+					" StaffNumber,            \n",
+					"    AbsType,                \n",
+					"    SicknessGroup,          \n",
+					"    StartDate,              \n",
+					"    EndDate,                \n",
+					"    AttendanceorAbsenceType,\n",
+					"    Days,                   \n",
+					"    Hrs,                    \n",
+					"    Start,                  \n",
+					"    Endtime,                \n",
+					"    Caldays,                \n",
+					"    WorkScheduleRule,       \n",
+					"    Wkhrs,                  \n",
+					"    HrsDay,                 \n",
+					"    WkDys\n",
+					" \n",
+					"\n",
+					"    )\n",
+					")"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from odw_harmonised_db.sap_hr_absence_all"
+				],
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
