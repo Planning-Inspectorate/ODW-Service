@@ -48,28 +48,3 @@ output "service_bus_primary_connection_string" {
   value       = var.failover_deployment ? module.synapse_ingestion_failover.service_bus_primary_connection_string : module.synapse_ingestion.service_bus_primary_connection_string
   sensitive   = true
 }
-
-output "synapse_dev_endpoint" {
-  description = "The development connectivity endpoint for the Synapse Workspace"
-  value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_endpoints["dev"] : module.synapse_workspace_private.synapse_endpoints["dev"]
-}
-
-output "synapse_dsql_endpoint" {
-  description = "The dedicated SQL pool connectivity endpoint for the Synapse Workspace"
-  value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_endpoints["sql"] : module.synapse_workspace_private.synapse_endpoints["sql"]
-}
-
-output "synapse_ssql_endpoint" {
-  description = "The serverless SQL pool connectivity endpoint for the Synapse Workspace"
-  value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_endpoints["sqlOnDemand"] : module.synapse_workspace_private.synapse_endpoints["sqlOnDemand"]
-}
-
-output "synapse_workspace_id" {
-  description = "The ARM ID of the Synapse Workspace"
-  value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_workspace_id : module.synapse_workspace_private.synapse_workspace_id
-}
-
-output "synapse_workspace_name" {
-  description = "The name of the Synapse Workspace"
-  value       = var.failover_deployment ? one(module.synapse_workspace_private_failover).synapse_workspace_name : module.synapse_workspace_private.synapse_workspace_name
-}
