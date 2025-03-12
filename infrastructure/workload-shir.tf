@@ -23,7 +23,6 @@ module "synapse_shir" {
   service_name        = local.service_name
 
   devops_agent_subnet_name = local.compute_subnet_name
-  synapse_workspace_id     = module.synapse_workspace_private.synapse_workspace_id
   vnet_subnet_ids          = module.synapse_network.vnet_subnets
 
   tags = local.tags
@@ -40,7 +39,6 @@ module "synapse_shir_failover" {
   service_name        = local.service_name
 
   devops_agent_subnet_name = local.compute_subnet_name
-  synapse_workspace_id     = module.synapse_workspace_private_failover[0].synapse_workspace_id
   vnet_subnet_ids          = module.synapse_network_failover.vnet_subnets
 
   tags = local.tags
