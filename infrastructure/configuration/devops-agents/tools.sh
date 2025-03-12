@@ -7,6 +7,8 @@ sudo add-apt-repository main
 sudo add-apt-repository restricted
 sudo add-apt-repository universe
 sudo add-apt-repository multiverse
+sudo add-apt-repository ppa:git-core/ppa
+sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 
 sudo apt-get clean && apt-get update && apt-get upgrade
@@ -35,41 +37,22 @@ sudo apt-get install -y --no-install-recommends \
   xvfb \
   zip
 
-sudo add-apt-repository ppa:git-core/ppa
-sudo add-apt-repository ppa:deadsnakes/ppa
-
 # Git
 sudo apt install -y --no-install-recommends \
   git \
   git-lfs \
   git-ftp
 
-# Checkov
-sudo apt install -y --no-install-recommends \
-  python3-pip \
-  python3.7 \
-  python3.7-distutils
-python3.7 -m pip install --force-reinstall packaging==21
-python3.7 -m pip install -U checkov==2.2.94
-
-# Python 3.13 Installation
 sudo apt install -y --no-install-recommends \
   python3.13 \
   python3-setuptools \
   python3-apt
 
-# Terraform 1.9.6
-curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get install -y terraform=1.9.6-1
+sudo ln -sf /usr/bin/python3.13 /usr/bin/python3
 
-# TFLint
-curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
-# Set up Node.js 22.x
-curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-
-sudo apt-get install nodejs
+echo "==================== PYTHON DEFAULT VERSION ===================="
+python3 --version
+echo "================================================================"
 
 # Azure CLI
 curl -sL https://aka.ms/InstallAzureCLIDeb | bash
@@ -92,11 +75,3 @@ pwsh -c "& {Get-Module -ListAvailable}"
 
 # Sysprep
 /usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync
-
-# python 3.13 as default
-sudo ln -sf /usr/bin/python3.13 /usr/bin/python3
-
-# python version
-echo "==================== PYTHON DEFAULT VERSION ===================="
-python3 --version
-echo "================================================================"
