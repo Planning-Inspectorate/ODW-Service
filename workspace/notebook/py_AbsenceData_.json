@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "20bb3e18-1d0b-4d24-897d-5eeaa7837f10"
+				"spark.autotune.trackingId": "2d992f2e-6b4d-47c3-8d3a-dc54eaad1911"
 			}
 		},
 		"metadata": {
@@ -104,7 +104,7 @@
 					"from datetime import datetime, timedelta\n",
 					"import pandas as pd"
 				],
-				"execution_count": 8
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,7 @@
 					"\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
 				],
-				"execution_count": 9
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -165,8 +165,8 @@
 					"    StaffNumber,\n",
 					"    COALESCE(AbsType, '')       AS AbsType,\n",
 					"    COALESCE(SicknessGroup, '') AS SicknessGroup,\n",
-					"    to_date(StartDate,'M/d/yy') as StartDate,\n",
-					"    to_date(StartDate,'M/d/yy') as EndDate,\n",
+					"cast(to_timestamp(StartDate, \"dd/MM/yyyy\") as date) as StartDate,\n",
+					"cast(to_timestamp(EndDate, \"dd/MM/yyyy\") as date) as EndDate,\n",
 					"    AttendanceorAbsenceType,\n",
 					"    REPLACE(Days, ',', '') AS Days,  -- Remove commas before casting\n",
 					"    REPLACE(Hrs, ',', '') AS Hrs,    -- Remove commas before casting\n",
@@ -187,7 +187,42 @@
 					"\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"UPDATE odw_harmonised_db.sap_hr_absence_all\n",
+					"SET RowID = md5(\n",
+					"    concat_ws('|',\n",
+					"    StaffNumber,            \n",
+					"    AbsType,                \n",
+					"    SicknessGroup,          \n",
+					"    StartDate,              \n",
+					"    EndDate,                \n",
+					"    AttendanceorAbsenceType,\n",
+					"    Days,                   \n",
+					"    Hrs,                    \n",
+					"    Start,                  \n",
+					"    Endtime,                \n",
+					"    Caldays,                \n",
+					"    WorkScheduleRule,       \n",
+					"    Wkhrs,                  \n",
+					"    HrsDay,                 \n",
+					"    WkDys,                  \n",
+					"    AnnualLeaveStart\n",
+					"    )\n",
+					"    )"
+				],
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -221,65 +256,7 @@
 					"    AND source.Val > 1\n",
 					"WHEN MATCHED THEN DELETE;"
 				],
-				"execution_count": 11
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"UPDATE odw_harmonised_db.sap_hr_absence_all\n",
-					"SET RowID = md5(\n",
-					"    concat_ws('|',\n",
-					" StaffNumber,            \n",
-					"    AbsType,                \n",
-					"    SicknessGroup,          \n",
-					"    StartDate,              \n",
-					"    EndDate,                \n",
-					"    AttendanceorAbsenceType,\n",
-					"    Days,                   \n",
-					"    Hrs,                    \n",
-					"    Start,                  \n",
-					"    Endtime,                \n",
-					"    Caldays,                \n",
-					"    WorkScheduleRule,       \n",
-					"    Wkhrs,                  \n",
-					"    HrsDay,                 \n",
-					"    WkDys\n",
-					" \n",
-					"\n",
-					"    )\n",
-					")"
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from odw_harmonised_db.sap_hr_absence_all"
-				],
-				"execution_count": 13
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 19
 			}
 		]
 	}
