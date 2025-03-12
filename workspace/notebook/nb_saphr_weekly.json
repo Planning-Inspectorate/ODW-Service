@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "717b7599-d23b-4c7f-ba25-64f3fd1488b4"
+				"spark.autotune.trackingId": "ca852e16-9871-4763-95c7-452cd7f1c095"
 			}
 		},
 		"metadata": {
@@ -96,7 +96,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 79
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -105,7 +105,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 26
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 50
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -144,11 +144,25 @@
 					"df_source_sap_weekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
 					"\n",
 					"# Define columns list to be used for RowID hash\n",
-					"rowid_columns = []\n",
+					"excluded_columns = {\"ingested_datetime\",\"expected_from\",\"expected_to\"} \n",
+					"rowid_columns = [c for c in df_source_sap_weekly.columns if c not in excluded_columns]\n",
 					"\n",
 					"#display(df_source_sap_wwekly)\n",
 					"\n",
-					"target_sap_hr_weekly_df = df_source_sap_weekly.select(\n",
+					"target_sap_hr_weekly_df1 = df_source_sap_weekly.select(\n",
+					"    *[col(c).cast(\"string\") for c in df_source_sap_weekly.columns], # Convert all columns to STRING\n",
+					"    current_date().cast(\"date\").alias(\"Report_MonthEnd_Date\"),\n",
+					"    current_timestamp().alias(\"PDAC_ETL_Date\"),\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
+					"    md5(concat(*[col(c).cast(\"string\") for c in rowid_columns])).alias(\"RowID\"), # Excluded columns are removed\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")\n",
+					"\n",
+					"print(target_sap_hr_weekly_df.printSchema())\n",
+					"\n",
+					"target_sap_hr_weekly_df = target_sap_hr_weekly_df.select(\n",
 					"    col(\"PersNo\"),\n",
 					"    col(\"Firstname\"),\n",
 					"    col(\"Lastname\"),\n",
@@ -194,8 +208,8 @@
 					"    col(\"NameofManagerOM\"),\n",
 					"    col(\"ManagerPosition\"),\n",
 					"    col(\"ManagerPositionText\"),\n",
-					"    col(\"CounterSignManager\"),\n",
-					"    #col(\"CounterSignManager\").cast(\"double\").alias(\"CounterSignManager\"),\n",
+					"    #col(\"CounterSignManager\"),\n",
+					"    col(\"CounterSignManager\").cast(\"double\").alias(\"CounterSignManager\"),\n",
 					"    col(\"Loc\"),\n",
 					"    col(\"Location\"),\n",
 					"    to_date(col(\"OrgStartDate\"), \"d/M/yyyy\").cast(\"timestamp\").alias(\"OrgStartDate\"),\n",
@@ -237,39 +251,27 @@
 					"    lit(\"Y\").alias(\"IsActive\")\n",
 					")\n",
 					"\n",
-					"\n",
-					"# List of columns that need to be converted from DOUBLE to STRING before loading to Delta table\n",
-					"columns_strings = [\n",
-					"    \"AgeOfEmployee\", \"EO\", \"EthnicOrigin\", \"NID\", \"Rel\", \"ReligiousDenominationKey\",\n",
-					"    \"SxO\", \"WageType\", \"LOAAbsType\", \"LOAAbsenceTypeText\", \"SchemeReference\",\n",
-					"    \"PensionSchemeName\", \"DisabilityCode\", \"DisabilityText\", \"DisabilityCodeDescription\",\n",
-					"    \"AssignmentNumber\", \"AnnualSalary\", \"CounterSignManager\"]\n",
-					"\n",
-					"# Apply the cast transformation to STRING\n",
-					"for col_name in columns_strings:\n",
-					"    target_sap_hr_weekly_df = target_sap_hr_weekly_df.withColumn(col_name, col(col_name).cast(\"STRING\"))\n",
-					"\n",
 					"# Verify schema after conversion\n",
-					"target_sap_hr_weekly_df.printSchema()\n",
+					"#target_sap_hr_weekly_df.printSchema()\n",
 					"\n",
 					"\n",
 					"\n",
 					"# Write data to Delta table odw_harmonised_db.sap_hr_weekly\n",
 					"try:\n",
-					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"    target_sap_hr_weekly_df1.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
 					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
 					"    print(f\"Data successfully written to {target_delta_table}\")\n",
 					"except Exception as e:\n",
 					"    print(f\"Error writing to {target_delta_table}: {str(e)}\")\n",
 					"    raise\n",
 					"\n",
-					"data_loaded = target_sap_hr_weekly_df.count()\n",
+					"data_loaded = target_sap_hr_weekly_df1.count()\n",
 					"\n",
 					"#print(f\"SAP Employee Hierarchy Weekly Processing Completed.{data_loaded} records loaded Successfully\")\n",
 					"#display(target_sap_hr_weekly_df)\n",
 					"#display(df_source_sap_wwekly)"
 				],
-				"execution_count": 71
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -338,6 +340,69 @@
 					"FROM odw_standardised_db.load_sap_hr_weekly;"
 				],
 				"execution_count": 72
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, lit, md5, concat, current_date, current_timestamp\n",
+					"from delta.tables import DeltaTable\n",
+					"\n",
+					"# Step 1: Read source Delta Table\n",
+					"df_source_sap_weekly = spark.read.format(\"delta\").option(\"inferSchema\", \"false\").table(source_delta_table)\n",
+					"\n",
+					"# Step 2: Remove rows where 'PersNo' is NULL\n",
+					"df_source_sap_weekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
+					"\n",
+					"# Step 3: Exclude \"ingested_datetime\", \"expected_from\", \"expected_to\" from rowid_columns\n",
+					"excluded_columns = {\"ingested_datetime\", \"expected_from\", \"expected_to\"} # Define columns to exclude\n",
+					"rowid_columns = [c for c in df_source_sap_weekly.columns if c not in excluded_columns]\n",
+					"\n",
+					"# Step 4: Select required columns and ensure correct data types\n",
+					"target_sap_hr_weekly_df = df_source_sap_weekly.select(\n",
+					"    *[col(c).cast(\"string\") for c in df_source_sap_weekly.columns if c not in [\"FTE2\", \"FTE\", \"Wkhrs\", \"CivilServiceStart\", \"DatetoSubstGrade\", \"OrgStartDate\",\"Birthdate\"]], # Convert other columns to STRING\n",
+					"    col(\"FTE2\").cast(\"double\").alias(\"FTE2\"),\n",
+					"    col(\"FTE\").cast(\"double\").alias(\"FTE\"),\n",
+					"    col(\"Wkhrs\").cast(\"double\").alias(\"Wkhrs\"),\n",
+					"    to_date(col(\"CivilServiceStart\"), \"d/M/yyyy\").alias(\"CivilServiceStart\"),\n",
+					"    to_date(col(\"DatetoSubstGrade\"), \"d/M/yyyy\").alias(\"DatetoSubstGrade\"),\n",
+					"    to_date(col(\"OrgStartDate\"), \"d/M/yyyy\").alias(\"OrgStartDate\"),\n",
+					"    to_date(col(\"Birthdate\"), \"d/M/yyyy\").cast(\"string\").alias(\"Birthdate\"),\n",
+					"    # Add additional metadata fields\n",
+					"    current_date().cast(\"date\").alias(\"Report_MonthEnd_Date\"),\n",
+					"    current_timestamp().alias(\"PDAC_ETL_Date\"),\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
+					"    # Compute RowID without excluded columns\n",
+					"    md5(concat(*[col(c).cast(\"string\") for c in rowid_columns])).alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")\n",
+					"\n",
+					"# Step 5: Verify Schema\n",
+					"target_sap_hr_weekly_df.printSchema()\n",
+					"\n",
+					"# Step 6: Write data to Delta Table (Schema Match Ensured)\n",
+					"try:\n",
+					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").option(\"mergeSchema\", \"true\").save(delta_table_path)\n",
+					"\n",
+					"    # Ensure the table exists\n",
+					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
+					"\n",
+					"    print(f\" Data successfully written to {target_delta_table}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					""
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.load_sap_hr_weekly\")"
+				],
+				"execution_count": 20
 			}
 		]
 	}
