@@ -91,11 +91,6 @@ variable "synapse_sql_pool_id" {
   type        = string
 }
 
-variable "synapse_workspace_id" {
-  description = "The ID of the Synapse Workspace from which to collect diagnostic logs"
-  type        = string
-}
-
 variable "synapse_vnet_id" {
   description = "The ID of the Synapse Virtual network from which to collect diagnostic logs"
   type        = string
