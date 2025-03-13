@@ -1,0 +1,157 @@
+{
+	"name": "py_create_random_sb_data",
+	"properties": {
+		"folder": {
+			"name": "utils"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "9a01f006-ac1c-4f61-b8f0-aa2e124f08cc"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"import pprint\n",
+					"import json\n",
+					"from pyspark.sql.types import *\n",
+					"import random\n",
+					"from datetime import datetime, timedelta\n",
+					"from faker import Faker\n",
+					"from pyspark.sql.functions import lit, monotonically_increasing_id, col, when\n",
+					"from pyspark.sql import Row, DataFrame"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"entity_name = \"nsip-subscription\"\n",
+					"primary_key = \"subscriptionId\"\n",
+					"num_records = 10"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"schema = StructType.fromJson(json.loads(mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \n",
+					"                            arguments={\"entity_name\": entity_name, \"db_name\": 'odw_curated_db'})))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Functions to generate a DataFrame with random values"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"faker = Faker()\n",
+					"\n",
+					"def generate_unique_uuids(existing_ids, count):\n",
+					"    new_uuids = []\n",
+					"    while len(new_uuids) < count:\n",
+					"        new_id = faker.unique.uuid4()\n",
+					"        if new_id not in existing_ids:\n",
+					"            new_uuids.append(new_id)\n",
+					"            existing_ids.add(new_id)\n",
+					"    return new_uuids\n",
+					"    \n",
+					"def generate_random_value(field_name: str, field_type):\n",
+					"    \"\"\"Generate a random value based on the field's data type.\"\"\"\n",
+					"    if field_name == \"message_type\":\n",
+					"        return \"Create\"\n",
+					"    if field_name == \"message_id\":\n",
+					"        return faker.unique.uuid4()\n",
+					"    if field_name == \"IsActive\":\n",
+					"        return random.choice([\"Y\"])\n",
+					"    if field_name == \"caseReference\":\n",
+					"        return f\"TR{random.randint(1, 10**6)}\"\n",
+					"    if isinstance(field_type, StringType):\n",
+					"        return faker.word()\n",
+					"    elif isinstance(field_type, LongType):\n",
+					"        return random.randint(1, 10**9)\n",
+					"    elif isinstance(field_type, IntegerType):\n",
+					"        return random.randint(1, 10**5)\n",
+					"    elif isinstance(field_type, DoubleType):\n",
+					"        return random.uniform(1.0, 1000.0)\n",
+					"    elif isinstance(field_type, FloatType):\n",
+					"        return random.uniform(1.0, 100.0)\n",
+					"    elif isinstance(field_type, TimestampType):\n",
+					"        return datetime.now() - timedelta(seconds=random.randint(0, 86400 * 365))\n",
+					"    elif isinstance(field_type, DateType):\n",
+					"        return datetime.now().date() - timedelta(days=random.randint(0, 365))\n",
+					"    elif isinstance(field_type, BooleanType):\n",
+					"        return random.choice([True, False])\n",
+					"    else:\n",
+					"        return None\n",
+					"\n",
+					"def generate_random_row(schema):\n",
+					"    \"\"\"Generate a random row of data based on the schema.\"\"\"\n",
+					"    return {field.name: generate_random_value(field.name, field.dataType) for field in schema.fields}\n",
+					"\n",
+					"def generate_random_dataframe(schema: StructType, num_records: int):\n",
+					"    \"\"\"Generate a PySpark DataFrame with random data based on the schema.\"\"\"\n",
+					"    # Generate random data\n",
+					"    data = [generate_random_row(schema) for _ in range(num_records)]\n",
+					"    \n",
+					"    # Create DataFrame\n",
+					"    return spark.createDataFrame(data, schema=schema)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df = generate_random_dataframe(std_schema, num_records)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"display(df)"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
