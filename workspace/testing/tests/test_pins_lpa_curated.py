@@ -58,7 +58,7 @@ def test_nsip_project_notebook(credential_name, azure_credential, synapse_endpoi
     print("Notebook response *" +str(exitMessage) +"*")
     assert notebook_run_result == constants.NOTEBOOK_SUCCESS_STATUS 
     assert exitMessage == constants.NOTEBOOK_EXIT_CODE_SUCCESS
-    print("test_nsip_project Completed")
+    print("test_pins_lpa_curated Completed")
 
 @pytest.fixture(autouse=True)
 def run_before_and_after_tests():
