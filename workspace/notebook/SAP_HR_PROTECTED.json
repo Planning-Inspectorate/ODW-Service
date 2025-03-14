@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ae3dc0d8-eebb-484a-8ff9-b031d9278382"
+				"spark.autotune.trackingId": "8792f658-669f-430f-9969-4d80d9c6c6b9"
 			}
 		},
 		"metadata": {
@@ -134,9 +134,9 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"drop table odw_harmonised_db.SAP_HR_PC"
+					"drop table  odw_harmonised_db.SAP_HR_PC"
 				],
-				"execution_count": 4
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +151,22 @@
 					"\n",
 					"describe odw_harmonised_db.SAP_HR_PC"
 				],
-				"execution_count": null
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from odw_standardised_db.sap_protected_monthly"
+				],
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -177,6 +192,7 @@
 					"      ,NULLIF(SxO, '')\n",
 					"      ,Grade\n",
 					"      ,NULLIF(DisabilityText, '')\n",
+					"      ,cast(Report_MonthEnd_Date as date)  as Report_MonthEnd_Date\n",
 					"      , 'saphr' AS SourceSystemID\n",
 					"    ,CURRENT_DATE() AS IngestionDate\n",
 					"   , CURRENT_TIMESTAMP() AS ValidTo\n",
@@ -187,7 +203,7 @@
 					"\n",
 					")"
 				],
-				"execution_count": 8
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -212,14 +228,7 @@
 					"      )\n",
 					"      )"
 				],
-				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -239,54 +248,107 @@
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
-					}
+					},
+					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"\n",
-					" WITH pc AS (\n",
-					"            SELECT \n",
-					"                file_name AS file,\n",
-					"                CONVERT(varchar(7), CONVERT(date, RIGHT(REPLACE(file_name, '.xlsx', ''), 8), 103), 126) AS file_name,\n",
-					"                COUNT(*) AS s_count\n",
-					"            FROM odw_harmonised_db.SAP_HR_PC\n",
-					"            WHERE RefNo IS NOT NULL\n",
-					"            GROUP BY file_name, CONVERT(varchar(7), CONVERT(date, RIGHT(REPLACE(file_name, '.xlsx', ''), 8), 103), 126)\n",
-					"        ),\n",
-					"        x2 AS (\n",
-					"            SELECT \n",
-					"                LEFT(CAST(h.Report_MonthEnd_Date AS varchar(10)), 7) AS r_month, \n",
-					"                COUNT(*) AS history_rows\n",
-					"            FROM \n",
-					"                odw_harmonised_db.SAP_HR h \n",
-					"            WHERE \n",
-					"                LEFT(CAST(Report_MonthEnd_Date AS varchar(10)), 7) > '2019-03' \n",
-					"                AND h.PayrollArea = 'PINS'\n",
-					"            GROUP BY \n",
-					"                LEFT(CAST(Report_MonthEnd_Date AS varchar(10)), 7)\n",
-					"        )\n",
+					"WITH pc AS (\n",
+					"    SELECT \n",
+					"        Report_MonthEnd_Date,\n",
+					"        COUNT(*) AS s_count\n",
+					"    FROM odw_harmonised_db.SAP_HR_PC\n",
+					"    WHERE RefNo IS NOT NULL\n",
+					"    GROUP BY Report_MonthEnd_Date\n",
+					"),\n",
+					"x2 AS (\n",
+					"    SELECT \n",
+					"        Report_MonthEnd_Date, \n",
+					"        COUNT(*) AS history_rows\n",
+					"    FROM \n",
+					"        odw_harmonised_db.hist_SAP_HR h \n",
+					"    WHERE \n",
+					"        Report_MonthEnd_Date > '2019-03' \n",
+					"        AND h.PayrollArea = 'PINS'\n",
+					"    GROUP BY \n",
+					"        Report_MonthEnd_Date\n",
+					"),\n",
+					"to_delete AS (\n",
+					"    SELECT pc.Report_MonthEnd_Date\n",
+					"    FROM pc \n",
+					"    INNER JOIN x2 \n",
+					"        ON pc.Report_MonthEnd_Date = x2.Report_MonthEnd_Date\n",
+					"    WHERE pc.s_count = x2.history_rows\n",
+					")\n",
 					"\n",
-					"        -- Delete operation\n",
-					"        DELETE FROM odw_harmonised_db.protected_data\n",
-					"        WHERE file_name IN (\n",
-					"            SELECT pc.file\n",
-					"            FROM pc \n",
-					"            INNER JOIN x2 ON pc.file_name = x2.r_month\n",
-					"            WHERE pc.s_count = x2.history_rows\n",
-					"        );\n",
-					"\n",
-					"        -- Insert operation\n",
-					"        INSERT INTO odw_harmonised_db.protected_data\n",
-					"        SELECT * \n",
-					"        FROM odw_harmonised_db.SAP_HR_PC\n",
-					"        WHERE file_name IN (\n",
-					"            SELECT pc.file\n",
-					"            FROM pc \n",
-					"            INNER JOIN x2 ON pc.file_name = x2.r_month\n",
-					"            WHERE pc.s_count = x2.history_rows\n",
-					"        );"
+					"-- Use MERGE to delete and insert rows\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_protected_data AS target\n",
+					"USING (\n",
+					"    SELECT \n",
+					"        SAP_HR_PC.*,\n",
+					"        CASE \n",
+					"            WHEN to_delete.Report_MonthEnd_Date IS NOT NULL THEN 'DELETE'\n",
+					"            ELSE 'INSERT'\n",
+					"        END AS action\n",
+					"    FROM odw_harmonised_db.SAP_HR_PC\n",
+					"    LEFT JOIN to_delete \n",
+					"        ON SAP_HR_PC.Report_MonthEnd_Date = to_delete.Report_MonthEnd_Date\n",
+					") AS source\n",
+					"ON target.Report_MonthEnd_Date = source.Report_MonthEnd_Date\n",
+					"WHEN MATCHED AND source.action = 'DELETE' THEN DELETE\n",
+					"WHEN NOT MATCHED AND source.action = 'INSERT' THEN INSERT *;"
 				],
-				"execution_count": null
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"UPDATE odw_harmonised_db.sap_hr_protected_data\n",
+					"SET RowID = md5(\n",
+					"    concat_ws('|',\n",
+					"\t   RefNo\n",
+					"      ,EthnicOrigin\n",
+					"      ,ReligiousDenominationKey\n",
+					"      ,SxO\n",
+					"      ,Grade\n",
+					"      ,DisabilityText\n",
+					"      )\n",
+					"      )"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"    SELECT \n",
+					"        Report_MonthEnd_Date, \n",
+					"        COUNT(*) AS history_rows\n",
+					"    FROM \n",
+					"        odw_harmonised_db.hist_SAP_HR h \n",
+					"    WHERE \n",
+					"        Report_MonthEnd_Date > '2019-03' \n",
+					"        AND h.PayrollArea = 'PINS'\n",
+					"    GROUP BY \n",
+					"        Report_MonthEnd_Date"
+				],
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -353,21 +415,6 @@
 					"insert_data_df.write.mode(\"append\").saveAsTable(\"odw_harmonised_db.protected_data\")"
 				],
 				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					" select count(*) from odw_harmonised_db.load_sap_hr"
-				],
-				"execution_count": 1
 			}
 		]
 	}
