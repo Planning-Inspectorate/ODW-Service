@@ -3,7 +3,7 @@ import pipelineutils
 import constants
 import warnings
 
-def test_nsip_project_notebook(credential_name, azure_credential, synapse_endpoint: str):
+def test_pins_lpa_curated(credential_name, azure_credential, synapse_endpoint: str):
 
     warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
