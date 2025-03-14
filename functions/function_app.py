@@ -879,3 +879,4 @@ def test_function(req: func.HttpRequest, logs: func.SqlRowList) -> func.HttpResp
         )
     except Exception as e:
         return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+    
