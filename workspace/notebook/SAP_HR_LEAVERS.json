@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b3d74331-a113-4e55-9642-9f7929f0e8c3"
+				"spark.autotune.trackingId": "a1991ac8-49fe-4f5e-974d-8043df8be1bc"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,41 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 105
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SET spark.sql.legacy.timeParserPolicy = LEGACY; "
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"\n",
+					"\n",
+					"-- Delete records where PersNo is null\n",
+					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers \n",
+					""
+				],
+				"execution_count": 91
 			},
 			{
 				"cell_type": "markdown",
@@ -131,11 +165,11 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"SET spark.sql.legacy.timeParserPolicy = LEGACY; -- Enables support for flexible date parsing\n",
+					"\n",
 					"\n",
 					"-- Delete records where PersNo is null\n",
-					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers \n",
-					"WHERE PersNo IS NULL;\n",
+					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers ;\n",
+					"---WHERE PersNo IS NULL;\n",
 					"\n",
 					"-- Insert data into the harmonised table\n",
 					"INSERT INTO odw_harmonised_db.stage_SAP_HR_Leavers\n",
@@ -229,7 +263,7 @@
 					"FROM \n",
 					"    odw_standardised_db.sap_hr_leavers_monthly;"
 				],
-				"execution_count": 106
+				"execution_count": 100
 			},
 			{
 				"cell_type": "markdown",
@@ -260,7 +294,7 @@
 					"where EmployeeNo is null\n",
 					""
 				],
-				"execution_count": 107
+				"execution_count": 101
 			},
 			{
 				"cell_type": "code",
@@ -276,13 +310,17 @@
 					"set Leaving = '2024-02-29'\n",
 					" where PersNo = '50426514'"
 				],
-				"execution_count": 108
+				"execution_count": 102
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
+					},
+					"editable": false,
+					"run_control": {
+						"frozen": true
 					},
 					"collapsed": false
 				},
@@ -294,7 +332,7 @@
 					"set Leaving = current_date()\n",
 					""
 				],
-				"execution_count": 109
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -310,7 +348,7 @@
 					"update odw_harmonised_db.stage_SAP_HR_Leavers \n",
 					" set Annualsalary = null;"
 				],
-				"execution_count": 110
+				"execution_count": 103
 			},
 			{
 				"cell_type": "markdown",
@@ -359,7 +397,7 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 111
+				"execution_count": 104
 			},
 			{
 				"cell_type": "code",
@@ -372,9 +410,9 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"delete from odw_harmonised_db.load_SAP_HR_Leavers"
+					"delete from odw_harmonised_db.SAP_HR_Leavers"
 				],
-				"execution_count": 112
+				"execution_count": 111
 			},
 			{
 				"cell_type": "markdown",
@@ -427,13 +465,177 @@
 					"maxdate = f\"{max_year + 1}-03-31\"\n",
 					"\n",
 					"# Delete records from the target table\n",
-					"target_table = DeltaTable.forName(spark, \"odw_harmonised_db.SAP_HR_Leavers\")\n",
+					"target_table = DeltaTable.forName(spark, \"odw_harmonised_db.load_SAP_HR_Leavers\")\n",
 					"target_table.delete(f\"Leaving BETWEEN '{mindate}' AND '{maxdate}'\")\n",
 					"\n",
 					"# Step 5: Insert records into SAP_HR_Leavers\n",
 					"df_filtered.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.load_SAP_HR_Leavers\")"
 				],
-				"execution_count": 113
+				"execution_count": 130
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"print(max_year)"
+				],
+				"execution_count": 85
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select min(Leaving),max(Leaving) from odw_standardised_db.sap_hr_leavers_monthly;"
+				],
+				"execution_count": 97
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select min(Leaving),max(Leaving) from odw_harmonised_db.stage_SAP_HR_Leavers"
+				],
+				"execution_count": 98
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"select count(*) from odw_harmonised_db.load_SAP_HR_Leavers"
+				],
+				"execution_count": 131
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"\n",
+					" select count(*) from odw_harmonised_db.load_SAP_HR_Leavers;"
+				],
+				"execution_count": 125
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"\n",
+					" select * from odw_harmonised_db.load_SAP_HR_Leavers limit 2 ;"
+				],
+				"execution_count": 108
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"drop table  odw_harmonised_db.load_SAP_HR_Leavers "
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from   odw_harmonised_db.load_SAP_HR_Leavers  where PersNo = '00500588'"
+				],
+				"execution_count": 132
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT  count(*),PersNo\n",
+					"  FROM odw_harmonised_db.load_SAP_HR_Leavers\n",
+					"  group by \n",
+					"PersNo\n",
+					"order by count(*) desc"
+				],
+				"execution_count": 129
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT *\n",
+					"FROM odw_harmonised_db.stage_SAP_HR_Leavers a\n",
+					" left join odw_harmonised_db.load_SAP_HR_Leavers b\n",
+					"    on a.PersNo = b.PersNo\n",
+					""
+				],
+				"execution_count": 126
 			},
 			{
 				"cell_type": "code",
