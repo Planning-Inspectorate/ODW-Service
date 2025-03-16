@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "85208a9b-031d-424e-8680-f175d2827b92"
+				"spark.autotune.trackingId": "0db193fe-9442-4665-8929-86b75c79554b"
 			}
 		},
 		"metadata": {
@@ -119,21 +119,21 @@
 				"cell_type": "code",
 				"source": [
 					"def get_delta_tables(base_path):\n",
-					"    \n",
-					"    #Retrieve the list of Delta tables available in the given base path\n",
+					"    \"\"\"Retrieve the list of Delta tables from the storage path.\"\"\"\n",
 					"    try:\n",
-					"        return [tbl.name for tbl in spark.catalog.listTables(base_path) if tbl.tableType == \"DELTA\"]\n",
-					"        print([tbl.name for tbl in spark.catalog.listTables(base_path) if tbl.tableType == \"DELTA\"])\n",
+					"        table_list = []\n",
+					"        for item in mssparkutils.fs.ls(base_path):\n",
+					"            table_path = item.path.rstrip(\"/\") # Remove trailing slash if any\n",
+					"            if mssparkutils.fs.ls(table_path + \"/_delta_log\"): # Check if it's a Delta table\n",
+					"                table_list.append(item.name)\n",
+					"        return table_list\n",
 					"    except Exception as e:\n",
 					"        print(f\"Error retrieving Delta tables: {e}\")\n",
 					"        return []\n",
 					"\n",
 					"def process_delta_table(table_name):\n",
-					"    \n",
-					"    #Process the Delta table to find and modify the specified columns\n",
-					"    delta_table_path = f\"{source_database_name}{table_name}\"\n",
-					"\n",
-					"    print(delta_table_path)\n",
+					"    \"\"\"Process the Delta table to find and modify the specified columns.\"\"\"\n",
+					"    delta_table_path = f\"{delta_table_base_path}{table_name}\"\n",
 					"\n",
 					"    if DeltaTable.isDeltaTable(spark, delta_table_path):\n",
 					"        print(f\"Processing Delta Table: {table_name}\")\n",
@@ -147,7 +147,7 @@
 					"\n",
 					"            for col_name in target_columns:\n",
 					"                df = df.withColumn(col_name, when(col(col_name).isNotNull() & (col(col_name).cast(\"string\").rlike(\"^\\\\d{1,7}$\")), lpad(col(col_name).cast(\"string\"), 8, '0'))\n",
-					"                                .otherwise(col(col_name)))\n",
+					"                                    .otherwise(col(col_name)))\n",
 					"\n",
 					"            # Write back to Delta Table\n",
 					"            df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
@@ -158,7 +158,7 @@
 					"        print(f\"Skipping non-Delta Table: {table_name}\")\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -173,7 +173,7 @@
 					"print(\"Processing completed.\")\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
