@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f50d785b-acac-4b80-97a9-93a17e4487c8"
+				"spark.autotune.trackingId": "c27fc370-b09a-4a83-a165-ee691c021cd4"
 			}
 		},
 		"metadata": {
@@ -175,6 +175,40 @@
 					""
 				],
 				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Define source and target Delta tables\n",
+					"\n",
+					"source_table = \"odw_standardised_db.sap_hr_previous_employee_numbers\"\n",
+					"target_tables = [\n",
+					"    \"odw_standardised_db.sap_hr_weekly\",\n",
+					"    \"odw_standardised_db.sap_hr_history_monthly\",\n",
+					"    \"odw_standardised_db.sap_hr_leavers_monthly\"\n",
+					"]\n",
+					"\n",
+					"# Load source data\n",
+					"df_source = spark.read.format(\"delta\").table(source_table)\n",
+					"\n",
+					"# Iterate through target tables and update EmployeeNo where PersNo matches\n",
+					"for target_table in target_tables:\n",
+					"    print(f\"Updating {target_table}...\")\n",
+					"\n",
+					"    spark.sql(f\"\"\"\n",
+					"        MERGE INTO {target_table} AS target\n",
+					"        USING {source_table} AS source\n",
+					"        ON target.PersNo = source.PersNo\n",
+					"        WHEN MATCHED THEN\n",
+					"        UPDATE SET target.EmployeeNo = source.EmployeeNo\n",
+					"    \"\"\")\n",
+					"\n",
+					"    print(f\"Updated {target_table}\")\n",
+					"\n",
+					"print(\"Delta table updates completed.\")\n",
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
