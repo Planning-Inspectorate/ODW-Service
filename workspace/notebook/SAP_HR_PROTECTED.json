@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7eafa5af-934a-4c24-b5dd-b45111a80eab"
+				"spark.autotune.trackingId": "a49efbda-b6c4-4364-9dac-5f84c203a0d1"
 			}
 		},
 		"metadata": {
@@ -107,7 +107,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -121,7 +121,7 @@
 					"%%sql\n",
 					"SET spark.sql.ansi.enabled = false;"
 				],
-				"execution_count": 1
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -173,7 +173,7 @@
 					"\n",
 					")"
 				],
-				"execution_count": 6
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -199,6 +199,21 @@
 					"      )"
 				],
 				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select left(Report_MonthEnd_Date,7) from  odw_harmonised_db.sap_hr_protected_data "
+				],
+				"execution_count": 55
 			},
 			{
 				"cell_type": "markdown",
@@ -239,7 +254,7 @@
 					"    FROM \n",
 					"        odw_harmonised_db.hist_SAP_HR h \n",
 					"    WHERE \n",
-					"        Report_MonthEnd_Date > '2019-03' \n",
+					"        left(Report_MonthEnd_Date,7) > '2019-03' \n",
 					"        AND h.PayrollArea = 'PINS'\n",
 					"    GROUP BY \n",
 					"        Report_MonthEnd_Date\n",
@@ -269,7 +284,7 @@
 					"WHEN MATCHED AND source.action = 'DELETE' THEN DELETE\n",
 					"WHEN NOT MATCHED AND source.action = 'INSERT' THEN INSERT *;"
 				],
-				"execution_count": 15
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -294,97 +309,7 @@
 					"      )\n",
 					"      )"
 				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"    SELECT \n",
-					"        Report_MonthEnd_Date, \n",
-					"        COUNT(*) AS history_rows\n",
-					"    FROM \n",
-					"        odw_harmonised_db.hist_SAP_HR h \n",
-					"    WHERE \n",
-					"        Report_MonthEnd_Date > '2019-03' \n",
-					"        AND h.PayrollArea = 'PINS'\n",
-					"    GROUP BY \n",
-					"        Report_MonthEnd_Date"
-				],
-				"execution_count": 16
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"from pyspark.sql import SparkSession\n",
-					"from pyspark.sql.functions import col, expr, substring, regexp_replace, count, date_format, to_date\n",
-					"\n",
-					"# Initialize Spark session\n",
-					"spark = SparkSession.builder.appName(\"SAP_HR_Processing\").getOrCreate()\n",
-					"\n",
-					"# Step 1: Create the `pc` DataFrame\n",
-					"pc_df = (\n",
-					"    spark.table(\"odw_harmonised_db.SAP_HR_PC\")\n",
-					"    .filter(col(\"RefNo\").isNotNull())\n",
-					"    .withColumn(\"file_name\", date_format(\n",
-					"        to_date(substring(regexp_replace(col(\"file_name\"), \".xlsx\", \"\"), -8, 8), \"yyyyMMdd\"), \"yyyy-MM\"\n",
-					"    ))\n",
-					"    .groupBy(\"file_name\", \"file\")\n",
-					"    .agg(count(\"*\").alias(\"s_count\"))\n",
-					")\n",
-					"\n",
-					"# Step 2: Create the `x2` DataFrame\n",
-					"x2_df = (\n",
-					"    spark.table(\"odw_harmonised_db.SAP_HR\")\n",
-					"    .filter((substring(col(\"Report_MonthEnd_Date\").cast(\"string\"), 1, 7) > \"2019-03\")\n",
-					"    .filter(col(\"PayrollArea\") == \"PINS\")\n",
-					"    .withColumn(\"r_month\", substring(col(\"Report_MonthEnd_Date\").cast(\"string\"), 1, 7))\n",
-					"    .groupBy(\"r_month\")\n",
-					"    .agg(count(\"*\").alias(\"history_rows\"))\n",
-					")\n",
-					"\n",
-					"# Step 3: Perform the DELETE operation\n",
-					"# Identify rows to delete\n",
-					"delete_files_df = (\n",
-					"    pc_df.alias(\"pc\")\n",
-					"    .join(x2_df.alias(\"x2\"), col(\"pc.file_name\") == col(\"x2.r_month\"))\n",
-					"    .filter(col(\"pc.s_count\") == col(\"x2.history_rows\"))\n",
-					"    .select(\"pc.file\")\n",
-					")\n",
-					"\n",
-					"# Delete rows from `protected_data`\n",
-					"protected_data_df = spark.table(\"odw_harmonised_db.protected_data\")\n",
-					"protected_data_df = protected_data_df.join(delete_files_df, on=\"file_name\", how=\"left_anti\")\n",
-					"\n",
-					"# Overwrite the `protected_data` table with the filtered data\n",
-					"protected_data_df.write.mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.protected_data\")\n",
-					"\n",
-					"# Step 4: Perform the INSERT operation\n",
-					"# Identify rows to insert\n",
-					"insert_files_df = (\n",
-					"    pc_df.alias(\"pc\")\n",
-					"    .join(x2_df.alias(\"x2\"), col(\"pc.file_name\") == col(\"x2.r_month\"))\n",
-					"    .filter(col(\"pc.s_count\") == col(\"x2.history_rows\"))\n",
-					"    .select(\"pc.file\")\n",
-					")\n",
-					"\n",
-					"# Filter rows from `SAP_HR_PC` to insert\n",
-					"insert_data_df = (\n",
-					"    spark.table(\"odw_harmonised_db.SAP_HR_PC\")\n",
-					"    .join(insert_files_df, on=\"file_name\", how=\"inner\")\n",
-					")\n",
-					"\n",
-					"# Insert rows into `protected_data`\n",
-					"insert_data_df.write.mode(\"append\").saveAsTable(\"odw_harmonised_db.protected_data\")"
-				],
-				"execution_count": null
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -426,9 +351,9 @@
 					"      ,null as RowID\n",
 					"      ,'Y' as IsActive\n",
 					" from \n",
-					"odw_standardised_db.sap_hr_protected_data_hist limit 5 ;"
+					"odw_standardised_db.sap_hr_protected_data_hist ;"
 				],
-				"execution_count": 25
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -481,10 +406,18 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
 				"source": [
-					""
+					"%%sql\n",
+					"\n",
+					"select count(*) from odw_harmonised_db.sap_hr_protected_data"
 				],
-				"execution_count": null
+				"execution_count": 60
 			}
 		]
 	}
