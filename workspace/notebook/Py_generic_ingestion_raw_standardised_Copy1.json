@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "db3e9bb4-be47-4c1d-9b37-dc7c4c5bebe4"
+				"spark.autotune.trackingId": "52986a96-2abb-4e5c-ab3b-0cfc52edc82c"
 			}
 		},
 		"metadata": {
@@ -848,6 +848,17 @@
 					"        .withColumn(\"expected_to\", lit(datetime.now().strftime('%Y-%m-%d')).cast(TimestampType()))\r\n",
 					"    )\r\n",
 					"\r\n",
+					"# Reorder dataframe columns to bring additional metadata columns to the front\r\n",
+					"def reorder_columns(df):\r\n",
+					"    \"\"\"Reorders the columns so that metadata columns come first.\"\"\"\r\n",
+					"    try:\r\n",
+					"        metadata_cols = [\"ingested_datetime\", \"expected_from\", \"expected_to\"]\r\n",
+					"        remaining_cols = [col for col in df.columns if col not in metadata_cols]\r\n",
+					"        return df.select(metadata_cols + remaining_cols)\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error reordering columns: {e}\")\r\n",
+					"        return df\r\n",
+					"\r\n",
 					"# Function to Load Data into Delta Tables\r\n",
 					"def load_into_delta(table_name, df, delta_base_path, database_name):\r\n",
 					"    # Loads the DataFrame into a Delta Table\r\n",
@@ -856,6 +867,8 @@
 					"        full_table_name = f\"{database_name}.{table_name}\"\r\n",
 					"\r\n",
 					"        df = add_metadata_columns(df) # Add metadata columns\r\n",
+					"\r\n",
+					"        df = reorder_columns(df) # Reorder dataframe columns to bring columns to the front\r\n",
 					"\r\n",
 					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
 					"            print(f\"Overwriting data to Delta Table: {full_table_name}\")\r\n",
