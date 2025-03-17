@@ -1,0 +1,780 @@
+{
+	"name": "Py_generic_ingestion_raw_standardised_Copy1",
+	"properties": {
+		"folder": {
+			"name": "odw-raw"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "a3af89d6-6784-44e5-9cb3-f5f7ac6f34cf"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to reads all recent files from the given odw-raw folder path and load the data into standardised_db lakehouse database's Delta tables\r\n",
+					"\r\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \r\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;19-Jan-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is generic to cater to `.xlsx` and `.csv` files for creating Delta Tables.\r\n",
+					"\r\n",
+					"##### The input parameters are:\r\n",
+					"###### Param_FileFolder_Path => This is a mandatory parameter which refers to a folder path of the entities like 'Timesheets', 'SapHrData'\r\n",
+					"###### Param_File_Load_Type  => This is an optional parameter refers to a subfolders if there is any like Monthly,Daily, Quarterly etc.\r\n",
+					"###### Param_Json_SchemaFolder_Name => This is a mandatory parameter which refers to a schema file in json format required to create delta tables.\r\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"tags": [
+						"parameters"
+					]
+				},
+				"source": [
+					"#Define Input Parameters to get values from the pipleline\r\n",
+					"Param_File_Load_Type = ''\r\n",
+					"Param_FileFolder_Path = 'StaticTables'\r\n",
+					"Param_Json_SchemaFolder_Name = 'statictables'"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Import all required Python Libraries"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"tags": []
+				},
+				"source": [
+					"#import all libraries and initialise Spark Session\r\n",
+					"import json\r\n",
+					"import calendar\r\n",
+					"from datetime import datetime, timedelta, date\r\n",
+					"import requests\r\n",
+					"#import pandas as pd\r\n",
+					"import pyspark.sql.functions as F \r\n",
+					"import os\r\n",
+					"import re\r\n",
+					"from itertools import chain\r\n",
+					"from collections.abc import Mapping\r\n",
+					"from operator import add\r\n",
+					"from notebookutils import mssparkutils\r\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format, when, length, lpad\r\n",
+					"from pprint import pprint as pp\r\n",
+					"from pyspark.sql.types import *\r\n",
+					"from pyspark.sql import SparkSession\r\n",
+					"spark = SparkSession.builder.getOrCreate()\r\n",
+					"from delta.tables import DeltaTable\r\n",
+					"#ignore FutureWarning messages \r\n",
+					"import warnings\r\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
+					""
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get Storage account"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#Get Storage account name\r\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
+					"print(storage_account)"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all required folder paths"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Define all Folder paths used in the notebook\r\n",
+					"\r\n",
+					"odw_raw_base_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\r\n",
+					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}\"\r\n",
+					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\r\n",
+					"database_name = \"odw_standardised_db\"\r\n",
+					"\r\n",
+					"print(delta_table_base_path)\r\n",
+					"print(odw_raw_base_folder_path)"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Find the recent Date subfolder path and construct the odw-raw path dynamically"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\r\n",
+					"# Define the base directory where subfolders exist\r\n",
+					"# Construct the odw-raw path dynamically\r\n",
+					"\r\n",
+					"# Check if notebook parameter Param_File_Load_Type is not null then construct the odw-raw path dynamically\r\n",
+					"\r\n",
+					"Param_File_Load_Type = Param_File_Load_Type if Param_File_Load_Type else \"\"\r\n",
+					"\r\n",
+					"try:\r\n",
+					"    # Construct the odw-raw path dynamically\r\n",
+					"    if Param_File_Load_Type.strip().lower() != \"none\":\r\n",
+					"        odw_raw_folder_path = odw_raw_base_folder_path.rstrip('/')  # Ensure no trailing slash\r\n",
+					"        odw_raw_folder_path = f\"{odw_raw_base_folder_path}{Param_File_Load_Type}/\"\r\n",
+					"        if Param_File_Load_Type ==\"\":\r\n",
+					"            odw_raw_folder_path = odw_raw_base_folder_path\r\n",
+					"            #print(odw_raw_folder_path)\r\n",
+					"    else:\r\n",
+					"        odw_raw_folder_path = odw_raw_base_folder_path\r\n",
+					"        print(odw_raw_folder_path)  # Debugging: Check the final path\r\n",
+					"    \r\n",
+					"    # Get the list of date-wise subfolders in the odw-raw folder path directory\r\n",
+					"    \r\n",
+					"    if not mssparkutils.fs.ls(odw_raw_folder_path):\r\n",
+					"        raise FileNotFoundError(f\"The specified path does not exist: {odw_raw_folder_path}\")\r\n",
+					"\r\n",
+					"    subfolders = [f.name for f in mssparkutils.fs.ls(odw_raw_folder_path) if f.isDir]\r\n",
+					"\r\n",
+					"      \r\n",
+					"    # Filter subfolders that match the date format (yyyy-MM-dd)\r\n",
+					"    valid_dates = []\r\n",
+					"    for folder in subfolders:\r\n",
+					"        try:\r\n",
+					"            folder_date = datetime.strptime(folder, \"%Y-%m-%d\")\r\n",
+					"            valid_dates.append(folder_date)\r\n",
+					"        except ValueError:\r\n",
+					"            pass  # Ignore folders that don't match the date format\r\n",
+					"    \r\n",
+					"    # Find the most recent date-wise folder\r\n",
+					"    if valid_dates:\r\n",
+					"        latest_date = max(valid_dates)\r\n",
+					"        latest_folder = latest_date.strftime(\"%Y-%m-%d\")\r\n",
+					"        odw_raw_folder_path = f\"{odw_raw_folder_path}{latest_folder}/\"\r\n",
+					"        print(f\"Most recent folder complete path: {odw_raw_folder_path}\")\r\n",
+					"    else:\r\n",
+					"        print(\"No valid date folders found. Unable to construct odw-raw folder path\")\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
+					""
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Build JSON Schema file path if create_schema.json file exist in odw-config location"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#Build JSON Schema file path if create_schema.json file exist in odw-config location\r\n",
+					"\r\n",
+					"try:\r\n",
+					"    json_file_path =f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}\"\r\n",
+					"                    \r\n",
+					"\r\n",
+					"    json_file_name = \"create_schema.json\"\r\n",
+					"\r\n",
+					"    #print(json_file_path)\r\n",
+					"\r\n",
+					"    # List the contents of the folder\r\n",
+					"    json_file = mssparkutils.fs.ls(json_file_path)\r\n",
+					"\r\n",
+					"    print(json_file)\r\n",
+					"\r\n",
+					"    # Check if there are any files (excluding subdirectories)\r\n",
+					"    json_file_exists = any(f.name == json_file_name for f in json_file)\r\n",
+					"\r\n",
+					"    # Print result\r\n",
+					"    if json_file_exists:\r\n",
+					"        json_file_path = f\"abfss://odw-config@{storage_account}schema_creation/{Param_Json_SchemaFolder_Name.lower()}/{json_file_name}\"\r\n",
+					"        print(f\"Files exist in the folder: {json_file_path}\")\r\n",
+					"    else:\r\n",
+					"        print(f\"No files found in the folder: {json_file_path}\")\r\n",
+					"\r\n",
+					"    # Read JSON from ADLS Gen2\r\n",
+					"    schema_df = spark.read.text(json_file_path)\r\n",
+					"    schema_json = \"\".join([row.value for row in schema_df.collect()])  # Convert to string\r\n",
+					"    schema_data = json.loads(schema_json)  \r\n",
+					"\r\n",
+					"    # Print loaded schema\r\n",
+					"    #print(json.dumps(schema_data, indent=4))\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
+					""
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Check whether .xlsx or .csv files exist in the recent date subfolder path location"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Check whether .xlsx or .csv files exist in odw-raw folder path location\r\n",
+					"\r\n",
+					"# List all files in the folder\r\n",
+					"\r\n",
+					"try:\r\n",
+					"    input_data_files = mssparkutils.fs.ls(odw_raw_folder_path)\r\n",
+					"\r\n",
+					"    # Filter out only files (ignore directories)\r\n",
+					"    file_list = [f.name for f in input_data_files if not f.isDir]\r\n",
+					"\r\n",
+					"    if not file_list:\r\n",
+					"        print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
+					"    else:\r\n",
+					"        # Check if there are .xlsx or .csv files\r\n",
+					"        xlsx_files = [f for f in file_list if f.lower().endswith(\".xlsx\")]    \r\n",
+					"        cleaned_xlsx_files = [re.sub(r'\\d+','', f).replace(\".xlsx\",f\"{Param_File_Load_Type if Param_File_Load_Type else ''}\").lower() for f in xlsx_files]   \r\n",
+					"\r\n",
+					"        csv_files = [f for f in file_list if f.lower().endswith(\".csv\")]\r\n",
+					"        # cleaned .csv file by removing digits, space and file extention\r\n",
+					"        #cleaned_csv_files = [re.sub(r'\\d+\\.csv$','', f).replace(\" \",\"\").lower() for f in csv_files]\r\n",
+					"        cleaned_csv_files = [re.sub(r'\\d+\\.csv$', '', f).replace(\" \", \"\").replace(\".csv\", f\"_{Param_File_Load_Type}\" if Param_File_Load_Type else \"\").lower() for f in csv_files]\r\n",
+					"\r\n",
+					"        print(f\"Total files found: {len(file_list)}\")\r\n",
+					"        print(f\"Excel files (.xlsx): {xlsx_files if xlsx_files else 'None'}\")\r\n",
+					"        print(f\"CSV files (.csv): {csv_files if csv_files else 'None'}\")\r\n",
+					"\r\n",
+					"        print(f\"Excel files (.xlsx) cleaned: {cleaned_xlsx_files}\")\r\n",
+					"\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Error getting files from the {odw_raw_folder_path} folder path: {e}\")\r\n",
+					"    \r\n",
+					""
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all files and dataframe processing related functions"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Create File list\r\n",
+					"def list_files(folder_path):\r\n",
+					"    \"\"\"Returns a list of file names in the given folder.\"\"\"\r\n",
+					"    try:\r\n",
+					"        return [f.name for f in mssparkutils.fs.ls(folder_path) if not f.isDir]\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error listing files in {folder_path}: {e}\")\r\n",
+					"        return []\r\n",
+					"\r\n",
+					"# Clean all column names from the souce file dataframe by removing special character like \".\",\":\" \" \" \r\n",
+					"def clean_column_names(df):\r\n",
+					"    \"\"\"Removes special characters from column names.\"\"\"\r\n",
+					"    try:\r\n",
+					"        df = df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c.replace(\" \",\"\")) for c in df.columns])\r\n",
+					"        \r\n",
+					"        # remove all records if all columns having Null values\r\n",
+					"        df = df.dropna(how=\"all\")\r\n",
+					"\r\n",
+					"        # Identify columns that are already DateType\r\n",
+					"        date_columns = [field.name for field in df.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
+					"\r\n",
+					"        #print(\"Detected Date Columns:\", date_columns)\r\n",
+					"\r\n",
+					"        # If PersNo or StaffNumber exists, add leading zeros for values having 6 characters lengths\r\n",
+					"        for column in [\"PersNo\", \"StaffNumber\"]: \r\n",
+					"            if column in df.columns: \r\n",
+					"                df = df.withColumn(column, when(length(col(column)) == 6, lpad(col(column), 8, \"0\")).otherwise(col(column)))\r\n",
+					"\r\n",
+					"        return df\r\n",
+					"        \r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error cleaning column names: {e}\")\r\n",
+					"        return df\r\n",
+					"\r\n",
+					"# Add additional metadata columns for Standardised_db Lakehouse database\r\n",
+					"def add_metadata_columns(df):\r\n",
+					"    \"\"\"Adds standard metadata columns to the DataFrame.\"\"\"\r\n",
+					"    try:\r\n",
+					"        return (df\r\n",
+					"            .withColumn(\"ingested_datetime\", lit(datetime.now()).cast(TimestampType()))\r\n",
+					"            .withColumn(\"expected_from\", lit((datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')).cast(TimestampType()))\r\n",
+					"            .withColumn(\"expected_to\", lit(datetime.now().strftime('%Y-%m-%d')).cast(TimestampType()))\r\n",
+					"        )\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error adding metadata columns: {e}\")\r\n",
+					"        return df\r\n",
+					"\r\n",
+					"# Reorder dataframe columns to bring additional metadata columns to the front\r\n",
+					"def reorder_columns(df):\r\n",
+					"    \"\"\"Reorders the columns so that metadata columns come first.\"\"\"\r\n",
+					"    try:\r\n",
+					"        metadata_cols = [\"ingested_datetime\", \"expected_from\", \"expected_to\"]\r\n",
+					"        remaining_cols = [col for col in df.columns if col not in metadata_cols]\r\n",
+					"        return df.select(metadata_cols + remaining_cols)\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error reordering columns: {e}\")\r\n",
+					"        return df\r\n",
+					"\r\n",
+					"# Load file dataframe in preparedness to load data into Standerdised_DB database Delta Table.\r\n",
+					"def load_file(file_path, file_type):\r\n",
+					"    \"\"\"Reads a file into a PySpark DataFrame based on file type.\"\"\"\r\n",
+					"    try:\r\n",
+					"        if file_type == \"xlsx\":\r\n",
+					"            return spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\r\n",
+					"        elif file_type == \"csv\":\r\n",
+					"            return spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").load(file_path)\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error loading file {file_path}: {e}\")\r\n",
+					"        return None\r\n",
+					""
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"run_control": {
+						"frozen": false
+					},
+					"editable": true
+				},
+				"source": [
+					"##### Load all files dataframe into Standerdised_db database Delta Tables."
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def process_file(original_filename, file_type, folder_path, delta_base_path, database_name):\r\n",
+					"    \"\"\"Handles loading, cleaning, and writing data to Delta Tables.\"\"\"\r\n",
+					"    try:\r\n",
+					"        if Param_File_Load_Type.strip().lower() != \"none\":\r\n",
+					"            table_name = re.sub(r'\\d+', '', original_filename).replace(f\".{file_type}\", f\"{Param_File_Load_Type}\").lower()\r\n",
+					"        else:\r\n",
+					"            table_name = re.sub(r'\\d+', '', original_filename).replace(f\".{file_type}\",\"\").lower()\r\n",
+					"        \r\n",
+					"        delta_table_path = f\"{delta_base_path}/{table_name}\"\r\n",
+					"        full_table_name = f\"{database_name}.{table_name}\"\r\n",
+					"        \r\n",
+					"        file_path = f\"{folder_path}/{original_filename}\"\r\n",
+					"        \r\n",
+					"        df = load_file(file_path, file_type)\r\n",
+					"        if df is None:\r\n",
+					"            return\r\n",
+					"        df = clean_column_names(df)\r\n",
+					"        file_record_count = df.count()        \r\n",
+					"        df = add_metadata_columns(df)\r\n",
+					"        df = reorder_columns(df)\r\n",
+					"        \r\n",
+					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
+					"            print(f\"Delta Table exists for {full_table_name}. Loading data from {original_filename}\")\r\n",
+					"            target_df = spark.read.format(\"delta\").load(delta_table_path)\r\n",
+					"            target_record_count = target_df.count()\r\n",
+					"        else:\r\n",
+					"            print(f\"Delta Table does NOT exist for {full_table_name}. Creating table using {original_filename}\")\r\n",
+					"            target_record_count = 0\r\n",
+					"            schema_df = spark.read.option(\"multiline\", \"true\").json(json_file_path)\r\n",
+					"            schema_data = schema_df.collect()\r\n",
+					"            \r\n",
+					"            if schema_data:\r\n",
+					"                schema_tables = schema_data[0].asDict().get(\"table_name\", {})\r\n",
+					"                if table_name in schema_tables:\r\n",
+					"                    columns = schema_tables[table_name][\"columns\"]\r\n",
+					"                    schema_str = \", \".join([f\"{col['name']} {col['type']}\" for col in columns])\r\n",
+					"                    spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS {full_table_name} ({schema_str}) USING DELTA LOCATION '{delta_table_path}'\"\"\")\r\n",
+					"                else:\r\n",
+					"                    print(f\"Rohit table_name : {table_name}\")\r\n",
+					"                    print(f\"Schema not found for {table_name} in create_schema.json\")\r\n",
+					"                    return\r\n",
+					"        \r\n",
+					"        df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"        print(f\"Data successfully loaded for {table_name} using {original_filename}.\")\r\n",
+					"        print(f\"File Record Count: {file_record_count}, Target Table Record Count: {target_record_count}\")\r\n",
+					"    except Exception as e:\r\n",
+					"        print(f\"Error processing file {original_filename}: {e}\")\r\n",
+					"\r\n",
+					"# Main Execution\r\n",
+					"try:\r\n",
+					"    file_list = list_files(odw_raw_folder_path)\r\n",
+					"    if not file_list:\r\n",
+					"        print(f\"No files found in the folder: {odw_raw_folder_path}\")\r\n",
+					"    else:\r\n",
+					"        for file_type in [\"xlsx\", \"csv\"]:\r\n",
+					"            files = [f for f in file_list if f.lower().endswith(f\".{file_type}\")]\r\n",
+					"            for file in files:\r\n",
+					"                process_file(file, file_type, odw_raw_folder_path, delta_table_base_path, database_name)\r\n",
+					"except Exception as e:\r\n",
+					"    print(f\"Unexpected error in main execution: {e}\")"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.hr_absence_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.inspector_addresses_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.inspector_specialisms_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_email_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_history_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_leavers_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_protected_monthly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.inspector_addresses_weekly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.inspector_specialisms_weekly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.sap_hr_weekly\")\r\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_standardised_db.work_schedules\")\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Sample Source DataFrame with column names\r\n",
+					"#data = [(1, \"Alice\", 30), (2, \"Bob\", 25)]\r\n",
+					"#source_df = spark.createDataFrame(data, [\"id\", \"name\", \"age\"])\r\n",
+					"\r\n",
+					"# Simulate Delta Table Column Names\r\n",
+					"#delta_table_columns = [\"ID\", \"FULL_NAME\", \"AGE_YEARS\"]\r\n",
+					"\r\n",
+					"# Compute hex values of column names\r\n",
+					"#source_hex_mapping = {col: source_df.select(expr(f\"md5('{col}') as hex\")).collect()[0][\"hex\"] for col in source_df.columns}\r\n",
+					"#target_hex_mapping = {col: spark.createDataFrame([(col,)], [\"col\"]).select(expr(f\"md5(col) as hex\")).collect()[0][\"hex\"] for col in delta_table_columns}\r\n",
+					"\r\n",
+					"# Match source columns to delta table columns\r\n",
+					"#column_aliases = {src_col: tgt_col for src_col, src_hex in source_hex_mapping.items() for tgt_col, tgt_hex in target_hex_mapping.items() if src_hex == tgt_hex}\r\n",
+					"\r\n",
+					"# Rename columns dynamically\r\n",
+					"#renamed_df = source_df.select([expr(f\"`{col}` as `{column_aliases.get(col, col)}`\") for col in source_df.columns])\r\n",
+					"\r\n",
+					"# Show results\r\n",
+					"#print(\"Original Source DataFrame:\")\r\n",
+					"#source_df.show()\r\n",
+					"\r\n",
+					"#print(\"Renamed DataFrame to match Delta Table:\")\r\n",
+					"#renamed_df.show()\r\n",
+					""
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"##Debugging section\r\n",
+					"\r\n",
+					"\r\n",
+					"#Excel files (.xlsx): ['Inspector_Addresses_20250217.xlsx', 'Inspector_specialisms_20250217.xlsx', 'SAP_Email20250217.xlsx', 'SAP_HR20250217.xlsx']\r\n",
+					"#CSV files (.csv): None\r\n",
+					"#Excel files (.xlsx) cleaned: ['inspector_addresses_weekly', 'inspector_specialisms_weekly', 'sap_emailweekly', 'sap_hrweekly']\r\n",
+					"\r\n",
+					" #['Calendar.csv', 'Employee.csv', 'Segment_Type_Reference.csv', 'Work_Segment_File.csv', 'Work_Segment_Lock.csv']\r\n",
+					"\r\n",
+					"#schema_str = 'StreetandHouseNumber string,2ndAddressLine string,City string,District string,PostalCode string,RegionStateProvinceCount string,StartDate string,EndDate string,ChartingOfficer string,ChartingOfficerforInspector string,SubsPSgroup string,TelNo string,PersonalMobile string,WorkMobile string,StaffNumber string,Chngdon string'\r\n",
+					"\r\n",
+					"# Read the Excel file\r\n",
+					"#df_xlsx_file = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/SAP_HR_Leavers_20250224.xlsx\")\r\n",
+					"\r\n",
+					"#df_xlsx_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").option(\"delimiter\", \",\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/LegacyTimeSheets/2025-02-20/MWRToDCategoryMapping.csv\")\r\n",
+					"\r\n",
+					"# Standardize column names (remove special characters)\r\n",
+					"#df_xlsx_file = df_xlsx_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_xlsx_file.columns])\r\n",
+					"\r\n",
+					"#print(f\"Before {df_xlsx_file.count()}\")\r\n",
+					"\r\n",
+					"#before_xls_df = df_xlsx_file\r\n",
+					"\r\n",
+					"#print(df_xlsx_file.printSchema)\r\n",
+					"\r\n",
+					"#df_xlsx_file = df_xlsx_file.dropna(how=\"all\")\r\n",
+					"\r\n",
+					"#after_xls_df = df_xlsx_file\r\n",
+					"\r\n",
+					"#print(f\"Before {after_xls_df.count()}\")\r\n",
+					"\r\n",
+					"#df_result = after_xls_df.exceptAll(before_xls_df)\r\n",
+					"\r\n",
+					"\r\n",
+					"#df_xlsx_file.printSchema\r\n",
+					"\r\n",
+					"#display(df_result)\r\n",
+					"\r\n",
+					"# Identify columns that are already DateType\r\n",
+					"#date_columns = [field.name for field in df_xlsx_file.schema.fields if isinstance(field.dataType, TimestampType)]\r\n",
+					"\r\n",
+					"#print(\"Detected Date Columns:\", date_columns)\r\n",
+					"\r\n",
+					"# Convert and format only DateType columns dynamically\r\n",
+					"##for col_name in date_columns:\r\n",
+					"#    df_xlsx_file = df_xlsx_file.withColumn(col_name, date_format(col(col_name), \"dd-MM-yyyy\"))  # Ensure correct display format\r\n",
+					"\r\n",
+					"#spark.sql(f\"\"\"CREATE TABLE IF NOT EXISTS odw_standardised_db.mwrtodcategorymapping (Shortname STRING,DSubCategory STRING, Dcategory STRING) USING DELTA LOCATION 'abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/legacytimesheets/MWRToDCategoryMapping/'\"\"\")\r\n",
+					"\r\n",
+					"#df_xlsx_file.write.format(\"delta\").mode(\"overwrite\").save(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/saphr/MWRToDCategoryMapping/\")\r\n",
+					"\r\n",
+					"#df_csv_file = spark.read.format(\"csv\").option(\"header\", \"true\").option(\"inferSchema\", \"false\").option(\"delimiter\", \",\").option(\"mode\", \"PERMISSIVE\").option(\"columnNameOfCorruptRecord\", \"_corrupt_record\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/SQLscript16.csv\")\r\n",
+					"\r\n",
+					"#df_csv_file = df_csv_file.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_csv_file.columns])\r\n",
+					"\r\n",
+					"# Check if any corrupt records exist\r\n",
+					"#df_corrupt = df_csv_file.filter(\"_corrupt_record IS NOT NULL\")\r\n",
+					"#df_corrupt.show(truncate=False)\r\n",
+					"\r\n",
+					"#df_sniff = spark.read.text(f\"{odw_raw_folder_path}/MWRToDCategoryMapping.csv\")\r\n",
+					"#df_sniff.show(truncate=False)\r\n",
+					"\r\n",
+					"#df_xlsx_file = df_xlsx_file.select(col(\"PersNo\"))\r\n",
+					"\r\n",
+					"#print(df_csv_file.count())\r\n",
+					"#print(df_xlsx_file.count())\r\n",
+					"\r\n",
+					"#df = df_xlsx_file.exceptAll(df_csv_file)\r\n",
+					"\r\n",
+					"#display(df)\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"# Display the corrected DataFrame\r\n",
+					"#df_csv_file.printSchema()\r\n",
+					"\r\n",
+					"\r\n",
+					"\r\n",
+					"#print(df_xlsx_file.count())\r\n",
+					"\r\n",
+					"#display(df_xlsx_file)\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"##Debugging section\r\n",
+					"\r\n",
+					"# Read source data (Excel file)\r\n",
+					"#df_source = spark.read.format(\"com.crealytics.spark.excel\").option(\"header\", \"true\").option(\"inferSchema\", \"true\").load(\"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/SapHrData/MONTHLY/2025-02-24/SAP_HR_Leavers_20250224.xlsx\")\r\n",
+					"\r\n",
+					"# Read target data (Delta Table)\r\n",
+					"#df_target = spark.read.format(\"delta\").table(\"odw_standardised_db.sap_hr_leavers_monthly\")\r\n",
+					"\r\n",
+					"#df_source = df_source.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c) for c in df_source.columns])\r\n",
+					"\r\n",
+					"#df_source = df_source.toDF(*[c.lower().replace(\" \", \"_\") for c in df_source.columns])\r\n",
+					"\r\n",
+					"#df_target = df_target.toDF(*[c.lower().replace(\" \", \"_\") for c in df_target.columns])\r\n",
+					"\r\n",
+					"\r\n",
+					"#df_missing = df_source.join(df_target, on=df_source.columns, how=\"left_anti\")\r\n",
+					"\r\n",
+					"#display(df_missing)"
+				],
+				"execution_count": 11
+			}
+		]
+	}
+}
