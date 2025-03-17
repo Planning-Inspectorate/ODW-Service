@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a49efbda-b6c4-4364-9dac-5f84c203a0d1"
+				"spark.autotune.trackingId": "c204aec6-02e5-40b6-b94f-23f1e4a3a9aa"
 			}
 		},
 		"metadata": {
@@ -107,7 +107,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 108
 			},
 			{
 				"cell_type": "code",
@@ -121,22 +121,7 @@
 					"%%sql\n",
 					"SET spark.sql.ansi.enabled = false;"
 				],
-				"execution_count": 49
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * from odw_standardised_db.sap_protected_monthly"
-				],
-				"execution_count": 2
+				"execution_count": 109
 			},
 			{
 				"cell_type": "code",
@@ -162,7 +147,7 @@
 					"      ,NULLIF(SxO, '')\n",
 					"      ,Grade\n",
 					"      ,NULLIF(DisabilityText, '')\n",
-					"      ,cast(Report_MonthEnd_Date as date)  as Report_MonthEnd_Date\n",
+					"      ,cast(to_timestamp(Report_MonthEnd_Date, \"dd/MM/yyyy\") as date)  as Report_MonthEnd_Date\n",
 					"      , 'saphr' AS SourceSystemID\n",
 					"    ,CURRENT_DATE() AS IngestionDate\n",
 					"   , CURRENT_TIMESTAMP() AS ValidTo\n",
@@ -173,7 +158,7 @@
 					"\n",
 					")"
 				],
-				"execution_count": 50
+				"execution_count": 110
 			},
 			{
 				"cell_type": "code",
@@ -198,22 +183,7 @@
 					"      )\n",
 					"      )"
 				],
-				"execution_count": 17
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select left(Report_MonthEnd_Date,7) from  odw_harmonised_db.sap_hr_protected_data "
-				],
-				"execution_count": 55
+				"execution_count": 111
 			},
 			{
 				"cell_type": "markdown",
@@ -249,7 +219,7 @@
 					"),\n",
 					"x2 AS (\n",
 					"    SELECT \n",
-					"        Report_MonthEnd_Date, \n",
+					"       cast(to_timestamp(Report_MonthEnd_Date, \"dd/MM/yyyy\") as date) as Report_MonthEnd_Date, \n",
 					"        COUNT(*) AS history_rows\n",
 					"    FROM \n",
 					"        odw_harmonised_db.hist_SAP_HR h \n",
@@ -265,11 +235,8 @@
 					"    INNER JOIN x2 \n",
 					"        ON pc.Report_MonthEnd_Date = x2.Report_MonthEnd_Date\n",
 					"    WHERE pc.s_count = x2.history_rows\n",
-					")\n",
-					"\n",
-					"-- Use MERGE to delete and insert rows\n",
-					"MERGE INTO odw_harmonised_db.sap_hr_protected_data AS target\n",
-					"USING (\n",
+					"),\n",
+					"source_data AS (\n",
 					"    SELECT \n",
 					"        SAP_HR_PC.*,\n",
 					"        CASE \n",
@@ -279,12 +246,25 @@
 					"    FROM odw_harmonised_db.SAP_HR_PC\n",
 					"    LEFT JOIN to_delete \n",
 					"        ON SAP_HR_PC.Report_MonthEnd_Date = to_delete.Report_MonthEnd_Date\n",
+					"),\n",
+					"deduplicated_source AS (\n",
+					"    SELECT \n",
+					"        *,\n",
+					"        ROW_NUMBER() OVER (PARTITION BY Report_MonthEnd_Date ORDER BY RefNo) AS row_num\n",
+					"    FROM source_data\n",
+					")\n",
+					"-- Use MERGE to delete and insert rows\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_protected_data AS target\n",
+					"USING (\n",
+					"    SELECT * \n",
+					"    FROM deduplicated_source \n",
+					"    WHERE row_num = 1 -- Ensure only one row per Report_MonthEnd_Date\n",
 					") AS source\n",
 					"ON target.Report_MonthEnd_Date = source.Report_MonthEnd_Date\n",
 					"WHEN MATCHED AND source.action = 'DELETE' THEN DELETE\n",
 					"WHEN NOT MATCHED AND source.action = 'INSERT' THEN INSERT *;"
 				],
-				"execution_count": 56
+				"execution_count": 112
 			},
 			{
 				"cell_type": "code",
@@ -309,7 +289,7 @@
 					"      )\n",
 					"      )"
 				],
-				"execution_count": 57
+				"execution_count": 113
 			},
 			{
 				"cell_type": "markdown",
@@ -329,6 +309,10 @@
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
+					},
+					"editable": false,
+					"run_control": {
+						"frozen": true
 					},
 					"collapsed": false
 				},
@@ -353,71 +337,7 @@
 					" from \n",
 					"odw_standardised_db.sap_hr_protected_data_hist ;"
 				],
-				"execution_count": 61
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select \n",
-					"\n",
-					"REPLACE(RIGHT(REPLACE(file_name, '.xlsx', ''), 8), '_', '-')\n",
-					" from   \n",
-					"odw_standardised_db.sap_hr_protected_data_hist"
-				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"describe odw_standardised_db.sap_hr_protected_data_hist"
-				],
-				"execution_count": 15
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"describe odw_harmonised_db.sap_hr_protected_data"
-				],
-				"execution_count": 13
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select count(*) from odw_harmonised_db.sap_hr_protected_data"
-				],
-				"execution_count": 60
+				"execution_count": 106
 			}
 		]
 	}
