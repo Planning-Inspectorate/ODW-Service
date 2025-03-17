@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3d379691-a731-46ae-9331-3fee318bdc6b"
+				"spark.autotune.trackingId": "db3e9bb4-be47-4c1d-9b37-dc7c4c5bebe4"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"Param_FileFolder_Path = 'StaticTables'\r\n",
 					"Param_Json_SchemaFolder_Name = 'statictables'"
 				],
-				"execution_count": 2
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -173,7 +173,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 4
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -212,7 +212,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_base_folder_path)"
 				],
-				"execution_count": 5
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -290,7 +290,7 @@
 					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -357,7 +357,7 @@
 					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -419,7 +419,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -783,7 +783,7 @@
 				"source": [
 					"# Load JSON Schema\r\n",
 					"try:\r\n",
-					"    schema_df = spark.read.text(schema_file_path)\r\n",
+					"    schema_df = spark.read.text(json_file_path)\r\n",
 					"    schema_json = \"\".join([row.value for row in schema_df.collect()])\r\n",
 					"    schema_data = json.loads(schema_json)\r\n",
 					"except Exception as e:\r\n",
@@ -795,6 +795,7 @@
 					"    return df.toDF(*[re.sub(r\"[^a-zA-Z0-9_]\", \"\", c.replace(\" \", \"\")) for c in df.columns])\r\n",
 					"\r\n",
 					"# Function to Read Multiple Files and Group by Similar File Names\r\n",
+					"\r\n",
 					"def load_files_by_table_name(folder_path, file_type, schema_data):\r\n",
 					"    # Reads multiple files of the given type and groups them into DataFrames based on JSON schema table names.\r\n",
 					"    files = [f.path for f in mssparkutils.fs.ls(folder_path) if f.name.endswith(file_type)]\r\n",
@@ -810,18 +811,20 @@
 					"\r\n",
 					"        # Match file name with JSON schema table names\r\n",
 					"        matched_table = None\r\n",
-					"        for table_name in schema_data.get(\"tables\", {}):\r\n",
+					"        for table_name in schema_data.get(\"table_name\", {}):\r\n",
 					"            if table_name in file_name:\r\n",
 					"                matched_table = table_name\r\n",
 					"                break\r\n",
 					"\r\n",
 					"        if matched_table:\r\n",
 					"            temp_df = spark.read.format(\"csv\" if file_type == \"csv\" else \"com.crealytics.spark.excel\").option(\"header\", \"true\").load(file)\r\n",
-					"            temp_df = clean_column_names(temp_df)  # Ensure column consistency\r\n",
+					"            temp_df = clean_column_names(temp_df) # Ensure column consistency\r\n",
 					"\r\n",
 					"            # Compare schema and drop additional columns\r\n",
-					"            expected_columns = [col[\"name\"] for col in schema_data.get(\"tables\", {}).get(matched_table, {}).get(\"columns\", [])]\r\n",
-					"            actual_columns = temp_df.columns\r\n",
+					"            expected_columns = [col[\"name\"].lower() for col in schema_data.get(\"table_name\", {}).get(matched_table, {}).get(\"columns\", [])]\r\n",
+					"            \r\n",
+					"            actual_columns = set([col.lower() for col in temp_df.columns])\r\n",
+					"\r\n",
 					"            extra_columns = list(set(actual_columns) - set(expected_columns))\r\n",
 					"\r\n",
 					"            if extra_columns:\r\n",
@@ -852,14 +855,13 @@
 					"        delta_table_path = f\"{delta_base_path}/{table_name}\"\r\n",
 					"        full_table_name = f\"{database_name}.{table_name}\"\r\n",
 					"\r\n",
-					"        df = add_metadata_columns(df)  # Add metadata columns\r\n",
+					"        df = add_metadata_columns(df) # Add metadata columns\r\n",
 					"\r\n",
 					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
-					"            print(f\"Appending data to Delta Table: {full_table_name}\")\r\n",
-					"            df.write.format(\"delta\").mode(\"append\").save(delta_table_path)\r\n",
-					"        else:\r\n",
-					"            print(f\"Creating new Delta Table: {full_table_name}\")\r\n",
+					"            print(f\"Overwriting data to Delta Table: {full_table_name}\")\r\n",
 					"            df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
+					"        else:\r\n",
+					"            print(f\"Creating new Delta Table: {full_table_name}\")            \r\n",
 					"            spark.sql(f\"CREATE TABLE IF NOT EXISTS {full_table_name} USING DELTA LOCATION '{delta_table_path}'\")\r\n",
 					"\r\n",
 					"        print(f\"Data successfully loaded for table: {table_name}\")\r\n",
@@ -870,13 +872,13 @@
 					"try:\r\n",
 					"    # Process both CSV and XLSX files\r\n",
 					"    for file_type in [\"csv\", \"xlsx\"]:\r\n",
-					"        table_dataframes = load_files_by_table_name(odw_raw_base_folder_path, file_type, schema_data)\r\n",
+					"        table_dataframes = load_files_by_table_name(odw_raw_folder_path, file_type, schema_data)\r\n",
 					"        for table_name, df in table_dataframes.items():\r\n",
 					"            load_into_delta(table_name, df, delta_table_base_path, database_name)\r\n",
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error in main execution: {e}\")"
 				],
-				"execution_count": null
+				"execution_count": 25
 			}
 		]
 	}
