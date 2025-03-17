@@ -20,12 +20,12 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4f380eed-fb36-4f94-8c3c-6f876eb2a423"
+				"spark.autotune.trackingId": "91e04e74-de7c-46ee-b1d4-02a83b96f94d"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": false,
+			"enableDebugMode": true,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -63,7 +63,7 @@
 					"from pyspark.sql.functions import lit, monotonically_increasing_id, col, when\n",
 					"from pyspark.sql import Row, DataFrame"
 				],
-				"execution_count": 7
+				"execution_count": 168
 			},
 			{
 				"cell_type": "code",
@@ -73,11 +73,11 @@
 					]
 				},
 				"source": [
-					"entity_name = \"service-user\"\n",
-					"primary_key = \"id\"\n",
-					"num_records = 10"
+					"entity_name = \"s51-advice\"\n",
+					"primary_key = \"adviceId\"\n",
+					"num_records = 1000"
 				],
-				"execution_count": 8
+				"execution_count": 169
 			},
 			{
 				"cell_type": "markdown",
@@ -106,17 +106,13 @@
 					"            existing_ids.add(new_id)\n",
 					"    return new_uuids\n",
 					"    \n",
-					"def generate_random_value(field_name: str, field_type):\n",
+					"def generate_random_value(field_name: str, field_type, json_field):\n",
 					"    \"\"\"Generate a random value based on the field's data type.\"\"\"\n",
-					"    if field_name == \"message_type\":\n",
-					"        return \"Create\"\n",
-					"    if field_name == \"message_id\":\n",
-					"        return faker.unique.uuid4()\n",
-					"    if field_name == \"IsActive\":\n",
-					"        return random.choice([\"Y\"])\n",
 					"    if field_name == \"caseReference\":\n",
 					"        return f\"TR{random.randint(1, 10**6)}\"\n",
 					"    if isinstance(field_type, StringType):\n",
+					"        if 'enum' in json_field:\n",
+					"            return random.choice(json_field['enum'])\n",
 					"        return faker.word()\n",
 					"    elif isinstance(field_type, LongType):\n",
 					"        return random.randint(1, 10**9)\n",
@@ -132,37 +128,53 @@
 					"        return datetime.now().date() - timedelta(days=random.randint(0, 365))\n",
 					"    elif isinstance(field_type, BooleanType):\n",
 					"        return random.choice([True, False])\n",
+					"    elif isinstance(field_type, ArrayType):\n",
+					"        num_array_elements = random.randint(0, 10)\n",
+					"        if isinstance(field_type.elementType, StringType):\n",
+					"            return [faker.word() for _ in range(num_array_elements)]\n",
+					"        else:\n",
+					"            return []\n",
 					"    else:\n",
 					"        return None\n",
 					"\n",
-					"def generate_random_row(schema):\n",
+					"def generate_random_row(spark_schema, json_schema):\n",
 					"    \"\"\"Generate a random row of data based on the schema.\"\"\"\n",
-					"    return {field.name: generate_random_value(field.name, field.dataType) for field in schema.fields}\n",
+					"    return {field.name: generate_random_value(field.name, field.dataType, json_schema[field.name]) for field in schema.fields}\n",
 					"\n",
-					"def generate_random_dataframe(schema: StructType, num_records: int):\n",
+					"def generate_random_dataframe(spark_schema: StructType, json_schema: dict, num_records: int):\n",
 					"    \"\"\"Generate a PySpark DataFrame with random data based on the schema.\"\"\"\n",
 					"    # Generate random data\n",
-					"    data = [generate_random_row(schema) for _ in range(num_records)]\n",
-					"    \n",
+					"    data = [generate_random_row(spark_schema, json_schema) for _ in range(num_records)]\n",
+					"\n",
+					"    for row in data:\n",
+					"        row['EventType'] = 'Create'\n",
+					"        row['sourceSystem'] = 'ODT'\n",
+					"        row['message_id'] = faker.unique.uuid4()\n",
+					"\n",
 					"    # Create DataFrame\n",
-					"    return spark.createDataFrame(data, schema=schema)"
+					"    return spark.createDataFrame(data)"
 				],
-				"execution_count": 9
+				"execution_count": 170
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"schema = StructType.fromJson(json.loads(mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \n",
-					"                            arguments={\"entity_name\": entity_name, \"db_name\": 'odw_curated_db'})))"
+					"spark_schema = StructType.fromJson(json.loads(mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \n",
+					"                            arguments={\"entity_name\": entity_name, \"db_name\": 'odw_curated_db'})))\n",
+					"\n",
+					"json_schema = mssparkutils.notebook.run(path=\"service-bus/py_create_spark_schema\", \n",
+					"                            arguments={\"entity_name\": entity_name, \"db_name\": 'odw_curated_db', 'return_json_schema': True})\n",
+					"json_schema = json.loads(json_schema.replace(\"'\", '\"').replace(\"None\", \"null\").replace(\"True\", \"true\").replace(\"False\", \"false\"))\n",
+					""
 				],
-				"execution_count": 10
+				"execution_count": 171
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"df = generate_random_dataframe(schema, num_records)"
+					"df = generate_random_dataframe(spark_schema, json_schema['properties'], num_records)"
 				],
-				"execution_count": 11
+				"execution_count": 172
 			},
 			{
 				"cell_type": "code",
@@ -172,7 +184,27 @@
 				"source": [
 					"display(df)"
 				],
-				"execution_count": 12
+				"execution_count": 173
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"formatted_data = [\n",
+					"    {\n",
+					"        'Body': str({k: v for k, v in row.asDict().items() if k != 'EventType'}),\n",
+					"        'UserProperties': {'type': row['EventType']}\n",
+					"    }\n",
+					"    for row in df.collect()\n",
+					"]"
+				],
+				"execution_count": 174
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"mssparkutils.notebook.exit(formatted_data)"
+				],
+				"execution_count": 175
 			}
 		]
 	}
