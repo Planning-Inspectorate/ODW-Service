@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "00b2f232-3f81-4e37-8161-801e39763c63"
+				"spark.autotune.trackingId": "747e6f59-d239-4b5b-98fb-31c8b3486999"
 			}
 		},
 		"metadata": {
@@ -612,7 +612,29 @@
 					"    \n",
 					""
 				],
-				"execution_count": 108
+				"execution_count": 118
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Step 1: Create a temporary view for holidays\n",
+					"spark.sql(\"\"\"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW holidays_view AS\n",
+					"SELECT \n",
+					"    HolidayDate\n",
+					"FROM \n",
+					"    odw_harmonised_db.Live_Holidays;\n",
+					"\"\"\")\n",
+					"\n",
+					"# Step 2: Use MERGE to delete rows where absencedate matches a holiday\n",
+					"spark.sql(\"\"\"\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_fact_absence_all AS target\n",
+					"USING holidays_view AS source\n",
+					"ON CAST(target.absencedate AS DATE) = source.HolidayDate\n",
+					"WHEN MATCHED THEN DELETE;\n",
+					"\"\"\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -677,131 +699,6 @@
 					")"
 				],
 				"execution_count": 84
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"# Step 1: Create a temporary view for holidays\n",
-					"spark.sql(\"\"\"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW holidays_view AS\n",
-					"SELECT \n",
-					"    HolidayDate\n",
-					"FROM \n",
-					"    odw_harmonised_db.Live_Holidays;\n",
-					"\"\"\")\n",
-					"\n",
-					"# Step 2: Use MERGE to delete rows where absencedate matches a holiday\n",
-					"spark.sql(\"\"\"\n",
-					"MERGE INTO odw_harmonised_db.sap_hr_fact_absence_all AS target\n",
-					"USING holidays_view AS source\n",
-					"ON CAST(target.absencedate AS DATE) = source.HolidayDate\n",
-					"WHEN MATCHED THEN DELETE;\n",
-					"\"\"\")"
-				],
-				"execution_count": 76
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"\n",
-					"SELECT DISTINCT\n",
-					"    d.date_value AS absencedate,\n",
-					"    CASE\n",
-					"        WHEN (aa.Days BETWEEN 0.01 AND 0.99) THEN \n",
-					"            CASE d.day_of_week\n",
-					"                WHEN 2 THEN (ws.Mo) * (aa.Days)\n",
-					"                WHEN 3 THEN (ws.Tu) * (aa.Days)\n",
-					"                WHEN 4 THEN (ws.We) * (aa.Days)\n",
-					"                WHEN 5 THEN (ws.Th) * (aa.Days)\n",
-					"                WHEN 6 THEN (ws.Fr) * (aa.Days)\n",
-					"                ELSE 0 \n",
-					"            END\n",
-					"        ELSE \n",
-					"            CASE d.day_of_week\n",
-					"                WHEN 2 THEN ws.Mo\n",
-					"                WHEN 3 THEN ws.Tu\n",
-					"                WHEN 4 THEN ws.We\n",
-					"                WHEN 5 THEN ws.Th\n",
-					"                WHEN 6 THEN ws.Fr\n",
-					"                ELSE 0 \n",
-					"            END \n",
-					"    END AS absencehours,\n",
-					"    CASE\n",
-					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '4%' THEN \n",
-					"            '50' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
-					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '5%' THEN \n",
-					"            '00' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
-					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '6%' THEN \n",
-					"            '60' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
-					"        ELSE LPAD(StaffNumber, 7, '0')\n",
-					"    END  AS staffnumber,\n",
-					"    aa.WorkScheduleRule,\n",
-					"    aa.AbsType,\n",
-					"    aa.SicknessGroup,\n",
-					"    aa.AttendanceorAbsenceType,\n",
-					"    ROUND(CASE\n",
-					"        WHEN (aa.AbsType = 'CB01' AND aa.Days = 0) THEN 1\n",
-					"        WHEN (aa.AbsType = 'MT01' AND aa.Days = 0) THEN 1\n",
-					"        WHEN (aa.AttendanceorAbsenceType = 'Spec u/p-up to 3mths' AND aa.Days = 0) THEN 1\n",
-					"        WHEN aa.Caldays = 0 THEN aa.Hrs / aa.HrsDay\n",
-					"        ELSE 1 \n",
-					"    END, 2) AS Leave,\n",
-					"    NULL AS PSGroup,\n",
-					"    NULL AS PersonnelArea,\n",
-					"    NULL AS PersonnelSubarea,\n",
-					"    aa.SourceSystemID,\n",
-					"    aa.IngestionDate,\n",
-					"    aa.ValidTo,\n",
-					"    aa.RowID,\n",
-					"    aa.IsActive\n",
-					"FROM \n",
-					"    odw_harmonised_db.sap_hr_absence_All aa\n",
-					"JOIN \n",
-					"    odw_harmonised_db.date_dimension d\n",
-					"    ON d.date_value BETWEEN aa.StartDate AND aa.EndDate\n",
-					"LEFT JOIN \n",
-					"    odw_standardised_db.work_schedules ws\n",
-					"    ON aa.WorkScheduleRule = ws.WorkScheduleRule\n",
-					"    WHERE \n",
-					"    -- Calculate working hours directly within the query\n",
-					"    CASE d.day_of_week\n",
-					"        WHEN 2 THEN ws.Mo\n",
-					"        WHEN 3 THEN ws.Tu\n",
-					"        WHEN 4 THEN ws.We\n",
-					"        WHEN 5 THEN ws.Th\n",
-					"        WHEN 6 THEN ws.Fr\n",
-					"        ELSE 0\n",
-					"    END > 0;\n",
-					""
-				],
-				"execution_count": 113
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select * FROM \n",
-					"   odw_standardised_db.work_schedules"
-				],
-				"execution_count": 111
 			},
 			{
 				"cell_type": "code",
