@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fd720d41-3ff7-47c5-aa6b-c8e42ae42a0e"
+				"spark.autotune.trackingId": "c8d2ed1e-dd12-4c02-b6a7-c54fc5b1dfb4"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"Param_FileFolder_Path = 'StaticTables'\r\n",
 					"Param_Json_SchemaFolder_Name = 'statictables'"
 				],
-				"execution_count": 21
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 22
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -173,7 +173,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 23
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -212,7 +212,7 @@
 					"print(delta_table_base_path)\r\n",
 					"print(odw_raw_base_folder_path)"
 				],
-				"execution_count": 24
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -290,7 +290,7 @@
 					"    print(f\"Error constructing odw-raw folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -357,7 +357,7 @@
 					"    print(f\"Error constructing odw-raw/schema_creation folder path: {e}\")\r\n",
 					""
 				],
-				"execution_count": 26
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -425,7 +425,7 @@
 					"    \r\n",
 					""
 				],
-				"execution_count": 27
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -516,7 +516,7 @@
 					"        return None\r\n",
 					""
 				],
-				"execution_count": 28
+				"execution_count": 23
 			},
 			{
 				"cell_type": "markdown",
@@ -634,7 +634,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -642,7 +642,8 @@
 					"#Revised Code#####\r\n",
 					"\r\n",
 					"def process_file(original_filename, file_type, folder_path, delta_base_path, database_name, final_df=None):\r\n",
-					"    \"\"\"Handles loading, cleaning, and writing data to Delta Tables.\"\"\"\r\n",
+					"    \r\n",
+					"    # Handles loading, cleaning, and writing data to Delta Tables\r\n",
 					"    try:\r\n",
 					"        if Param_File_Load_Type.strip().lower() != \"none\":\r\n",
 					"            table_name = re.sub(r'\\d+', '', original_filename).replace(f\".{file_type}\", f\"{Param_File_Load_Type}\").lower().rstrip(\"_\")\r\n",
@@ -666,8 +667,8 @@
 					"        # Clean column names and add metadata\r\n",
 					"        final_df = clean_column_names(final_df)\r\n",
 					"        file_record_count = final_df.count()\r\n",
-					"        final_df = add_metadata_columns(final_df)\r\n",
-					"        final_df = reorder_columns(final_df)\r\n",
+					"        #final_df = add_metadata_columns(final_df)\r\n",
+					"        #final_df = reorder_columns(final_df)\r\n",
 					"        \r\n",
 					"        # Check if Delta Table exists\r\n",
 					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\r\n",
@@ -686,6 +687,29 @@
 					"            if schema_data:\r\n",
 					"                schema_tables = schema_data[0].asDict().get(\"table_name\", {})\r\n",
 					"                print(f\"Loaded schema_tables: {schema_tables}\")  # Debugging Print\r\n",
+					"\r\n",
+					"                ########################\r\n",
+					"                # Ensure `table_name` exists in schema_tables before accessing columns\r\n",
+					"                if table_name in schema_tables and \"columns\" in schema_tables[table_name]:\r\n",
+					"                    schema_columns = [col[\"name\"].lower() for col in schema_tables[table_name][\"columns\"]]\r\n",
+					"                else:\r\n",
+					"                    print(f\" ERROR: Table '{table_name}' not found in schema or missing 'columns' key. Skipping extra column check.\")\r\n",
+					"                    schema_columns = []  # Default to empty list to prevent errors\r\n",
+					"\r\n",
+					"                df_columns = [col.lower() for col in final_df.columns]  # Actual dataframe columns (lowercase)\r\n",
+					"                extra_columns = list(set(df_columns) - set(schema_columns))  # Identify extra columns\r\n",
+					"\r\n",
+					"                \r\n",
+					"                #print(f\"schema_columns {schema_columns}\")\r\n",
+					"                #print (f\"df_columns {df_columns}\")\r\n",
+					"                #print (f\"extra_columns {extra_columns}\")\r\n",
+					"\r\n",
+					"                if extra_columns:\r\n",
+					"                    print(f\"Extra columns found in {table_name}: {extra_columns}\")  # Print extra columns\r\n",
+					"                    final_df = final_df.drop(*extra_columns)  # Drop extra columns\r\n",
+					"                ####################  \r\n",
+					"                final_df = add_metadata_columns(final_df)\r\n",
+					"                final_df = reorder_columns(final_df)  \r\n",
 					"\r\n",
 					"                if table_name in schema_tables:\r\n",
 					"                    columns = schema_tables[table_name][\"columns\"]\r\n",
@@ -709,6 +733,9 @@
 					"                    print(f\"Extra columns found in {table_name}: {extra_columns}\")  # Print extra columns\r\n",
 					"                    final_df = final_df.drop(*extra_columns)  # Drop extra columns\r\n",
 					"        \r\n",
+					"        final_df = add_metadata_columns(final_df)\r\n",
+					"        final_df = reorder_columns(final_df)  \r\n",
+					"\r\n",
 					"        # Write data to Delta Table\r\n",
 					"        final_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"        print(f\"Data successfully loaded for {table_name} using {original_filename}.\")\r\n",
@@ -719,7 +746,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 51
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -866,7 +893,7 @@
 					"except Exception as e:\r\n",
 					"    print(f\"Unexpected error while processing multiple files per table: {e}\")"
 				],
-				"execution_count": 52
+				"execution_count": 34
 			}
 		]
 	}
