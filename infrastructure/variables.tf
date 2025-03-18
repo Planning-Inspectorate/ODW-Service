@@ -325,7 +325,7 @@ variable "service_bus_role_assignments" {
   default     = {}
   type        = any
   description = <<-EOT
-    "A map of maps containing the role assignments to be created in the Service Bus Namespace.
+    "A map of maps containing the role assignments to bße created in the Service Bus Namespace.
     {
       "role_assignment_name" = {
         users = [
@@ -473,16 +473,6 @@ variable "synapse_data_exfiltration_enabled" {
   type        = bool
 }
 
-variable "synapse_role_assignments" {
-  default     = []
-  description = "A list of RBAC roles assignments for the Synapse Workspace"
-  type = list(object({
-    role_definition_name = string
-    principal_id         = string
-    principal_type       = optional(string)
-  }))
-}
-
 variable "synapse_sql_administrator_username" {
   default     = "synadmin"
   description = "The SQL administrator username for the Synapse Workspace"
@@ -520,7 +510,6 @@ variable "vnet_base_cidr_block_failover" {
   description = "The base IPv4 range for the failover Virtual Network in CIDR notation"
   type        = string
 }
-
 variable "vnet_subnets" {
   description = "A collection of subnet definitions used to logically partition the Virtual Network"
   type = list(object({

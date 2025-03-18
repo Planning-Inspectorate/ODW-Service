@@ -170,23 +170,6 @@ variable "synapse_data_exfiltration_enabled" {
   description = "Determines whether the Synapse Workspace should have data exfiltration protection enabled"
   type        = bool
 }
-
-variable "synapse_private_endpoint_dns_zone_id" {
-  description = "The ID of the Private DNS Zone hosting privatelink.azuresynapse.net"
-  type        = string
-}
-
-variable "synapse_private_endpoint_subnet_name" {
-  default     = "SynapseEndpointSubnet"
-  description = "The name of the subnet into which Synapse private endpoints should be deployed"
-  type        = string
-}
-
-variable "synapse_private_endpoint_vnet_subnets" {
-  description = "A map of subnet names and IDs comprising the linked Virtual Network for private endpoint deployment"
-  type        = map(string)
-}
-
 variable "synapse_role_assignments" {
   default     = []
   description = "A list of RBAC roles assignments for the Synapse Workspace"
