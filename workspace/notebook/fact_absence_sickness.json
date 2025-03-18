@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f4175cf0-6967-4717-ba50-ce882ab13d39"
+				"spark.autotune.trackingId": "76235c31-ff65-4658-ae37-1933d10168a5"
 			}
 		},
 		"metadata": {
@@ -61,7 +61,7 @@
 					}
 				},
 				"source": [
-					"# Entity : fact_absence_sickness\n",
+					"## Entity : fact_absence_sickness\n",
 					"###### Author: Prathap A\n",
 					"###### Date: 25/02/2025\n",
 					"\n",
@@ -91,7 +91,7 @@
 					"from datetime import datetime, timedelta\n",
 					"import pandas as pd"
 				],
-				"execution_count": 1
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -122,6 +122,7 @@
 					"LEFT JOIN odw_harmonised_db.live_dim_date de ON CAST(a.EndDate AS DATE) = de.date\n",
 					"WHERE a.AttendanceorAbsenceType = 'Sickness';\n",
 					"\n",
+					"\n",
 					"-- Step 2: Identify contiguous sickness periods using LEAD and LAG\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_with_lead_lag AS\n",
 					"SELECT \n",
@@ -135,6 +136,7 @@
 					"    END AS contiguous_sickness\n",
 					"FROM sickness s;\n",
 					"\n",
+					"\n",
 					"-- Step 3: Implement `DATEADDNOWKNOBH` logic within the query\n",
 					"-- This ensures that the next working day does not fall on weekends or holidays.\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_with_working_days AS\n",
@@ -147,10 +149,12 @@
 					"    ) AS next_working_day_after_previous_sickness\n",
 					"FROM sickness_with_lead_lag swl;\n",
 					"\n",
+					"\n",
 					"-- Step 4: Assign sickness ID using Spark SQL window function (Replaces WHILE Loop)\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_final AS\n",
 					"SELECT \n",
-					"    StaffNumber,\n",
+					" \n",
+					"  StaffNumber,\n",
 					"    SUM(\n",
 					"        CASE \n",
 					"            WHEN contiguous_sickness IS NULL OR sickness_start <> next_working_day_after_previous_sickness THEN 1\n",
@@ -175,11 +179,20 @@
 					"    END AS calendar_year\n",
 					"FROM sickness_with_working_days;\n",
 					"\n",
+					"\n",
 					"-- Step 5: Insert processed data into the existing fact table\n",
 					"INSERT OVERWRITE TABLE odw_harmonised_db.sap_hr_fact_absence_sickness\n",
 					"SELECT \n",
 					"    sickness_id,\n",
-					"    StaffNumber,\n",
+					"    CASE\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '4%' THEN \n",
+					"            '50' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '5%' THEN \n",
+					"            '00' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '6%' THEN \n",
+					"            '60' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        ELSE LPAD(StaffNumber, 7, '0')\n",
+					"    END  AS StaffNumber,\n",
 					"    Total_Days AS Days,\n",
 					"    sickness_start,\n",
 					"    sickness_end,\n",
@@ -195,7 +208,102 @@
 					"    CURRENT_TIMESTAMP() AS LastUpdated\n",
 					"FROM sickness_final;"
 				],
-				"execution_count": 2
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select  distinct StaffNumber\n",
+					"from odw_harmonised_db.sap_hr_fact_absence_sickness"
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    LEFT(LPAD(StaffNumber, 7, '0'), 1) AS FirstChar,\n",
+					"    LPAD(StaffNumber, 7, '0') AS StaffNumber,\n",
+					"    CASE\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '4%' THEN \n",
+					"            '50' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '5%' THEN \n",
+					"            '00' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '6%' THEN \n",
+					"            '60' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"        ELSE LPAD(StaffNumber, 7, '0')\n",
+					"    END AS StaffNumber2,\n",
+					"    LPAD(StaffNumber, 7, '0') AS StaffNumber3\n",
+					"FROM sickness_final;"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"    LEFT(LPAD(StaffNumber, 7, '0'), 1) AS FirstChar, -- Ensures it stays as a 7-character string\n",
+					"    LPAD(StaffNumber, 7, '0') AS StaffNumber,\n",
+					"    CASE \n",
+					"        WHEN LEFT(LPAD(StaffNumber, 7, '0'), 1) = '4' THEN '50' || LPAD(StaffNumber, 7, '0')\n",
+					"        WHEN LEFT(LPAD(StaffNumber, 7, '0'), 1) = '5' THEN '00' || LPAD(StaffNumber, 7, '0')\n",
+					"        WHEN LEFT(LPAD(StaffNumber, 7, '0'), 1) = '6' THEN '60' || LPAD(StaffNumber, 7, '0')\n",
+					"        ELSE LPAD(StaffNumber, 7, '0')\n",
+					"    END AS StaffNumber2,\n",
+					"    LPAD(StaffNumber, 7, '0') AS StaffNumber3\n",
+					"FROM sickness_final;"
+				],
+				"execution_count": 38
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"SELECT DISTINCT\n",
+					"\n",
+					"    LEFT(CAST(StaffNumber AS VARCHAR(10)), 1) AS FirstChar,\n",
+					"    StaffNumber,\n",
+					"    CASE \n",
+					"        WHEN LEFT(CAST(StaffNumber AS VARCHAR(10)), 1) = '4' THEN '50' + CAST(StaffNumber AS VARCHAR(10))\n",
+					"        WHEN LEFT(CAST(StaffNumber AS VARCHAR(10)), 1) = '5' THEN '00' + CAST(StaffNumber AS VARCHAR(10))\n",
+					"        WHEN LEFT(CAST(StaffNumber AS VARCHAR(10)), 1) = '6' THEN '60' + CAST(StaffNumber AS VARCHAR(10))\n",
+					"        ELSE CAST(StaffNumber AS VARCHAR(10))\n",
+					"    END AS StaffNumber2,\n",
+					"    StaffNumber AS StaffNumber3\n",
+					"FROM sickness_final;"
+				],
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +332,37 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 3
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select distinct StaffNumber from odw_harmonised_db.sap_hr_fact_absence_sickness;"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select * from odw_harmonised_db.sap_hr_fact_absence_sickness   where staffnumber = '410563'"
+				],
+				"execution_count": 1
 			}
 		]
 	}
