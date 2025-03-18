@@ -1,0 +1,198 @@
+{
+	"name": "ims_sb_poc_main_copy1",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach IMS Source",
+				"description": "For each IMS source defined in the parameters of this pipeline, this activity fetches the data from API and saves it in JSON format.",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get Storage Account",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.source_array",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "0_Raw_IMS_sb_poc",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "0_Raw_IMS_sb_poc",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"source": {
+										"value": "@item()",
+										"type": "Expression"
+									},
+									"storage_account": {
+										"value": "@replace(activity('Get Storage Account').output.status.Output.result.exitValue, '.dfs.core.windows.net/', '')",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get Storage Account",
+				"description": "Gets storage account name",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_utils_get_storage_account",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"conf": {
+						"spark.dynamicAllocation.enabled": true,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"driverSize": "Small",
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "Ingest Standardised",
+				"description": "Ingests the csv data from raw into the standardised layer.",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "JSON to CSV",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_raw_to_std",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"source_folder": {
+							"value": "IMS",
+							"type": "string"
+						},
+						"source_frequency_folder": {
+							"value": "New",
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"conf": {
+						"spark.dynamicAllocation.enabled": true,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"driverSize": "Small",
+					"numExecutors": null
+				}
+			},
+			{
+				"name": "JSON to CSV",
+				"description": "Converts the json data in raw to csv and removes the json files",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "ForEach IMS Source",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_convert_json_to_csv_poc",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"conf": {
+						"spark.dynamicAllocation.enabled": true,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"driverSize": "Small",
+					"numExecutors": null
+				}
+			}
+		],
+		"parameters": {
+			"source_array": {
+				"type": "array",
+				"defaultValue": [
+					"DQ_ValidationRule",
+					"DQ_ValidationRuleType",
+					"DQ_ValidationRuleParameter"
+				]
+			}
+		},
+		"variables": {
+			"item": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "POC IMS"
+		},
+		"annotations": []
+	}
+}
