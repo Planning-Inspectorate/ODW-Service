@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cf1c0c2f-c473-414e-9432-40277c4f292f"
+				"spark.autotune.trackingId": "febf6026-11dc-4941-89f5-8f1cfdbc667e"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"from datetime import datetime, timedelta\n",
 					"import pandas as pd"
 				],
-				"execution_count": 1
+				"execution_count": 9
 			},
 			{
 				"cell_type": "markdown",
@@ -249,7 +249,7 @@
 					"    CURRENT_TIMESTAMP() AS LastUpdated\n",
 					"FROM sickness_final;"
 				],
-				"execution_count": 2
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -278,7 +278,7 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 3
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -293,7 +293,49 @@
 					"\n",
 					"select  * from odw_harmonised_db.sap_hr_fact_absence_sickness where StaffNumber = '50410538'"
 				],
-				"execution_count": 4
+				"execution_count": 12
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"editable": true,
+					"run_control": {
+						"frozen": false
+					}
+				},
+				"source": [
+					"spark.sql(\"\"\"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW holidays_view AS\n",
+					"SELECT \n",
+					"    HolidayDate\n",
+					"FROM \n",
+					"    odw_harmonised_db.Live_Holidays;\n",
+					"\"\"\")\n",
+					"\n",
+					"# Step 2: Use MERGE to delete rows where absencedate matches a holiday\n",
+					"spark.sql(\"\"\"\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_fact_absence_sickness AS target\n",
+					"USING holidays_view AS source\n",
+					"ON CAST(target.sickness_start AS DATE) = source.HolidayDate\n",
+					"WHEN MATCHED THEN DELETE;\n",
+					"\"\"\")"
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"select  count(*) from odw_harmonised_db.sap_hr_fact_absence_sickness "
+				],
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
