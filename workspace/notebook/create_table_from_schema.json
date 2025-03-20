@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2e14722a-3c15-4739-abfd-e0335dca899c"
+				"spark.autotune.trackingId": "a40c6c8f-c474-4fff-a5f2-d7c1b4d8756b"
 			}
 		},
 		"metadata": {
@@ -34,15 +34,15 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"id": "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d/resourceGroups/pins-rg-data-odw-test-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-test-uks/bigDataPools/pinssynspodw",
 				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-test-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.4",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -249,6 +249,51 @@
 			},
 			{
 				"cell_type": "code",
+				"source": [
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
+					"df  = spark.read.json(metadata_path, multiLine=True)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Explode each metadata category separately (as they are nested lists)\n",
+					"standardised_df = df.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
+					"harmonised_df = df.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
+					"curated_df = df.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
+					"logging_df = df.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
+					"config_df = df.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
+					"\n",
+					"# Select the relevant fields\n",
+					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def get_table_metadata(db_name: str, table_name: str) -> (str, str):\n",
+					"    \"\"\"\n",
+					"    Extracts table_location and table_type given a database and table name.\n",
+					"    \"\"\"\n",
+					"    filtered_df = df_exploded.filter(\n",
+					"        (col(\"database_name\") == db_name) & (col(\"table_name\") == table_name)\n",
+					"    ).select(\"table_location\", \"table_type\")\n",
+					"    \n",
+					"    # Collect and return the result\n",
+					"    result = filtered_df.collect()\n",
+					"    if result:\n",
+					"        return result[0][\"table_location\"], result[0][\"table_type\"]\n",
+					"    else:\n",
+					"        return None, None\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
@@ -292,30 +337,51 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"@logging_to_appins\n",
-					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame, table_type: str = \"MANAGED\") -> None:\n",
+					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame) -> None:\n",
 					"    \"\"\"\n",
-					"    Creates a Spark table of the specified type.\n",
-					"    \n",
-					"    :param db_name: Name of the database.\n",
-					"    :param table_name: Name of the table.\n",
-					"    :param spark_dataframe: The DataFrame to be written as a table.\n",
-					"    :param table_type: The type of table ('EXTERNAL' or 'MANAGED'). Defaults to 'MANAGED'.\n",
-					"    :raises ValueError: If an invalid table type is provided.\n",
-					"    \"\"\"\n",
-					"    table_type = table_type.upper()\n",
-					"    \n",
-					"    if table_type not in {\"EXTERNAL\", \"MANAGED\"}:\n",
-					"        raise ValueError(f\"Invalid table type '{table_type}'. Must be 'EXTERNAL' or 'MANAGED'.\")\n",
-					"    \n",
-					"    try:\n",
-					"        spark_dataframe.write.format(\"delta\").saveAsTable(f\"{db_name}.{table_name}\")\n",
-					"        print(f\"{table_type} table '{db_name}.{table_name}' created successfully.\")\n",
-					"    except AnalysisException as e:\n",
-					"        print(f\"Error creating table '{db_name}.{table_name}': {e}\"\n",
+					"    Creates a Delta table in Synapse:\n",
+					"      - If table is 'External', writes to the provided `table_location`\n",
+					"      - Otherwise, creates a Managed table in Synapse.\n",
 					"\n",
-					"    \n",
-					"     "
+					"    :param db_name: Database name in Synapse\n",
+					"    :param table_name: Table name\n",
+					"    :param table_location: Table storage path (used for External tables)\n",
+					"    :param table_type: Type of the table (\"External\" or others)\n",
+					"    :param spark_dataframe: The DataFrame to be written as a table\n",
+					"    \"\"\"\n",
+					"\n",
+					"    table_location, table_type =  get_table_metadata(db_name, table_name)\n",
+					"\n",
+					"    try:\n",
+					"        table_full_name = f\"{db_name}.{table_name}\"\n",
+					"        logging.info(f\"Starting table creation: {table_full_name}, Table Type: {table_type}\")\n",
+					"\n",
+					"        if table_type.lower() == \"external\":\n",
+					"            logging.info(f\"Writing External table to: {table_location}\")\n",
+					"\n",
+					"            # Write DataFrame as External Delta Table\n",
+					"            spark_dataframe.write.format(\"delta\").mode(\"overwrite\").option(\"path\", table_location).saveAsTable(table_full_name)\n",
+					"\n",
+					"            logging.info(f\"External table {table_full_name} created at {table_location}\")\n",
+					"\n",
+					"        else:\n",
+					"            logging.info(f\"Creating a Managed Table in Synapse: {table_full_name}\")\n",
+					"\n",
+					"            # Write as Managed Table\n",
+					"            spark_dataframe.write.format(\"delta\").mode(\"overwrite\").saveAsTable(table_full_name)\n",
+					"\n",
+					"            logging.info(f\"Managed table {table_full_name} created in Synapse\")\n",
+					"\n",
+					"    except AnalysisException as e:\n",
+					"        if \"already exists\" in str(e):\n",
+					"            logging.warning(f\"Table {table_full_name} already exists. Consider using 'overwrite' mode.\")\n",
+					"        elif \"Permission denied\" in str(e):\n",
+					"            logging.error(f\"Permission issue while writing table {table_full_name}. Ensure correct access to {table_location}\")\n",
+					"        else:\n",
+					"            logging.error(f\"Error creating table {table_full_name}: {str(e)}\")\n",
+					"\n",
+					"    except Exception as e:\n",
+					"        logging.error(f\"Unexpected error creating table {table_full_name}: {str(e)}\")"
 				],
 				"execution_count": null
 			},
