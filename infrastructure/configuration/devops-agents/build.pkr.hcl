@@ -12,7 +12,7 @@ source "azure-arm" "azure-agents" {
     Project          = "tooling"
     CreatedBy        = "packer"
     TerraformVersion = "1.9.6"
-    pythonVersion    = "3.13"
+    pythonVersion    = "3.12"
   }
 
   client_id       = var.client_id
@@ -54,7 +54,7 @@ variable "client_secret" {
 }
 
 variable "image_prefix" {
-  default     = "devops-agents"
+  default     = "pytest"
   description = "The name for the image which will be created"
   type        = string
 }
