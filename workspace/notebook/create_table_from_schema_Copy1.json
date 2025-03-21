@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "81500065-a9f8-492e-84a8-f135ccf2a579"
+				"spark.autotune.trackingId": "69dd34da-1155-4cdc-8985-f0eb44c5d868"
 			}
 		},
 		"metadata": {
@@ -34,15 +34,15 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"id": "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d/resourceGroups/pins-rg-data-odw-test-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-test-uks/bigDataPools/pinssynspodw",
 				"name": "pinssynspodw",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-test-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.4",
+				"sparkVersion": "3.3",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -56,7 +56,7 @@
 				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
-						"outputs_hidden": false
+						"outputs_hidden": true
 					},
 					"nteract": {
 						"transient": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 33
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -93,7 +93,7 @@
 					"from pyspark.sql.utils import AnalysisException\n",
 					"import logging"
 				],
-				"execution_count": 31
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -125,62 +125,11 @@
 					]
 				},
 				"source": [
-					"db_name: str = 'odw_harmonised_db'\n",
-					"entity_name: str = 'test-01'\n",
+					"db_name: str = 'odw_standardised_db'\n",
+					"entity_name: str = 'appeal-document' #'appeal-document'\n",
 					"is_servicebus_schema: bool = True"
 				],
-				"execution_count": 16
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"from pyspark.sql import SparkSession \n",
-					"\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
-					"df  = spark.read.json(metadata_path, multiLine=True)"
-				],
-				"execution_count": 17
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# Explode each metadata category separately (as they are nested lists)\n",
-					"standardised_df = df.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
-					"harmonised_df = df.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
-					"curated_df = df.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
-					"logging_df = df.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
-					"config_df = df.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
-					"\n",
-					"# Select the relevant fields\n",
-					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")\n",
-					"\n",
-					"# # Show flattened metadata\n",
-					"# df_exploded.show(truncate=False)"
-				],
-				"execution_count": 12
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"def get_table_metadata(database_name: str, table_name: str):\n",
-					"    \"\"\"\n",
-					"    Extracts table_location and table_type given a database and table name.\n",
-					"    \"\"\"\n",
-					"    filtered_df = df_exploded.filter(\n",
-					"        (col(\"database_name\") == database_name) & (col(\"table_name\") == table_name)\n",
-					"    ).select(\"table_location\", \"table_type\")\n",
-					"    \n",
-					"    # Collect and return the result\n",
-					"    result = filtered_df.collect()\n",
-					"    if result:\n",
-					"        return result[0][\"table_location\"], result[0][\"table_type\"]\n",
-					"    else:\n",
-					"        return None, None\n",
-					" "
-				],
-				"execution_count": 20
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -207,7 +156,7 @@
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
 					""
 				],
-				"execution_count": 28
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -230,9 +179,11 @@
 					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
 					"    return table_name in table_names\n",
 					"\n",
-					"test_table_exists('odw_harmonised_db','test-01')"
+					"test_table_exists(db_name,table_name)\n",
+					"# test_table_exists('odw_harmonised_db','appeal_document')\n",
+					""
 				],
-				"execution_count": 29
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -254,9 +205,10 @@
 					"else:\n",
 					"    logInfo(f\"{db_name}.{table_name} Table does not already exist\")\n",
 					"\n",
-					"test_table_exists('odw_harmonised_db','test-01')"
+					"test_table_exists(db_name, table_name)\n",
+					"# test_table_exists('odw_harmonised_db','appeal_document')"
 				],
-				"execution_count": 34
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -283,7 +235,72 @@
 					"\n",
 					"get_incremental_key(entity_name, storage_account, path_to_orchestration_file)"
 				],
-				"execution_count": 43
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": true
+					}
+				},
+				"source": [
+					"# from pyspark.sql import SparkSession \n",
+					"\n",
+					"# spark = SparkSession.builder.getOrCreate()\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
+					"df  = spark.read.json(metadata_path, multiLine=True)"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Explode each metadata category separately (as they are nested lists)\n",
+					"standardised_df = df.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
+					"harmonised_df = df.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
+					"curated_df = df.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
+					"logging_df = df.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
+					"config_df = df.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
+					"\n",
+					"# Select the relevant fields\n",
+					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")\n",
+					"\n",
+					"# # Show flattened metadata \n",
+					"# df_exploded.show(truncate=False)"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def get_table_metadata(db_name: str, table_name: str) -> (str, str, str):\n",
+					"    \"\"\"\n",
+					"    Extracts table_location and table_type given a database and table name.\n",
+					"    \"\"\"\n",
+					"    filtered_df = df_exploded.filter(\n",
+					"        (col(\"database_name\") == db_name) & (col(\"table_name\") == table_name)\n",
+					"    ).select(\"table_location\", \"table_type\", \"table_format\")\n",
+					"    \n",
+					"    # Collect and return the result\n",
+					"    result = filtered_df.collect()\n",
+					"    if result:\n",
+					"        return result[0][\"table_location\"], result[0][\"table_type\"], result[0][\"table_format\"]\n",
+					"    else:\n",
+					"        return None, None, None\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"get_table_metadata(db_name, table_name)"
+				],
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -305,6 +322,10 @@
 					"    schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": db_name, \"entity_name\": entity_name, \"incremental_key\": incremental_key, \"is_servicebus_schema\": is_servicebus_schema})\n",
 					"    spark_schema = StructType.fromJson(json.loads(schema))\n",
 					"    return spark_schema\n",
+					"\n",
+					"if incremental_key is None:\n",
+					"        raise ValueError(f\"No incremental key found for entity '{entity_name}' in database '{db_name}'. Table creation aborted.\")\n",
+					"\n",
 					""
 				],
 				"execution_count": 23
@@ -363,7 +384,7 @@
 					"# Configure logging\n",
 					"logging.basicConfig(level=logging.INFO, format=\"%(asctime)s - %(levelname)s - %(message)s\")\n",
 					"\n",
-					"def create_spark_table(db_name: str, table_name: str, table_location: str, table_type: str, spark_dataframe: DataFrame) -> None:\n",
+					"def create_spark_table(db_name: str, table_name: str, spark_dataframe: DataFrame) -> None:\n",
 					"    \"\"\"\n",
 					"    Creates a Delta table in Synapse:\n",
 					"      - If table is 'External', writes to the provided `table_location`\n",
@@ -375,6 +396,9 @@
 					"    :param table_type: Type of the table (\"External\" or others)\n",
 					"    :param spark_dataframe: The DataFrame to be written as a table\n",
 					"    \"\"\"\n",
+					"\n",
+					"    table_location, table_type =  get_table_metadata(db_name, table_name)\n",
+					"\n",
 					"    try:\n",
 					"        table_full_name = f\"{db_name}.{table_name}\"\n",
 					"        logging.info(f\"Starting table creation: {table_full_name}, Table Type: {table_type}\")\n",
@@ -385,7 +409,7 @@
 					"            # Write DataFrame as External Delta Table\n",
 					"            spark_dataframe.write.format(\"delta\").mode(\"overwrite\").option(\"path\", table_location).saveAsTable(table_full_name)\n",
 					"\n",
-					"            logging.info(f\"✅ External table {table_full_name} created at {table_location}\")\n",
+					"            logging.info(f\"External table {table_full_name} created at {table_location}\")\n",
 					"\n",
 					"        else:\n",
 					"            logging.info(f\"Creating a Managed Table in Synapse: {table_full_name}\")\n",
@@ -393,18 +417,18 @@
 					"            # Write as Managed Table\n",
 					"            spark_dataframe.write.format(\"delta\").mode(\"overwrite\").saveAsTable(table_full_name)\n",
 					"\n",
-					"            logging.info(f\"✅ Managed table {table_full_name} created in Synapse\")\n",
+					"            logging.info(f\"Managed table {table_full_name} created in Synapse\")\n",
 					"\n",
 					"    except AnalysisException as e:\n",
 					"        if \"already exists\" in str(e):\n",
-					"            logging.warning(f\"⚠️ Table {table_full_name} already exists. Consider using 'overwrite' mode.\")\n",
+					"            logging.warning(f\"Table {table_full_name} already exists. Consider using 'overwrite' mode.\")\n",
 					"        elif \"Permission denied\" in str(e):\n",
-					"            logging.error(f\"❌ Permission issue while writing table {table_full_name}. Ensure correct access to {table_location}\")\n",
+					"            logging.error(f\"Permission issue while writing table {table_full_name}. Ensure correct access to {table_location}\")\n",
 					"        else:\n",
-					"            logging.error(f\"❌ Error creating table {table_full_name}: {str(e)}\")\n",
+					"            logging.error(f\"Error creating table {table_full_name}: {str(e)}\")\n",
 					"\n",
 					"    except Exception as e:\n",
-					"        logging.error(f\"❌ Unexpected error creating table {table_full_name}: {str(e)}\")\n",
+					"        logging.error(f\"Unexpected error creating table {table_full_name}: {str(e)}\")\n",
 					""
 				],
 				"execution_count": null
@@ -468,74 +492,6 @@
 					"logInfo(f\"{db_name}.{table_name} exists = {tableExists}\")"
 				],
 				"execution_count": 42
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"### Unit Test for get_table_metadata"
-				]
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"''' Unit test for get_table_metadata function\n",
-					"    Test cases: given correct \n",
-					"'''\n",
-					"from pyspark.sql import SparkSession \n",
-					"\n",
-					"\n",
-					"\n",
-					"def get_table_metadata(database_name: str, table_name: str) -> (str, str):\n",
-					"    \"\"\"\n",
-					"    Extracts table_location and table_type given a database and table name.\n",
-					"    \"\"\"\n",
-					"    spark = SparkSession.builder.getOrCreate()\n",
-					"    storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"    metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
-					"    df  = spark.read.json(metadata_path, multiLine=True)\n",
-					"\n",
-					"    standardised_df = df.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
-					"    harmonised_df = df.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
-					"    curated_df = df.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
-					"    logging_df = df.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
-					"    config_df = df.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
-					"\n",
-					"# Select the relevant fields\n",
-					"    df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")\n",
-					"\n",
-					"    filtered_df = df_exploded.filter(\n",
-					"        (col(\"database_name\") == database_name) & (col(\"table_name\") == table_name)\n",
-					"    ).select(\"table_location\", \"table_type\")\n",
-					"    \n",
-					"    # Collect and return the result\n",
-					"    result = filtered_df.collect()\n",
-					"    if result:\n",
-					"        return result[0][\"table_location\"], result[0][\"table_type\"]\n",
-					"    else:\n",
-					"        return None, None\n",
-					"# Example usage\n",
-					"database_name = \"odw_harmonised_db\" #\"odw_standardised_db\"\n",
-					"table_name = \"sb_nsip_subscription\" #\"document_meta_data\"\n",
-					"\n",
-					"table_location, table_type = get_table_metadata(database_name, table_name)\n",
-					"print(f\"Table Location: {table_location}\")\n",
-					"print(f\"Table Type: {table_type}\") "
-				],
-				"execution_count": 27
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					""
-				],
-				"execution_count": null
 			}
 		]
 	}
