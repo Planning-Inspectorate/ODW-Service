@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "03bdd43c-82e4-4200-a59c-d521fa830299"
+				"spark.autotune.trackingId": "3fe3a261-a32c-46c0-bf5b-154adbdf4fc8"
 			}
 		},
 		"metadata": {
@@ -185,9 +185,11 @@
 					"\t\twhen '' then 'Unknown'\n",
 					"\t\telse GenderKey\n",
 					"\t end AS Gender\n",
+					"\n",
+					"END AS SortKey_GradeGroup \n",
 					"FROM odw_harmonised_db.hist_SAP_HR"
 				],
-				"execution_count": 10
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -250,10 +252,93 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
 				"source": [
-					""
+					"%%sql\n",
+					"\n",
+					"CREATE VIEW IF NOT EXISTS odw_curated_db.dim_HR_Grade AS\n",
+					"SELECT\n",
+					"    RANK() OVER(ORDER BY a.Grade) AS dim_grade_key,\n",
+					"    a.*,\n",
+					"    CASE Grade \n",
+					"        WHEN 'AA' THEN 1\n",
+					"        WHEN 'AO' THEN 3\n",
+					"        WHEN 'APP AO' THEN 2\n",
+					"        WHEN 'EO' THEN 4\n",
+					"        WHEN 'APP EO' THEN 5\n",
+					"        WHEN 'HEO' THEN 6\n",
+					"        WHEN 'SEO' THEN 7\n",
+					"        WHEN 'G7' THEN 8\n",
+					"        WHEN 'G6' THEN 9\n",
+					"        WHEN 'GM' THEN 10\n",
+					"        WHEN 'SCSPB1' THEN 11\n",
+					"        WHEN 'SCSPB2' THEN 12\n",
+					"        ELSE 99\n",
+					"    END AS SortKey\n",
+					"FROM (\n",
+					"    SELECT DISTINCT\n",
+					"        CASE COALESCE(PSgroup, 'Unknown')\n",
+					"            WHEN '' THEN '-1'\n",
+					"            WHEN 'Unknown' THEN '-1'\n",
+					"            WHEN 'Not Payroll Relevant' THEN '-1'\n",
+					"            ELSE PSgroup\n",
+					"        END AS Grade,\n",
+					"        CASE PSgroup\n",
+					"            WHEN 'APO' THEN 'Appeal Planning Officer'\n",
+					"            WHEN 'AA' THEN 'Administrative Assistant'\n",
+					"            WHEN 'AO' THEN 'Administrative Officer'\n",
+					"            WHEN 'APP AO' THEN 'Appeals Administrative Assistant'\n",
+					"            WHEN 'APP EO' THEN 'Appeals Executive Officer'\n",
+					"            WHEN 'APP HEO' THEN 'Appeals Higher Executive Officer'\n",
+					"            WHEN 'BAND 1' THEN 'Band 1 Inspector'\n",
+					"            WHEN 'BAND 2' THEN 'Band 2 Inspector'\n",
+					"            WHEN 'BAND 3' THEN 'Band 3 Inspector'\n",
+					"            WHEN 'EO' THEN 'Executive Officer'\n",
+					"            WHEN 'G6' THEN 'Grade 6'\n",
+					"            WHEN 'G7' THEN 'Grade 7'\n",
+					"            WHEN 'GM' THEN 'Group Manager'\n",
+					"            WHEN 'HEO' THEN 'Higher Executive Officer'\n",
+					"            WHEN 'SEO' THEN 'Senior Executive Officer'\n",
+					"            WHEN 'PL' THEN 'Professional Lead'\n",
+					"            WHEN 'SCSPB1' THEN 'Director'\n",
+					"            WHEN 'SCSPB2' THEN 'Chief Executive'\n",
+					"            ELSE 'Unknown'\n",
+					"        END AS GradeDescription,\n",
+					"        CASE\n",
+					"            WHEN PSgroup LIKE 'BAND%' THEN 'Inspector'\n",
+					"            WHEN PSgroup = 'APO' THEN 'Inspector'\n",
+					"            ELSE 'Other Profession'\n",
+					"        END AS Inspector_Support,\n",
+					"        CASE PSgroup\n",
+					"            WHEN 'AA' THEN 'AA'\n",
+					"            WHEN 'APO' THEN 'APO'\n",
+					"            WHEN 'AO' THEN 'AO'\n",
+					"            WHEN 'APP AO' THEN 'AO'\n",
+					"            WHEN 'APP EO' THEN 'EO'\n",
+					"            WHEN 'APP HEO' THEN 'HEO'\n",
+					"            WHEN 'BAND 1' THEN 'BAND 1'\n",
+					"            WHEN 'BAND 2' THEN 'BAND 2'\n",
+					"            WHEN 'BAND 3' THEN 'BAND 3'\n",
+					"            WHEN 'EO' THEN 'EO'\n",
+					"            WHEN 'G6' THEN 'G6'\n",
+					"            WHEN 'G7' THEN 'G7'\n",
+					"            WHEN 'GM' THEN 'G6'\n",
+					"            WHEN 'HEO' THEN 'HEO'\n",
+					"            WHEN 'SEO' THEN 'SEO'\n",
+					"            WHEN 'PL' THEN 'PL'\n",
+					"            WHEN 'SCSPB1' THEN 'G5+'\n",
+					"            WHEN 'SCSPB2' THEN 'G5+'\n",
+					"            ELSE 'Unknown'\n",
+					"        END AS GradeGroup\n",
+					"    FROM odw_harmonised_db.hist_SAP_HR\n",
+					") a"
 				],
-				"execution_count": null
+				"execution_count": 25
 			}
 		]
 	}
