@@ -18,6 +18,8 @@
 - [DaRT API](#dart-api)  
 - [Timesheet API](#timesheet-api)  
 
+[Key Vault](#Key-Vault)
+
 ## High level architecture  
 
 ![architecture](../../images/function-apps.drawio.svg)  
@@ -623,3 +625,19 @@ This function simply  makes a query to the curated table [odw_curated_db].[dbo].
 ```SqlConnectionString: Server=tcp:<SQL INSTANCE>,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;",```
 
 The SQL permissions are granted as per this documentation [Add user to ODW](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/docs/add_user.md)
+
+
+### Key Vault
+
+To call the function app APIs, they require an access code to be provided on the URL. When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated.
+
+There is some helper code in [getfunctionurlsandsetkeyvaultsecrets](../../functions/helper/getfunctionurlsandsetkeyvaultsecrets.py) which can be run locally to update the relevant secrets in keyvault.
+
+There is a single function called ```setkeyvaultsecrets()``` which should be executed for each environment. This retrieves a list of the function apps and updates the secrets in the keyvaults defined in the variables at the top of the file
+
+subscription_id = "<REDACTED>"  
+resource_group_name = "<REDACTED>"  
+DB_resource_group_name = "<REDACTED>"  
+function_app_name = "<REDACTED>"  
+keyvault_name = "<REDACTED>"  
+
