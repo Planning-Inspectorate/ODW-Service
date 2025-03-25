@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d2383b2f-caa1-4b84-92f5-b28dcbf75d25"
+				"spark.autotune.trackingId": "ca76c277-8b14-49d5-899b-0181224fa5b8"
 			}
 		},
 		"metadata": {
@@ -115,10 +115,13 @@
 					"target_database_name = \"odw_harmonised_db\"\n",
 					"source_delta_table = f\"{source_database_name}.sap_email_weekly\"\n",
 					"target_delta_table = f\"{target_database_name}.load_sap_pins_email_weekly\"\n",
+					"target_delta_view = f\"{target_database_name}.load_vw_sap_hr_email\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_sap_pins_email_weekly\"\n",
+					"delta_view_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_vw_sap_hr_email\"\n",
 					"\n",
 					"print(target_delta_table)\n",
-					"print(delta_table_path)"
+					"print(delta_table_path)\n",
+					""
 				],
 				"execution_count": 41
 			},
@@ -173,8 +176,6 @@
 				"source": [
 					"#view [load].[vw_SAP_HR_email] \n",
 					"\n",
-					"load_vw_SAP_HR_email\n",
-					"\n",
 					"target_sap_hr_weekly_df = df_source_sap_email_weekly.select(    \n",
 					"    col(\"StaffNumber\"),\n",
 					"    col(\"Firstname\"),\n",
@@ -200,7 +201,19 @@
 					"                                            THEN SUBSTRING(CAST(h.PersNo AS STRING), 3, LENGTH(CAST(h.PersNo AS STRING)) - 2)\n",
 					"                                        ELSE h.PersNo\n",
 					"                                        END = e2.StaffNumber\"\"\")\n",
-					""
+					"\n",
+					"# Write data to target Delta Table\n",
+					"try:\n",
+					"    Load_vw_sap_email_df.write.format(\"delta\").mode(\"overwrite\").save(delta_view_path)\n",
+					"\n",
+					"    # Ensure the table exists\n",
+					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_view} USING DELTA LOCATION '{delta_view_path}'\")\n",
+					"\n",
+					"    print(f\" Data successfully written to {target_delta_view}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {Load_vw_sap_email_df}: {str(e)}\")\n",
+					"    raise"
 				],
 				"execution_count": null
 			},
