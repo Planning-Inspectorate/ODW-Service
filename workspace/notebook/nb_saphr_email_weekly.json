@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5a88b742-8552-42b2-b1b4-877a22274c1a"
+				"spark.autotune.trackingId": "b7a8b766-27a8-4af8-9878-638944f35c73"
 			}
 		},
 		"metadata": {
@@ -167,6 +167,42 @@
 					""
 				],
 				"execution_count": 42
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#view [load].[vw_SAP_HR_email] \n",
+					"\n",
+					"load_vw_SAP_HR_email\n",
+					"\n",
+					"target_sap_hr_weekly_df = df_source_sap_email_weekly.select(    \n",
+					"    col(\"StaffNumber\"),\n",
+					"    col(\"Firstname\"),\n",
+					"    col(\"Lastname\"),\n",
+					"    col(\"EmailAddress\"),\n",
+					"    #col(\"TextLineManager\"),\n",
+					"    #col(\"LMEmail\"),    \n",
+					"    # Add additional metadata fields\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
+					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")\n",
+					"\n",
+					"Load_vw_sap_email_df = spark.sql(\"\"\"SELECT COALESCE(e.Email Address, e2.Email Address) AS email_address,h.*\n",
+					"                    FROM odw_standardised_db.sap_hr_history_monthly h\n",
+					"                    LEFT JOIN odw_standardised_db.load_sap_pins_email_weekly e \n",
+					"                    ON CAST(REPLACE(LTRIM(REPLACE(h.PersNo`, '0', ' ')), ' ', '0') AS INT) = e.Staff Number\n",
+					"                    LEFT JOIN odw_standardised_db.load_sap_pins_email_weekly e2 \n",
+					"                    ON CASE \n",
+					"                        WHEN LEFT(h.PersNo, 2) = '50' \n",
+					"                            THEN SUBSTRING(CAST(h.PersNo AS STRING), 3, LENGTH(CAST(h.PersNo AS STRING)) - 2)\n",
+					"                        ELSE h.PersNo\n",
+					"                        END = e2.Staff Number\"\"\")\n",
+					""
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
