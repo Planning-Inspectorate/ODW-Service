@@ -629,7 +629,7 @@ The SQL permissions are granted as per this documentation [Add user to ODW](http
 
 ### Key Vault
 
-To call the function app APIs, they require an access code to be provided on the URL. When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated.
+To call the function app APIs, they require an access code to be provided on the URL in the form *\<function_app_function\>?code=\<secret_access_token\>*. When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated so that any applications which use these functions.
 
 There is some helper code in [getfunctionurlsandsetkeyvaultsecrets](../../functions/helper/getfunctionurlsandsetkeyvaultsecrets.py) which can be run locally to update the relevant secrets in keyvault.
 
