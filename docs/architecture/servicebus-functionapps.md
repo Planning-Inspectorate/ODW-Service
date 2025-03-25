@@ -635,9 +635,9 @@ There is some helper code in [getfunctionurlsandsetkeyvaultsecrets](../../functi
 
 There is a single function called ```setkeyvaultsecrets()``` which should be executed for each environment. This retrieves a list of the function apps and updates the secrets in the keyvaults defined in the variables at the top of the file
 
-subscription_id = "<REDACTED>"  
-resource_group_name = "<REDACTED>"  
-DB_resource_group_name = "<REDACTED>"  
-function_app_name = "<REDACTED>"  
-keyvault_name = "<REDACTED>"  
+subscription_id = "\<REDACTED\>"  
+resource_group_name = "\<REDACTED\>"  
+DB_resource_group_name = "\<REDACTED\>"  
+function_app_name = "\<REDACTED\>"  
+keyvault_name = "\<REDACTED\>"  
 
