@@ -629,7 +629,8 @@ The SQL permissions are granted as per this documentation [Add user to ODW](http
 
 ### Key Vault
 
-To call the function app APIs, they require an access code to be provided on the URL in the form *\<function_app_function\>?code=\<secret_access_token\>*. When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated so that any applications which use these functions.
+For anything to call the function app APIs, they require an access code to be provided on the URL in the form *\<function_app_function\>?code=\<secret_access_token\>*. 
+When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated so that any applications which use these functions.
 
 There is some helper code in [getfunctionurlsandsetkeyvaultsecrets](../../functions/helper/getfunctionurlsandsetkeyvaultsecrets.py) which can be run locally to update the relevant secrets in keyvault.
 
@@ -643,5 +644,5 @@ keyvault_name = "\<REDACTED\>"
 
 This requires that the running account has the correct permissions to run this script locally. [AZ Client](https://learn.microsoft.com/en-us/cli/azure/) needs to be installed and [az login](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli-interactively) will trigger a browser window to be opened which will enable your PINS credentials to be entered. 
 
-It might be beneficial to move this into an pipeline to avoid the issue with credentials. 
+It might be beneficial to move this into an pipeline to avoid the issue with credentials to take advantage of the credentials already available in the virtual machines.
 
