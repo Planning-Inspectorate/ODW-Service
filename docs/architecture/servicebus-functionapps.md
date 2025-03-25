@@ -641,3 +641,5 @@ DB_resource_group_name = "\<REDACTED\>"
 function_app_name = "\<REDACTED\>"  
 keyvault_name = "\<REDACTED\>"  
 
+This requires that the running account has the correct permissions to run this script locally. [AZ Client](https://learn.microsoft.com/en-us/cli/azure/) needs to be installed and ```az login``` will trigger a browser window to be opened which will enable your PINS credentials to be entered. 
+
