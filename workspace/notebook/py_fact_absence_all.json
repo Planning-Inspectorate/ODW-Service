@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "430a770d-e91e-4199-be32-97bdc0776f29"
+				"spark.autotune.trackingId": "b9c58244-1021-4a2e-8636-1c909f2cb426"
 			}
 		},
 		"metadata": {
@@ -103,7 +103,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 6
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -396,11 +396,11 @@
 					"\n",
 					"-- Step 2: Create a date dimension table to handle date expansion\n",
 					"-- Using Spark SQL compatible syntax with explode()\n",
-					"CREATE TABLE IF NOT EXISTS odw_harmonised_db.date_dimension AS\n",
+					"CREATE OR REPLACE TEMPORARY VIEW date_dimension AS\n",
 					"WITH date_sequence AS (\n",
 					"    SELECT explode(sequence(\n",
-					"        CAST('2000-01-01' AS DATE), -- Use a start date well before any absences\n",
-					"        CAST('2030-12-31' AS DATE), -- Use an end date well after any absences\n",
+					"        (SELECT MIN(StartDate) FROM odw_harmonised_db.sap_hr_absence_All),\n",
+					"        (SELECT MAX(EndDate) FROM odw_harmonised_db.sap_hr_absence_All),\n",
 					"        INTERVAL 1 DAY\n",
 					"    )) AS date_value\n",
 					")\n",
@@ -482,7 +482,7 @@
 					"FROM \n",
 					"    odw_harmonised_db.sap_hr_absence_All aa\n",
 					"JOIN \n",
-					"    odw_harmonised_db.date_dimension d\n",
+					"    date_dimension d\n",
 					"    ON d.date_value BETWEEN aa.StartDate AND aa.EndDate\n",
 					"LEFT JOIN \n",
 					"    odw_standardised_db.work_schedules ws\n",
@@ -528,7 +528,7 @@
 					"    IsActive\n",
 					")\n",
 					"SELECT \n",
-					"    absencedate,\n",
+					"    cast(absencedate  as date),\n",
 					"    absencehours,\n",
 					"    staffnumber,\n",
 					"    WorkScheduleRule,\n",
@@ -616,29 +616,75 @@
 					"    \n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"# Step 1: Create a temporary view for holidays\n",
-					"spark.sql(\"\"\"\n",
-					"CREATE OR REPLACE TEMPORARY VIEW holidays_view AS\n",
-					"SELECT \n",
-					"    HolidayDate\n",
-					"FROM \n",
-					"    odw_harmonised_db.Live_Holidays;\n",
-					"\"\"\")\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.functions import col, to_date, lit\n",
 					"\n",
-					"# Step 2: Use MERGE to delete rows where absencedate matches a holiday\n",
-					"spark.sql(\"\"\"\n",
-					"MERGE INTO odw_harmonised_db.sap_hr_fact_absence_all AS target\n",
-					"USING holidays_view AS source\n",
-					"ON CAST(target.absencedate AS DATE) = source.HolidayDate\n",
-					"WHEN MATCHED THEN DELETE;\n",
-					"\"\"\")"
+					"# First, check if the absence table exists and has data\n",
+					"result_count = spark.sql(\"SELECT COUNT(*) as record_count FROM odw_harmonised_db.sap_hr_fact_absence_all\").collect()[0].record_count\n",
+					"print(f\"Initial record count: {result_count}\")\n",
+					"\n",
+					"# If there's no data, we might need to re-run the main procedure first\n",
+					"if result_count == 0:\n",
+					"    print(\"No data in absence table. Need to re-run the main data loading procedure first.\")\n",
+					"else:\n",
+					"    # Get holidays as a DataFrame with properly formatted dates\n",
+					"    holidays_df = spark.sql(\"SELECT to_date(HolidayDate) as holiday_date FROM odw_standardised_db.Live_Holidays\")\n",
+					"    \n",
+					"    # First, analyze how many records would be affected by holiday exclusion\n",
+					"    sample_query = \"\"\"\n",
+					"    SELECT COUNT(*) as match_count\n",
+					"    FROM odw_harmonised_db.sap_hr_fact_absence_all a\n",
+					"    JOIN (SELECT to_date(HolidayDate) as holiday_date FROM odw_standardised_db.Live_Holidays) h\n",
+					"    ON to_date(a.absencedate) = h.holiday_date\n",
+					"    \"\"\"\n",
+					"    \n",
+					"    match_count = spark.sql(sample_query).collect()[0].match_count\n",
+					"    print(f\"Records matching holidays: {match_count} out of {result_count}\")\n",
+					"    \n",
+					"    if match_count == result_count:\n",
+					"        print(\"WARNING: All records match holidays - there's likely an issue with the date comparison!\")\n",
+					"    elif match_count > 0:\n",
+					"        # Use a safer approach with explicit DataFrame operations\n",
+					"        absences_df = spark.table(\"odw_harmonised_db.sap_hr_fact_absence_all\")\n",
+					"        \n",
+					"        # Anti-join to keep only absences that don't fall on holidays\n",
+					"        filtered_absences = absences_df.join(\n",
+					"            holidays_df,\n",
+					"            to_date(absences_df.absencedate) == holidays_df.holiday_date,\n",
+					"            \"left_anti\"\n",
+					"        )\n",
+					"        \n",
+					"        # Create a temporary view with the filtered data\n",
+					"        filtered_absences.createOrReplaceTempView(\"filtered_absences\")\n",
+					"        \n",
+					"        # Use proper Delta operations to replace the table contents\n",
+					"        spark.sql(\"\"\"\n",
+					"        CREATE OR REPLACE TEMPORARY VIEW current_absences AS\n",
+					"        SELECT * FROM odw_harmonised_db.sap_hr_fact_absence_all\n",
+					"        \"\"\")\n",
+					"        \n",
+					"        spark.sql(\"\"\"\n",
+					"        TRUNCATE TABLE odw_harmonised_db.sap_hr_fact_absence_all\n",
+					"        \"\"\")\n",
+					"        \n",
+					"        spark.sql(\"\"\"\n",
+					"        INSERT INTO odw_harmonised_db.sap_hr_fact_absence_all\n",
+					"        SELECT * FROM filtered_absences\n",
+					"        \"\"\")\n",
+					"        \n",
+					"        # Report the new count\n",
+					"        new_count = spark.sql(\"SELECT COUNT(*) as record_count FROM odw_harmonised_db.sap_hr_fact_absence_all\").collect()[0].record_count\n",
+					"        print(f\"Record count after holiday exclusion: {new_count}\")\n",
+					"        print(f\"Number of records removed: {result_count - new_count}\")\n",
+					"    else:\n",
+					"        print(\"No records match holidays - no need to filter.\")"
 				],
-				"execution_count": 12
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -703,6 +749,37 @@
 					")"
 				],
 				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"   select * from odw_harmonised_db.sap_hr_fact_absence_all where staffnumber ='50420651'\n",
+					"      order by absencedate"
+				],
+				"execution_count": 75
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"   select count(*),staffnumber from odw_harmonised_db.sap_hr_fact_absence_all\n",
+					"   group by staffnumber\n",
+					"   order by count(*) desc"
+				],
+				"execution_count": 68
 			}
 		]
 	}
