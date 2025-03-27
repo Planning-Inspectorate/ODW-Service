@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b9b1a0db-b3b2-4d79-955d-46e95f404f62"
+				"spark.autotune.trackingId": "bfa5ef0a-885e-4850-9de1-c3ea475eadee"
 			}
 		},
 		"metadata": {
@@ -90,7 +90,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -99,7 +99,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -117,7 +117,7 @@
 					"print(delta_table_path)\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -167,6 +167,9 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
 					"#view [load].[vw_SAP_HR_email] \n",
 					"\n",
@@ -181,12 +184,15 @@
 					"                                        ELSE h.PersNo\n",
 					"                                        END = e2.StaffNumber\"\"\")\n",
 					"\n",
+					"\n",
+					"\n",
+					"\n",
 					"# Exclude \"ingested_datetime\", \"expected_from\", \"expected_to\" from rowid_columns\n",
 					"excluded_columns = {\"ingested_datetime\", \"expected_from\", \"expected_to\"} \n",
 					"\n",
 					"rowid_columns = [c for c in df_load_vw_sap_email.columns if c not in excluded_columns]\n",
 					"\n",
-					"df_load_vw_sap_email = df_load_vw_sap_email.select(    \n",
+					"df_load_vw_sap_email = df_load_vw_sap_email.select(*[col(c) for c in rowid_columns],    \n",
 					"    # Add additional metadata fields\n",
 					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
 					"    current_timestamp().alias(\"IngestionDate\"),\n",
@@ -194,9 +200,11 @@
 					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
 					"    lit(\"Y\").alias(\"IsActive\"))\n",
 					"\n",
+					"display(df_load_vw_sap_email)\n",
+					"\n",
 					"# Write data to target Delta Table\n",
 					"try:\n",
-					"#    df_load_vw_sap_email.write.format(\"delta\").mode(\"overwrite\").save(delta_view_path)\n",
+					"    #df_load_vw_sap_email.write.format(\"delta\").mode(\"overwrite\").save(delta_view_path)\n",
 					"\n",
 					"    # Ensure the table exists\n",
 					"#    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_view} USING DELTA LOCATION '{delta_view_path}'\")\n",
@@ -207,7 +215,7 @@
 					"    print(f\" Error writing to {df_load_vw_sap_email}: {str(e)}\")\n",
 					"    raise"
 				],
-				"execution_count": 12
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
