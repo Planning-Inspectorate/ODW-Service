@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fe54ccdf-cda7-45d8-8bf7-a6cf67aad765"
+				"spark.autotune.trackingId": "64f11dd0-7485-41c1-8dad-40bf7287efd6"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 94
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -120,7 +120,7 @@
 					"\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY; "
 				],
-				"execution_count": 95
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -139,7 +139,7 @@
 					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers \n",
 					""
 				],
-				"execution_count": 96
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -263,7 +263,7 @@
 					"FROM \n",
 					"    odw_standardised_db.sap_hr_leavers_monthly;"
 				],
-				"execution_count": 97
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -294,7 +294,7 @@
 					"where EmployeeNo is null\n",
 					""
 				],
-				"execution_count": 99
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -310,7 +310,7 @@
 					"set Leaving = '2024-02-29'\n",
 					" where PersNo = '50426514'"
 				],
-				"execution_count": 100
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -348,7 +348,7 @@
 					"update odw_harmonised_db.stage_SAP_HR_Leavers \n",
 					" set Annualsalary = null;"
 				],
-				"execution_count": 101
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -397,7 +397,7 @@
 					"    )\n",
 					")"
 				],
-				"execution_count": 102
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -412,7 +412,7 @@
 					"\n",
 					"delete from odw_harmonised_db.load_SAP_HR_Leavers"
 				],
-				"execution_count": 103
+				"execution_count": 37
 			},
 			{
 				"cell_type": "markdown",
@@ -429,110 +429,103 @@
 			},
 			{
 				"cell_type": "code",
-				"source": [
-					"from delta.tables import DeltaTable\n",
-					"from pyspark.sql import Window\n",
-					"from pyspark.sql.functions import row_number, col\n",
-					"\n",
-					"# Step 1: Update Annualsalary to null\n",
-					"delta_table = DeltaTable.forName(spark, \"odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
-					"delta_table.update(\"Annualsalary IS NOT NULL\", {\"Annualsalary\": \"null\"})\n",
-					"\n",
-					"# Step 2: Delete duplicates\n",
-					"# Create a DataFrame from the Delta table\n",
-					"df = delta_table.toDF()\n",
-					"\n",
-					"# Add a row number column to identify duplicates\n",
-					"window_spec = Window.partitionBy(\"PersNo\", \"Leaving\",\"ManagerPosition\").orderBy(\"PersNo\", \"Leaving\",\"ManagerPosition\")\n",
-					"df_with_row_number = df.withColumn(\"val\", row_number().over(window_spec))\n",
-					"\n",
-					"# Filter out duplicates (keep only the first occurrence)\n",
-					"df_filtered = df_with_row_number.filter(col(\"val\") == 1).drop(\"val\")\n",
-					"\n",
-					"# Step 3: Align schemas (cast OrgStartDate to match the target table)\n",
-					"#df_filtered = df_filtered.withColumn(\"OrgStartDate\", col(\"OrgStartDate\").cast(\"string\"))\n",
-					"\n",
-					"# Step 4: Delete records from SAP_HR_Leavers within the date range\n",
-					"# Calculate min and max dates\n",
-					"min_year = df.selectExpr(\"YEAR(MIN(Leaving))\").collect()[0][0]\n",
-					"max_year = df.selectExpr(\"YEAR(MAX(Leaving))\").collect()[0][0]\n",
-					"\n",
-					"# Handle None values for min_year and max_year\n",
-					"if min_year is None or max_year is None:\n",
-					"    raise ValueError(\"The 'Leaving' column contains no valid dates. Please check the data.\")\n",
-					"\n",
-					"mindate = f\"{min_year}-04-01\"\n",
-					"maxdate = f\"{max_year + 1}-03-31\"\n",
-					"\n",
-					"# Delete records from the target table\n",
-					"target_table = DeltaTable.forName(spark, \"odw_harmonised_db.load_SAP_HR_Leavers\")\n",
-					"target_table.delete(f\"Leaving BETWEEN '{mindate}' AND '{maxdate}'\")\n",
-					"\n",
-					"# Step 5: Insert records into SAP_HR_Leavers\n",
-					"df_filtered.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_harmonised_db.load_SAP_HR_Leavers\")"
-				],
-				"execution_count": 104
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"print(min_year)"
-				],
-				"execution_count": 105
-			},
-			{
-				"cell_type": "code",
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
+					},
+					"editable": true,
+					"run_control": {
+						"frozen": false
 					},
 					"collapsed": false
 				},
 				"source": [
 					"%%sql\n",
 					"\n",
-					"select min(Leaving),max(Leaving) from odw_harmonised_db.stage_SAP_HR_Leavers"
-				],
-				"execution_count": 106
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Validation"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
 					"\n",
-					"SELECT *\n",
-					"FROM odw_harmonised_db.stage_SAP_HR_Leavers a\n",
-					" left join odw_harmonised_db.load_SAP_HR_Leavers b\n",
-					"    on a.PersNo = b.PersNo\n",
-					""
+					"-- Step 1: Update Annualsalary to NULL\n",
+					"UPDATE odw_harmonised_db.stage_SAP_HR_Leavers \n",
+					"SET Annualsalary = NULL \n",
+					"WHERE Annualsalary IS NOT NULL;\n",
+					"\n",
+					"-- Step 2: Calculate min and max dates first and save to temporary views\n",
+					"CREATE OR REPLACE TEMPORARY VIEW temp_min_date AS\n",
+					"SELECT CONCAT(YEAR(MIN(Leaving)), '-04-01') AS min_date \n",
+					"FROM odw_harmonised_db.stage_SAP_HR_Leavers;\n",
+					"\n",
+					"CREATE OR REPLACE TEMPORARY VIEW temp_max_date AS\n",
+					"SELECT CONCAT(YEAR(MAX(Leaving)) + 1, '-03-31') AS max_date \n",
+					"FROM odw_harmonised_db.stage_SAP_HR_Leavers;\n",
+					"\n",
+					"-- Step 3: Get the actual date values (run this to verify the dates)\n",
+					"SELECT * FROM temp_min_date;\n",
+					"SELECT * FROM temp_max_date;\n",
+					"\n",
+					"-- Step 4: Use the values directly in your DELETE statement\n",
+					"-- Replace 'YYYY-MM-DD' with actual values from step 3\n",
+					"DELETE FROM odw_harmonised_db.load_SAP_HR_Leavers\n",
+					"WHERE Leaving BETWEEN 'YYYY-MM-DD' AND 'YYYY-MM-DD';\n",
+					"\n",
+					"-- Step 5: Create temporary view with deduplicated data\n",
+					"CREATE OR REPLACE TEMPORARY VIEW temp_deduplicated_leavers AS\n",
+					"SELECT * FROM (\n",
+					"    SELECT \n",
+					"        *,\n",
+					"        ROW_NUMBER() OVER (PARTITION BY PersNo, Leaving, ManagerPosition \n",
+					"                          ORDER BY PersNo, Leaving, ManagerPosition) AS row_num\n",
+					"    FROM odw_harmonised_db.stage_SAP_HR_Leavers\n",
+					") t\n",
+					"WHERE row_num = 1;\n",
+					"\n",
+					"-- Step 6: Insert the deduplicated records with explicit casting for Annualsalary\n",
+					"INSERT INTO odw_harmonised_db.load_SAP_HR_Leavers\n",
+					"\n",
+					"SELECT \n",
+					"    PersNo,\n",
+					"    Lastname,\n",
+					"    Firstname,\n",
+					"    CoCd,\n",
+					"    CompanyCode,\n",
+					"    Loc,\n",
+					"    Location,\n",
+					"    PSgroup,\n",
+					"    PayBandDescription,\n",
+					"    Orgunit,\n",
+					"    OrganizationalUnit,\n",
+					"    PA,\n",
+					"    PersonnelArea,\n",
+					"    PSubarea,\n",
+					"    PersonnelSubarea,\n",
+					"    WorkC,\n",
+					"    WorkContract,\n",
+					"    OrgStartDate,\n",
+					"    Leaving,\n",
+					"    Act,\n",
+					"    ActionType,\n",
+					"    ActR,\n",
+					"    ReasonforAction,\n",
+					"    S,\n",
+					"    EmploymentStatus,\n",
+					"    EmployeeNo,\n",
+					"    Position,\n",
+					"    Position1,\n",
+					"    CAST(NULL AS DOUBLE) AS Annualsalary,  -- Cast to resolve the data type issue\n",
+					"    Curr,\n",
+					"    UserID,\n",
+					"    EmailAddress,\n",
+					"    PersNo1,\n",
+					"    NameofManagerOM,\n",
+					"    ManagerPosition,\n",
+					"    ManagerPositionText,\n",
+					"    LMEmail,\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive\n",
+					"FROM temp_deduplicated_leavers;"
 				],
-				"execution_count": 107
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					""
-				],
-				"execution_count": null
+				"execution_count": 38
 			}
 		]
 	}
