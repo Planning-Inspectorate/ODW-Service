@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodw",
+			"referenceName": "pinssynspodwpr",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6ee43710-e2f1-428f-952f-a3548d869079"
+				"spark.autotune.trackingId": "8adb9994-2f75-46a9-9aa4-3ccc8be83457"
 			}
 		},
 		"metadata": {
@@ -34,10 +34,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-				"name": "pinssynspodw",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
+				"name": "pinssynspodwpr",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -110,7 +110,7 @@
 					"entity_name: str = ''\n",
 					"is_horizon_schema: bool = True"
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -129,27 +129,47 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 7
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
-					"def get_Horizon_table_info(storage_account: str, path_to_orchestration_file: str) -> tuple:\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.functions import explode, col\n",
 					"\n",
-					"    spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\n",
+					"def get_Horizon_table_info(storage_account: str, path_to_orchestration_file: str):\n",
+					"    \"\"\"\n",
+					"    Extracts all Horizon table names from an orchestration file using Spark DataFrame operations.\n",
 					"    \n",
-					"    df: DataFrame = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\n",
-					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"    Args:\n",
+					"        storage_account (str): Unused parameter\n",
+					"        path_to_orchestration_file (str): Path to JSON file\n",
+					"        \n",
+					"    Returns:\n",
+					"        DataFrame: Spark DataFrame containing Standardised Table Names\n",
+					"    \"\"\"\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    \n",
+					"    df = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\n",
+					"    \n",
+					"    return (\n",
+					"        df.withColumn(\"definitions\", explode(\"definitions\"))\n",
+					"          .filter(col(\"definitions.Source_Folder\") == \"Horizon\")\n",
+					"          .select(\"definitions.Standardised_Table_Name\")\n",
+					"          .dropDuplicates()\n",
+					"    )\n",
 					"\n",
-					"    definition: dict = next((d for d in definitions if d.get('Source_Folder') == \"Horizon\"), None)\n",
-					"   \n",
-					"    if definition:\n",
-					"        table_name = definition.get('Standardised_Table_Name')\n",
-					"        return (table_name)\n",
-					"    else:\n",
-					"        return (None, None)  # Entity not found or missing required fields"
+					"# To use:\n",
+					"result_df = get_Horizon_table_info(storage_account, path_to_orchestration_file)\n",
+					"display(result_df)  # Now works with Spark DataFrames\n",
+					"\n",
+					"# If you need a Python list:\n",
+					"table_names = [row[\"Standardised_Table_Name\"] for row in result_df.collect()]"
 				],
-				"execution_count": 3
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
