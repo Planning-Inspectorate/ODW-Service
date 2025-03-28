@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "37ced6fb-c746-40b6-bcdc-06a3a5703756"
+				"spark.autotune.trackingId": "3bcf3f38-6d4d-4c92-8be2-61a255b37015"
 			}
 		},
 		"metadata": {
@@ -52,58 +52,77 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Anslysis of file size difference between a full backup of th table and a delta backup\n",
+					"\n",
+					"I have used `input_files()` to get the files associated with the latest version of the table and the previous version. Of course every time a table is updated the data can be re-organised into different files for optimisation. The size in MB might not match the total folder size you see from Storage Explorer. This may need investigating further to understand how to accurately capture the true size of the backup for each table.  \n",
+					"\n",
+					"You need to amend this code to take the table path from the config file as right now I have hardcoded a certain table for testing.  \n",
+					"\n",
+					"Also amend the code to loop through the whole database and then all databases to get a full size of the daily backups and then compare to a delta backup. Of couse, not all tables are deltas so capturing the size of the curated database for example would not include a delta backup as we may need to copy that one whole.  "
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from delta.tables import DeltaTable\n",
 					"from pyspark.sql import DataFrame"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_mount_storage"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"database: str = \"odw_standardised_db\"\n",
-					"table: str = \"sb_appeal_s78\""
+					"table: str = \"horizon_case_involvement\""
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"standardised_tables = spark.catalog.listTables(database)"
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"print([table.name for table in standardised_tables])"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"table_path: str = f\"abfss://odw-standardised@{storage_account}/{table}\"\n",
+					"table_path: str = f\"abfss://odw-standardised@{storage_account}/Horizon/{table}\"\n",
 					"delta_table = DeltaTable.forPath(spark, table_path)\n",
 					"storage_path = f\"abfss://odw-standardised@{storage_account}\""
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"mount_storage(path=storage_path)"
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -111,15 +130,15 @@
 					"def get_delta_table(table: str) -> DataFrame:\n",
 					"    return DeltaTable.forPath(spark, table_path)"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"def get_table_path(table: str):\n",
-					"    return f\"abfss://odw-standardised@{storage_account}/{table}\""
+					"    return f\"abfss://odw-standardised@{storage_account}/Horizon/{table}\""
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +146,7 @@
 					"def get_table_history(table: str) -> DataFrame:\n",
 					"    return delta_table.history()"
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -135,7 +154,7 @@
 					"def get_current_version(table: str) -> int: \n",
 					"    return get_table_history(table).head(1)[0]['version']"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -143,15 +162,15 @@
 					"def get_previous_version(table: str) -> int:\n",
 					" return get_current_version(table) - 1"
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"def get_current_version_files(table: str) -> list:\n",
-					"    return get_delta_table.toDF().inputFiles()"
+					"    return get_delta_table(table).toDF().inputFiles()"
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -161,7 +180,7 @@
 					"    table_path = get_table_path(table)\n",
 					"    return spark.read.format(\"delta\").option(\"versionAsOf\", previous_version).load(table_path).inputFiles()"
 				],
-				"execution_count": 16
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -177,19 +196,21 @@
 					"    \n",
 					"    return total_size / (1024*1024)"
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"current_version_files = get_current_version_files(table)\n",
 					"current_version_size = get_file_sizes(current_version_files)\n",
 					"current_version_size"
 				],
-				"execution_count": 18
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"previous_version_files = get_previous_version_files(table)\n",
 					"previous_version_size = get_file_sizes(previous_version_files)\n",
 					"previous_version_size"
 				],
@@ -205,7 +226,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"print(f\"File size delta between version {current_version} and version {previous_version} is {size_delta} MB.\")"
+					"print(f\"File size delta between version {get_current_version(table)} and version {get_previous_version(table)} is {size_delta} MB.\")"
 				],
 				"execution_count": null
 			},
