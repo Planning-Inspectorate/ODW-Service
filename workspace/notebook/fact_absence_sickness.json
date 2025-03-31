@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f8ed27c7-7fa5-40af-be85-3de7d9453192"
+				"spark.autotune.trackingId": "665299d2-58b1-43af-b079-15444b54e47a"
 			}
 		},
 		"metadata": {
@@ -111,10 +111,6 @@
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
-					},
-					"editable": true,
-					"run_control": {
-						"frozen": false
 					},
 					"collapsed": false
 				},
@@ -207,21 +203,18 @@
 					"        WHEN MAX(sickness_end) BETWEEN DATE_SUB(CURRENT_DATE(), 2 * 365) AND DATE_SUB(CURRENT_DATE(), 1 * 365) THEN 'Previous FY'\n",
 					"        WHEN MAX(sickness_end) BETWEEN DATE_SUB(CURRENT_DATE(), 1 * 365) AND CURRENT_DATE() THEN 'Current FY'\n",
 					"        ELSE 'Next FY'\n",
-					"\n",
 					"    END AS financial_year,\n",
 					"    CASE \n",
 					"        WHEN MAX(sickness_end) < DATE_SUB(CURRENT_DATE(), 2 * 365) THEN 'Older CY'\n",
 					"        WHEN MAX(sickness_end) BETWEEN DATE_SUB(CURRENT_DATE(), 2 * 365) AND DATE_SUB(CURRENT_DATE(), 1 * 365) THEN 'Previous CY'\n",
 					"        WHEN MAX(sickness_end) BETWEEN DATE_SUB(CURRENT_DATE(), 1 * 365) AND CURRENT_DATE() THEN 'Current CY'\n",
 					"        ELSE 'Future CY'\n",
-					"\n",
 					"    END AS calendar_year\n",
 					"FROM sickness_with_ids\n",
 					"GROUP BY StaffNumber, sickness_id;\n",
 					"\n",
-					"-- Step 6: Insert the final results into the target table\n",
+					"-- Step 6: Insert the final results into the target table with RowID included\n",
 					"INSERT OVERWRITE TABLE odw_harmonised_db.sap_hr_fact_absence_sickness\n",
-					"\n",
 					"SELECT \n",
 					"    sickness_id,\n",
 					"    CASE\n",
@@ -232,8 +225,7 @@
 					"        WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '6%' THEN \n",
 					"            '60' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
 					"        ELSE LPAD(StaffNumber, 7, '0')\n",
-					"    END  AS StaffNumber,\n",
-					"\n",
+					"    END AS StaffNumber,\n",
 					"    Total_Days AS Days,\n",
 					"    sickness_start,\n",
 					"    sickness_end,\n",
@@ -244,41 +236,32 @@
 					"    CURRENT_DATE() AS IngestionDate,\n",
 					"    CURRENT_TIMESTAMP() AS ValidFrom,\n",
 					"    CURRENT_TIMESTAMP() AS ValidTo,\n",
-					"    NULL AS RowID,\n",
+					"    -- Generate RowID directly in the INSERT statement\n",
+					"    md5(\n",
+					"        concat_ws('|',\n",
+					"            sickness_id,\n",
+					"            CASE\n",
+					"                WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '4%' THEN \n",
+					"                    '50' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"                WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '5%' THEN \n",
+					"                    '00' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"                WHEN TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0')) LIKE '6%' THEN \n",
+					"                    '60' || TRIM(LEADING '0' FROM LPAD(StaffNumber, 8, '0'))\n",
+					"                ELSE LPAD(StaffNumber, 7, '0')\n",
+					"            END,\n",
+					"            Total_Days,\n",
+					"            sickness_start,\n",
+					"            sickness_end,\n",
+					"            FY,\n",
+					"            financial_year,\n",
+					"            calendar_year\n",
+					"        )\n",
+					"    ) AS RowID,\n",
 					"    'Y' AS IsActive,\n",
 					"    CURRENT_TIMESTAMP() AS LastUpdated\n",
 					"FROM sickness_final;"
 				],
-				"execution_count": 8
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"UPDATE odw_harmonised_db.sap_hr_fact_absence_sickness\n",
-					"SET RowID = md5(\n",
-					"    concat_ws('|',\n",
-					"    sickness_id,\n",
-					"    StaffNumber,\n",
-					"    Days ,\n",
-					"    sickness_start,\n",
-					"    sickness_end,\n",
-					"    FY,\n",
-					"    financial_year,\n",
-					"    calendar_year\n",
-					" \n",
-					"\n",
-					"    )\n",
-					")"
-				],
-				"execution_count": 9
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -293,7 +276,7 @@
 					"\n",
 					"select  * from odw_harmonised_db.sap_hr_fact_absence_sickness where StaffNumber = '50410538'"
 				],
-				"execution_count": 10
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -320,7 +303,7 @@
 					"WHEN MATCHED THEN DELETE;\n",
 					"\"\"\")"
 				],
-				"execution_count": 11
+				"execution_count": 14
 			}
 		]
 	}
