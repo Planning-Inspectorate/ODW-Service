@@ -1,0 +1,126 @@
+{
+	"name": "vw_Employee_Details",
+	"properties": {
+		"folder": {
+			"name": "odw-curated/curatedviews"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "676d6785-a0c6-4ebc-b35d-28560953e2b8"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"CREATE OR REPLACE VIEW odw_curated_db.Employee_Details AS\n",
+					"\n",
+					"WITH Employee_Data AS (\n",
+					"    -- First part of the UNION from historical SAP data\n",
+					"    SELECT DISTINCT\n",
+					"        CONCAT(RIGHT(hist_sap.PersNo, 6), '-', REPLACE(hist_sap.Report_MonthEnd_Date, '-', '')) AS PersonReportMonthEndKey,\n",
+					"        hist_sap.Lastname,\n",
+					"        hist_sap.Firstname,\n",
+					"        CONCAT(hist_sap.Firstname, ' ', hist_sap.Lastname) AS EmpFullName,\n",
+					"        hist_sap.NameofManagerOM AS Manager,\n",
+					"        hist_sap.CounterSignManager AS Manager_L2,\n",
+					"        hist_sap.EmployeeNo as EmployeeNo,\n",
+					"        hist_sap.PersNo as PersonNo,\n",
+					"        hist_Sap.location as Location\n",
+					"    FROM odw_harmonised_db.hist_sap_hr hist_sap\n",
+					"    WHERE hist_sap.Firstname is not null\n",
+					"\n",
+					"    UNION ALL\n",
+					"\n",
+					"    -- Second part of the UNION from leavers data\n",
+					"    SELECT DISTINCT\n",
+					"        CONCAT(RIGHT(a.PersNo, 6), '-', '00000000') AS PersonReportMonthEndKey,\n",
+					"        a.Lastname,\n",
+					"        a.Firstname,\n",
+					"        CONCAT(a.Firstname, ' ', a.Lastname) AS EmpFullName,\n",
+					"        a.NameofManagerOM AS Manager,\n",
+					"        NULL AS Manager_L2,\n",
+					"        a.EmployeeNo as EmployeeNo,\n",
+					"        a.PersNo as PersonNo,\n",
+					"        a.location as Location\n",
+					"    FROM odw_harmonised_db.load_SAP_HR_Leavers a\n",
+					"    WHERE a.Firstname is not null\n",
+					"    AND NOT EXISTS (\n",
+					"        SELECT 1 \n",
+					"        FROM odw_harmonised_db.Hist_SAP_HR b \n",
+					"        WHERE a.PersNo = b.PersNo\n",
+					"    )\n",
+					")\n",
+					"\n",
+					"-- Final select with join to inspector data\n",
+					"SELECT DISTINCT \n",
+					"    e.*,\n",
+					"    insp.inspector_postcode\n",
+					"FROM Employee_Data e  -- Changed from EmployeeData to Employee_Data\n",
+					"LEFT OUTER JOIN (\n",
+					"    SELECT * \n",
+					"    FROM odw_harmonised_db.Live_dim_inspector \n",
+					"    WHERE activestatus = 'ACTIVE' \n",
+					"    AND ISNULL(resourcegroup, '') <> 'NSI'\n",
+					") insp ON (e.PersonNo = insp.pinsstaffnumber OR e.EmployeeNo = insp.pinsstaffnumber);"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
