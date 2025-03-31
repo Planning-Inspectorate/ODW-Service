@@ -1,5 +1,6 @@
 # Documentation of the use of Azure Function Apps to receive and process messages from Azure Servicebus  
 
+[High level architecture](#high-level-architecture)  
 [Functions folder structure](#functions-folder-structure)  
 [Description of code](#description-of-code)  
 [Process flow](#process-flow)  
@@ -12,7 +13,16 @@
 [Local setup](#local-setup)  
 [Terraform](#terraform)  
 [Function App Permissions](#function-app-permissions)  
-[Issues](#issues)
+[Issues](#issues)   
+[User Accessible APIs](#user-accessible-apis)  
+- [DaRT API](#dart-api)  
+- [Timesheet API](#timesheet-api)  
+
+[Key Vault](#Key-Vault)
+
+## High level architecture  
+
+![architecture](../../images/function-apps.drawio.svg)  
 
 ## Functions folder structure
 
@@ -89,7 +99,7 @@ The Azure Functions python developer guide can be found here so this document wi
 
 [Azure Functions python developer guide](https://learn.microsoft.com/en-us/azure/azure-functions/functions-reference-python?tabs=asgi%2Capplication-level&pivots=python-mode-decorators)  
 
-The architecture initially uses 1 function app with 1 app service plan containing multiple functions. Each function performs the same task but each one reads messages from a different Servicebus topic in the ODT Servicebus namespace. The code looks as follows:  
+The architecture initially uses 1 function app with 1 app service plan containing multiple functions. Each function performs the same task but each one reads messages from a different Servicebus topic in the back-office Servicebus namespaces. The code looks as follows:  
 
 **function_app.py**
 
@@ -175,9 +185,22 @@ The majority of the code is generic however and where possible is held elsewhere
 
 1. Receive messages from the Servicebus topic via a subscription when triggered by an http GET request.
 2. Validate those messages agsinst a json schema held in the date-model repo.
-3. If validation succeeds, send the messages as a json file to ODW RAW layer in Azure storage and "complete" the message (deletes it from the subscription).
+3. If validation succeeds, send the messages as a json file to ODW RAW layer in Azure storage and "complete" the message (deletes it from the subscription).  
+
+```python
+if is_message_valid:
+    valid_messages.append(message_body)
+    subscription_receiver.complete_message(message)
+```
 4. If validation fails the messages get "abandoned" and moved to the dead letter queue to await further processing if need be.  
 
+```python
+else:
+    invalid_messages.append(message_body)
+    subscription_receiver.dead_letter_message(
+        message, reason="Failed validation against schema"
+    )
+```
 **servicebus_funcs.py**
 
 This file contains the functions that perform the tasks of receiving Servicebus messages, validating them and sendiing them to ODW RAW layer in storage.  
@@ -241,14 +264,6 @@ def validate_data(data: list, schema: dict) -> list:
     return data if success else []
 ```
 
-**deploy.sh**
-
-This is a simple, temporary, shell script to deploy the function app code to the existing function app in Azure. This is to be replaced by an Azure DevOps pipeline in the near future.  
-
-```bash
-func azure functionapp publish $function_app_dev --subscription $subscription_dev
-```
-
 ## Dependencies
 
 The requirements.txt file contains various python packages that the function app needs. In addition there is a dependency on the central repo that contains the json schemas that Servicebus messages should adhere to and which are used for validation. These schemas can be imported as a dependency as follows:  
@@ -308,7 +323,7 @@ The data-model repo contains the json schemas which are managed here centrally a
 
 Pydantic models were initially being used to validate the Servicebus messages against the model and offered a few advantages to those familiar with python and use of type hints. However, because the json schemas are the ones being the single source of truth and having to generate pydantic models every time the schema changed it was deemed easier to remove the dependency on pydantic for this purpose and validate messages just using the json schemas, as shown above in validate_messages.py.  
 
-For reference, one issue we found when using datamodel-codegen to generate the pydantic models from the json schemas was the conversion of "date-time" formatted fields in json to "AwareDateTime" in pydantic. AwareDateTime requires timezone info to always be present in the date format but we wanted the flexibility to allow a date eith with or without a timezone offset. The current method allows that.  
+For reference, one issue we found when using datamodel-codegen to generate the pydantic models from the json schemas was the conversion of "date-time" formatted fields in json to "AwareDateTime" in pydantic. AwareDateTime requires timezone info to always be present in the date format but we wanted the flexibility to allow a date with or without a timezone offset. The current method allows that.  
 
 ## Change process
 
@@ -338,18 +353,10 @@ For reference, one issue we found when using datamodel-codegen to generate the p
 
 When developing locally, use Azure Functions Core Tools to check if the functions still work. Documentation on the use of Azure Functions Core Tools is out of scope of this guide.  
 
-To deploy manually (before DevOps pipeline is ready) do the following:  
+Run the pipeline in Azure DevOps from your development branch to test. Run it from the main branch to revert back.  
 
-1. Set the environment in the set_environment.py file on line 19 to either "dev", "preprod" or "prod". Deploy to dev first obviously. Save the file.
+https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170  
 
-```python
-CURRENT_ENVIRONMENT = "dev"
-```
-2. In deploy.sh, make sure the dev deployment line is uncommented and the preprod and prod lines are commented out, e.g. line 12 below will deploy to dev. To deploy to preprod uncomment out line 13 and for prod line 14, each time makign sure only one of them is uncommented.  
-
-```bash
-func azure functionapp publish $function_app_dev --subscription $subscription_dev
-```
 ## Unit tests
 
 A test file can be found here:  
@@ -371,77 +378,19 @@ An Azure DevOps pipeline has been created to deploy function app code to the exi
 
 Pipeline: [function-app-deploy Azure DevOps](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170)  
 
-The pipeline essentially performs a few simple steps outlined below. The full code can be found at the link above in Azure DevOps or in Github here - [function-app-deploy Github](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/pipelines/function_app_deploy.yaml)
+The full code can be found at the link above in Azure DevOps or in Github here - [function-app-deploy Github](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/pipelines/function_app_deploy.yaml)
 
-1. Create an archive zip file of the code to deploy to the function app  
+This pipeline is triggered by any change to the function app code in the **functions** top level folder that gets merged with the main branch. The pipeline deploys the function app to Dv, Test and Prod automatically when triggered by a merge to the main branch. Manually you can select the environment.   
 
-```yaml
-# Switch to functions directory and create a file containing a list of all files in the top level folder.
-  - script: |
+To run the pipeline manually just go to Azure DevOps here [function-app-deploy](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170&_a=summary) and click **Run pipeline**.  This will deploy to Dev, Test and Prod. Therefore if you want to only deploy to a specific environment you can select stages to run.  
 
-      cd $(Build.SourcesDirectory)/functions
-      find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+![](../../images/function-app-deploy-all-envs.png)  
 
-    displayName: 'Creating top level files list'
+Select stages...  
 
-# Create a zip file of all the files in the filelist.
-  - script: |
+![](../../images/function-app-deploy-stages-to-run.png)
 
-        cd $(Build.SourcesDirectory)/functions
-        cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
-
-    displayName: 'Archive top level files'
-```
-
-2. Publish the zip file as an artifact to be used further in the pipeline  
-
-```yaml
-# Publish the zip file as an artifact to be used further in the pipeline.
-  - task: PublishBuildArtifacts@1
-    displayName: 'Publish build artifact'
-    inputs:
-      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'FunctionCode'
-```
-
-3. Download the zip file artifact and deploy it to the function app  
-
-```yaml
-# Job to deploy the zip file to an existing Azure Function App.
-- job: DeployToAzureFunctions
-  displayName: 'Deploy to Azure Functions'
-  dependsOn: BuildAndPackage
-  
-  steps:
-
-# Download the artifact first - the zip file.
-  - task: DownloadBuildArtifacts@1
-    displayName: 'Download build artifact'
-    inputs:
-      buildType: 'current'
-      artifactName: 'FunctionCode'
-      downloadPath: '$(System.ArtifactsDirectory)'
-
-# Use the Azure CLI to deploy the zip file to the Function App in Azure.
-  - task: AzureCLI@2
-    displayName: 'Deploy to function app'
-    inputs:
-      azureSubscription: '$(armServiceConnectionName)'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        az functionapp deployment source config-zip --resource-group $(resourceGroup) --name $(functionApp) --src $(zipFile)
-```
-
-This pipeline is triggered by any change to the function app code in the **functions** top level folder that gets merged with the main branch. The pipeline currently deploys to Dev only but will be changed soon to sequentially deploy to Test and Prod as well.  
-
-To run the pipeline manually just go to Azure DevOps here [function-app-deploy](https://dev.azure.com/planninginspectorate/operational-data-warehouse/_build?definitionId=170&_a=summary) and click **Run pipeline**.  
-
-![](../../images/function-app-deploy-run-manually.png)  
-
-Select the branch you want to run from and the environment. When testing this would be your feature branch but otherwise the main branch. This may change once it's amended to deploy to 3 environments sequentially.  
-
-![](../../images/function-app-deploy-run-parameters.png)
+Select the branch you want to run from and the environment. 
 
 ## Local setup
 
@@ -472,6 +421,10 @@ Which will then show the functions once it's debugged
 7. You can then call these urls however you wish to test, e.g. using tests/test_http_calls as documented above in the Unit test section.  
 
 **NB: remember that the function app is running locally but any code that exists inside the functions will be run as normal, i.e. you make a GET request to the localhost url but the function code is still receiving Servicebus messages from a namespace in Azure. This is fine but bear in mind any permissions needed for your personal account to test what the function does.**  
+
+You can also use a terminal for this as well, as shown below. 
+
+![](../../images/function-terminal.png)
 
 ## Terraform
 
@@ -525,3 +478,171 @@ If you try to deploy using an Azure DevOps pipeline task, i.e. AzureFunctionApp@
 [AzureFunctionApp@2](https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/azure-function-app-v2?view=azure-pipelines)  
 
 Therefore it is best to stick to the same deployment method for an existing app. Documentation from Microsoft is available online for various situations that you may come across in this case.  
+
+# User Accessible APIs
+
+Various parts of the business want to be able to query the ODW database tables from UIs and as such, the function app approach has been used.
+
+## DaRT API
+### Goal
+Back Office (ODT) wants to read data from ODW. An API needs to be provided which reads data from specified SQL tables and returns it to the calling process.
+
+### Process
+
+To simply things, the code exists within the service bus functions **functions/function_app.py** file. This makes deploying and maintaining it easier
+
+```python
+@_app.function_name(name="getDaRT")
+@_app.route(route="getDaRT", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="dart",
+                command_text="""
+                SELECT *
+                FROM odw_curated_db.dbo.dart_api
+                WHERE UPPER([applicationReference]) = UPPER(@applicationReference) 
+                OR UPPER([caseReference]) = UPPER(@caseReference)
+                """,
+                command_type="Text",
+                parameters="@caseReference={caseReference},@applicationReference={applicationReference}",
+                connection_string_setting="SqlConnectionString"
+                )
+def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
+    try:
+        rows = []
+        for r in dart:
+            row = json.loads(r.to_json())
+            for key, value in row.items():
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        row[key] = parsed_value
+                    except json.JSONDecodeError:
+                        row[key] = "Invalid json"
+                        print(f"Failed to parse field '{key}': {value}\nError: {e}")
+            rows.append(row)
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+``` 
+
+This function exposes an endpoint which can be called from external applications.
+
+The URL looks a little like this:
+
+```https://<FUNCTION_APP_URL>/api/getDaRT?code=<ACCESS_TOKEN>==&applicationReference=<APPLICATION_REFERENCE>&caseReference=<CASE_REFERENCE>```
+
+```<APPLICATION_REFERENCE>``` is expected to be a string to match against the column applicationReference. The sql_input decorator protects against SQL injection.  
+
+```<CASE_REFERENCE>``` is expected to be a string to match against the column caseReference. The sql_input decorator protects against SQL injection.  
+
+CORS headers are returned which means that Web UIs from other origins can access the API.
+
+
+## Timesheet API
+### Goal
+Back Office (ODT) wants to read data from ODW. An API needs to be provided which reads data from specified SQL tables and returns it to the calling process.
+
+### Process
+
+To simply things, the code exists within the service bus functions **functions/function_app.py** file. This makes deploying and maintaining it easier
+
+```python
+@_app.function_name(name="gettimesheets")
+@_app.route(route="gettimesheets", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="timesheet",
+                command_text="SELECT [caseReference], [applicationReference], [siteAddressLine1], [siteAddressLine2], [siteAddressTown], [siteAddressCounty], [siteAddressPostcode] FROM [odw_curated_db].[dbo].[appeal_has] WHERE UPPER([caseReference]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([applicationReference]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressLine1]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressLine2]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressTown]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressCounty]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37)) OR UPPER([siteAddressPostcode]) LIKE Concat(Char(37), UPPER(@searchCriteria), Char(37))",
+                command_type="Text",
+                parameters="@searchCriteria={searchCriteria}",
+                connection_string_setting="SqlConnectionString")
+def gettimesheets(req: func.HttpRequest, timesheet: func.SqlRowList) -> func.HttpResponse:
+    """
+    We need to use Char(37) to escape the % 
+    https://stackoverflow.com/questions/71914897/how-do-i-use-sql-like-value-operator-with-azure-functions-sql-binding
+    """
+    try:
+        rows = list(map(lambda r: json.loads(r.to_json()), timesheet))
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
+``` 
+
+This function exposes an endpoint which can be called from external applications.
+
+The URL looks a little like this:
+
+```https://<FUNCTION_APP_URL>/api/gettimesheets?code=<ACCESS_TOKEN>==&searchCriteria=<SEARCH CRITERIA>```
+
+```<SEARCH_CRITERIA>``` is expected to be a free text string which is resolved to ```%<SEARCH_CRITERIA>%``` internally and searches across the following columns. The sql_input decorator handles SQL injection protection.
+
+```
+[caseReference],
+[applicationReference],
+[siteAddressLine1],
+[siteAddressLine2],
+[siteAddressTown],
+[siteAddressCounty],
+[siteAddressPostcode]
+```
+
+CORS headers are returned which means that Web UIs from other origins can access the API.
+
+#### Notes
+
+For now, we use the LIKE and UPPER operands to give a wildcard search. You cannot combine the % operand and the @searchCriteria parameter so we have to work around it by uaing a CONCAT and the Char(37) (which is %) to reproduce this functionality.
+
+
+To make use of the **sql_input** declarator (which is defined here 
+[here](https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-azure-sql-input?tabs=isolated-process%2Cnodejs-v4%2Cpython-v2&pivots=programming-language-python)), the requirements.txt has needed to be updated to use a later version of ***azure-functions***
+```
+azure-identity==1.15.0
+azure-functions==1.20.0
+azure-servicebus==7.11.4
+azure-storage-blob==12.19.0
+azure-mgmt-web==7.2.0
+azure-keyvault==4.2.0
+PyYAML==6.0.1
+jsonschema==4.20.0
+iso8601==2.1.0
+aiohttp==3.9.4
+pytest==7.4.0
+pytest-asyncio==0.23.3
+git+https://github.com/Planning-Inspectorate/data-model@main#egg=pins_data_model
+```
+If the previous version 1.17.0 was used then the functions app deployed but zero functions were available with no apparent logging as to the cause.
+
+### Functionality
+This function simply  makes a query to the curated table [odw_curated_db].[dbo].[s62a] which surfaces the required data. The function app needs to have the right permissions to make these queries which uses a SqlConnectionString variable in the function app configuration
+
+```SqlConnectionString: Server=tcp:<SQL INSTANCE>,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;",```
+
+The SQL permissions are granted as per this documentation [Add user to ODW](https://github.com/Planning-Inspectorate/ODW-Service/blob/main/docs/add_user.md)
+
+
+### Key Vault
+
+For anything to call the function app APIs, they require an access code to be provided on the URL in the form *\<function_app_function\>?code=\<secret_access_token\>*. 
+When a new function is deployed then the relevant keyvaults in dev/test/prod need to be updated so that any applications which use these functions.
+
+There is some helper code in [getfunctionurlsandsetkeyvaultsecrets](../../functions/helper/getfunctionurlsandsetkeyvaultsecrets.py) which can be run locally to update the relevant secrets in keyvault.
+
+There is a single function called ```setkeyvaultsecrets()``` which should be executed for each environment. This retrieves a list of the function apps and updates the secrets in the keyvaults defined in the variables at the top of the file
+
+subscription_id = "\<REDACTED\>"  
+resource_group_name = "\<REDACTED\>"  
+DB_resource_group_name = "\<REDACTED\>"  
+function_app_name = "\<REDACTED\>"  
+keyvault_name = "\<REDACTED\>"  
+
+This requires that the running account has the correct permissions to run this script locally. [AZ Client](https://learn.microsoft.com/en-us/cli/azure/) needs to be installed and [az login](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli-interactively) will trigger a browser window to be opened which will enable your PINS credentials to be entered. 
+
+It might be beneficial to move this into an pipeline to avoid the issue with credentials to take advantage of the credentials already available in the virtual machines.
+

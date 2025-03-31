@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d7a10613-307b-4550-9f3b-1a842dadab42"
+				"spark.autotune.trackingId": "157fde1a-4154-43b4-8d6d-eca9c4644221"
 			}
 		},
 		"metadata": {
@@ -42,7 +42,7 @@
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
 				},
-				"sparkVersion": "3.3",
+				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
 				"memory": 28,
@@ -90,7 +90,7 @@
 					"    }\n",
 					"}"
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -108,7 +108,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -139,7 +139,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"raw_container = \"abfss://odw-raw@\" + storage_account"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -157,7 +157,7 @@
 				"source": [
 					"%run \"1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions\""
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -197,7 +197,7 @@
 					"delete_existing_table=False\n",
 					"dataAttribute = \"\""
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -241,6 +241,8 @@
 					"df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
+					"process_name = \"py_raw_to_std\"\n",
+					"\n",
 					"source_path = f\"{raw_container}{source_folder_path}/{date_folder_str}\"\n",
 					"\n",
 					"try:\n",
@@ -276,7 +278,7 @@
 					"            mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
 					"\n",
 					"        logInfo(f\"Ingesting {file.name}\")\n",
-					"        (ingestion_failure, row_count) = ingest_adhoc(storage_account, definition, source_path, file.name, expected_from, expected_to, isMultiLine, dataAttribute)\n",
+					"        (ingestion_failure, row_count) = ingest_adhoc(storage_account, definition, source_path, file.name, expected_from, expected_to, process_name, isMultiLine, dataAttribute)\n",
 					"        logInfo(f\"Ingested {row_count} rows\")\n",
 					"\n",
 					"        if ingestion_failure:\n",
@@ -285,6 +287,10 @@
 					"        else:\n",
 					"            print(f\"No Errors reported during Ingestion\")\n",
 					"\n",
+					"            # Log ingestion metrics after successful ingestion\n",
+					"            logInfo(\"Updating ingestion metrics\")\n",
+					"            log_ingestion_metrics(storage_account, process_name)\n",
+					"\n",
 					"    else:\n",
 					"        if specific_file != '':\n",
 					"            raise ValueError(f\"No definition found for {specific_file}\")\n",
@@ -292,7 +298,7 @@
 					"            logError(\"No definition found\")\n",
 					""
 				],
-				"execution_count": 13
+				"execution_count": null
 			}
 		]
 	}

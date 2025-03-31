@@ -761,7 +761,122 @@ def appeals78(req: func.HttpRequest) -> func.HttpResponse:
             if f"{_VALIDATION_ERROR}" in str(e)
             else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
         )
+    
+
+@_app.function_name("appealrepresentation")
+@_app.route(route="appealrepresentation", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+def appealrepresentation(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Azure Function endpoint for handling HTTP requests.
+
+    Args:
+        req: An instance of `func.HttpRequest` representing the HTTP request.
+
+    Returns:
+        An instance of `func.HttpResponse` representing the HTTP response.
+    """
+
+    _SCHEMA = _SCHEMAS["appeal-representation.schema.json"]
+    _TOPIC = config["global"]["entities"]["appeal-representation"]["topic"]
+    _SUBSCRIPTION = config["global"]["entities"]["appeal-representation"]["subscription"]
+
+    try:
+        _data = get_messages_and_validate(
+            namespace=_NAMESPACE_APPEALS,
+            credential=_CREDENTIAL,
+            topic=_TOPIC,
+            subscription=_SUBSCRIPTION,
+            max_message_count=_MAX_MESSAGE_COUNT,
+            max_wait_time=_MAX_WAIT_TIME,
+            schema=_SCHEMA,
+        )
+        _message_count = send_to_storage(
+            account_url=_STORAGE,
+            credential=_CREDENTIAL,
+            container=_CONTAINER,
+            entity="appeal-representation",
+            data=_data,
+        )
+
+        response = json.dumps({"message" : f"{_SUCCESS_RESPONSE} - {_message_count} messages sent to storage", "count": _message_count})
+
+        return func.HttpResponse(
+            response,
+            status_code=200
+        )
+
+    except Exception as e:
+        return (
+            func.HttpResponse(f"Validation error: {str(e)}", status_code=500)
+            if f"{_VALIDATION_ERROR}" in str(e)
+            else func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+        )
 
 
+@_app.function_name(name="getDaRT")
+@_app.route(route="getDaRT", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(arg_name="dart",
+                command_text="""
+                SELECT *
+                FROM odw_curated_db.dbo.dart_api
+                WHERE UPPER([applicationReference]) = UPPER(@applicationReference) 
+                OR UPPER([caseReference]) = UPPER(@caseReference)
+                """,
+                command_type="Text",
+                parameters="@caseReference={caseReference},@applicationReference={applicationReference}",
+                connection_string_setting="SqlConnectionString"
+                )
+def getDaRT(req: func.HttpRequest, dart: func.SqlRowList) -> func.HttpResponse:
+    try:
+        rows = []
+        for r in dart:
+            row = json.loads(r.to_json())
+            for key, value in row.items():
+                if isinstance(value, str):
+                    try:
+                        parsed_value = json.loads(value)
+                        row[key] = parsed_value
+                    except json.JSONDecodeError as e:
+                        row[key] = value
+            rows.append(row)
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
 
+@_app.function_name(name="testFunction")
+@_app.route(route="testFunction", methods=["get"], auth_level=func.AuthLevel.FUNCTION)
+@_app.sql_input(
+    arg_name="logs",
+    command_text="""
+    SELECT TOP (1000) [file_ID],
+                    [ingested_datetime],
+                    [ingested_by_process_name],
+                    [input_file],
+                    [modified_datetime],
+                    [modified_by_process_name],
+                    [entity_name],
+                    [rows_raw],
+                    [rows_new]
+    FROM logging.dbo.tables_logs
+    """,
+    command_type="Text",
+    connection_string_setting="SqlConnectionString"
+)
+def test_function(req: func.HttpRequest, logs: func.SqlRowList) -> func.HttpResponse:
+    try:
+        rows = []
+        for r in logs:
+            rows.append(json.loads(r.to_json()))
 
+        return func.HttpResponse(
+            json.dumps(rows),
+            status_code=200,
+            mimetype="application/json"
+        )
+    except Exception as e:
+        return func.HttpResponse(f"Unknown error: {str(e)}", status_code=500)
+    

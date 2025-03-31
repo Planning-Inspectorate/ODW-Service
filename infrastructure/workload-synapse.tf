@@ -37,8 +37,20 @@ module "synapse_workspace_private" {
   synapse_sql_administrator_username    = var.synapse_sql_administrator_username
   synapse_role_assignments              = var.synapse_role_assignments
   tenant_id                             = var.tenant_id
+  tooling_config = {
+    synapse_private_dns_zone_id     = data.azurerm_private_dns_zone.tooling_synapse.id
+    synapse_dev_private_dns_zone_id = data.azurerm_private_dns_zone.tooling_synapse_dev.id
+  }
+
+  odt_appeals_back_office_service_bus_name                = var.odt_appeals_back_office.service_bus_name
+  odt_appeals_back_office_service_bus_resource_group_name = var.odt_appeals_back_office.resource_group_name
 
   tags = local.tags
+
+  providers = {
+    azurerm     = azurerm,
+    azurerm.odt = azurerm.odt
+  }
 }
 
 module "synapse_workspace_private_failover" {
@@ -82,6 +94,15 @@ module "synapse_workspace_private_failover" {
   synapse_sql_administrator_username    = var.synapse_sql_administrator_username
   synapse_role_assignments              = var.synapse_role_assignments
   tenant_id                             = var.tenant_id
+  tooling_config = {
+    synapse_private_dns_zone_id     = data.azurerm_private_dns_zone.tooling_synapse.id
+    synapse_dev_private_dns_zone_id = data.azurerm_private_dns_zone.tooling_synapse_dev.id
+  }
 
   tags = local.tags
+
+  providers = {
+    azurerm     = azurerm,
+    azurerm.odt = azurerm.odt
+  }
 }

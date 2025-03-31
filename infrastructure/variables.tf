@@ -474,9 +474,13 @@ variable "synapse_data_exfiltration_enabled" {
 }
 
 variable "synapse_role_assignments" {
-  default     = {}
-  description = "An object mapping RBAC roles to principal IDs for the Synapse Workspace"
-  type        = map(list(string))
+  default     = []
+  description = "A list of RBAC roles assignments for the Synapse Workspace"
+  type = list(object({
+    role_definition_name = string
+    principal_id         = string
+    principal_type       = optional(string)
+  }))
 }
 
 variable "synapse_sql_administrator_username" {
@@ -494,6 +498,15 @@ variable "tags" {
 variable "tenant_id" {
   description = "The ID of the Azure AD tenant containing the identities used for RBAC assignments"
   type        = string
+}
+
+variable "tooling_config" {
+  description = "The configuration for the Tooling subscription, for VNET links"
+  type = object({
+    network_rg      = string
+    network_name    = string
+    subscription_id = string
+  })
 }
 
 variable "vnet_base_cidr_block" {
@@ -518,5 +531,6 @@ variable "vnet_subnets" {
       delegation_name = string
       actions         = list(string)
     }))
+    private_endpoint_network_policies = optional(string)
   }))
 }

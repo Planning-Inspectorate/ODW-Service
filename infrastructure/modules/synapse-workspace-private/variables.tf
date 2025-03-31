@@ -44,6 +44,18 @@ variable "key_vault_name" {
   type        = string
 }
 
+variable "odt_appeals_back_office_service_bus_name" {
+  description = "The name of the Appeals BO Service Bus namespace"
+  type        = string
+  default     = null
+}
+
+variable "odt_appeals_back_office_service_bus_resource_group_name" {
+  description = "The name of the resource group for the Appeals BO Service Bus"
+  type        = string
+  default     = null
+}
+
 variable "network_resource_group_name" {
   description = "The name of the resource group into which private endpoints will be deployed"
   type        = string
@@ -176,9 +188,13 @@ variable "synapse_private_endpoint_vnet_subnets" {
 }
 
 variable "synapse_role_assignments" {
-  default     = {}
-  description = "An object mapping RBAC roles to principal IDs for the Synapse Workspace"
-  type        = map(list(string))
+  default     = []
+  description = "A list of RBAC roles assignments for the Synapse Workspace"
+  type = list(object({
+    role_definition_name = string
+    principal_id         = string
+    principal_type       = optional(string)
+  }))
 }
 
 variable "synapse_sql_administrator_username" {
@@ -196,4 +212,12 @@ variable "tags" {
 variable "tenant_id" {
   description = "The ID of the Azure AD tenant containing the identities used for RBAC assignments"
   type        = string
+}
+
+variable "tooling_config" {
+  description = "Config for the tooling subscription dns zones"
+  type = object({
+    synapse_private_dns_zone_id     = string
+    synapse_dev_private_dns_zone_id = string
+  })
 }
