@@ -1,17 +1,32 @@
-name: Synapse dev PR
+name: Synapse PR
 
 pr:
 - dev
+- test
+#- main
+
+variables:
+  branchName: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+  ${{ if eq(variables.branchName, 'dev') }}:
+    env: dev
+  ${{ elseif eq(variables.branchName, 'testing') }}:
+    env: test
+  #${{ elseif eq(variables.branchName, 'main') }}:
+  #  env: prod
+  ${{ else }}:
+    env: dev
+  agentPool: 'pins-agent-pool-odw-${{ variables.env }}-uks'
+  azureSubscription: 'pins-agent-pool-odw-${{ variables.env }}-uks'
 
 stages:
 - stage: DeploySynapse
   # This needs to be updated to deploy to the build environment once that has been created
-  displayName: 'Deploy Synapse to the dev environment'
+  displayName: 'Deploy Synapse to the ${{ variables.env }} environment'
   jobs:
   - template: jobs/deploy-synapse.yaml
     parameters:
-      agentPool: 'pins-agent-pool-odw-dev-uks'
-      env: dev
+      agentPool: ${{ variables.agentPool }}
+      env: ${{ variables.env }}
       activateTriggers: false
       runUnitTests: true
       runIntegrationTests: True
