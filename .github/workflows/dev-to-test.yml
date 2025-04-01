@@ -8,6 +8,8 @@ on:
     branches:
       - dev
 
+env:
+  TEST_BRANCH_NAME: 'testing'
 
 jobs:
   create_test_branch_and_raise_pr:
@@ -16,10 +18,10 @@ jobs:
     - uses: actions/checkout@v4
       with:
         ref: dev
-    - name: Check the test branch exists
+    - name: Check the $TEST_BRANCH_NAME branch exists
       shell: bash
       run: |
-        if [ -n $(git ls-remote --heads origin test) ]; then
+        if [ -n $(git ls-remote --heads origin $TEST_BRANCH_NAME) ]; then
             echo "createTestBranch=false" >> $GITHUB_OUTPUT
         else
             echo "createTestBranch=true" >> $GITHUB_OUTPUT          
@@ -40,13 +42,13 @@ jobs:
         git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
         git config user.name "${GITHUB_ACTOR}"
         if [[ ${{ steps.check_test_branch_exists.outputs.createTestBranch }} ]]; then
-            echo "The test branch does not exist, creating the branch and raising a pull request"
+            echo "The $TEST_BRANCH_NAME branch does not exist, creating the branch and raising a pull request"
             git fetch
             git checkout main
             git pull 
-            git branch test
-            git push --set-upstream origin test
-            gh pr create -B dev -H test --title 'Automated Pull Request from dev branch to test branch' --body '${{ steps.extract_commit_message.outputs.message }}'
+            git branch $TEST_BRANCH_NAME
+            git push --set-upstream origin $TEST_BRANCH_NAME
+            gh pr create -B dev -H $TEST_BRANCH_NAME --title 'Automated Pull Request from dev branch to $TEST_BRANCH_NAME branch' --body '${{ steps.extract_commit_message.outputs.message }}'
         else
-            echo "The test branch already exists, not raising a Pull Request"
+            echo "The $TEST_BRANCH_NAME branch already exists, not raising a Pull Request"
         fi
