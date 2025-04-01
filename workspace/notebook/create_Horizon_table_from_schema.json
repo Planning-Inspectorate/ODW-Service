@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "58f0062c-896c-4f1b-8b76-526a0f5c0b9a"
+				"spark.autotune.trackingId": "61604b5f-f5c2-4a53-a4be-813ee13e14d1"
 			}
 		},
 		"metadata": {
@@ -67,7 +67,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -92,7 +92,7 @@
 					"from pyspark.sql.types import StructType, StructField, StringType, IntegerType, DoubleType, BooleanType, DateType, TimestampType\n",
 					"import re"
 				],
-				"execution_count": 2
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -124,11 +124,11 @@
 					]
 				},
 				"source": [
-					"db_name: str = ''\n",
-					"entity_name: str = ''\n",
+					"db_name: str = 'odw_standardised_db'\n",
+					"entity_name: str = 'HorizonAppealsFolder'\n",
 					"is_horizon_schema: bool = True"
 				],
-				"execution_count": 3
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -147,7 +147,7 @@
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"path_to_orchestration_file: str = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
 				],
-				"execution_count": 4
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -192,7 +192,7 @@
 					"        return (None, None)  # Entity not found or missing required fields\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -200,7 +200,7 @@
 					"table_name, table_definition = get_table_info(entity_name, storage_account, path_to_orchestration_file)\n",
 					"table_definition: str = \"abfss://odw-config@\"+storage_account+table_definition"
 				],
-				"execution_count": 6
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -247,7 +247,7 @@
 					"    return table_name in table_names\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -278,7 +278,7 @@
 					"# Execution continues here only if the table does not exist\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -296,17 +296,16 @@
 			{
 				"cell_type": "code",
 				"source": [
-					" standardised_fields = StructType([\n",
-					"    StructField(\"input_file\", StringType(), False)\n",
-					"        StructField(\"ingested_by_process_name\", TimestampType(), False),\n",
-					"        StructField(\"modified_datetime\",TimestampType(), False),\n",
-					"        StructField(\"modified_by_process_name\", StringType(), False),\n",
-					"        StructField(\"entity_name\", StringType(), False), \n",
-					"        StructField(\"file_id\", StringType(), False)\n",
-					"        ]\n",
-					""
+					"standardised_fields = StructType([\n",
+					"    StructField(\"input_file\", StringType(), False),\n",
+					"    StructField(\"ingested_by_process_name\", TimestampType(), False),\n",
+					"    StructField(\"modified_datetime\", TimestampType(), False),\n",
+					"    StructField(\"modified_by_process_name\", StringType(), False),\n",
+					"    StructField(\"entity_name\", StringType(), False),\n",
+					"    StructField(\"file_id\", StringType(), False)\n",
+					"])"
 				],
-				"execution_count": null
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -345,22 +344,30 @@
 					"        \n",
 					"        fields.append(StructField(field_name, spark_type, nullable))\n",
 					"\n",
+					"    # Add the standardised fields to the schema\n",
+					"    fields.extend(standardised_fields.fields)\n",
+					"\n",
 					"    spark_schema = StructType(fields)\n",
 					"    \n",
 					"    # Create table using the schema\n",
 					"    spark.createDataFrame([], schema=spark_schema).createOrReplaceTempView(table_name)\n",
 					"    \n",
-					"    return spark_schema"
+					"    return spark_schema\n",
+					""
 				],
-				"execution_count": 11
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
 					"# Usage\n",
-					"spark_dataframe = create_spark_schema(table_definition, table_name)"
+					"spark_dataframe = create_spark_schema(table_definition, table_name)\n",
+					"print(spark_dataframe)"
 				],
-				"execution_count": null
+				"execution_count": 61
 			},
 			{
 				"cell_type": "markdown",
