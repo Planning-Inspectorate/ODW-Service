@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8a2260d1-d9db-4f6a-8310-dbf68aebb6a0"
+				"spark.autotune.trackingId": "44b369a9-b518-4726-9177-f18ff5533269"
 			}
 		},
 		"metadata": {
@@ -79,7 +79,7 @@
 					"import pyspark.sql.functions as F \n",
 					"import re\n",
 					"from notebookutils import mssparkutils\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce,concat_ws,row_number\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce,concat_ws,row_number, to_timestamp\n",
 					"from pprint import pprint as pp\n",
 					"from pyspark.sql.types import *\n",
 					"from pyspark.sql.window import Window\n",
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 38
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -116,7 +116,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 24
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -193,35 +193,35 @@
 					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'dd/MM/yyyy').desc())\n",
 					"df_transform_inspector_address = df_transform_inspector_address.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn > 1\").drop(\"rn\")\n",
 					"\n",
-					"display(df_transform_inspector_address)\n",
+					"#display(df_transform_inspector_address)\n",
 					"\n",
 					"\n",
 					"df_tgt_inspector_address = spark.table(f\"{target_delta_table}\")\n",
 					"\n",
-					"df_update_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"inner\").select(\"src.*\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", col(\"EndDate\")).withColumn(\"IsActive\", lit('Y'))\n",
+					"df_update_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"inner\").select(\"src.*\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
 					"\n",
-					"df_new_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"left_anti\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", col(\"EndDate\")).withColumn(\"IsActive\", lit('Y'))\n",
+					"df_new_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"left_anti\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
 					"\n",
 					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_new_records_inspector_address).dropDuplicates()\n",
 					"\n",
-					"#display(df_merged_records_inspector_address)\n",
+					"display(df_merged_records_inspector_address)\n",
 					"\n",
 					"# Write new records to target Delta Table\n",
-					"#try:\n",
+					"try:\n",
 					"    # Overwrite the entire delta table with transfored dataframe\n",
-					"#    df_merged_records_inspector_address.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"    df_merged_records_inspector_address.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
 					"\n",
 					"\n",
-					"#    print(f\" Records overwritten successfully to {target_delta_table}\")\n",
+					"    print(f\" Records overwritten successfully to {target_delta_table}\")\n",
 					"\n",
-					"#except Exception as e:\n",
-					"#    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
-					"#    raise\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
 					"\n",
 					"\n",
 					""
 				],
-				"execution_count": 37
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
