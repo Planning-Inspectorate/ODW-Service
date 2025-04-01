@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a7026239-9bee-4fd8-ac35-c3d6dbd129e3"
+				"spark.autotune.trackingId": "1ebf9455-9909-442a-a5a4-d9003cbce984"
 			}
 		},
 		"metadata": {
@@ -56,14 +56,14 @@
 				"source": [
 					"%run utils/py_mount_storage"
 				],
-				"execution_count": 1
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 10
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 					"from pyspark.sql.functions import col, lit\n",
 					"from pyspark.sql.types import StructType"
 				],
-				"execution_count": 12
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +102,7 @@
 					"print(source_path)\n",
 					"print(config_file_path)"
 				],
-				"execution_count": 18
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -125,7 +125,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 19
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +146,7 @@
 					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
 					"    return table_name in table_names"
 				],
-				"execution_count": 20
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -154,24 +154,112 @@
 					"jobId = mssparkutils.env.getJobId()\n",
 					"mount_storage(path=source_path)"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"async def ingest_horizon(file: str):\n",
-					"    # Determine the date folder\n",
-					"    date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
+					"db_name='odw_standardised_db'\n",
+					"table_name='horizon_case_involvement'\n",
+					"source_path='abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Horizon/2025-03-27'\n",
+					"file_name='CaseInvolvement.csv'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
 					"\n",
-					"    # Load orchestration definitions\n",
-					"\n",
-					"    spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\n",
+					"def load_data_into_table(db_name: str, table_name: str, source_path: str, file_name: str):\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
 					"    \n",
-					"    df: DataFrame = spark.read.option(\"multiline\", \"true\").json(config_file_path)\n",
-					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"    # Load data from CSV\n",
+					"    df = spark.read.csv(f\"{source_path}{file_name}\", header=True, inferSchema=True)\n",
+					"    \n",
+					"    # Write data to table in Parquet format\n",
+					"    df.write.format(\"parquet\").saveAsTable(f\"{db_name}.{table_name}\")\n",
 					"\n",
-					"    definition: dict = next((d for d in definitions if specific_file == d['Source_Filename_Format'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
-					"       if definition:\n",
+					"# Example usage\n",
+					"db_name = 'odw_standardised_db'\n",
+					"table_name = 'horizon_case_involvement'\n",
+					"source_path = 'abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Horizon/2025-03-27/'\n",
+					"file_name = 'CaseInvolvement.csv'\n",
+					"\n",
+					"load_data_into_table(db_name, table_name, source_path, file_name)\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"import asyncio\n",
+					"from concurrent.futures import ThreadPoolExecutor\n",
+					"from pyspark.sql import SparkSession\n",
+					"import json\n",
+					"\n",
+					"# Assuming you have a function to check if a table exists\n",
+					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
+					"    # Your logic to check if the table exists\n",
+					"    pass\n",
+					"\n",
+					"# Function to load data into a table\n",
+					"def load_data_into_table(db_name: str, table_name: str, source_path: str, file_name: str):\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    \n",
+					"    # Load data from CSV\n",
+					"    df = spark.read.csv(f\"{source_path}{file_name}\", header=True, inferSchema=True)\n",
+					"    \n",
+					"    # Write data to table\n",
+					"    df.write.saveAsTable(f\"{db_name}.{table_name}\")\n",
+					"\n",
+					"# Asynchronous function to ingest data\n",
+					"async def ingest_horizon(date_folder: str, file: str, source_path: str, db_name: str):\n",
+					"    date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
+					"    specific_file = file\n",
+					"    \n",
+					"    # Load orchestration definitions\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"    df = spark.read.option(\"multiline\", \"true\").json(config_file_path)\n",
+					"    definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"    \n",
+					"    definition = next((d for d in definitions if entity_name == d['Source_Filename_Start'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
+					"    \n",
+					"    if definition:\n",
+					"        table_name = definition.get('Standardised_Table_Name')\n",
+					"        if test_table_exists(db_name, table_name):\n",
+					"            logInfo(f\"{db_name}.{table_name} Table already exists, loading data\")\n",
+					"            \n",
+					"            # Use ThreadPoolExecutor to simulate async loading\n",
+					"            with ThreadPoolExecutor() as executor:\n",
+					"                executor.submit(load_data_into_table, db_name, table_name, source_path, f\"CaseInvolvement.csv\")\n",
+					"        else:\n",
+					"            logInfo(f\"{db_name}.{table_name} Table does not exist\")\n",
+					"    else:\n",
+					"        logInfo(f\"No definition found for {specific_file}\")\n",
+					"\n",
+					"# Example usage\n",
+					"async def main():\n",
+					"    await ingest_horizon(date_folder, file, source_path, db_name)\n",
+					"\n",
+					"asyncio.run(main())\n",
+					""
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"ingest_horizon_data=ingest_horizon(date_folder,specific_file)\n",
+					"display(ingest_horizon_data)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"    if definition:\n",
 					"        expected_from = date_folder - timedelta(days=1)\n",
 					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
 					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays'])\n",
@@ -179,8 +267,7 @@
 					"    if definition:\n",
 					"        table_name = definition.get('Standardised_Table_Name')\n",
 					"        table_definition = definition.get('Standardised_Table_Definition')\n",
-					"        if test_table_exists(db_name, table_name):\n",
-					"   \n",
+					"        if test_table_exists(db_name, table_name): \n",
 					"    logInfo(f\"{db_name}.{table_name} Table already exists, exiting\")\n",
 					"  \n",
 					"else:\n",
@@ -193,8 +280,7 @@
 					"        if specific_file:\n",
 					"            raise ValueError(f\"No definition found for {specific_file}\")\n",
 					"        print(\"No definition found\")\n",
-					"        return\n",
-					""
+					"        return"
 				],
 				"execution_count": null
 			},
@@ -204,7 +290,7 @@
 					"specific_file=\"CaseInvolvement.csv\"\n",
 					"print(specific_file)"
 				],
-				"execution_count": null
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
