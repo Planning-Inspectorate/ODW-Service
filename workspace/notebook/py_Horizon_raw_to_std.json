@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c3e3ce9d-4bee-40ae-aef8-6cad26f830cd"
+				"spark.autotune.trackingId": "7cc75e25-25b3-494c-847d-f678ea0b03c0"
 			}
 		},
 		"metadata": {
@@ -28,7 +28,7 @@
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
-				"display_name": "python"
+				"display_name": "Synapse PySpark"
 			},
 			"language_info": {
 				"name": "python"
@@ -56,7 +56,7 @@
 				"source": [
 					"%run utils/py_mount_storage"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -71,7 +71,7 @@
 					"import json\n",
 					"import re"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -88,7 +88,7 @@
 					"print(source_path)\n",
 					"print(config_file_path)"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -104,29 +104,88 @@
 					"\n",
 					"# Get the name of the latest modified folder\n",
 					"if sorted_folders:\n",
-					"    latest_folder = sorted_folders[0][0]\n",
-					"    source_path=f\"{source_path}{latest_folder}\"\n",
+					"    date_folder = sorted_folders[0][0]\n",
+					"    source_path=f\"{source_path}{date_folder}\"\n",
 					"    print(f\"Latest modified folder: {latest_folder}\")\n",
 					"    print(source_path)\n",
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"files = mssparkutils.fs.ls(source_path)\n",
-					"horizon_files = [file.name for file in files]\n",
-					"horizon_files"
+					"# files = mssparkutils.fs.ls(source_path)\n",
+					"# horizon_files = [file.name for file in files]\n",
+					"# horizon_files"
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"jobId = mssparkutils.env.getJobId()\n",
 					"mount_storage(path=source_path)"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"import json\n",
+					"from datetime import datetime, timedelta\n",
+					"\n",
+					"async def ingest_horizon(date_folder: str, file: str):\n",
+					"    # Determine the date folder\n",
+					"    date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
+					"\n",
+					"    # Load orchestration definitions\n",
+					"\n",
+					"    spark: SparkSession = SparkSession.builder.getOrCreate()  # Get or create SparkSession\n",
+					"    \n",
+					"    df: DataFrame = spark.read.option(\"multiline\", \"true\").json(config_file_path)\n",
+					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"    definition: dict = next((d for d in definitions if specific_file == d['Source_Filename_Format'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
+					"   \n",
+					"    if definition:\n",
+					"        table_name = definition.get('Standardised_Table_Name')\n",
+					"        table_definition = definition.get('Standardised_Table_Definition')\n",
+					"    else:\n",
+					"        return (None, None)  # Entity not found or missing required fields\n",
+					"\n",
+					"    if not definition:\n",
+					"        if specific_file:\n",
+					"            raise ValueError(f\"No definition found for {specific_file}\")\n",
+					"        print(\"No definition found\")\n",
+					"        return\n",
+					"\n",
+					"    # Calculate expected time range\n",
+					"    expected_from = datetime.combine(date_folder - timedelta(days=1), datetime.min.time())\n",
+					"    expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays'])\n",
+					"\n",
+					"    # Delete existing table if required\n",
+					"    if delete_existing_table:\n",
+					"        table_name = definition['Standardised_Table_Name']\n",
+					"        print(f\"Deleting existing table odw_standardised_db.{table_name}\")\n",
+					"        mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': table_name})\n",
+					"\n",
+					"    # Ingest the file\n",
+					"    print(f\"Ingesting {file}\")\n",
+					"    ingestion_failure, row_count = await ingest_adhoc(\n",
+					"        storage_account, definition, source_path, file, \n",
+					"        expected_from, expected_to, isMultiLine, dataAttribute\n",
+					"    )\n",
+					"    \n",
+					"    print(f\"Ingested {row_count} rows\")\n",
+					"    \n",
+					"    if ingestion_failure:\n",
+					"        print(\"Errors reported during ingestion!\")\n",
+					"        raise RuntimeError(\"Ingestion Failure\")\n",
+					"    \n",
+					"    print(\"No errors reported during ingestion\")\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -143,14 +202,14 @@
 					"# loop = asyncio.get_event_loop()\n",
 					"# loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": null
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# unmount_storage()"
 				],
-				"execution_count": null
+				"execution_count": 8
 			}
 		]
 	}
