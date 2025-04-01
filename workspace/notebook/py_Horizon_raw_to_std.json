@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d1598eed-32d8-438a-b6df-66104f0531f2"
+				"spark.autotune.trackingId": "59faa8bc-9456-4428-8335-adacfe95c767"
 			}
 		},
 		"metadata": {
@@ -61,6 +61,13 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"import asyncio\n",
 					"import nest_asyncio\n",
 					"import tracemalloc\n",
@@ -70,15 +77,15 @@
 					"from pyspark.sql import DataFrame\n",
 					"import json\n",
 					"import re\n",
-					"   from pyspark.sql import SparkSession\n",
-					"    from notebookutils import mssparkutils\n",
-					"    import json\n",
-					"    from datetime import datetime\n",
-					"    import re\n",
-					"    from pyspark.sql.functions import col, lit\n",
-					"    from pyspark.sql.types import StructType"
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"import json\n",
+					"from datetime import datetime\n",
+					"import re\n",
+					"from pyspark.sql.functions import col, lit\n",
+					"from pyspark.sql.types import StructType"
 				],
-				"execution_count": 2
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -95,7 +102,7 @@
 					"print(source_path)\n",
 					"print(config_file_path)"
 				],
-				"execution_count": 3
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -113,12 +120,12 @@
 					"if sorted_folders:\n",
 					"    date_folder = sorted_folders[0][0]\n",
 					"    source_path=f\"{source_path}{date_folder}\"\n",
-					"    print(f\"Latest modified folder: {latest_folder}\")\n",
+					"    print(f\"Latest modified folder: {date_folder}\")\n",
 					"    print(source_path)\n",
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 4
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -128,6 +135,18 @@
 					"# horizon_files"
 				],
 				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"@logging_to_appins\n",
+					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
+					"    spark.sql(f\"USE {db_name}\")\n",
+					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\n",
+					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
+					"    return table_name in table_names"
+				],
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -155,6 +174,10 @@
 					"    definitions: list = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
 					"    definition: dict = next((d for d in definitions if specific_file == d['Source_Filename_Format'] and d.get('Source_Folder') == \"Horizon\"), None)\n",
+					"       if definition:\n",
+					"        expected_from = date_folder - timedelta(days=1)\n",
+					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays'])\n",
 					"   \n",
 					"    if definition:\n",
 					"        table_name = definition.get('Standardised_Table_Name')\n",
@@ -167,23 +190,15 @@
 					"            raise ValueError(f\"No definition found for {specific_file}\")\n",
 					"        print(\"No definition found\")\n",
 					"        return\n",
+					"if test_table_exists(db_name, table_name):\n",
+					"   \n",
+					"    logInfo(f\"{db_name}.{table_name} Table already exists, exiting\")\n",
+					"  \n",
 					"\n",
-					"@logging_to_appins\n",
-					"def test_table_exists(db_name: str, table_name: str) -> bool:\n",
-					"    \"\"\"\n",
-					"    Check if a table exists in the specified database.\n",
 					"\n",
-					"    Args:\n",
-					"    db_name (str): The name of the database to check.\n",
-					"    table_name (str): The name of the table to look for.\n",
-					"\n",
-					"    Returns:\n",
-					"    bool: True if the table exists, False otherwise.\n",
-					"    \"\"\"\n",
-					"    spark.sql(f\"USE {db_name}\")\n",
-					"    tables_df: DataFrame = spark.sql(\"SHOW TABLES\")\n",
-					"    table_names: list = [row['tableName'] for row in tables_df.collect()]\n",
-					"    return table_name in table_names"
+					"else:\n",
+					"      logInfo(f\"{db_name}.{table_name} Table does not exist\")\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -199,21 +214,6 @@
 					"                    expected_to, \n",
 					"                    isMultilineJSON=False, \n",
 					"                    dataAttribute=None):\n",
-					"\n",
-					"    # ---------- Table Existence Check & Creation ----------\n",
-					"    if not spark.catalog.tableExists(db_name, standardised_table_name):\n",
-					"        print(f\"Creating new table: {db_name}.{standardised_table_name}\")\n",
-					"        mssparkutils.notebook.run(\n",
-					"            'create_Horizon_table_from_schema',\n",
-					"            timeout_seconds=300,\n",
-					"            parameters={\n",
-					"                'schema_json': schema_json,\n",
-					"                'db_name': db_name,\n",
-					"                'table_name': standardised_table_name\n",
-					"            }\n",
-					"        )\n",
-					"    else:\n",
-					"        print(f\"Using existing table: {db_name}.{standardised_table_name}\")\n",
 					"\n",
 					"    # ---------- CSV Handling ----------\n",
 					"    if '.csv' in filename.lower():\n",
