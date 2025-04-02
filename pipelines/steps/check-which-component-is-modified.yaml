@@ -1,0 +1,44 @@
+##
+# Check which services have been modified and need to be redeployed
+##
+steps:
+- bash: |
+    modifiedFiles="$(git diff-tree --no-commit-id --name-only -r $(Build.SourceVersion))"
+    echo "The following files have been modified: ${modifiedFiles}"
+
+    # The below variables represent services that need to be deployed
+    infrastructureModified=false
+    functionsModified=false
+    logicappModified=false
+    synapseModified=false
+
+    if [[ $modifiedFiles == *"infrastructure/"* || $modifiedFiles == *"servicebus/"* ]]; then
+        infrastructureModified=true
+    fi
+    if [[ $modifiedFiles == *"functionapp/"* || $modifiedFiles == *"functions/"* ]]; then
+        functionsModified=true
+    fi
+    if [[ $modifiedFiles == *"logicapp/"* ]]; then
+        logicappModified=true
+    fi
+    if [[ $modifiedFiles == *"workspace/"* ]]; then
+        synapseModified=true
+    fi
+    if [[ $modifiedFiles == *"pipelines/"* ]]; then
+        # If CI/CD pipelines are modified, then redeploy everything to make sure the pipelines work
+        infrastructureModified=true
+        functionsModified=true
+        logicappModified=true
+        synapseModified=true
+    fi
+
+    echo "infrastructureModified = ${infrastructureModified}"
+    echo "functionsModified = ${functionsModified}"
+    echo "logicappModified = ${logicappModified}"
+    echo "synapseModified = ${synapseModified}"
+
+    echo "##vso[task.setvariable variable=infrastructureModified;isOutput=true]"
+    echo "##vso[task.setvariable variable=functionsModified;isOutput=true]"
+    echo "##vso[task.setvariable variable=logicappModified;isOutput=true]"
+    echo "##vso[task.setvariable variable=synapseModified;isOutput=true]"
+  displayName: 'Check which components have been modified'
