@@ -1,7 +1,6 @@
 parameters:
   agentPool: ''
   env: ''
-  deploySynapse: true
   activateTriggers: false
   runUnitTests: true
   runIntegrationTests: True
@@ -11,16 +10,17 @@ parameters:
 # Deploy Azure Synapse
 ##
 jobs:
-- job: Deploy_Synapse
-  pool: ${{ parameters.agentPool }}
-  condition: eq(parameters.deploySynapse, true)
+- job: DeploySynapse
+  # This job cannot be templated because the condition needs to be evaluated at runtime
+  pool: ${{ variables.agentPool }}
+  condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.synapseModified'], true)
   steps:
   - checkout: self
     clean: true
   - task: AzureCLI@2
     displayName: 'Testing'
     inputs:
-      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |

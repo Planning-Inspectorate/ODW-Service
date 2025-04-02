@@ -29,23 +29,16 @@ stages:
       fetchDepth: 0
     - template: steps/check-which-component-is-modified.yaml
 
-- stage: DeploySynapse
+- stage: Deploy
   # This needs to be updated to deploy to the build environment once that has been created
   displayName: 'Deploy Synapse to the ${{ variables.env }} environment'
   dependsOn: PreDeploy
-  condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.synapseModified'], true)
   jobs:
-  - job: DeploySynapse
-    # This job cannot be templated because the condition needs to be evaluated at runtime
-    pool: ${{ variables.agentPool }}
-    steps:
-    - checkout: self
-      clean: true
-    - task: AzureCLI@2
-      displayName: 'Testing'
-      inputs:
-        azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "testing"
+  - template: jobs/deploy-synapse.yaml
+    parameters:
+      agentPool: ${{ variables.agentPool }}
+      env: ${{ variables.env }}
+      activateTriggers: false
+      runUnitTests: true
+      runIntegrationTests: True
+      runEndToEndTests: true
