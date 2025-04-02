@@ -1,0 +1,104 @@
+name: Synapse PR
+
+pr:
+- dev
+- testing
+#- main
+
+variables:
+  branchName: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+  ${{ if eq(variables.branchName, 'dev') }}:
+    env: dev
+  ${{ elseif eq(variables.branchName, 'testing') }}:
+    env: test
+  #${{ elseif eq(variables.branchName, 'main') }}:
+  #  env: prod
+  ${{ else }}:
+    env: dev
+  agentPool: 'pins-agent-pool-odw-${{ variables.env }}-uks'
+  azureSubscription: 'pins-agent-pool-odw-${{ variables.env }}-uks'
+
+stages:
+- stage: PreDeploy
+  displayName: 'Pre-deployment checks to work out what needs to be deployed'
+  jobs:
+  - job: PreDeploymentChecks
+    pool: ${{ variables.agentPool }}
+    steps:
+    - checkout: 'self'
+      fetchDepth: 0
+    - template: steps/check-which-component-is-modified.yaml
+
+- stage: Deploy
+  # This needs to be updated to deploy to the build environment once that has been created
+  displayName: 'Deploy Synapse to the ${{ variables.env }} environment'
+  dependsOn: PreDeploy
+  variables:
+    infrastructureModified: $[stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.infrastructureModified']]
+    functionsModified: $[stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.functionsModified']]
+    logicappModified: $[stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.logicappModified']]
+    synapseModified: $[stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.synapseModified']]
+  jobs:
+  - job: DeployInfrastructure
+    # This job cannot be templated because the condition needs to be evaluated at runtime
+    pool: ${{ variables.agentPool }}
+    condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.infrastructureModified'], true)
+    steps:
+    - checkout: self
+      clean: true
+    - task: AzureCLI@2
+      displayName: 'Testing'
+      inputs:
+        azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "testing"
+  - job: DeployAzureFunctions
+    # This job cannot be templated because the condition needs to be evaluated at runtime
+    dependsOn: DeployInfrastructure
+    pool: ${{ variables.agentPool }}
+    condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.functionsModified'], true)
+    steps:
+    - checkout: self
+      clean: true
+    - task: AzureCLI@2
+      displayName: 'Testing'
+      inputs:
+        azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "testing"
+  - job: DeployLogicApp
+    # This job cannot be templated because the condition needs to be evaluated at runtime
+    dependsOn: DeployAzureFunctions
+    pool: ${{ variables.agentPool }}
+    condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.logicappModified'], true)
+    steps:
+    - checkout: self
+      clean: true
+    - task: AzureCLI@2
+      displayName: 'Testing'
+      inputs:
+        azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "testing"
+  - job: DeploySynapse
+    # This job cannot be templated because the condition needs to be evaluated at runtime
+    dependsOn: DeployLogicApp
+    pool: ${{ variables.agentPool }}
+    condition: eq(stageDependencies.PreDeploy.PreDeploymentChecks.outputs['checkModifiedComponents.synapseModified'], true)
+    steps:
+    - checkout: self
+      clean: true
+    - task: AzureCLI@2
+      displayName: 'Testing'
+      inputs:
+        azureSubscription: 'ODW ${{ upper(variables.env) }} - Infrastructure'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "testing"
