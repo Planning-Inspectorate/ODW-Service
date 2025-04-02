@@ -29,15 +29,18 @@ jobs:
       id: check_test_branch_exists
     - name: Extract most recent commit message
       shell: bash
+      env:
+        COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       run: |
         delimiter=$(openssl rand -hex 8)
         echo "message<<$delimiter" >> $GITHUB_OUTPUT
-        echo "${{ github.event.head_commit.message }}" >> $GITHUB_OUTPUT
+        echo "$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
         echo "$delimiter" >> $GITHUB_OUTPUT
       id: extract_commit_message
     - name: Raise Pull Request
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COMMIT_MESSAGE: ${{ steps.extract_commit_message.outputs.message }}
       run: |
         git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
         git config user.name "${GITHUB_ACTOR}"
@@ -48,7 +51,7 @@ jobs:
             git pull
             git checkout -b $TEST_BRANCH_NAME
             git push --set-upstream origin $TEST_BRANCH_NAME
-            gh pr create -B $TEST_BRANCH_NAME -H dev --title 'Automated Pull Request from dev branch to ${{ env.TEST_BRANCH_NAME }} branch' --body '${{ steps.extract_commit_message.outputs.message }}'
+            gh pr create -B $TEST_BRANCH_NAME -H dev --title "Automated Pull Request from dev branch to ${{ env.TEST_BRANCH_NAME }} branch" --body "$COMMIT_MESSAGE"
         else
             echo "The $TEST_BRANCH_NAME branch already exists, not raising a Pull Request"
         fi
