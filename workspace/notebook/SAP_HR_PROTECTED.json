@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "30a2822c-b27f-471f-b296-4e33b2228290"
+				"spark.autotune.trackingId": "d5949878-8748-486c-8724-417b07a1b312"
 			}
 		},
 		"metadata": {
@@ -378,6 +378,104 @@
 					"odw_standardised_db.sap_hr_protected_data_hist ;"
 				],
 				"execution_count": 10
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# New Logic"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"-- First, ensure SAP_HR_PC is properly formatted with dates\n",
+					"WITH source_data AS (\n",
+					"    SELECT \n",
+					"        RefNo,\n",
+					"        NULLIF(EthnicOrigin, '') AS EthnicOrigin,\n",
+					"        NULLIF(ReligiousDenominationKey, '') AS ReligiousDenominationKey,\n",
+					"        NULLIF(SxO, '') AS SxO,\n",
+					"        Grade,\n",
+					"        NULLIF(DisabilityText, '') AS DisabilityText,\n",
+					"        cast(to_timestamp(Report_MonthEnd_Date, \"dd/MM/yyyy\") as date) AS Report_MonthEnd_Date,\n",
+					"        'saphr' AS SourceSystemID,\n",
+					"        CURRENT_DATE() AS IngestionDate,\n",
+					"        CURRENT_TIMESTAMP() AS ValidTo,\n",
+					"        NULL AS RowID,\n",
+					"        'Y' AS IsActive,\n",
+					"        -- Calculate hash in the source directly\n",
+					"        md5(concat(\n",
+					"            coalesce(RefNo, ''),\n",
+					"            coalesce(NULLIF(EthnicOrigin, ''), ''),\n",
+					"            coalesce(NULLIF(ReligiousDenominationKey, ''), ''),\n",
+					"            coalesce(NULLIF(SxO, ''), ''),\n",
+					"            coalesce(Grade, ''),\n",
+					"            coalesce(NULLIF(DisabilityText, ''), '')\n",
+					"        )) AS record_hash\n",
+					"    FROM odw_harmonised_db.SAP_HR_PC\n",
+					"),\n",
+					"-- Deduplicate source data to ensure only one row per key\n",
+					"deduplicated_source AS (\n",
+					"    SELECT *,\n",
+					"           ROW_NUMBER() OVER (\n",
+					"               PARTITION BY RefNo, Report_MonthEnd_Date \n",
+					"               ORDER BY IngestionDate DESC\n",
+					"           ) AS row_num\n",
+					"    FROM source_data\n",
+					")\n",
+					"\n",
+					"-- Use MERGE with deduplicated source\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_protected_data target\n",
+					"USING (SELECT * FROM deduplicated_source WHERE row_num = 1) source\n",
+					"ON source.RefNo = target.RefNo AND source.Report_MonthEnd_Date = target.Report_MonthEnd_Date\n",
+					"WHEN MATCHED AND \n",
+					"     md5(concat(\n",
+					"        coalesce(target.RefNo, ''),\n",
+					"        coalesce(target.EthnicOrigin, ''),\n",
+					"        coalesce(target.ReligiousDenominationKey, ''),\n",
+					"        coalesce(target.SxO, ''),\n",
+					"        coalesce(target.Grade, ''),\n",
+					"        coalesce(target.DisabilityText, '')\n",
+					"     )) != source.record_hash \n",
+					"THEN UPDATE SET\n",
+					"    EthnicOrigin = source.EthnicOrigin,\n",
+					"    ReligiousDenominationKey = source.ReligiousDenominationKey,\n",
+					"    SxO = source.SxO,\n",
+					"    Grade = source.Grade,\n",
+					"    DisabilityText = source.DisabilityText,\n",
+					"    SourceSystemID = source.SourceSystemID,\n",
+					"    IngestionDate = source.IngestionDate,\n",
+					"    ValidTo = source.ValidTo,\n",
+					"    IsActive = source.IsActive\n",
+					"WHEN NOT MATCHED THEN\n",
+					"INSERT (\n",
+					"    RefNo, EthnicOrigin, ReligiousDenominationKey, SxO, Grade, \n",
+					"    DisabilityText, Report_MonthEnd_Date, SourceSystemID, \n",
+					"    IngestionDate, ValidTo, RowID, IsActive\n",
+					")\n",
+					"VALUES (\n",
+					"    source.RefNo, source.EthnicOrigin, source.ReligiousDenominationKey, \n",
+					"    source.SxO, source.Grade, source.DisabilityText, source.Report_MonthEnd_Date, \n",
+					"    source.SourceSystemID, source.IngestionDate, source.ValidTo, \n",
+					"    source.RowID, source.IsActive\n",
+					");"
+				],
+				"execution_count": 37
 			}
 		]
 	}
