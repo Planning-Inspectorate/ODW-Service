@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "89af47f6-3b87-4579-ad0f-56c84ec89b1a"
+				"spark.autotune.trackingId": "aa9fabd5-ff88-405e-9219-e333879b48ad"
 			}
 		},
 		"metadata": {
@@ -360,6 +360,20 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"source_folder='Horizon'\n",
+					"config=\"orchestration/orchestration.json\"\n",
+					"source_path: str = f\"abfss://odw-raw@{storage_account}{source_folder}/\"\n",
+					"path_to_orchestration_file: str=f\"abfss://odw-config@{storage_account}{config}\"\n",
+					"print(source_path)\n",
+					"print(path_to_orchestration_file)"
+				],
+				"execution_count": 54
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"async def ingest_horizon(date_folder: str, file: str):\n",
 					"\n",
 					"    if date_folder == '':\n",
@@ -371,28 +385,11 @@
 					"    # source_folder_path = source_folder if not source_frequency_folder else f\"{source_folder}/{source_frequency_folder}\"\n",
 					"\n",
 					"    # READ ORCHESTRATION DATA\n",
-					"    path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"    #kranthi-- path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
 					"    df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
 					"    definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
 					"    process_name = mssparkutils.runtime.context['currentNotebookName']\n",
-					"    # source_path = f\"{raw_container}{source_folder_path}/{date_folder_str}\"\n",
-					"\n",
-					"    # try:\n",
-					"    #     files = mssparkutils.fs.ls(source_path)\n",
-					"    # except Exception as e:\n",
-					"    #     mssparkutils.notebook.exit(f\"Raw file not found at {source_path}\")\n",
-					"\n",
-					"\n",
-					"    # for file in files:\n",
-					"\n",
-					"    # ignore json raw files if source is service bus\n",
-					"    # if source_folder == 'ServiceBus' and file.endswith('.json'):\n",
-					"    #     continue\n",
-					"\n",
-					"    # # ignore files other than specified file \n",
-					"    # if specific_file != '' and not file.startswith(specific_file + '.'):\n",
-					"    #     continue\n",
 					"        \n",
 					"    definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) \n",
 					"                        and (not source_frequency_folder or d['Source_Frequency_Folder'] == source_frequency_folder) \n",
