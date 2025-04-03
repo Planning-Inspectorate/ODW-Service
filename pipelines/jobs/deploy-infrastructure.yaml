@@ -72,6 +72,23 @@ jobs:
       planFileName: tfplan
       workingDirectory: infrastructure
   
+  # Copy Terraform plan files to artifact directory
+  - task: CopyFiles@2
+    displayName: 'Create Artifact'
+    inputs:
+      sourceFolder: infrastructure
+      contents: |
+        .terraform/**
+        .terraform.lock.hcl
+        *.tftpl
+        tfplan
+      targetFolder: $(Build.ArtifactStagingDirectory)
+
+  # Publish pipeline artifacts
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: terraform-plan
+    displayName: 'Publish Artifact'
+  
   # Unlock resources
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-resource-unlock.yaml
     parameters:
@@ -81,7 +98,7 @@ jobs:
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/terraform-apply.yaml
     parameters:
       environment: ${{ parameters.env }}
-      planFilePath: $(Pipeline.Workspace)/tfplan
+      planFilePath: $(Pipeline.Workspace)/terraform-plan/tfplan
       workingDirectory: infrastructure
   
   # Get Terraform outputs
