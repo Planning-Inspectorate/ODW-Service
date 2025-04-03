@@ -1,0 +1,180 @@
+{
+	"name": "py_load_horizon_kranthi",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "37623e26-fff8-4828-acab-39aba7d24599"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"%run 1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run 1-odw-raw-to-standardised/py_raw_to_std"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_mount_storage"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"import asyncio\n",
+					"import nest_asyncio\n",
+					"import tracemalloc\n",
+					"tracemalloc.start()\n",
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"from pyspark.sql import DataFrame\n",
+					"import json\n",
+					"import re"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
+					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"source_folder='Horizon'\n",
+					"config=\"orchestration/orchestration.json\"\n",
+					"source_path: str = f\"abfss://odw-raw@{storage_account}{source_folder}/\"\n",
+					"config_file_path: str=f\"abfss://odw-config@{storage_account}{config}\"\n",
+					"print(source_path)\n",
+					"print(config_file_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# List all items in the directory\n",
+					"items = mssparkutils.fs.ls(source_path)\n",
+					"\n",
+					"# Filter for directories and get their names and modification times\n",
+					"folders = [(item.name, item.modifyTime) for item in items if item.isDir]\n",
+					"\n",
+					"# Sort folders by modification time in descending order\n",
+					"sorted_folders = sorted(folders, key=lambda x: x[1], reverse=True)\n",
+					"\n",
+					"# Get the name of the latest modified folder\n",
+					"if sorted_folders:\n",
+					"    latest_folder = sorted_folders[0][0]\n",
+					"    source_path=f\"{source_path}{latest_folder}\"\n",
+					"    print(f\"Latest modified folder: {latest_folder}\")\n",
+					"    print(source_path)\n",
+					"else:\n",
+					"    print(\"No folders found in the specified directory.\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# date_folder='2025-03-05'\n",
+					"source_folder='Horizon'\n",
+					"source_frequency_folder=''\n",
+					"specific_file=''\n",
+					"isMultiLine = True\n",
+					"delete_existing_table=False\n",
+					"dataAttribute = \"\"\n",
+					"source_path = f\"{raw_container}{source_folder}/{date_folder}\"\n",
+					"print(source_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"files = mssparkutils.fs.ls(source_path)\n",
+					"horizon_files = [file.name for file in files]\n",
+					"horizon_files"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"jobId = mssparkutils.env.getJobId()\n",
+					"mount_storage(path=source_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"async def load_horizon_async():\n",
+					"    tasks: list = [\n",
+					"        ingest_horizon(date_folder=latest_folder, file=file) for file in horizon_files\n",
+					"    ]\n",
+					"    await asyncio.gather(*tasks)\n",
+					"\n",
+					"nest_asyncio.apply()\n",
+					"loop = asyncio.get_event_loop()\n",
+					"loop.run_until_complete(load_horizon_async())"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"unmount_storage()"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
