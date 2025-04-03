@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "37623e26-fff8-4828-acab-39aba7d24599"
+				"spark.autotune.trackingId": "5b448796-751e-45d7-95ad-1be3906c8d7f"
 			}
 		},
 		"metadata": {
@@ -25,7 +25,7 @@
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
-				"display_name": "python"
+				"display_name": "Synapse PySpark"
 			},
 			"language_info": {
 				"name": "python"
@@ -51,23 +51,23 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"%run 1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions"
+					""
 				],
 				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"%run 1-odw-raw-to-standardised/py_raw_to_std"
+					"%run 1-odw-raw-to-standardised/Fileshare/SAP_HR/py_1_raw_to_standardised_hr_functions"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_mount_storage"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -82,7 +82,7 @@
 					"import json\n",
 					"import re"
 				],
-				"execution_count": null
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -96,7 +96,7 @@
 					"print(source_path)\n",
 					"print(config_file_path)"
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": null
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -131,10 +131,10 @@
 					"isMultiLine = True\n",
 					"delete_existing_table=False\n",
 					"dataAttribute = \"\"\n",
-					"source_path = f\"{raw_container}{source_folder}/{date_folder}\"\n",
+					"source_path = f\"{raw_container}{source_folder}/{latest_folder}\"\n",
 					"print(source_path)"
 				],
-				"execution_count": null
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -143,7 +143,7 @@
 					"horizon_files = [file.name for file in files]\n",
 					"horizon_files"
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +151,75 @@
 					"jobId = mssparkutils.env.getJobId()\n",
 					"mount_storage(path=source_path)"
 				],
-				"execution_count": null
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"async def ingest_horizon(date_folder: str, file: str):\n",
+					"\n",
+					"    if date_folder == '':\n",
+					"        date_folder = datetime.now().date()\n",
+					"    else:\n",
+					"        date_folder = datetime.strptime(date_folder, \"%Y-%m-%d\")\n",
+					"\n",
+					"    date_folder_str = date_folder.strftime('%Y-%m-%d')\n",
+					"    # source_folder_path = source_folder if not source_frequency_folder else f\"{source_folder}/{source_frequency_folder}\"\n",
+					"\n",
+					"    # READ ORCHESTRATION DATA\n",
+					"    path_to_orchestration_file = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"    df = spark.read.option(\"multiline\",\"true\").json(path_to_orchestration_file)\n",
+					"    definitions = json.loads(df.toJSON().first())['definitions']\n",
+					"\n",
+					"    # source_path = f\"{raw_container}{source_folder_path}/{date_folder_str}\"\n",
+					"\n",
+					"    # try:\n",
+					"    #     files = mssparkutils.fs.ls(source_path)\n",
+					"    # except Exception as e:\n",
+					"    #     mssparkutils.notebook.exit(f\"Raw file not found at {source_path}\")\n",
+					"\n",
+					"\n",
+					"    # for file in files:\n",
+					"\n",
+					"    # ignore json raw files if source is service bus\n",
+					"    # if source_folder == 'ServiceBus' and file.endswith('.json'):\n",
+					"    #     continue\n",
+					"\n",
+					"    # # ignore files other than specified file \n",
+					"    # if specific_file != '' and not file.startswith(specific_file + '.'):\n",
+					"    #     continue\n",
+					"        \n",
+					"    definition = next((d for d in definitions if (specific_file == '' or d['Source_Filename_Start'] == specific_file) \n",
+					"                        and (not source_frequency_folder or d['Source_Frequency_Folder'] == source_frequency_folder) \n",
+					"                        and file.startswith(d['Source_Filename_Start'])), None)\n",
+					"    \n",
+					"    if definition:\n",
+					"        expected_from = date_folder - timedelta(days=1)\n",
+					"        expected_from = datetime.combine(expected_from, datetime.min.time())\n",
+					"        expected_to = expected_from + timedelta(days=definition['Expected_Within_Weekdays']) \n",
+					"\n",
+					"        if delete_existing_table:\n",
+					"            print(f\"Deleting existing table if exists odw_standardised_db.{definition['Standardised_Table_Name']}\")\n",
+					"            mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
+					"\n",
+					"        print(f\"Ingesting {file}\")\n",
+					"        (ingestion_failure, row_count) = await ingest_adhoc(storage_account, definition, source_path, file, expected_from, expected_to, isMultiLine, dataAttribute)\n",
+					"        print(f\"Ingested {row_count} rows\")\n",
+					"\n",
+					"        if ingestion_failure:\n",
+					"            print(f\"Errors reported during Ingestion!!\")\n",
+					"            raise RuntimeError(\"Ingestion Failure\")\n",
+					"        else:\n",
+					"            print(f\"No Errors reported during Ingestion\")\n",
+					"\n",
+					"    else:\n",
+					"        if specific_file != '':\n",
+					"            raise ValueError(f\"No definition found for {specific_file}\")\n",
+					"        else:\n",
+					"            print(\"No definition found\")\n",
+					""
+				],
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -166,7 +234,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": null
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
