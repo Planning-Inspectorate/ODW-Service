@@ -1,0 +1,98 @@
+{
+	"name": "py_sap_hr_protected_data_historic",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised/saphr"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "714ae467-fcd8-4359-bf74-5785cae25534"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"delete from odw_harmonised_db.sap_hr_protected_data;\n",
+					"\n",
+					"INSERT into odw_harmonised_db.sap_hr_protected_data\n",
+					"select\n",
+					"\t   RefNumber   as RefNo\n",
+					"      ,Ethnicorigin as EthnicOrigin\n",
+					"      ,ReligiousDenominationKey\n",
+					"      ,SxO\n",
+					"      ,Grade\n",
+					"      ,DisabilityText\n",
+					"      ,  CASE \n",
+					"    WHEN regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1) != '' THEN\n",
+					"      TO_DATE(\n",
+					"        CONCAT(\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1),  -- Extract year\n",
+					"          '-',\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 2),  -- Extract month\n",
+					"          '-01'\n",
+					"        ),\n",
+					"        'yyyy-MM-dd'\n",
+					"      )\n",
+					"    ELSE NULL\n",
+					"  END as Report_MonthEnd_Date\n",
+					"      ,'saphr'  as SourceSystemID\n",
+					"      ,current_date() as IngestionDate\n",
+					"      ,current_timestamp() as ValidTo\n",
+					"      ,null as RowID\n",
+					"      ,'Y' as IsActive\n",
+					" from \n",
+					"odw_standardised_db.sap_hr_protected_data_hist ;"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
