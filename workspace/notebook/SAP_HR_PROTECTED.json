@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "49c5d936-a096-43cf-a186-63c9e16b2380"
+				"spark.autotune.trackingId": "f37b726c-5d91-4509-b8dc-bda00820a7ee"
 			}
 		},
 		"metadata": {
@@ -141,11 +141,11 @@
 					"insert into odw_harmonised_db.SAP_HR_PC\n",
 					"SELECT \n",
 					"    RefNo,\n",
-					"    NULLIF(EthnicOrigin, ''),\n",
-					"    NULLIF(ReligiousDenominationKey, ''),\n",
-					"    NULLIF(SxO, ''),\n",
+					"    NULLIF(EthnicOrigin, '')  as EthnicOrigin,\n",
+					"    NULLIF(ReligiousDenominationKey, '')  as ReligiousDenominationKey,\n",
+					"    NULLIF(SxO, '')  as SxO,\n",
 					"    Grade,\n",
-					"    NULLIF(DisabilityText, ''),\n",
+					"    NULLIF(DisabilityText, '') as DisabilityText,\n",
 					"    cast(to_timestamp(Report_MonthEnd_Date, \"dd/MM/yyyy\") as date) as Report_MonthEnd_Date,\n",
 					"    'saphr' AS SourceSystemID,\n",
 					"    CURRENT_DATE() AS IngestionDate,\n",
@@ -154,7 +154,7 @@
 					"    'Y' AS IsActive\n",
 					"FROM odw_standardised_db.sap_protected_monthly;"
 				],
-				"execution_count": 62
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -273,9 +273,9 @@
 					"microsoft": {
 						"language": "sparksql"
 					},
-					"editable": false,
+					"editable": true,
 					"run_control": {
-						"frozen": true
+						"frozen": false
 					},
 					"collapsed": false
 				},
@@ -291,7 +291,19 @@
 					"      ,SxO\n",
 					"      ,Grade\n",
 					"      ,DisabilityText\n",
-					"      ,TO_DATE(REPLACE(RIGHT(REPLACE(file_name, '.xlsx', ''), 8), '_', '-'), 'yyyyMMdd') as Report_MonthEnd_Date\n",
+					"      ,  CASE \n",
+					"    WHEN regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1) != '' THEN\n",
+					"      TO_DATE(\n",
+					"        CONCAT(\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1),  -- Extract year\n",
+					"          '-',\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 2),  -- Extract month\n",
+					"          '-01'\n",
+					"        ),\n",
+					"        'yyyy-MM-dd'\n",
+					"      )\n",
+					"    ELSE NULL\n",
+					"  END as Report_MonthEnd_Date\n",
 					"      ,'saphr'  as SourceSystemID\n",
 					"      ,current_date() as IngestionDate\n",
 					"      ,current_timestamp() as ValidTo\n",
@@ -300,7 +312,49 @@
 					" from \n",
 					"odw_standardised_db.sap_hr_protected_data_hist ;"
 				],
-				"execution_count": 58
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"editable": false,
+					"run_control": {
+						"frozen": true
+					},
+					"collapsed": false
+				},
+				"source": [
+					" %%sql\n",
+					" select  DISTINCT\n",
+					" file_name,\n",
+					"  CASE \n",
+					"    WHEN regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1) != '' THEN\n",
+					"      TO_DATE(\n",
+					"        CONCAT(\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 1),  -- Extract year\n",
+					"          '-',\n",
+					"          regexp_extract(file_name, '(20[0-9]{2})[-_]([0-9]{2})', 2),  -- Extract month\n",
+					"          '-01'\n",
+					"        ),\n",
+					"        'yyyy-MM-dd'\n",
+					"      )\n",
+					"    ELSE NULL\n",
+					"  END as Report_MonthEnd_Date\n",
+					" \n",
+					" from \n",
+					"odw_standardised_db.sap_hr_protected_data_hist ;"
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
