@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "18554749-4cb5-4be7-829d-78832cf4626a"
+				"spark.autotune.trackingId": "efe712d4-ea7d-474c-a7b8-2a1f156311c0"
 			}
 		},
 		"metadata": {
@@ -83,7 +83,7 @@
 					"\n",
 					"delete from odw_harmonised_db.live_dim_date"
 				],
-				"execution_count": 4
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,7 @@
 					"%%sql\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY;"
 				],
-				"execution_count": 5
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -111,6 +111,10 @@
 					"%%sql\n",
 					"\n",
 					"\n",
+					"-- First truncate the table to remove old data\n",
+					"DELETE FROM  odw_harmonised_db.live_dim_date;\n",
+					"\n",
+					"-- Then create the dates\n",
 					"CREATE OR REPLACE TEMPORARY VIEW cte_Dates AS\n",
 					"SELECT\n",
 					"    explode(\n",
@@ -120,7 +124,7 @@
 					"                last_day(\n",
 					"                    add_months(\n",
 					"                        current_date(),\n",
-					"                        (4 - YEAR(current_date())) * 12 + 12 - MONTH(current_date())\n",
+					"                        (YEAR(current_date()) + 4 - YEAR(current_date())) * 12 + 12 - MONTH(current_date())\n",
 					"                    )\n",
 					"                ),\n",
 					"                1\n",
@@ -128,12 +132,11 @@
 					"        )\n",
 					"    ) AS calendar_date;\n",
 					"\n",
-					"-- Step 2: Insert into the dim_date table\n",
-					"-- Step 2: Insert into the dim_date table\n",
+					"-- Insert into the dim_date table\n",
 					"INSERT INTO odw_harmonised_db.live_dim_date\n",
 					"SELECT\n",
 					"    date_format(calendar_date, 'yyyyMMdd') AS dim_date_key,\n",
-					"    calendar_date AS date,\n",
+					"    CAST(calendar_date AS DATE) AS date,  -- Ensure it's stored as a DATE type\n",
 					"    day(calendar_date) AS day_int,\n",
 					"    date_format(calendar_date, 'E') AS day_name,\n",
 					"    month(calendar_date) AS month_int,\n",
@@ -166,25 +169,45 @@
 					"    day(week_ending_date) AS week_ending_day,\n",
 					"    date_format(calendar_date, 'yyyyMM') AS MonthYearSortKey,\n",
 					"    concat(date_format(calendar_date, 'MMM'), ' - ', right(date_format(calendar_date, 'yyyy'), 2)) AS MonthYear,\n",
-					"    concat(FY_yyyy, '-', right(FY_yyyy + 1, 2)) AS FY,\n",
-					"    coalesce(financial_year, concat(FY_yyyy, '-', right(FY_yyyy + 1, 2))) AS FY_Latest,\n",
+					"    concat(\n",
+					"        CAST(CASE WHEN month(calendar_date) > 3 THEN year(calendar_date) ELSE year(calendar_date) - 1 END AS STRING),\n",
+					"        '-',\n",
+					"        right(CAST(CASE WHEN month(calendar_date) > 3 THEN year(calendar_date) + 1 ELSE year(calendar_date) END AS STRING), 2)\n",
+					"    ) AS FY,\n",
+					"    coalesce(\n",
+					"        CASE\n",
+					"            WHEN month(calendar_date) > 3 AND year(calendar_date) = year(current_date()) THEN 'Current'\n",
+					"            WHEN month(calendar_date) <= 3 AND year(calendar_date) = year(current_date()) + 1 THEN 'Current'\n",
+					"            WHEN month(calendar_date) > 3 AND year(calendar_date) = year(current_date()) - 1 THEN 'Previous'\n",
+					"            WHEN month(calendar_date) <= 3 AND year(calendar_date) = year(current_date()) THEN 'Previous'\n",
+					"            ELSE NULL\n",
+					"        END,\n",
+					"        concat(\n",
+					"            CAST(CASE WHEN month(calendar_date) > 3 THEN year(calendar_date) ELSE year(calendar_date) - 1 END AS STRING),\n",
+					"            '-',\n",
+					"            right(CAST(CASE WHEN month(calendar_date) > 3 THEN year(calendar_date) + 1 ELSE year(calendar_date) END AS STRING), 2)\n",
+					"        )\n",
+					"    ) AS FY_Latest,\n",
 					"    CASE\n",
 					"        WHEN month(calendar_date) = month(current_date()) AND year(calendar_date) = year(current_date()) THEN 'Current'\n",
 					"        WHEN month(calendar_date) = 12 AND month(current_date()) = 1 AND year(calendar_date) = year(current_date()) - 1 THEN 'Previous'\n",
 					"        WHEN month(calendar_date) = month(current_date()) - 1 AND year(calendar_date) = year(current_date()) THEN 'Previous'\n",
-					"        ELSE concat(month_name, ' - ', right(date_format(calendar_date, 'yyyy'), 2))\n",
+					"        ELSE concat(date_format(calendar_date, 'MMM'), ' - ', right(date_format(calendar_date, 'yyyy'), 2))\n",
 					"    END AS FY_MonthYearLatest,\n",
 					"    CASE\n",
-					"        WHEN month_int IN (4, 5, 6) THEN 'Q1'\n",
-					"        WHEN month_int IN (7, 8, 9) THEN 'Q2'\n",
-					"        WHEN month_int IN (10, 11, 12) THEN 'Q3'\n",
-					"        WHEN month_int IN (1, 2, 3) THEN 'Q4'\n",
+					"        WHEN month(calendar_date) IN (4, 5, 6) THEN 'Q1'\n",
+					"        WHEN month(calendar_date) IN (7, 8, 9) THEN 'Q2'\n",
+					"        WHEN month(calendar_date) IN (10, 11, 12) THEN 'Q3'\n",
+					"        WHEN month(calendar_date) IN (1, 2, 3) THEN 'Q4'\n",
 					"    END AS FY_Quarter,\n",
-					"    FY_yyyy * -1 AS FY_Latest_SortKey,\n",
-					"    date_add(week_ending_date, -6) AS week_starting_date\n",
+					"    -1 * CASE\n",
+					"        WHEN month(calendar_date) > 3 THEN year(calendar_date)\n",
+					"        WHEN month(calendar_date) <= 3 THEN year(calendar_date) - 1\n",
+					"    END AS FY_Latest_SortKey,\n",
+					"    date_add(date_add(next_day(calendar_date, 'Sun'), -1), -6) AS week_starting_date\n",
 					"FROM cte_Dates;"
 				],
-				"execution_count": 6
+				"execution_count": 11
 			}
 		]
 	}
