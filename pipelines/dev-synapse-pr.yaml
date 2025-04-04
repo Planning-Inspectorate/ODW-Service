@@ -1,0 +1,75 @@
+name: Synapse PR
+
+parameters:
+- name: runTests
+  type: boolean
+  default: true
+
+pr:
+- dev
+- testing
+#- main
+#
+schedules:
+- cron: '0 19 * * 1-5' # cron syntax defining a schedule. At 7pm every week day
+  displayName: Daily testing branch run
+  branches:
+    include:
+    - testing
+  always: true
+  batch: false
+
+variables:
+- name: branchName
+  value: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+- name: env
+  ${{ if eq(variables.branchName, 'dev') }}:
+    value: dev
+  ${{ elseif eq(variables.branchName, 'testing') }}:
+    value: test
+  #${{ elseif eq(variables.branchName, 'main') }}:
+  #  env: prod
+  ${{ else }}:
+    value: dev
+- name: variableGroupName
+  ${{ if eq(variables.env, 'prod') }}:
+    value: "Terraform Prod"
+  ${{ elseif eq(variables.env, 'test') }}:
+    value: "Terraform Test"
+  ${{ else }}:
+    value: "Terraform Dev"
+- name: agentPool
+  value: 'pins-agent-pool-odw-${{ variables.env }}-uks'
+- name: azureSubscription
+  value: 'pins-agent-pool-odw-${{ variables.env }}-uks'
+- name: failoverDeployment
+  ${{ if eq(variables.env, 'prod')}}:
+    value: true
+  ${{ else }}:
+    value: false
+- group: ${{ variables.variableGroupName }}
+
+stages:
+- template: stages/pre-deployment.yaml
+  parameters:
+    agentPool: ${{ variables.agentPool }}
+
+- template: stages/conditional-deployment-infrastructure.yaml
+  parameters:
+    agentPool: ${{ variables.agentPool }}
+    env: ${{ variables.env }}
+    armServiceConnectionName: "Azure Devops Pipelines - ODW ${{ upper(variables.env) }} - Infrastructure"
+    failoverDeployment: ${{ variables.failoverDeployment }}
+- template: stages/conditional-deployment-functionapp.yaml
+  parameters:
+    agentPool: ${{ variables.agentPool }}
+    env: ${{ variables.env }}
+- template: stages/conditional-deployment-synapse.yaml
+  parameters:
+    agentPool: ${{ variables.agentPool }}
+    env: ${{ variables.env }}
+- ${{ if eq(parameters.runTests, true) }}:
+  - template: stages/conditional-run-tests.yaml
+    parameters:
+      agentPool: ${{ variables.agentPool }}
+      env: ${{ variables.env }}
