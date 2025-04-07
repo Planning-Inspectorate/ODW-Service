@@ -1,5 +1,5 @@
 {
-	"name": "nb_saphr_dim_inspector_address",
+	"name": "nb_live_dim_inspector_address",
 	"properties": {
 		"folder": {
 			"name": "2-odw-standardised-to-harmonised/SapHR"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8d64293f-f36b-44e2-aac3-06ceb8b03264"
+				"spark.autotune.trackingId": "66ea6c44-5cb8-47aa-aa70-6d2763ceb54f"
 			}
 		},
 		"metadata": {
@@ -486,54 +486,12 @@
 					"\n",
 					"#print(df_dedup_all_inspector_address.printSchema())\n",
 					"\n",
-					"display(df_audit_columns_inspector_address)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# Add the RowID column to the DataFrame\n",
-					"rowid_columns = [c for c in df_transform_inspector_address.columns]\n",
-					"\n",
-					"# Convert RowID columns to hash values\n",
-					"rowid_expr = md5(concat_ws(\"|\", *[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns]))\n",
-					"\n",
-					"# Add the RowID column to the DataFrame\n",
-					"df_transform_inspector_address = df_transform_inspector_address.withColumn(\"RowID\", rowid_expr)\n",
-					"\n",
-					"display(df_transform_inspector_address.count())\n",
-					"\n",
-					"# Removing duplicate records using row_number\n",
-					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'dd/MM/yyyy').desc())\n",
-					"df_transform_inspector_address = df_transform_inspector_address.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn == 1\").drop(\"rn\")\n",
-					"\n",
-					"#display(df_transform_inspector_address.count())\n",
-					"\n",
-					"df_tgt_inspector_address = spark.table(f\"{target_delta_table}\")\n",
-					"\n",
-					"# Update the existing records\n",
-					"df_update_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"inner\").select(\"src.*\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
-					"\n",
-					"#Add new records\n",
-					"df_new_records_inspector_address = df_transform_inspector_address.join(\n",
-					"    df_tgt_inspector_address.select(\"StaffNumber\").withColumnRenamed(\"StaffNumber\", \"existing_StaffNumber\"),\n",
-					"    df_transform_inspector_address[\"StaffNumber\"] == col(\"existing_StaffNumber\"),\n",
-					"    how=\"left_anti\"\n",
-					").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
-					"\n",
-					"#display(df_transform_inspector_address.count())\n",
-					"#display(df_tgt_inspector_address.count())\n",
-					"#display(df_new_records_inspector_address.count())\n",
-					"\n",
-					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_new_records_inspector_address).dropDuplicates()\n",
-					"\n",
-					"#display(df_merged_records_inspector_address)\n",
+					"display(df_audit_columns_inspector_address)\n",
 					"\n",
 					"# Write new records to target Delta Table\n",
 					"try:\n",
 					"    # Overwrite the entire delta table with transfored dataframe\n",
-					"    df_merged_records_inspector_address.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"    df_audit_columns_inspector_address.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
 					"\n",
 					"\n",
 					"    print(f\" Records overwritten successfully to {target_delta_table}\")\n",
@@ -541,6 +499,8 @@
 					"except Exception as e:\n",
 					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
 					"    raise\n",
+					"\n",
+					"\n",
 					""
 				],
 				"execution_count": null
