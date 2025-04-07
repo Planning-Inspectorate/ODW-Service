@@ -59,11 +59,11 @@ resource "azurerm_role_assignment" "purview_synapse" {
 }
 */
 
-resource "azurerm_role_assignment" "purview_synapse_reader" {
-  scope                = module.synapse_workspace_private.synapse_workspace_id
-  role_definition_name = "Reader"
-  principal_id         = module.synapse_management.purview_identity_principal_id
-}
+#resource "azurerm_role_assignment" "purview_synapse_reader" {
+#  scope                = module.synapse_workspace_private.synapse_workspace_id
+#  role_definition_name = "Reader"
+#  principal_id         = module.synapse_management.purview_identity_principal_id
+#}
 
 resource "azurerm_role_assignment" "purview_data" {
   scope                = module.synapse_data_lake.data_lake_account_id
