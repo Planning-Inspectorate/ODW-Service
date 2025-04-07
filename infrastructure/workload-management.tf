@@ -37,9 +37,9 @@ module "synapse_management" {
 
 
 # grant access to the data
-resource "azurerm_role_assignment" "purview_synapse_contributor" {
+resource "azurerm_role_assignment" "purview_synapse_reader" {
   scope                = module.synapse_workspace_private.synapse_workspace_id
-  role_definition_name = "Contributor"
+  role_definition_name = "Reader"
   principal_id         = module.synapse_management.purview_identity_principal_id
 }
 
