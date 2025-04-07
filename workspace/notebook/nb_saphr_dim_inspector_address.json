@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fe756868-4234-4b45-a1f9-dc63d45b052d"
+				"spark.autotune.trackingId": "ae776996-fa89-476a-87f4-7e102b6c741d"
 			}
 		},
 		"metadata": {
@@ -340,7 +340,7 @@
 					"\n",
 					"df_combined_inspector_address = df_active_inspector_address.unionByName(df_inactive_inspector_address)\n",
 					"\n",
-					"df_combined_inspector_address.createOrReplaceTempView(\"all_inspector\")\n",
+					"df_combined_inspector_address.createOrReplaceTempView(\"temp_inspector\")\n",
 					"\n",
 					"src_spark_inspector_unassociated_sql = \"\"\"SELECT \n",
 					"                            DISTINCT\n",
@@ -413,7 +413,7 @@
 					"                        WHERE b.IsSGL = 1 AND b.SubGroup NOT IN ('PO1', 'PO2') AND a.most_recent_entry_in_deployment > '2020-06-30'\n",
 					"                        ) ids\n",
 					"                        ON inspector_raw.PINSStaffNumber = ids.StaffNumber\n",
-					"                        LEFT JOIN all_inspector temp_inspector\n",
+					"                        LEFT JOIN temp_inspector\n",
 					"                        ON inspector_raw.FamilyName = temp_inspector.family_name\n",
 					"                        AND inspector_raw.GivenNames = temp_inspector.given_names\n",
 					"                        AND inspector_raw.Postcode = temp_inspector.inspector_postcode\n",
@@ -427,6 +427,23 @@
 					"\n",
 					"\n",
 					"df_inspector_unassociated_group = spark.sql(src_spark_inspector_unassociated_sql)\n",
+					"\n",
+					"df_complete_inspector_address = df_combined_inspector_address.unionByName(df_inspector_unassociated_group)\n",
+					"\n",
+					"df_all_inspector_address.createOrReplaceTempView(\"all_inspector_address\")\n",
+					"\n",
+					"src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
+					"                                    (\n",
+					"                                    select family_name, given_names from all_inspector_address\n",
+					"                                    group by  family_name, given_names \n",
+					"                                    having COUNT(*) > 1\n",
+					"                                    )\n",
+					"                                    SELECT i.* from all_inspector_address i inner join ddd d on i.family_name = d.family_name and i.given_names = d.given_names \n",
+					"                                    and i.inspectorSource = 'RAW' \"\"\"\n",
+					"\n",
+					"df_dedup_all_inspector_address = spark.sql(src_dedup_all_inspector_address_sql)\n",
+					"\n",
+					"\n",
 					"\n",
 					"#df_inspector_inactive_address = spark.sql(src_spark_inspector_inactive_sql)\n",
 					"\n",
@@ -443,7 +460,7 @@
 					"\n",
 					"display(df_inspector_unassociated_group.count())\n",
 					"\n",
-					"display(df_inspector_unassociated_group)\n",
+					"display(df_dedup_all_inspector_address)\n",
 					"\n",
 					"#display(df_inspector_inactive_address)\n",
 					"\n",
@@ -457,7 +474,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 25
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
