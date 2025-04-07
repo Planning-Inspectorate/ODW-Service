@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c076fa41-4c4d-40ab-a074-6886a3ed52ac"
+				"spark.autotune.trackingId": "6744cad8-167d-4eb3-8a7c-98a8875b712d"
 			}
 		},
 		"metadata": {
@@ -392,7 +392,7 @@
 					"                        ON sap_hr.PersNo = inspector_address.StaffNumber AND inspector_address.IsActive = 'Y'\n",
 					"                        LEFT JOIN odw_harmonised_db.load_vw_sap_hr_email S\n",
 					"                        ON inspector_raw.PINSStaffNumber = CAST(REPLACE(LTRIM(REPLACE(S.EmployeeNo, '0', ' ')), ' ', '0') AS INT)\n",
-					"                        LEFT JOIN odw_harmonised_db.load_sap_pins_email e2\n",
+					"                        LEFT JOIN odw_harmonised_db.load_sap_pins_email_monthly e2\n",
 					"                        ON CASE LEFT(inspector_raw.PINSStaffNumber, 2)\n",
 					"                            WHEN '50' THEN CASE LENGTH(inspector_raw.PINSStaffNumber)\n",
 					"                            WHEN 6 THEN inspector_raw.PINSStaffNumber\n",
@@ -404,11 +404,11 @@
 					"                        SELECT DISTINCT a.SubGroup, b.name, b.StaffNumber, b.IsSGL, a.most_recent_entry_in_deployment\n",
 					"                        FROM (\n",
 					"                            SELECT SubGroup, MAX(Date) AS most_recent_entry_in_deployment\n",
-					"                            FROM odw_harmonised_db.load_iss_deployment\n",
+					"                            FROM odw_standardised_db.load_iss_deployment\n",
 					"                            WHERE StaffNumber IS NOT NULL AND IsSGL = 1 AND Date <= CURRENT_DATE()\n",
 					"                            GROUP BY SubGroup\n",
 					"                        ) a\n",
-					"                        INNER JOIN odw_harmonised_db.load_iss_deployment b\n",
+					"                        INNER JOIN odw_standardised_db.load_iss_deployment b\n",
 					"                            ON a.SubGroup = b.SubGroup AND a.most_recent_entry_in_deployment = b.Date\n",
 					"                        WHERE b.IsSGL = 1 AND b.SubGroup NOT IN ('PO1', 'PO2') AND a.most_recent_entry_in_deployment > '2020-06-30'\n",
 					"                        ) ids\n",
@@ -421,8 +421,7 @@
 					"                        AND temp_inspector.source_id IS NULL\n",
 					"                        AND inspector_raw.PINSStaffNumber IS NOT NULL\n",
 					"                        AND inspector_raw.ActiveStatus <> 'ACTIVE'\n",
-					"                        AND inspector_raw.id NOT IN (\n",
-					"                            6,20,27,29,39,87,136,149,205,251,268,348,349,485,552,578,579,655,726,\n",
+					"                        AND inspector_raw.id NOT IN (6,20,27,29,39,87,136,149,205,251,268,348,349,485,552,578,579,655,726,\n",
 					"                            156642,161028,354954,356300,357364,354712,508228,511402,535963,538712,539959\n",
 					"                        )\"\"\"\n",
 					"\n",
@@ -437,9 +436,17 @@
 					"#df_inspector_inactive_address = spark.sql(src_spark_inspector_inactive_sql)\n",
 					"\n",
 					"\n",
-					"display(df_inspector_inactive_address.count())\n",
+					"display(df_inactive_inspector_address.count())\n",
 					"\n",
-					"display(df_inspector_inactive_address)\n",
+					"display(df_active_inspector_address.count())\n",
+					"\n",
+					"display(df_combined_inspector_address.count())\n",
+					"\n",
+					"display(df_inspector_unassociated_group.count())\n",
+					"\n",
+					"display(df_inspector_unassociated_group)\n",
+					"\n",
+					"#display(df_inspector_inactive_address)\n",
 					"\n",
 					"#print(df_temp_inspector_address.printSchema())\n",
 					"\n",
@@ -451,7 +458,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
