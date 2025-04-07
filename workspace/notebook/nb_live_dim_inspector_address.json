@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5a02a9bd-d83c-409f-b9b8-826e782e2ebf"
+				"spark.autotune.trackingId": "d7836035-f560-4a3c-ae3d-534d40f43fd7"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 54
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 55
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -116,7 +116,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 59
+				"execution_count": 70
 			},
 			{
 				"cell_type": "code",
@@ -224,7 +224,7 @@
 					"df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
 					""
 				],
-				"execution_count": 58
+				"execution_count": 71
 			},
 			{
 				"cell_type": "code",
@@ -347,7 +347,7 @@
 					"df_inactive_inspector_address = spark.sql(src_spark_inspector_inactive_sql)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -440,10 +440,13 @@
 					"                        )\"\"\"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
 				"source": [
 					"\n",
 					"df_inspector_unassociated_group = spark.sql(src_spark_inspector_unassociated_sql)\n",
@@ -477,16 +480,19 @@
 					"rowid_expr = md5(concat_ws(\"|\", *[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns]))\n",
 					"\n",
 					"# Add the RowID column to the DataFrame\n",
-					"df_transform_inspector_address = df_transform_inspector_address.withColumn(\"RowID\", rowid_expr)\n",
+					"#df_transform_inspector_address = df_transform_inspector_address.withColumn(\"RowID\", rowid_expr)\n",
 					"\n",
 					"\n",
 					"#Add Audit columns records including ROWID\n",
-					"df_audit_columns_inspector_address = df_dedup_all_inspector_address.withColumn(\"SourceSystemID\", lit(\"SapHr\"))\n",
-					"                                    .withColumn(\"IngestionDate\", current_timestamp())\n",
-					"                                    .withColumn(\"ValidFrom\",current_timestamp()-1)\n",
-					"                                    .withColumn(\"ValidTo\", current_timestamp())\n",
-					"                                    .withColumn(\"RowID\", rowid_expr)\n",
-					"                                    .withColumn(\"IsActive\", lit('Y'))\n",
+					"df_audit_columns_inspector_address = (\n",
+					"    df_dedup_all_inspector_address\n",
+					"    .withColumn(\"SourceSystemID\", lit(\"SapHr\"))\n",
+					"    .withColumn(\"IngestionDate\", current_timestamp())\n",
+					"    .withColumn(\"ValidFrom\", expr(\"current_timestamp() - INTERVAL 1 DAY\"))\n",
+					"    .withColumn(\"ValidTo\", current_timestamp())\n",
+					"    .withColumn(\"RowID\", rowid_expr)  # assuming you defined `rowid_expr` earlier\n",
+					"    .withColumn(\"IsActive\", lit(\"Y\"))\n",
+					")\n",
 					"\n",
 					"\n",
 					"#src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
@@ -520,7 +526,7 @@
 					"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
