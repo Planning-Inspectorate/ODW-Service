@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "678698cb-35ab-41cc-996c-cabca3851ea1"
+				"spark.autotune.trackingId": "a436abc9-4c1e-462d-a473-a33684d9d64b"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 27
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 28
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -116,7 +116,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 29
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -432,6 +432,9 @@
 					"\n",
 					"df_all_inspector_address.createOrReplaceTempView(\"all_inspector_address\")\n",
 					"\n",
+					"print(\"Before Delete duplicate\")\n",
+					"print(df_all_inspector_address.count())\n",
+					"\n",
 					"src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
 					"                                    (\n",
 					"                                    select family_name, given_names from all_inspector_address\n",
@@ -441,30 +444,25 @@
 					"                                    SELECT i.* from all_inspector_address i inner join ddd d on i.family_name = d.family_name and i.given_names = d.given_names \n",
 					"                                    and i.inspectorSource = 'RAW' \"\"\"\n",
 					"\n",
-					"df_dedup_all_inspector_address = spark.sql(src_dedup_all_inspector_address_sql)\n",
+					"df_dup_all_inspector_address = spark.sql(src_dedup_all_inspector_address_sql)\n",
+					"\n",
+					"# Step 2: Subtract duplicates from full set\n",
+					"df_dedup_all_inspector_address = df_all_inspector_address.subtract(df_dup_all_inspector_address)\n",
 					"\n",
 					"\n",
+					"#src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
+					"#                                    (\n",
+					"#                                    select UPPER(RTRIM(LTRIM(inspector_name))) inspector_name from all_inspector_address\n",
+					"#                                    group by  UPPER(RTRIM(LTRIM(inspector_name)))\n",
+					"#                                    having COUNT(*) > 1\n",
+					"#                                    )\n",
+					"#                                    SELECT i.* from all_inspector_address i inner join ddd d on UPPER(RTRIM(LTRIM(i.inspector_name))) = UPPER(RTRIM(LTRIM(d.inspector_name))) and i.inspectorSource = 'RAW' \"\"\"                                    \n",
 					"\n",
-					"#df_inspector_inactive_address = spark.sql(src_spark_inspector_inactive_sql)\n",
 					"\n",
+					"print(\"after Delete duplicate\")\n",
+					"print(df_dedup_all_inspector_address.count())\n",
 					"\n",
-					"#df_inspector_active_address = spark.sql(src_spark_inspector_active_sql)\n",
-					"\n",
-					"#df_inspector_inactive_address = spark.sql(src_spark_inspector_inactive_sql)\n",
-					"\n",
-					"display(df_inactive_inspector_address.count())\n",
-					"\n",
-					"display(df_active_inspector_address.count())\n",
-					"\n",
-					"display(df_combined_inspector_address.count())\n",
-					"\n",
-					"display(df_inspector_unassociated_group.count())\n",
-					"\n",
-					"display(df_dedup_all_inspector_address)\n",
-					"\n",
-					"#display(df_inspector_inactive_address)\n",
-					"\n",
-					"#print(df_temp_inspector_address.printSchema())\n",
+					"print(df_dedup_all_inspector_address.printSchema())\n",
 					"\n",
 					"\n",
 					"\n",
@@ -474,7 +472,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 36
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
