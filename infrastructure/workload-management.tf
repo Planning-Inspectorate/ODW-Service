@@ -38,13 +38,6 @@ module "synapse_management" {
 
 # grant access to the data
 
-/*
-# These role assignments cause issues in the dev environment
-# They seem to be caused by a manually-set contributor role
-# These have been replaced by the Reader role since this should be sufficient
-# Leaving these two commented incase they are needed then we can bring them back
-
-
 resource "azurerm_synapse_role_assignment" "purview_synapse" {
   synapse_workspace_id = module.synapse_workspace_private.synapse_workspace_id
   role_name            = "Synapse Contributor"
@@ -52,18 +45,6 @@ resource "azurerm_synapse_role_assignment" "purview_synapse" {
   principal_type       = "ServicePrincipal"
 }
 
-resource "azurerm_role_assignment" "purview_synapse" {
-  scope                = module.synapse_workspace_private.synapse_workspace_id
-  role_definition_name = "Contributor"
-  principal_id         = module.synapse_management.purview_identity_principal_id
-}
-*/
-
-#resource "azurerm_role_assignment" "purview_synapse_reader" {
-#  scope                = module.synapse_workspace_private.synapse_workspace_id
-#  role_definition_name = "Reader"
-#  principal_id         = module.synapse_management.purview_identity_principal_id
-#}
 
 resource "azurerm_role_assignment" "purview_data" {
   scope                = module.synapse_data_lake.data_lake_account_id
