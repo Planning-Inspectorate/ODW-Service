@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d81dd9ac-9e30-4b94-8578-acc8f63e95c2"
+				"spark.autotune.trackingId": "d42b9beb-c28c-4b5b-b403-a5432d49ff7f"
 			}
 		},
 		"metadata": {
@@ -110,7 +110,10 @@
 					"target_database_name = \"odw_harmonised_db\"\n",
 					"source_delta_table = f\"{source_database_name}.inspector_addresses_weekly\"\n",
 					"target_delta_table = f\"{target_database_name}.live_dim_inspector\"\n",
+					"target_horizon_delta_table = f\"{target_database_name}.load_horizon_appeals_inspectors_kludge\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_inspector\"\n",
+					"\n",
+					"delta_horizon_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_horizon_appeals_inspectors_kludge\"\n",
 					"\n",
 					"print(source_delta_table)\n",
 					"print(target_delta_table)\n",
@@ -573,6 +576,20 @@
 					"                order by ID, record_start_date desc\"\"\"\n",
 					"\n",
 					"df_horizon_appeals_inspectors_kludge = spark.sql(src_horizon_appeals_inspectors_kludge_sql)\n",
+					"\n",
+					"\n",
+					"# Write new records to target Delta Table\n",
+					"try:\n",
+					"    # Overwrite the entire delta table with transfored dataframe\n",
+					"    df_horizon_appeals_inspectors_kludge.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"\n",
+					"\n",
+					"    print(f\" Records overwritten successfully to {target_delta_table}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					"\n",
 					"\n",
 					"display(df_horizon_appeals_inspectors_kludge)"
 				],
