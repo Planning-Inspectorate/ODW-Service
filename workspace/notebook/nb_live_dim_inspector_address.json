@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3f67e804-702c-4efc-bae9-5cfb29ab11eb"
+				"spark.autotune.trackingId": "d81dd9ac-9e30-4b94-8578-acc8f63e95c2"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -538,6 +538,45 @@
 					""
 				],
 				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"src_horizon_appeals_inspectors_kludge_sql = \"\"\"\n",
+					"                with cte_missing_insp as\n",
+					"                (\n",
+					"                select\n",
+					"                    RANK() OVER  (PARTITION BY H.ID ORDER BY record_start_date DESC) AS Ranker,  \n",
+					"                    H.ID, H.LeadInspector, \n",
+					"                    H.record_start_date, \n",
+					"                    H.record_end_date \n",
+					"                from \n",
+					"                    odw_standardised_db.hist_iss_job H left join odw_standardised_db.load_iss_job j on H.ID = J.ID\n",
+					"                where \n",
+					"                    j.LeadInspector IS NULL\n",
+					"                    and j.ID like '3%'\n",
+					"                    and LENGTH(j.ID) = 7\n",
+					"                    and j.Status not in ('W', 'E')\n",
+					"                    and H.LeadInspector is not null\n",
+					"                )\n",
+					"                select \n",
+					"                    ID, \n",
+					"                    LeadInspector as lead_inspector, \n",
+					"                    i.inspector_name,\n",
+					"                    record_start_date, \n",
+					"                    record_end_date\n",
+					"                from cte_missing_insp left outer join odw_harmonised_db.live_dim_inspector i on cte_missing_insp.LeadInspector = i.source_id\n",
+					"                where Ranker = 1\n",
+					"                order by ID, record_start_date desc\"\"\"\n",
+					"\n",
+					"df_horizon_appeals_inspectors_kludge = spark.sql(src_horizon_appeals_inspectors_kludge_sql)\n",
+					"\n",
+					"display(df_horizon_appeals_inspectors_kludge)"
+				],
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
