@@ -166,4 +166,5 @@ if __name__ == "__main__":
     print("Setting the following variables")
     print(json.dumps(variables, indent=4))
     for variable_name, variable_value in variables.items():
+        print(f"Saving variable '{variable_name}'")
         print(f'##vso[task.setvariable variable={variable_name};]{variable_value}')
