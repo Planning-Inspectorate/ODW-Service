@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f154ed90-a416-4e64-96f2-b4411a4e52aa"
+				"spark.autotune.trackingId": "08802a00-2b0c-416f-a6cb-284415faf2dd"
 			}
 		},
 		"metadata": {
@@ -68,16 +68,16 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"from pyspark.sql.types import IntegerType, ArrayType, StructType, StructField\r\n",
-					"from pyspark.sql import Row\r\n",
-					"from pyspark.sql.functions import *"
+					"#from pyspark.sql import Row\r\n",
+					"import pyspark.sql.functions as f"
 				],
-				"execution_count": 9
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,24 @@
 					"horizon_table = \"odw_standardised_db.horizon_nsip_relevant_representation\"\r\n",
 					"spark_table_final = \"odw_harmonised_db.nsip_representation\""
 				],
-				"execution_count": 10
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"x = spark.sql(f'SELECT * from {horizon_table}')\r\n",
+					"x.columns"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"y = x.groupBy(x.casereference, x.ingested_datetime).agg(f.max(x.ingested_datetime))\r\n",
+					"#y = x.groupBy(x.casereference).agg(f.count('*'))\r\n",
+					"y.count()"
+				],
+				"execution_count": 58
 			},
 			{
 				"cell_type": "markdown",
@@ -129,7 +146,7 @@
 				"source": [
 					"# Get data out of the service bus with additional fields needed for Horizon data\r\n",
 					"service_bus_data = spark.sql(f\"\"\"\r\n",
-					"                    SELECT DISTINCT\r\n",
+					"                    SELECT \r\n",
 					"                        NSIPRepresentaionID\r\n",
 					"                        ,representationId\r\n",
 					"                        ,referenceId\r\n",
@@ -196,11 +213,35 @@
 					"                        ,IsActive\r\n",
 					"                    FROM \r\n",
 					"                        {service_bus_table}\r\n",
+					"                    \r\n",
 					"                    \"\"\")\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 78
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#delete me 377 dedup'd 111\r\n",
+					"#x = service_bus_data.groupBy(\"representationId\").count()\r\n",
+					"service_bus_data.count()\r\n",
+					""
+				],
+				"execution_count": 8
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					""
+				]
 			},
 			{
 				"cell_type": "code",
@@ -219,7 +260,8 @@
 				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\r\n",
 					"horizon_data = spark.sql(f\"\"\"\r\n",
-					"                    SELECT DISTINCT\r\n",
+					"                    WITH last_ingested(latest_date) AS (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
+					"                    SELECT \r\n",
 					"                        CAST(NULL AS Long) AS NSIPRepresentaionID\r\n",
 					"                        ,CAST(relevantrepid AS integer) AS representationId\r\n",
 					"                        ,CONCAT(COALESCE(casereference, ''), \"-\", COALESCE(relevantrepid, '')) AS referenceId\r\n",
@@ -280,25 +322,77 @@
 					"                        ,0 AS Migrated\r\n",
 					"                        ,'Horizon' AS ODTSourceSystem\r\n",
 					"                        ,source.SourceSystemID\r\n",
-					"                        ,IngestionDate\r\n",
+					"                        ,source.IngestionDate\r\n",
 					"                        ,ValidTo\r\n",
 					"                        ,'' AS RowID\r\n",
 					"                        ,IsActive\r\n",
-					"                        \r\n",
+					"               \r\n",
 					"                    FROM\r\n",
-					"                        {horizon_table} AS Horizon\r\n",
-					"                        INNER JOIN odw_harmonised_db.main_sourcesystem_fact AS source \r\n",
-					"                            ON source.Description = \"Casework\"\r\n",
-					"                            AND source.IsActive = 'Y'\r\n",
+					"                        {horizon_table} AS Horizon,\r\n",
+					"                        odw_harmonised_db.main_sourcesystem_fact AS source,\r\n",
+					"                        last_ingested\r\n",
 					"                    WHERE\r\n",
-					"                        ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\r\n",
-					"                        AND caseReference IS NOT NULL\r\n",
-					"                        AND casenodeid != 0 -- https://pins-ds.atlassian.net/browse/APPLICS-1075\r\n",
-					"\r\n",
+					"                        ingested_datetime >= latest_date\r\n",
+					"                        AND Horizon.caseReference IS NOT NULL\r\n",
+					"                        AND Horizon.casenodeid != 0 -- https://pins-ds.atlassian.net/browse/APPLICS-1075\r\n",
+					"                        AND source.Description = \"Casework\"\r\n",
+					"                        AND source.IsActive = 'Y'\r\n",
 					"                \"\"\")\r\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 82
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#delete me.  \r\n",
+					"#previously horizon_data = 34448 rows\r\n",
+					"#now horizon_data = 34614 rows\r\n",
+					"# only 176 unique caseRef\r\n",
+					"x = horizon_data.groupBy(\"caseRef\").count().sort(f.desc(\"count\"))\r\n",
+					"x.show()\r\n",
+					"#horizon_data.count()\r\n",
+					""
+				],
+				"execution_count": 77
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"horizon_data.count()"
+				],
+				"execution_count": 83
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df = horizon_data.select('representationId', 'IngestionDate', 'attachmentIds', f.size(f.col('attachmentIds')).alias('attachment_count'))\r\n",
+					"df = df.groupBy('representationId').agg(count('representationId'), max('IngestionDate'), min('IngestionDate'), max('attachment_count').alias('max_attachments'), min('attachment_count'))\r\n",
+					"df.filter(\"max_attachments >= 2\").show()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"SELECT * FROM odw_harmonised_db.main_sourcesystem_fact"
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"fact = spark.sql(\"SELECT * FROM odw_harmonised_db.main_sourcesystem_fact\")\r\n",
+					"fact.show(truncate=False)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -323,7 +417,7 @@
 					"#sort columns into same order as service bus\r\n",
 					"horizon_data = horizon_data.select(service_bus_data.columns)"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -341,7 +435,49 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 14
+				"execution_count": 8
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": true
+					}
+				},
+				"source": [
+					"# results.columns\r\n",
+					"service_bus_data.columns\r\n",
+					"# service_bus_data where MAX(IngestionDate)"
+				],
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"results.describe()"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"x = results.filter('representationId == 100006212')\r\n",
+					"x.show(truncate=False)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# delete me\r\n",
+					"df = results.select('representationId', 'IngestionDate', 'attachmentIds', size(col('attachmentIds')).alias('attachment_count'))\r\n",
+					"df = df.groupBy('representationId').agg(count('representationId'), max('IngestionDate'), min('IngestionDate'), max('attachment_count').alias('max_attachments'), min('attachment_count'))\r\n",
+					"df.filter(\"max_attachments >= 2\").show()"
+				],
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -358,8 +494,8 @@
 					"collapsed": false
 				},
 				"source": [
-					"logInfo(f\"Writing {spark_table_final}\")\n",
-					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"logInfo(f\"Writing {spark_table_final}\")\r\n",
+					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\r\n",
 					"logInfo(f\"Written {spark_table_final}\")"
 				],
 				"execution_count": 15
@@ -661,7 +797,7 @@
 					}
 				},
 				"source": [
-					"columns = results.columns\n",
+					"columns = results.columns\r\n",
 					"results = results.drop(\"NSIPRepresentaionID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
 				"execution_count": 21
