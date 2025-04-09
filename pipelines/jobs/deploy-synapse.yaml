@@ -63,12 +63,11 @@ jobs:
       branchName: $(source_branch)
       showDirectory: $(Build.SourcesDirectory)
   
-  # Copy modified files to the modifiedFiles directory
-  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/collect-modified-files.yaml
+  # Delete unmodified files from the working directory, so that they are not included in the artifact
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/delete-unmodified-files.yaml
     parameters:
       pythonVersion: 3
       targetBranch: main
-      outputFolder: $(Build.ArtifactStagingDirectory)/modifiedFiles
       fullDeployment: ${{ parameters.fullDeployment }}
 
   # Pre-Override Replacement
@@ -80,7 +79,7 @@ jobs:
       workingDirectory: $(Build.ArtifactStagingDirectory)
 
   # Publish pipeline artifacts
-  - publish: $(Build.ArtifactStagingDirectory)/modifiedFiles
+  - publish: $(Build.ArtifactStagingDirectory)
     artifact: ${{ variables.artifactName }}
     displayName: 'Publish Artifacts'
   
@@ -111,7 +110,7 @@ jobs:
     retryCountOnTaskFailure: '2'
     displayName: 'Deploy Workspace'
     inputs:
-      ArtifactsFolder: $(Build.ArtifactStagingDirectory)/modifiedFiles
+      ArtifactsFolder: $(Build.ArtifactStagingDirectory)
       AzureResourceManagerConnection: ${{ parameters.armServiceConnectionName }}
       DeleteArtifactsNotInTemplate: ${{ parameters.fullDeployment }}
       Environment: 'prod'
