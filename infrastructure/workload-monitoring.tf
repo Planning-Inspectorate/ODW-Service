@@ -60,6 +60,7 @@ module "synapse_monitoring_failover" {
   service_bus_namespace_id                 = module.synapse_ingestion_failover[0].service_bus_namespace_id
   spark_pool_enabled                       = var.spark_pool_enabled
   sql_pool_enabled                         = var.sql_pool_enabled
+  synapse_spark_pool_id                    = module.synapse_workspace_private_failover[0].synapse_spark_pool_id
   synapse_sql_pool_id                      = module.synapse_workspace_private_failover[0].synapse_sql_pool_id
   synapse_workspace_id                     = module.synapse_workspace_private_failover[0].synapse_workspace_id
   synapse_vnet_id                          = module.synapse_network_failover.vnet_id
