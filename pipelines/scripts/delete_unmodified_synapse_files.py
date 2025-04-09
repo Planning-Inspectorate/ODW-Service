@@ -18,7 +18,7 @@ def get_all_synapse_files() -> List[str]:
         os.path.join(path, name).replace("./", "")
         for path, subdirs, files in os.walk("./")
         for name in files
-        if "workspace/" not in name
+        if "workspace/" in os.path.join(path, name)
     ]
 
 
