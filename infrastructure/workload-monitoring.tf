@@ -32,6 +32,7 @@ module "synapse_monitoring" {
   service_bus_namespace_id                 = module.synapse_ingestion.service_bus_namespace_id
   spark_pool_enabled                       = var.spark_pool_enabled
   sql_pool_enabled                         = var.sql_pool_enabled
+  synapse_spark_pool_id                    = module.synapse_workspace_private.synapse_spark_pool_id
   synapse_sql_pool_id                      = module.synapse_workspace_private.synapse_sql_pool_id
   synapse_workspace_id                     = module.synapse_workspace_private.synapse_workspace_id
   synapse_vnet_id                          = module.synapse_network.vnet_id
