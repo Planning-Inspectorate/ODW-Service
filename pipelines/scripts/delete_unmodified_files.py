@@ -15,7 +15,7 @@ def get_all_files() -> List[str]:
         Return all files under the current directory
     """
     return [
-        os.path.join(path, name)
+        os.path.join(path, name).replace("./", "")
         for path, subdirs, files in os.walk("./")
         for name in files
     ]
@@ -46,5 +46,6 @@ if __name__ == "__main__":
     # Delete all unmodified files
     all_files = get_all_files()
     for file in all_files:
-        if file not in modified_files and file != "pipelines/scripts/delete_unmodified_files.py":
-            shutil.rmtree(file, ignore_errors=True)
+        if file not in modified_files and file != "pipelines/scripts/delete_unmodified_files.py" and not file.startswith(".git"):
+            print(f"Deleting file '{file}'")
+            os.remove(file)
