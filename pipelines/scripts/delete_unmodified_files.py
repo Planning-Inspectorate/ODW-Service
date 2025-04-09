@@ -47,5 +47,5 @@ if __name__ == "__main__":
     # Delete all unmodified files
     all_files = get_all_files()
     for file in all_files:
-        if file not in modified_files:
+        if file not in modified_files and file != "pipelines/scripts/delete_unmodified_files.py":
             shutil.rmtree(file, ignore_errors=True)
