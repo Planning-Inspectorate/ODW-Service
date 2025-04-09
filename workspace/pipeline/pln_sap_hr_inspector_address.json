@@ -1,0 +1,100 @@
+{
+	"name": "pln_sap_hr_inspector_address",
+	"properties": {
+		"activities": [
+			{
+				"name": "sap_hr_inspector_notebook",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "nb_saphr_inspector_address",
+						"type": "NotebookReference"
+					},
+					"snapshot": true
+				}
+			},
+			{
+				"name": "Sap_Hr_Inspector_Address_Notebook_Fail",
+				"description": "Sap_Hr_Inspector_Address data ingestion has failed to  load into odw_harmonised_db",
+				"type": "Fail",
+				"dependsOn": [
+					{
+						"activity": "sap_hr_inspector_notebook",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [
+					{
+						"name": "Michael Cross",
+						"value": "michael.cross@plannninginspectorate.gov.uk"
+					}
+				],
+				"typeProperties": {
+					"message": "Timesheets calendar data has failed to import into ODW Raw",
+					"errorCode": "Timesheets_Calendar1"
+				}
+			},
+			{
+				"name": "Logging Failed Activities-1",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "Sap_Hr_Inspector_Address_Notebook_Fail",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "py_fail_activity_logging",
+						"type": "NotebookReference"
+					},
+					"parameters": {
+						"output": {
+							"value": {
+								"value": "@activity('Timesheets_Calendar_Fail').output.message",
+								"type": "Expression"
+							},
+							"type": "string"
+						}
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "pinssynspodw",
+						"type": "BigDataPoolReference"
+					},
+					"conf": {
+						"spark.dynamicAllocation.enabled": null,
+						"spark.dynamicAllocation.minExecutors": null,
+						"spark.dynamicAllocation.maxExecutors": null
+					},
+					"numExecutors": null
+				}
+			}
+		],
+		"folder": {
+			"name": "saphr/layers/2-Harmonised"
+		},
+		"annotations": []
+	}
+}
