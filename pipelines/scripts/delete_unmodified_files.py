@@ -35,7 +35,6 @@ if __name__ == "__main__":
     parser.add_argument("-fd", "--full_deployment", help="Whether or not all files should be considered modified", default=False)
     args = parser.parse_args()
     target_branch = args.target_branch
-    target_folder = args.target_folder
     full_deployment = True if str(args.full_deployment).lower() == "true" else False
 
     # Collect the files modified between the current branch and the target branch
