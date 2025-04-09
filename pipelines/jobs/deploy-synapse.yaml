@@ -55,7 +55,7 @@ jobs:
       contents: |
         TemplateForWorkspace.json
         TemplateParametersForWorkspace.json
-      targetFolder: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles
+      targetFolder: $(Build.ArtifactStagingDirectory)
 
   # Switch back to the source branch
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/branch-switch.yaml
@@ -67,7 +67,7 @@ jobs:
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/collect-modified-files.yaml
     parameters:
       targetBranch: main
-      outputFolder: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles
+      outputFolder: $(Build.ArtifactStagingDirectory)
       fullDeployment: ${{ parameters.fullDeployment }}
 
   # Pre-Override Replacement
@@ -76,10 +76,10 @@ jobs:
       overrideFind: 'pinsstodwdevuks9h80mb'
       overrideReplace: $(data_lake_account_name)
       templateParametersOverridesFileName: ${{ variables.overridesFileName }}
-      workingDirectory: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles
+      workingDirectory: $(Build.ArtifactStagingDirectory)
 
   # Publish pipeline artifacts
-  - publish: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles
+  - publish: $(Build.ArtifactStagingDirectory)
     artifact: ${{ variables.artifactName }}
     displayName: 'Publish Artifacts'
   
@@ -110,6 +110,7 @@ jobs:
     retryCountOnTaskFailure: '2'
     displayName: 'Deploy Workspace'
     inputs:
+      ArtifactsFolder: $(Build.ArtifactStagingDirectory)
       AzureResourceManagerConnection: ${{ parameters.armServiceConnectionName }}
       DeleteArtifactsNotInTemplate: true
       Environment: 'prod'
@@ -124,10 +125,10 @@ jobs:
         ls_servicebus_properties_typeProperties_url: $(service_bus_namespace_name).servicebus.windows.net
         ls_servicebus_properties_typeProperties_aadResourceId: https://servicebus.azure.net
         ls_storage_properties_typeProperties_url: $(data_lake_dfs_endpoint)
-      ParametersFile: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles/${{ variables.overridesFileName }}
+      ParametersFile: $(Build.ArtifactStagingDirectory)/${{ variables.overridesFileName }}
       ResourceGroupName: $(data_resource_group_name)
       TargetWorkspaceName: $(synapse_workspace_name)
-      TemplateFile: ${{variables['System.DefaultWorkingDirectory']}}/modifiedFiles/TemplateForWorkspace.json
+      TemplateFile: $(Build.ArtifactStagingDirectory)/TemplateForWorkspace.json
   
   # Pause the dedicated SQL pool if it was previously resumed
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/synapse-sql-pool-pause.yaml
