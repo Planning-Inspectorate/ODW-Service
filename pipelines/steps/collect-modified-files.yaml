@@ -1,0 +1,23 @@
+parameters:
+- targetBranch: env
+  type: string
+- outputFolder: './modifiedFilesToDeploy'
+  type: string
+- fullDeployment: false
+  type: boolean
+
+##
+# Check which services have been modified and need to be redeployed
+##
+steps:
+- script: |
+    set -x
+    python${{ parameters.pythonVersion }} --version
+    export PYTHONPATH="${PYTHONPATH}:/./"
+    python${{ parameters.pythonVersion }} $(System.DefaultWorkingDirectory)/pipelines/scripts/collect_modified_files.py --target_branch ${{ parameters.targetBranch }} -tf ${{ parameters.outputFolder }} -fd ${{ parameters.fullDeployment }}
+    if [ $? -eq 1 ]; then
+        echo "##vso[task.logissue type=error]get_synapse_details.py failed"
+        exit 1
+    fi
+  displayName: 'Collect modified files'
+  name: CollectModifiedFiles
