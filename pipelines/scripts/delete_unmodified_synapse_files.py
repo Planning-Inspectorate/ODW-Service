@@ -10,7 +10,7 @@ from typing import List, Set
 """
 
 
-def get_all_files() -> List[str]:
+def get_all_synapse_files() -> List[str]:
     """
         Return all files under the current directory
     """
@@ -18,6 +18,7 @@ def get_all_files() -> List[str]:
         os.path.join(path, name).replace("./", "")
         for path, subdirs, files in os.walk("./")
         for name in files
+        if "workspace/" not in name
     ]
 
 
@@ -44,7 +45,7 @@ if __name__ == "__main__":
         modified_files = get_modified_files(target_branch)
     
     # Delete all unmodified files
-    all_files = get_all_files()
+    all_files = get_all_synapse_files()
     for file in all_files:
         if file not in modified_files and file != "pipelines/scripts/delete_unmodified_files.py" and not file.startswith(".git"):
             print(f"Deleting file '{file}'")
