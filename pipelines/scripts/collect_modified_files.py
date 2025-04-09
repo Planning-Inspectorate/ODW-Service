@@ -56,4 +56,7 @@ if __name__ == "__main__":
             if not os.path.exists(next_folder):
                 os.mkdir(next_folder)
             parent_folder = next_folder
-        shutil.copy(file_path, f"{target_folder}/{file_path}")
+        try:
+            shutil.copy(file_path, f"{target_folder}/{file_path}")
+        except FileNotFoundError as e:
+            print(f"    Could not copy '{file_path}' - it has been deleted")
