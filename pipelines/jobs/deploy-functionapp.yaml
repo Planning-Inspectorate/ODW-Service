@@ -1,6 +1,7 @@
 parameters:
   agentPool: ''
   env: ''
+  appName: ''
 
 ##
 # Deploy Azure Synapse
@@ -9,13 +10,37 @@ jobs:
 - job: DeployFunctionAppJob
   pool: ${{ parameters.agentPool }}
   steps:
+  # Checkout the Github repo, in this case ODW-Service.
   - checkout: self
-    clean: true
-  - task: AzureCLI@2
-    displayName: 'Testing'
+    displayName: 'Checkout repo'
+  
+  # Switch to functions directory and create a file containing a list of all files in the top level folder.
+  - script: |
+      cd $(Build.SourcesDirectory)/functions
+      find . -maxdepth 1 -type f | sed 's|^\./||' > $(Build.SourcesDirectory)/functions/filelist.txt
+    displayName: 'Creating top level files list'
+  
+  # Create a zip file of all the files in the filelist.
+  - script: |
+        cd $(Build.SourcesDirectory)/functions
+        cat $(Build.SourcesDirectory)/functions/filelist.txt | xargs zip -r $(Build.ArtifactStagingDirectory)/functions.zip
+    displayName: 'Archive top level files'
+  
+  # Publish the zip file as an artifact to be used further in the pipeline.
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish build artifact'
     inputs:
-      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        echo "testing"
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'FunctionCode'
+  
+  # Download the artifact first - the zip file.
+  - template: steps/download_function_code.yaml
+
+  # Use the Azure CLI to deploy the zip file to the Function App in Azure.
+  - template: steps/deploy_to_function_app.yaml
+    parameters:
+      environment: ${{ parameters.env }}
+      armServiceConnectionName: "Azure Devops Pipelines - ODW ${{ upper(parameters.env) }} - Infrastructure"
+      resourceGroup: 'pins-rg-function-app-odw-${{ parameters.env }}-uks'
+      functionApp: 'pins-${{ parameters.appName }}-odw-${{ parameters.env }}-uks'
+      zipFile: '$(System.ArtifactsDirectory)/FunctionCode/functions.zip'
