@@ -5,11 +5,18 @@ parameters:
   type: boolean
   default: true
 
+# Run when Pull Request raised to the dev, testing, or main branch
 pr:
 - dev
 - testing
-#- main
-#
+- main
+
+# Run when merged into main
+trigger:
+ branches:
+  include:
+  - main
+
 schedules:
 - cron: '0 19 * * 1-5' # cron syntax defining a schedule. At 7pm every week day
   displayName: Daily testing branch run
@@ -27,10 +34,11 @@ variables:
     value: dev
   ${{ elseif eq(variables.branchName, 'testing') }}:
     value: test
-  #${{ elseif eq(variables.branchName, 'main') }}:
-  #  env: prod
+  ${{ elseif eq(variables.branchName, 'main') }}:
+    env: prod
   ${{ else }}:
     value: dev
+
 - name: variableGroupName
   ${{ if eq(variables.env, 'prod') }}:
     value: "Terraform Prod"
@@ -61,15 +69,18 @@ stages:
     armServiceConnectionName: "Azure Devops Pipelines - ODW ${{ upper(variables.env) }} - Infrastructure"
     failoverDeployment: ${{ variables.failoverDeployment }}
     outputsFileName: "tfoutputs.json"
+
 - template: stages/conditional-deployment-functionapp.yaml
   parameters:
     agentPool: ${{ variables.agentPool }}
     env: ${{ variables.env }}
+
 - template: stages/conditional-deployment-synapse.yaml
   parameters:
     agentPool: ${{ variables.agentPool }}
     env: ${{ variables.env }}
     armServiceConnectionName: "ODW ${{ upper(variables.env) }} - Infrastructure"
+
 - ${{ if eq(parameters.runTests, true) }}:
   - template: stages/conditional-run-tests.yaml
     parameters:
