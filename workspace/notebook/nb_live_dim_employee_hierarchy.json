@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "406caa4a-0f93-47fb-ae3f-9e18c06ae1d8"
+				"spark.autotune.trackingId": "beedac45-dc6c-4eaf-8744-86e1393401f7"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -119,24 +119,29 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 4
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"\n",
 					"# Load source tables\n",
-					"df_load_sap_hr = spark.table(\"odw_harmonised_db.load_sap_hr\")\n",
-					"df_vw_sap_email = spark.table(\"odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
+					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"\n",
+					"#declare alias\n",
+					"hr = df_vw_sap_email.alias(\"hr\")\n",
+					"email = df_vw_sap_email.alias(\"email\")\n",
+					"\n",
 					"\n",
 					"# filter employees with no manager (manager# = '00000000')\n",
-					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\").join(df_vw_sap_email, col(\"df_load_sap_hr.PersNo\") == col(\"df_vw_sap_email.PersNo\")).select(\n",
-					"col(\"df_load_sap_hr.PersNo\"),\n",
-					"col(\"df_load_sap_hr.Firstname\"),\n",
-					"col(\"df_load_sap_hr.Lastname\"),\n",
-					"col(\"df_load_sap_hr.PersNo1\").alias(\"ManagerNo\"),\n",
+					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\").join(df_vw_sap_email, col(\"PersNo\") == col(\"PersNo\")).select(\n",
+					"col(\"PersNo\"),\n",
+					"col(\"Firstname\"),\n",
+					"col(\"Lastname\"),\n",
+					"col(\"PersNo1\").alias(\"ManagerNo\"),\n",
 					"lit(1).alias(\"EmpLevel\"),\n",
-					"col(\"df_vw_sap_email.email_address\")\n",
+					"col(\"email_address\")\n",
 					")\n",
 					"\n",
 					"# build Recursive append levels\n",
@@ -178,7 +183,7 @@
 					"        mi.ManagerEmail,\n",
 					"        CURRENT_DATE() AS LastUpdated\n",
 					"    FROM cteReports cr\n",
-					"    LEFT JOIN cteManagerInfo mi ON cr.`ManagerNo` = mi.ManagerNo\n",
+					"    LEFT JOIN cteManagerInfo mi ON cr.ManagerNo = mi.ManagerNo\n",
 					"    ORDER BY cr.EmpLevel, FullName\n",
 					"\"\"\")\n",
 					"\n",
@@ -186,7 +191,7 @@
 					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
