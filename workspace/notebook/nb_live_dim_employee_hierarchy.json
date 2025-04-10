@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "beedac45-dc6c-4eaf-8744-86e1393401f7"
+				"spark.autotune.trackingId": "ae2903f0-f219-4570-b00f-4bbeff505b7f"
 			}
 		},
 		"metadata": {
@@ -135,14 +135,17 @@
 					"\n",
 					"\n",
 					"# filter employees with no manager (manager# = '00000000')\n",
-					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\").join(df_vw_sap_email, col(\"PersNo\") == col(\"PersNo\")).select(\n",
-					"col(\"PersNo\"),\n",
-					"col(\"Firstname\"),\n",
-					"col(\"Lastname\"),\n",
-					"col(\"PersNo1\").alias(\"ManagerNo\"),\n",
+					"df_cteReports = hr.filter(col(\"hr.PersNo1\") == \"00000000\").join(email, col(\"hr.PersNo\") == col(\"email.PersNo\")).select(\n",
+					"col(\"hr.PersNo\"),\n",
+					"col(\"hr.Firstname\"),\n",
+					"col(\"hr.Lastname\"),\n",
+					"col(\"hr.PersNo1\").alias(\"ManagerNo\"),\n",
 					"lit(1).alias(\"EmpLevel\"),\n",
-					"col(\"email_address\")\n",
+					"col(\"email.email_address\")\n",
 					")\n",
+					"\n",
+					"# define initial previous level\n",
+					"previous_level = df_cteReports\n",
 					"\n",
 					"# build Recursive append levels\n",
 					"for i in range(10):  # max hierarchy depth\n",
@@ -166,7 +169,7 @@
 					"df_cteReports.createOrReplaceTempView(\"cteReports\")\n",
 					"\n",
 					"# Manager details\n",
-					"df_cteManagerInfo = df_load_sap_hr.join(df_vw_sap_email, col(\"df_load_sap_hr.PersNo\") == col(\"df_vw_sap_email.PersNo\"),\"left\").select(col(\"df_load_sap_hr.PersNo\").alias(\"ManagerNo\"),concat_ws(\" \", col(\"df_load_sap_hr.Firstname\"),col(\"df_load_sap_hr.Lastname\")).alias(\"Manager\"),col(\"df_load_sap_hr.email_address\").alias(\"ManagerEmail\"))\n",
+					"df_cteManagerInfo = hr.join(email, col(\"hr.PersNo\") == col(\"email.PersNo\"),\"left\").select(col(\"hr.PersNo\").alias(\"ManagerNo\"),concat_ws(\" \", col(\"hr.Firstname\"),col(\"hr.Lastname\")).alias(\"Manager\"),col(\"hr.email_address\").alias(\"ManagerEmail\"))\n",
 					"\n",
 					"# create as temp view\n",
 					"df_cteManagerInfo.createOrReplaceTempView(\"cteManagerInfo\")\n",
@@ -189,9 +192,11 @@
 					"\n",
 					"#  employee_hierarchy_with_manager temp view\n",
 					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
+					"\n",
+					"display(df_sap_emp_hierarchy)\n",
 					""
 				],
-				"execution_count": 41
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
