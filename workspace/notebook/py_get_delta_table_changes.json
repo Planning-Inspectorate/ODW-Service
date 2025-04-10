@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f6bb8ad0-8064-4efd-ba6b-87eefbeb76f9"
+				"spark.autotune.trackingId": "56a421d5-0b0d-4358-87ed-707123c3e0c5"
 			}
 		},
 		"metadata": {
@@ -70,9 +70,10 @@
 				"source": [
 					"db_name='odw_curated_db'\n",
 					"table_name='listed_building'\n",
-					"primary_key='entity'"
+					"primary_key='entity'\n",
+					""
 				],
-				"execution_count": 102
+				"execution_count": 121
 			},
 			{
 				"cell_type": "code",
@@ -90,7 +91,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 99
+				"execution_count": 122
 			},
 			{
 				"cell_type": "code",
@@ -111,11 +112,13 @@
 					"from delta.tables import DeltaTable\n",
 					"from pyspark.sql.functions import col, lit, when\n",
 					"import json\n",
+					"from azure.identity import DefaultAzureCredential\n",
+					"import requests\n",
 					"\n",
 					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
 					"table_name_full = f\"{db_name}.{table_name}\""
 				],
-				"execution_count": 64
+				"execution_count": 57
 			},
 			{
 				"cell_type": "markdown",
@@ -158,14 +161,7 @@
 					"    version = history_df.select(\"version\").orderBy(\"version\", ascending=False).first()[\"version\"]\n",
 					"    return version"
 				],
-				"execution_count": 65
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"table_path "
-				],
-				"execution_count": 70
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -188,27 +184,14 @@
 					"    logInfo(f\"Failed to read changes in delta table: {table_name_full}. Exception: No history found\")\n",
 					"    mssparkutils.notebook.exit('[]')"
 				],
-				"execution_count": 66
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## TEST with 15, 16 versions as to simulate 377285 records"
-				]
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"latest_version = 16"
+					"table_path"
 				],
-				"execution_count": 69
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -217,13 +200,13 @@
 				},
 				"source": [
 					"try:\n",
-					"    previous_version = latest_version-1\n",
+					"    previous_version = latest_version-1 #16, 15\n",
 					"\n",
 					"    logInfo(f\"Reading changes between version {latest_version} and {previous_version} in delta table: {table_name_full}\")\n",
 					"\n",
 					"    # Load the current and previous versions\n",
-					"    current_version_df = spark.read.format(\"delta\").option(\"versionAsOf\", latest_version).load(table_path)\n",
-					"    previous_version_df = spark.read.format(\"delta\").option(\"versionAsOf\", previous_version).load(table_path)\n",
+					"    current_version_df = spark.read.format(\"delta\").option(\"versionAsOf\", 16).load(table_path)\n",
+					"    previous_version_df = spark.read.format(\"delta\").option(\"versionAsOf\", 15).load(table_path)\n",
 					"\n",
 					"    # Find the differences\n",
 					"    create_df = current_version_df.subtract(previous_version_df)\n",
@@ -254,14 +237,14 @@
 					"    mssparkutils.notebook.exit('')\n",
 					""
 				],
-				"execution_count": 68
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
 						"source_hidden": false,
-						"outputs_hidden": false
+						"outputs_hidden": true
 					},
 					"nteract": {
 						"transient": {
@@ -273,7 +256,43 @@
 				"source": [
 					"display(changes_df)"
 				],
-				"execution_count": 15
+				"execution_count": 38
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"####  \n",
+					"** TEST CODE BELOW **\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"changes_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.listed_building_test\")\n",
+					"\n",
+					"changes_df1 = spark.table(\"odw_curated_db.listed_building_test\")"
+				],
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": false
+					}
+				},
+				"source": [
+					"changes_df1.show(3)"
+				],
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -297,7 +316,59 @@
 					"    for row in changes_df.collect()\n",
 					"]"
 				],
-				"execution_count": 73
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df_formatted_data = spark.createDataFrame([\n",
+					"    {\n",
+					"        'Body': str({k: v for k, v in row.asDict().items() if k != 'EventType'}),\n",
+					"        'UserProperties': {'type': row['EventType']}\n",
+					"    }\n",
+					"    for row in changes_df.collect()\n",
+					"])"
+				],
+				"execution_count": 40
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"rdd = spark.sparkContext.parallelize([formatted_data])\n",
+					"rdd.saveAsTextFile(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building/listed_building_test/data.json\")"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df_formatted_data.write.mode(\"overwrite\").json(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_test/listed_building_test/data\")"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df_read_formatted_data = spark.read.json(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_test/listed_building_test/data\")"
+				],
+				"execution_count": 51
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df_formatted_data.show(3)"
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"display(df_formatted_data)"
+				],
+				"execution_count": 53
 			},
 			{
 				"cell_type": "markdown",
@@ -309,35 +380,22 @@
 					}
 				},
 				"source": [
-					"### Create a dataframe with Json data"
+					"## service bus config "
 				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"df_formatted_data = spark.createDataFrame(formatted_data)"
+					""
 				],
-				"execution_count": 74
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"## Write the dataframe into listed_building_test"
-				]
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"df_formatted_data.write.mode(\"overwrite\").json(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_test\")"
+					""
 				],
-				"execution_count": 75
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -355,7 +413,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(formatted_data)"
 				],
-				"execution_count": 17
+				"execution_count": 10
 			}
 		]
 	}
