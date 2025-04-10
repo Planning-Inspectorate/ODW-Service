@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7032561a-c7b2-49f4-9232-de863429f106"
+				"spark.autotune.trackingId": "f8c5d0b3-30fa-4afc-b193-0f6bcf292199"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -130,21 +130,19 @@
 					"df_vw_sap_email = spark.table(\"odw_harmonised_db.load_vw_sap_hr_email\")\n",
 					"\n",
 					"# filter employees with no manager (manager# = '00000000')\n",
-					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\")\n",
-					"    .join(df_vw_sap_email, df_load_sap_hr[\"PersNo\"] == df_vw_sap_email[\"PersNo\"])\n",
-					"    .select(\n",
-					"        col(\"PersNo\"),\n",
-					"        col(\"Firstname\"),\n",
-					"        col(\"Lastname\"),\n",
-					"        col(\"PersNo1\").alias(\"ManagerNo\"),\n",
-					"        lit(1).alias(\"EmpLevel\"),\n",
-					"        col(\"email_address\")\n",
-					"    )\n",
+					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\").join(df_vw_sap_email, col(\"df_load_sap_hr.PersNo\") == col(\"df_vw_sap_email.PersNo\")).select(\n",
+					"col(\"df_load_sap_hr.PersNo\"),\n",
+					"col(\"df_load_sap_hr.Firstname\"),\n",
+					"col(\"df_load_sap_hr.Lastname\"),\n",
+					"col(\"df_load_sap_hr.PersNo1\").alias(\"ManagerNo\"),\n",
+					"lit(1).alias(\"EmpLevel\"),\n",
+					"col(\"df_vw_sap_email.email_address\")\n",
+					")\n",
 					"\n",
 					"# build Recursive append levels\n",
 					"previous_level = df_cteReports\n",
 					"for i in range(10):  # max hierarchy depth\n",
-					"    next_level = df_load_sap_hr.alias(\"e\") \\\n",
+					"    next_level = df_load_sap_hr.alias(\"e\")\n",
 					"        .join(previous_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.PersNo\"))\n",
 					"        .join(df_vw_sap_email.alias(\"em2\"), col(\"e.Pers#No#\") == col(\"em2.PersNo\"))\n",
 					"        .select(\n",
@@ -193,7 +191,7 @@
 					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
