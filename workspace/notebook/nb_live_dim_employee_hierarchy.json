@@ -1,0 +1,385 @@
+{
+	"name": "nb_live_dim_employee_hierarchy",
+	"properties": {
+		"folder": {
+			"name": "2-odw-standardised-to-harmonised/SapHR"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "7032561a-c7b2-49f4-9232-de863429f106"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read Delta tables from owb_standarsied_db to owb_harmonisied_db and load all records as Delta tables along with metadata columns.\n",
+					"\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table dim_employee_hierarchy into owb-harmonisied_db layer.\n",
+					"\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#import all libraries and initialise Spark Session\n",
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"import requests\n",
+					"import pyspark.sql.functions as F \n",
+					"import re\n",
+					"from notebookutils import mssparkutils\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce,concat_ws,row_number, to_timestamp\n",
+					"from pprint import pprint as pp\n",
+					"from pyspark.sql.types import *\n",
+					"from pyspark.sql.window import Window\n",
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"from delta.tables import DeltaTable\n",
+					"#ignore FutureWarning messages \n",
+					"import warnings\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
+					""
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Get Storage account name\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"print(storage_account)"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Define delta table names, database name and table paths\n",
+					"source_database_name = \"odw_standardised_db\"\n",
+					"target_database_name = \"odw_harmonised_db\"\n",
+					"source_delta_table = f\"{source_database_name}.inspector_addresses_weekly\"\n",
+					"target_delta_table = f\"{target_database_name}.live_dim_inspector\"\n",
+					"target_horizon_delta_table = f\"{target_database_name}.load_horizon_appeals_inspectors_kludge\"\n",
+					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_inspector\"\n",
+					"\n",
+					"delta_horizon_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_horizon_appeals_inspectors_kludge\"\n",
+					"\n",
+					"print(source_delta_table)\n",
+					"print(target_delta_table)\n",
+					"print(delta_table_path)"
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"# Load source tables\n",
+					"df_load_sap_hr = spark.table(\"odw_harmonised_db.load_sap_hr\")\n",
+					"df_vw_sap_email = spark.table(\"odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"\n",
+					"# filter employees with no manager (manager# = '00000000')\n",
+					"df_cteReports = df_load_sap_hr.filter(col(\"PersNo1\") == \"00000000\")\n",
+					"    .join(df_vw_sap_email, df_load_sap_hr[\"PersNo\"] == df_vw_sap_email[\"PersNo\"])\n",
+					"    .select(\n",
+					"        col(\"PersNo\"),\n",
+					"        col(\"Firstname\"),\n",
+					"        col(\"Lastname\"),\n",
+					"        col(\"PersNo1\").alias(\"ManagerNo\"),\n",
+					"        lit(1).alias(\"EmpLevel\"),\n",
+					"        col(\"email_address\")\n",
+					"    )\n",
+					"\n",
+					"# build Recursive append levels\n",
+					"previous_level = df_cteReports\n",
+					"for i in range(10):  # max hierarchy depth\n",
+					"    next_level = df_load_sap_hr.alias(\"e\") \\\n",
+					"        .join(previous_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.PersNo\"))\n",
+					"        .join(df_vw_sap_email.alias(\"em2\"), col(\"e.Pers#No#\") == col(\"em2.PersNo\"))\n",
+					"        .select(\n",
+					"            col(\"e.PersNo\"),\n",
+					"            col(\"e.Firstname\"),\n",
+					"            col(\"e.Lastname\"),\n",
+					"            col(\"e.PersNo1\").alias(\"Manager#No#\"),\n",
+					"            (col(\"r.EmpLevel\") + 1).alias(\"EmpLevel\"),\n",
+					"            col(\"em2.email_address\")\n",
+					"        )\n",
+					"    df_cteReports = df_cteReports.unionByName(next_level).distinct()\n",
+					"    previous_level = next_level\n",
+					"\n",
+					"# create as temp view\n",
+					"df_cteReports.createOrReplaceTempView(\"cteReports\")\n",
+					"\n",
+					"# Manager details\n",
+					"df_cteManagerInfo = df_load_sap_hr\n",
+					"    .join(df_vw_sap_email, sap_hr[\"PersNo\"] == df_vw_sap_email[\"PersNo\"], \"left\")\n",
+					"    .select(\n",
+					"        col(\"PersNo\").alias(\"ManagerNo\"),\n",
+					"        concat_ws(\" \", col(\"Firstname\"), col(\"Lastname\")).alias(\"Manager\"),\n",
+					"        col(\"email_address\").alias(\"ManagerEmail\")\n",
+					"    )\n",
+					"\n",
+					"# create as temp view\n",
+					"df_cteManagerInfo.createOrReplaceTempView(\"cteManagerInfo\")\n",
+					"\n",
+					"# build final sql\n",
+					"df_sap_emp_hierarchy = spark.sql(\"\"\"\n",
+					"    SELECT \n",
+					"        cr.PersNo,\n",
+					"        CONCAT(cr.FirstName, ' ', cr.LastName) AS FullName,\n",
+					"        cr.email_address,\n",
+					"        cr.EmpLevel,\n",
+					"        mi.ManagerNo AS ManagerNo,\n",
+					"        mi.Manager,\n",
+					"        mi.ManagerEmail,\n",
+					"        CURRENT_DATE() AS LastUpdated\n",
+					"    FROM cteReports cr\n",
+					"    LEFT JOIN cteManagerInfo mi ON cr.`ManagerNo` = mi.ManagerNo\n",
+					"    ORDER BY cr.EmpLevel, FullName\n",
+					"\"\"\")\n",
+					"\n",
+					"#  employee_hierarchy_with_manager temp view\n",
+					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"\n",
+					"# Read source data from Delta Tables\n",
+					"\n",
+					"df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
+					""
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"\n",
+					"df_inspector_unassociated_group = spark.sql(src_spark_inspector_unassociated_sql)\n",
+					"\n",
+					"df_all_inspector_address = df_combined_inspector_address.unionByName(df_inspector_unassociated_group)\n",
+					"\n",
+					"df_all_inspector_address.createOrReplaceTempView(\"all_inspector_address\")\n",
+					"\n",
+					"print(\"Before Delete duplicate\")\n",
+					"print(df_all_inspector_address.count())\n",
+					"\n",
+					"src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
+					"                                    (\n",
+					"                                    select family_name, given_names from all_inspector_address\n",
+					"                                    group by  family_name, given_names \n",
+					"                                    having COUNT(*) > 1\n",
+					"                                    )\n",
+					"                                    SELECT i.* from all_inspector_address i inner join ddd d on i.family_name = d.family_name and i.given_names = d.given_names \n",
+					"                                    and i.inspectorSource = 'RAW' \"\"\"\n",
+					"\n",
+					"df_dup_all_inspector_address = spark.sql(src_dedup_all_inspector_address_sql)\n",
+					"\n",
+					"\n",
+					"# Subtract duplicates from the full set\n",
+					"df_dedup_all_inspector_address = df_all_inspector_address.subtract(df_dup_all_inspector_address)\n",
+					"\n",
+					"# Add the RowID column to the DataFrame\n",
+					"rowid_columns = [c for c in df_dedup_all_inspector_address.columns]\n",
+					"\n",
+					"# Convert RowID columns to hash values\n",
+					"rowid_expr = md5(concat_ws(\"|\", *[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns]))\n",
+					"\n",
+					"# Add the RowID column to the DataFrame\n",
+					"#df_transform_inspector_address = df_transform_inspector_address.withColumn(\"RowID\", rowid_expr)\n",
+					"\n",
+					"#Add Audit columns records including ROWID\n",
+					"df_dedup_all_inspector_address = df_dedup_all_inspector_address.select(\n",
+					"    *[col(c) for c in df_dedup_all_inspector_address.columns if c not in [\"is_sgl\"]],\n",
+					"    col(\"is_sgl\").cast(\"string\").alias(\"is_sgl\"),\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    expr(\"current_timestamp() - INTERVAL 1 DAY\").alias(\"ValidFrom\"),\n",
+					"    current_timestamp().alias(\"ValidTo\"),\n",
+					"    rowid_expr.alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")\n",
+					"\n",
+					"#Add Audit columns records including ROWID\n",
+					"#df_audit_columns_inspector_address = (\n",
+					"#    df_dedup_all_inspector_address\n",
+					"#    .withColumn(\"SourceSystemID\", lit(\"SapHr\"))\n",
+					"#    .withColumn(\"IngestionDate\", current_timestamp())\n",
+					"#    .withColumn(\"ValidFrom\", expr(\"current_timestamp() - INTERVAL 1 DAY\"))\n",
+					"#    .withColumn(\"ValidTo\", current_timestamp())\n",
+					"#    .withColumn(\"RowID\", rowid_expr)  # assuming you defined `rowid_expr` earlier\n",
+					"#    .withColumn(\"IsActive\", lit(\"Y\"))\n",
+					"#)\n",
+					"\n",
+					"\n",
+					"#src_dedup_all_inspector_address_sql = \"\"\"with ddd as\n",
+					"#                                    (\n",
+					"#                                    select UPPER(RTRIM(LTRIM(inspector_name))) inspector_name from all_inspector_address\n",
+					"#                                    group by  UPPER(RTRIM(LTRIM(inspector_name)))\n",
+					"#                                    having COUNT(*) > 1\n",
+					"#                                    )\n",
+					"#                                    SELECT i.* from all_inspector_address i inner join ddd d on UPPER(RTRIM(LTRIM(i.inspector_name))) = UPPER(RTRIM(LTRIM(d.inspector_name))) and i.inspectorSource = 'RAW' \"\"\"                                    \n",
+					"\n",
+					"\n",
+					"print(\"after Delete duplicate\")\n",
+					"print(df_dedup_all_inspector_address.count())\n",
+					"\n",
+					"#print(df_dedup_all_inspector_address.printSchema())\n",
+					"\n",
+					"#display(df_dedup_all_inspector_address)\n",
+					"\n",
+					"# Write new records to target Delta Table\n",
+					"try:\n",
+					"    # Overwrite the entire delta table with transfored dataframe\n",
+					"    df_dedup_all_inspector_address.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"\n",
+					"\n",
+					"    print(f\" Records overwritten successfully to {target_delta_table}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"src_horizon_appeals_inspectors_kludge_sql = \"\"\"\n",
+					"                with cte_missing_insp as\n",
+					"                (\n",
+					"                select\n",
+					"                    RANK() OVER  (PARTITION BY H.ID ORDER BY record_start_date DESC) AS Ranker,  \n",
+					"                    H.ID, H.LeadInspector, \n",
+					"                    H.record_start_date, \n",
+					"                    H.record_end_date \n",
+					"                from \n",
+					"                    odw_standardised_db.hist_iss_job H left join odw_standardised_db.load_iss_job j on H.ID = J.ID\n",
+					"                where \n",
+					"                    j.LeadInspector IS NULL\n",
+					"                    and j.ID like '3%'\n",
+					"                    and LENGTH(j.ID) = 7\n",
+					"                    and j.Status not in ('W', 'E')\n",
+					"                    and H.LeadInspector is not null\n",
+					"                )\n",
+					"                select \n",
+					"                    ID, \n",
+					"                    LeadInspector as lead_inspector, \n",
+					"                    i.inspector_name,\n",
+					"                    record_start_date, \n",
+					"                    record_end_date\n",
+					"                from cte_missing_insp left outer join odw_harmonised_db.live_dim_inspector i on cte_missing_insp.LeadInspector = i.source_id\n",
+					"                where Ranker = 1\n",
+					"                order by ID, record_start_date desc\"\"\"\n",
+					"\n",
+					"df_horizon_appeals_inspectors_kludge = spark.sql(src_horizon_appeals_inspectors_kludge_sql)\n",
+					"\n",
+					"\n",
+					"# Write new records to target Delta Table\n",
+					"try:\n",
+					"    # Overwrite the entire delta table with transfored dataframe\n",
+					"    df_horizon_appeals_inspectors_kludge.write.format(\"delta\").mode(\"overwrite\").save(delta_horizon_table_path)\n",
+					"\n",
+					"\n",
+					"    print(f\" Records overwritten successfully to {target_horizon_delta_table}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    print(f\" Error writing to {target_horizon_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					"\n",
+					"\n",
+					"display(df_horizon_appeals_inspectors_kludge)"
+				],
+				"execution_count": 10
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.live_dim_inspector\")\n",
+					"\n",
+					"#spark.sql(f\"delete from odw_harmonised_db.sap_hr_inspector_address\")\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": 84
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#update odw_standardised_db.load_iss_job\n",
+					"#set Status = 'C'"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
