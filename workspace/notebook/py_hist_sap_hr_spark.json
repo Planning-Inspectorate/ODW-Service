@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6f5cb23a-9d58-44f3-bf3b-0e477ec5965a"
+				"spark.autotune.trackingId": "8a575f54-f1cd-471c-a149-4f9e09e416cb"
 			}
 		},
 		"metadata": {
@@ -371,7 +371,7 @@
 					"   right(date_format(to_date(Report_MonthEnd_Date,'dd/MM/yyyy'), 'yyyy-MM-dd'),5) IN ('01-31', '02-28', '02-29', '03-31', '04-30', '05-31', '06-30', '07-31', '08-31', '09-30', '10-31', '11-30', '12-31')\n",
 					"\"\"\")"
 				],
-				"execution_count": 4
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -410,7 +410,7 @@
 					"        target.PersonnelSubarea = source.PersonnelSubarea\n",
 					"\"\"\")"
 				],
-				"execution_count": 5
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -418,17 +418,25 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Update absence records with HR data using an inner join approach\n",
+					"# First, deduplicate the source data to ensure one row per target key\n",
 					"spark.sql(\"\"\"\n",
-					"MERGE INTO odw_harmonised_db.sap_hr_fact_Absence_All AS target\n",
-					"USING (\n",
+					"CREATE OR REPLACE TEMPORARY VIEW deduplicated_source AS\n",
+					"SELECT \n",
+					"    staffnumber,\n",
+					"    PSGroup,\n",
+					"    PersonnelArea,\n",
+					"    PersonnelSubarea,\n",
+					"    Report_MonStart_Date,\n",
+					"    Report_MonthEnd_Date\n",
+					"FROM (\n",
 					"    SELECT \n",
 					"        a.staffnumber,\n",
 					"        p.PSGroup,\n",
 					"        p.PersonnelArea,\n",
 					"        p.PersonnelSubarea,\n",
 					"        p.Report_MonStart_Date,\n",
-					"        p.Report_MonthEnd_Date\n",
+					"        p.Report_MonthEnd_Date,\n",
+					"        ROW_NUMBER() OVER (PARTITION BY a.staffnumber ORDER BY p.Report_MonthEnd_Date DESC) AS rn\n",
 					"    FROM \n",
 					"        odw_harmonised_db.fact_Absence_All a\n",
 					"    INNER JOIN (\n",
@@ -437,18 +445,21 @@
 					"            PSGroup,\n",
 					"            PersonnelArea,\n",
 					"            PersonnelSubarea,\n",
-					"            -- Subtract 30 days as an approximation for 1 month\n",
 					"            date_sub(Report_MonthEnd_Date, 30) AS Report_MonStart_Date,\n",
 					"            Report_MonthEnd_Date \n",
 					"        FROM \n",
-					"            odw_harmonised_db.Hist_SAP_HR \n",
-					"       -- WHERE \n",
-					"          --  Report_MonthEnd_Date < (SELECT MAX(Report_MonthEnd_Date) FROM odw_harmonised_db.Hist_SAP_HR)\n",
+					"            odw_harmonised_db.Hist_SAP_HR\n",
 					"    ) p\n",
 					"    ON cast(a.staffnumber as int) = p.PersNo\n",
-					"    --AND a.absence_date BETWEEN p.Report_MonStart_Date AND p.Report_MonthEnd_Date\n",
-					") AS source\n",
-					"ON cast(target.staffnumber as int) = source.staffnumber\n",
+					") \n",
+					"WHERE rn = 1\n",
+					"\"\"\")\n",
+					"\n",
+					"# Now use the deduplicated source in the MERGE operation\n",
+					"spark.sql(\"\"\"\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_fact_Absence_All AS target\n",
+					"USING deduplicated_source AS source\n",
+					"ON cast(target.staffnumber as int) = cast(source.staffnumber as int)\n",
 					"WHEN MATCHED THEN\n",
 					"    UPDATE SET \n",
 					"        target.PSGroup = source.PSGroup,\n",
@@ -456,7 +467,7 @@
 					"        target.PersonnelSubarea = source.PersonnelSubarea\n",
 					"\"\"\")"
 				],
-				"execution_count": 6
+				"execution_count": 5
 			}
 		]
 	}
