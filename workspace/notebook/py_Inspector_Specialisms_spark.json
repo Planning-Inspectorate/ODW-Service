@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2b8aa865-d4d8-4e5e-9c5e-d442efa33b5a"
+				"spark.autotune.trackingId": "639f7d05-8653-4936-af2f-7ca94bb3a786"
 			}
 		},
 		"metadata": {
@@ -102,7 +102,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 23
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -133,75 +133,73 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"   %%sql\n",
-					"   \n",
-					"   -- Step 1: Delete all records from the transform table\n",
-					"    DELETE FROM odw_harmonised_db.transform_inspector_Specialisms;\n",
+					"# Step 1: Delete all records from the transform table\n",
+					"spark.sql(\"\"\"\n",
+					"DELETE FROM odw_harmonised_db.transform_inspector_Specialisms\n",
+					"\"\"\")\n",
 					"\n",
-					"    -- Step 2: Insert new records into the transform table\n",
-					"    INSERT INTO odw_harmonised_db.transform_inspector_Specialisms (\n",
-					"        StaffNumber,\n",
-					"        Firstname,\n",
-					"        Lastname,\n",
-					"        QualificationName,\n",
-					"        Proficien,\n",
-					"        SourceSystemID,\n",
-					"        IngestionDate,\n",
-					"        ValidTo,\n",
-					"        RowID,\n",
-					"        IsActive\n",
-					"    )\n",
-					"    SELECT \n",
-					"        -- Format StaffNumber based on length and prefix\n",
-					"        CASE \n",
-					"            WHEN LEN(StaffNumber) = 6 THEN\n",
-					"                CASE \n",
-					"                    WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
-					"                    WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
-					"                    ELSE StaffNumber\n",
-					"                END\n",
-					"            WHEN LEN(StaffNumber) = 8 THEN StaffNumber\n",
-					"            ELSE StaffNumber\n",
-					"        END AS StaffNumber,\n",
-					"        Firstname,\n",
-					"        Lastname,\n",
-					"        QualificationName,\n",
-					"        Proficien,\n",
-					"        'saphr' AS SourceSystemID,\n",
-					"        CURRENT_DATE() AS IngestionDate,\n",
-					"        CURRENT_DATE() AS ValidTo,\n",
-					"        -- Generate RowID during insert instead of separate update\n",
-					"        md5(concat_ws('|', \n",
-					"            coalesce(cast(\n",
-					"                CASE \n",
-					"                    WHEN LEN(StaffNumber) = 6 THEN\n",
-					"                        CASE \n",
-					"                            WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
-					"                            WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
-					"                            ELSE StaffNumber\n",
-					"                        END\n",
-					"                    WHEN LEN(StaffNumber) = 8 THEN StaffNumber\n",
-					"                    ELSE StaffNumber\n",
-					"                END as string), ''), \n",
-					"            coalesce(cast(Firstname as string), ''), \n",
-					"            coalesce(cast(Lastname as string), ''), \n",
-					"            coalesce(cast(QualificationName as string), ''), \n",
-					"            coalesce(cast(Proficien as string), '')\n",
-					"        )) AS RowID,\n",
-					"        'Y' AS IsActive\n",
-					"    FROM \n",
-					"        odw_standardised_db.inspector_specialisms_monthly t1\n",
-					"    WHERE \n",
-					"        StaffNumber IS NOT NULL;\n",
-					""
+					"# Step 2: Insert new records into the transform table\n",
+					"spark.sql(\"\"\"\n",
+					"INSERT INTO odw_harmonised_db.transform_inspector_Specialisms (\n",
+					"    StaffNumber,\n",
+					"    Firstname,\n",
+					"    Lastname,\n",
+					"    QualificationName,\n",
+					"    Proficien,\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive\n",
+					")\n",
+					"SELECT \n",
+					"    -- Format StaffNumber based on length and prefix\n",
+					"    CASE \n",
+					"        WHEN LENGTH(StaffNumber) = 6 THEN\n",
+					"            CASE \n",
+					"                WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
+					"                WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
+					"                ELSE StaffNumber\n",
+					"            END\n",
+					"        WHEN LENGTH(StaffNumber) = 8 THEN StaffNumber\n",
+					"        ELSE StaffNumber\n",
+					"    END AS StaffNumber,\n",
+					"    Firstname,\n",
+					"    Lastname,\n",
+					"    QualificationName,\n",
+					"    Proficien,\n",
+					"    'saphr' AS SourceSystemID,\n",
+					"    CURRENT_DATE() AS IngestionDate,\n",
+					"    CURRENT_DATE() AS ValidTo,\n",
+					"    -- Generate RowID during insert instead of separate update\n",
+					"    md5(concat_ws('|', \n",
+					"        coalesce(cast(\n",
+					"            CASE \n",
+					"                WHEN LENGTH(StaffNumber) = 6 THEN\n",
+					"                    CASE \n",
+					"                        WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
+					"                        WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
+					"                        ELSE StaffNumber\n",
+					"                    END\n",
+					"                WHEN LENGTH(StaffNumber) = 8 THEN StaffNumber\n",
+					"                ELSE StaffNumber\n",
+					"            END as string), ''), \n",
+					"        coalesce(cast(Firstname as string), ''), \n",
+					"        coalesce(cast(Lastname as string), ''), \n",
+					"        coalesce(cast(QualificationName as string), ''), \n",
+					"        coalesce(cast(Proficien as string), '')\n",
+					"    )) AS RowID,\n",
+					"    'Y' AS IsActive\n",
+					"FROM \n",
+					"    odw_standardised_db.inspector_specialisms_monthly t1\n",
+					"WHERE \n",
+					"    StaffNumber IS NOT NULL\n",
+					"\"\"\")"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -219,14 +217,58 @@
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"\n",
+					"# Insert new records that don't exist in the target table\n",
+					"spark.sql(\"\"\"\n",
+					"INSERT INTO odw_harmonised_db.sap_hr_inspector_Specialisms (\n",
+					"    StaffNumber, \n",
+					"    Firstname, \n",
+					"    Lastname, \n",
+					"    QualificationName, \n",
+					"    Proficien, \n",
+					"    SourceSystemID, \n",
+					"    IngestionDate, \n",
+					"    ValidFrom, \n",
+					"    ValidTo, \n",
+					"    Current, \n",
+					"    RowID, \n",
+					"    IsActive, \n",
+					"    LastUpdated\n",
+					")\n",
+					"SELECT \n",
+					"    souSpe.StaffNumber, \n",
+					"    souSpe.Firstname, \n",
+					"    souSpe.Lastname, \n",
+					"    souSpe.QualificationName, \n",
+					"    souSpe.Proficien, \n",
+					"    'saphr', \n",
+					"    current_date(), \n",
+					"    current_date(), \n",
+					"    '9999-12-31', \n",
+					"    1, \n",
+					"    souSpe.RowID, \n",
+					"    'Y', \n",
+					"    current_date()\n",
+					"FROM odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
+					"LEFT OUTER JOIN odw_harmonised_db.sap_hr_inspector_Specialisms tarSpe\n",
+					"    ON souSpe.StaffNumber = tarSpe.StaffNumber\n",
+					"    AND tarSpe.Current = 1\n",
+					"    AND souSpe.QualificationName = tarSpe.QualificationName\n",
+					"WHERE tarSpe.StaffNumber IS NULL\n",
+					"\"\"\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# Update records that are no longer present in the source data\n",
+					"spark.sql(\"\"\"\n",
 					"MERGE INTO odw_harmonised_db.sap_hr_inspector_Specialisms AS target\n",
 					"USING (\n",
 					"    SELECT \n",
@@ -249,21 +291,19 @@
 					"WHEN MATCHED THEN\n",
 					"UPDATE SET \n",
 					"    target.Current = 0,\n",
-					"    target.ValidTo = CURRENT_DATE();"
+					"    target.ValidTo = CURRENT_DATE()\n",
+					"\"\"\")"
 				],
-				"execution_count": 27
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"\n",
+					"# Insert new versions of records that have changed (different RowID)\n",
+					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.sap_hr_inspector_Specialisms (\n",
 					"    StaffNumber, \n",
 					"    Firstname, \n",
@@ -298,70 +338,19 @@
 					"    ON souSpe.StaffNumber = tarSpe.StaffNumber\n",
 					"    AND tarSpe.Current = 1\n",
 					"    AND souSpe.QualificationName = tarSpe.QualificationName\n",
-					"WHERE tarSpe.StaffNumber IS NULL;"
+					"WHERE tarSpe.RowID <> souSpe.RowID\n",
+					"\"\"\")"
 				],
-				"execution_count": 28
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
 					"collapsed": false
 				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"INSERT INTO odw_harmonised_db.sap_hr_inspector_Specialisms (\n",
-					"    StaffNumber, \n",
-					"    Firstname, \n",
-					"    Lastname, \n",
-					"    QualificationName, \n",
-					"    Proficien, \n",
-					"    SourceSystemID, \n",
-					"    IngestionDate, \n",
-					"    ValidFrom, \n",
-					"    ValidTo, \n",
-					"    Current, \n",
-					"    RowID, \n",
-					"    IsActive, \n",
-					"    LastUpdated\n",
-					")\n",
-					"SELECT \n",
-					"    souSpe.StaffNumber, \n",
-					"    souSpe.Firstname, \n",
-					"    souSpe.Lastname, \n",
-					"    souSpe.QualificationName, \n",
-					"    souSpe.Proficien, \n",
-					"    'saphr', \n",
-					"    current_date(), \n",
-					"    current_date(), \n",
-					"    '9999-12-31', \n",
-					"    1, \n",
-					"    souSpe.RowID, \n",
-					"    'Y', \n",
-					"    current_date()\n",
-					"FROM odw_harmonised_db.transform_inspector_Specialisms souSpe\n",
-					"LEFT OUTER JOIN odw_harmonised_db.sap_hr_inspector_Specialisms tarSpe\n",
-					"    ON souSpe.StaffNumber = tarSpe.StaffNumber\n",
-					"    AND tarSpe.Current = 1\n",
-					"    AND souSpe.QualificationName = tarSpe.QualificationName\n",
-					"WHERE tarSpe.RowID <> souSpe.RowID"
-				],
-				"execution_count": 29
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
+					"# Use CTE to deduplicate and then MERGE in a single operation\n",
+					"spark.sql(\"\"\"\n",
 					"-- Step 1: Deduplicate the source table (newSpe)\n",
 					"WITH DeduplicatedSource AS (\n",
 					"    SELECT \n",
@@ -377,7 +366,7 @@
 					"        odw_harmonised_db.sap_hr_inspector_Specialisms\n",
 					"    WHERE \n",
 					"        Current = 1\n",
-					"        AND ValidFrom = CURRENT_DATE()\n",
+					"        AND ValidFrom = current_date()\n",
 					")\n",
 					"\n",
 					"-- Step 2: Perform the MERGE operation using the deduplicated source\n",
@@ -387,14 +376,15 @@
 					"    oldSpe.StaffNumber = newSpe.StaffNumber\n",
 					"    AND oldSpe.QualificationName = newSpe.QualificationName\n",
 					"    AND oldSpe.Current = 1\n",
-					"    AND oldSpe.ValidFrom < CURRENT_DATE()\n",
+					"    AND oldSpe.ValidFrom < current_date()\n",
 					"    AND newSpe.row_num = 1 -- Ensure only one row per combination\n",
 					"WHEN MATCHED THEN\n",
 					"UPDATE SET \n",
 					"    oldSpe.Current = 0,\n",
-					"    oldSpe.ValidTo = CURRENT_DATE();"
+					"    oldSpe.ValidTo = current_date()\n",
+					"\"\"\")"
 				],
-				"execution_count": 30
+				"execution_count": null
 			}
 		]
 	}
