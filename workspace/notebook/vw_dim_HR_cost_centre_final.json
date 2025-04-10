@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0acd14d9-e31d-4626-a454-99748e70dc74"
+				"spark.autotune.trackingId": "ce0e853b-b260-43f8-a439-0f43450aa3d3"
 			}
 		},
 		"metadata": {
@@ -110,8 +110,35 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"# Create a view for HR cost centre\n",
+					"df = spark.sql(\"\"\"\n",
+					"\n",
+					"SELECT\n",
+					"    RANK() OVER(ORDER BY a.CostCentreCode) AS dim_cost_centre_key,\n",
+					"    a.*\n",
+					"FROM\n",
+					"(\n",
+					"    SELECT DISTINCT \n",
+					"        CASE WHEN CostCtr = '' THEN '-1' ELSE CostCtr END AS CostCentreCode,\n",
+					"        CASE WHEN CostCentre = '' THEN '-' ELSE CostCentre END AS CostCentre\n",
+					"    FROM odw_harmonised_db.hist_sap_hr\n",
+					") a\n",
+					"\"\"\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"schema = mssparkutils.notebook.run(\"py_create_spark_schema\", 30, {\"db_name\": db_name, \"entity_name\": entity_name})\n",
 					"spark_schema = StructType.fromJson(json.loads(schema))"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"data = spark.createDataFrame(df.rdd, schema=spark_schema)"
 				],
 				"execution_count": null
 			},
