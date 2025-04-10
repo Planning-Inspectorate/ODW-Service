@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "553fa2ab-9223-497e-b4ec-25dcb8cd54e7"
+				"spark.autotune.trackingId": "0f491d68-1e53-4df7-bb77-8262fac576db"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 36
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 37
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -138,14 +138,28 @@
 					"\n",
 					"\n",
 					"# filter employees with no manager (manager# = '00000000')\n",
-					"df_cteReports = hr.filter(col(\"hr.PersNo1\") == \"00000000\").join(email, col(\"hr.PersNo\") == col(\"email.PersNo\")).select(\n",
-					"col(\"hr.PersNo\"),\n",
-					"col(\"hr.Firstname\"),\n",
-					"col(\"hr.Lastname\"),\n",
-					"col(\"hr.PersNo1\").alias(\"ManagerNo\"),\n",
-					"lit(1).alias(\"EmpLevel\"),\n",
-					"col(\"email.email_address\")\n",
-					")\n",
+					"#df_cteReports = hr.filter(col(\"hr.PersNo1\") == '00000000').join(email, col(\"hr.PersNo\") == col(\"email.PersNo\")).select(\n",
+					"#col(\"hr.PersNo\"),\n",
+					"#col(\"hr.Firstname\"),\n",
+					"#col(\"hr.Lastname\"),\n",
+					"#col(\"hr.PersNo1\").alias(\"ManagerNo\"),\n",
+					"#lit(1).alias(\"EmpLevel\"),\n",
+					"#col(\"email.email_address\")\n",
+					"#)\n",
+					"\n",
+					"df_cteReports=   spark.sql(\"\"\"SELECT \n",
+					"\t\tH1.PersNo\n",
+					"\t\t,H1.Firstname\n",
+					"\t\t,H1.Lastname\n",
+					"\t\t,H1.PersNo1 AS ManagerNo\n",
+					"\t\t,1 AS EmpLevel\n",
+					"\t\t,em.email_address\n",
+					"    FROM \n",
+					"\t\todw_harmonised_db.load_sap_hr_monthly H1 inner join odw_harmonised_db.load_vw_sap_hr_email em on H1.PersNo = em.PersNo\n",
+					"    WHERE \n",
+					"\t\tH1.PersNo1 = '00000000'\"\"\")\n",
+					"\n",
+					"display(df_cteReports)\n",
 					"\n",
 					"# define initial previous level\n",
 					"previous_level = df_cteReports\n",
@@ -165,6 +179,7 @@
 					"            col(\"em2.email_address\")\n",
 					"        )\n",
 					"    )\n",
+					"\n",
 					"    df_cteReports = df_cteReports.unionByName(next_level).distinct()\n",
 					"    previous_level = next_level\n",
 					"\n",
@@ -196,11 +211,11 @@
 					"#  employee_hierarchy_with_manager temp view\n",
 					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
 					"\n",
-					"display(df_cteReports)\n",
+					"display(df_cteManagerInfo)\n",
 					"\n",
 					""
 				],
-				"execution_count": 59
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -211,16 +226,36 @@
 					"\n",
 					"# Read source data from Delta Tables\n",
 					"\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
+					"set a.PersNo1 = '00000000'\n",
+					"where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
 					"\n",
-					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly \n",
-					"set PersNo1 = '00000000'\n",
-					"where firstname = 'Paul' and lastname = 'Morrison'\n",
-					"\"\"\")\n",
+					"\n",
+					"\n",
+					"\n",
+					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
+					"#SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
+					"#WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
+					"\n",
+					"#spark.sql(\"\"\"MERGE INTO odw_harmonised_db.load_sap_hr_monthly AS target\n",
+					"#USING odw_standardised_db.sap_hr_history_monthly  AS source\n",
+					"#ON target.PersNo = source.PersNo\n",
+					"#WHEN MATCHED THEN\n",
+					"#  UPDATE SET target.PersNo1 = source.PersNo1\"\"\")\n",
+					"\n",
+					"#spark.sql(\"\"\"with upd_pers as\n",
+					"#(\n",
+					"#select PersNo,PersNo1 from odw_standardised_db.sap_hr_history_monthly     \n",
+					"#)\n",
+					"#UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
+					"#SET a.persno1 = upd_pers.PersNo1\n",
+					"#FROM upd_pers\n",
+					"#INNER JOIN  odw_harmonised_db.load_sap_hr_monthly ON a.PersNo = upd_pers.PersNo\"\"\")\n",
 					"\n",
 					"#df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
 					""
 				],
-				"execution_count": 55
+				"execution_count": 95
 			},
 			{
 				"cell_type": "code",
@@ -317,7 +352,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
