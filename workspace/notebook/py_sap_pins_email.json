@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d64448aa-cb39-4c2a-ba69-983c11a5a166"
+				"spark.autotune.trackingId": "b7021f0f-dd94-40b7-a73a-faa8a1f9c243"
 			}
 		},
 		"metadata": {
@@ -106,45 +106,6 @@
 			},
 			{
 				"cell_type": "code",
-				"source": [
-					"df_standardized = spark.sql(\"\"\"\n",
-					"    SELECT \n",
-					"        StaffNumber,\n",
-					"        Firstname,\n",
-					"        Lastname,\n",
-					"        EmailAddress,\n",
-					"        'saphr' AS SourceSystemID,\n",
-					"        current_date() AS IngestionDate,  -- Use current_date() for the current date\n",
-					"        current_date() AS ValidTo,       -- Use current_date() for the current date\n",
-					"        NULL AS RowID,\n",
-					"        'Y' AS IsActive\n",
-					"    FROM odw_standardised_db.sap_email_monthly\n",
-					"\"\"\")"
-				],
-				"execution_count": 27
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"from pyspark.sql.functions import col\n",
-					"\n",
-					"# Rename Firstname to Nickname\n",
-					"df_to_harmonised = df_standardized.withColumnRenamed(\"Firstname\", \"Nickname\")\n",
-					"from pyspark.sql.functions import lit\n",
-					"\n",
-					"# Add the missing RowID column with NULL values\n",
-					"df_to_harmonised = df_to_harmonised.withColumn(\"RowID\", lit(None).cast(\"string\"))\n",
-					"\n",
-					"# Write the DataFrame with overwrite mode\n",
-					"df_to_harmonised.write.format(\"delta\") \\\n",
-					"    .mode(\"overwrite\") \\\n",
-					"    .option(\"overwriteSchema\", \"true\") \\\n",
-					"    .saveAsTable(\"odw_harmonised_db.load_sap_pins_email_monthly\")"
-				],
-				"execution_count": 28
-			},
-			{
-				"cell_type": "code",
 				"metadata": {
 					"microsoft": {
 						"language": "sparksql"
@@ -154,20 +115,31 @@
 				"source": [
 					"%%sql\n",
 					"\n",
-					"UPDATE odw_harmonised_db.load_sap_pins_email_monthly\n",
-					"SET RowID = md5(\n",
-					"    concat_ws('|',\n",
-					"         StaffNumber,\n",
-					"        Nickname,\n",
-					"        Lastname,\n",
-					"        EmailAddress,\n",
-					"        IsActive,\n",
-					"        IngestionDate,\n",
-					"        ValidTo\n",
-					"    )\n",
-					")"
+					"DELETE FROM odw_harmonised_db.load_sap_pins_email_monthly;\n",
+					"INSERT INTO odw_harmonised_db.load_sap_pins_email_monthly\n",
+					"SELECT \n",
+					"    StaffNumber,\n",
+					"    Firstname,\n",
+					"    Lastname,\n",
+					"    EmailAddress,\n",
+					"    'saphr' AS SourceSystemID,\n",
+					"    current_date() AS IngestionDate,\n",
+					"    current_date() AS ValidTo,\n",
+					"    md5(\n",
+					"        concat_ws('|',\n",
+					"            StaffNumber,\n",
+					"            Firstname, -- Note: Changed from Nickname to Firstname to match the SELECT fields\n",
+					"            Lastname,\n",
+					"            EmailAddress,\n",
+					"            'Y', -- Hardcoded IsActive value\n",
+					"            current_date(), -- IngestionDate\n",
+					"            current_date() -- ValidTo\n",
+					"        )\n",
+					"    ) AS RowID,\n",
+					"    'Y' AS IsActive\n",
+					"FROM odw_standardised_db.sap_email_monthly;"
 				],
-				"execution_count": 29
+				"execution_count": 2
 			}
 		]
 	}
