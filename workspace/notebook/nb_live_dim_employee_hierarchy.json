@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "08445f1d-1fae-4df9-992a-be416b9f5a14"
+				"spark.autotune.trackingId": "5883dd06-45b6-4e59-8769-59b9abee8170"
 			}
 		},
 		"metadata": {
@@ -300,9 +300,29 @@
 					"        \"1 as mgr_level\",\n",
 					"        \"pins_email_address as mgr_email_address\",\n",
 					"        \"concat('Chart (', resource_code, ')') as hierarchy\"\n",
-					"    )"
+					"    )\n",
+					"\n",
+					"df_sgl_join = df_live_dim_inspector.filter(\"is_sgl = 0\").join(df_vw_sap_email, df_live_dim_inspector.pins_email_address == df_vw_sap_email.email_address).join(df_sgl, \"resource_group\").selectExpr(\n",
+					"        \"PersNo as emp_id\",\n",
+					"        \"concat(Firstname, ' ', Lastname) as emp_name\",\n",
+					"        \"pins_email_address as emp_email_address\",\n",
+					"        \"mgr_id\",\n",
+					"        \"mgr_name\",\n",
+					"        \"mgr_level\",\n",
+					"        \"mgr_email_address\",\n",
+					"        \"hierarchy\"\n",
+					"    )\n",
+					"\n",
+					"# De-duplicate entries\n",
+					"df_combined = df_hierarchy_tree.unionByName(df_sgl_join)\n",
+					"\n",
+					"window_spec = Window.partitionBy(\"emp_email_address\", \"mgr_email_address\").orderBy(col(\"hierarchy\").desc())\n",
+					"df_deduped = df_combined.withColumn(\"row_number\", row_number().over(window_spec)).filter(col(\"row_number\") == 1).drop(\"row_number\")\n",
+					"\n",
+					"# Final temp view\n",
+					"df_deduped.createOrReplaceTempView(\"dim_emp_hierarchy\")"
 				],
-				"execution_count": 51
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
