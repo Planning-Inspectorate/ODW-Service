@@ -1,4 +1,4 @@
-import os
+import subprocess
 import json
 import argparse
 from typing import List, Dict, Any, Union
@@ -44,39 +44,28 @@ def get_storage_accounts(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all storage accounts under the given resource group
     """
-    args = [
-        f'--resource-group "{resource_group_name}"',
-    ]
-    return json.loads(os.popen(f'az storage account list {" ".join(args)}').read())
+    return json.loads(subprocess.check_output(["az", "storage", "account", "list", "--resource-group", resource_group_name]))
+
 
 def get_key_vaults(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all key vaults under the given resource group
     """
-    args = [
-        f'--resource-group "{resource_group_name}"',
-    ]
-    return json.loads(os.popen(f'az keyvault list {" ".join(args)}').read())
+    return json.loads(subprocess.check_output(["az", "keyvault", "list", "--resource-group", resource_group_name]))
 
 
 def get_services_buses(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all service buses under the given resource group
     """
-    args = [
-        f'--resource-group "{resource_group_name}"',
-    ]
-    return json.loads(os.popen(f'az servicebus namespace list {" ".join(args)}').read())
+    return json.loads(subprocess.check_output(["az", "servicebus", "namespace", "list", "--resource-group", resource_group_name]))
 
 
 def get_synapse_workspace(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all synapse workspaces under the given resource group
     """
-    args = [
-        f'--resource-group "{resource_group_name}"',
-    ]
-    return json.loads(os.popen(f'az synapse workspace list {" ".join(args)}').read())
+    return json.loads(subprocess.check_output(["az", "synapse", "workspace", "list", "--resource-group", resource_group_name]))
 
 
 def get_service_bus_connection_string(resource_group_name: str, service_bus_name: str) -> str:
@@ -84,13 +73,20 @@ def get_service_bus_connection_string(resource_group_name: str, service_bus_name
         Return the primary connection string of the given service bus under the specified resource group
     """
     args = [
-        f'--resource-group "{resource_group_name}"',
-        f'--namespace-name "{service_bus_name}"',
-        '-n "RootManageSharedAccessKey"',
-        '--query "primaryConnectionString"',
-        '-o tsv'
+        "--resource-group",
+        resource_group_name,
+        "--namespace-name",
+        service_bus_name,
+        "-n",
+        "RootManageSharedAccessKey",
+        "--query",
+        "primaryConnectionString",
+        "-o",
+        "tsv"
     ]
-    return os.popen(f'az servicebus namespace authorization-rule keys list {" ".join(args)}').read()
+    command_to_run = ["az", "servicebus", "namespace", "authorization-rule", "keys", "list"] + args
+
+    return subprocess.check_output(command_to_run).decode("ascii")
 
 
 def get_resource(resource_type: str, resource_group_name: str, resource_name_prefix: str, optional: bool = False) -> Union[Dict[str, Any], None]:
