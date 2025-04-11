@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8ec3d0ce-b9b8-4694-a79d-cc1e4e058f2f"
+				"spark.autotune.trackingId": "48f967e0-bd9c-48d0-8395-e7c5be6d2461"
 			}
 		},
 		"metadata": {
@@ -228,6 +228,7 @@
 					"#Load source tables\n",
 					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
 					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
 					"\n",
 					"# Recursive CTE to build SAP employee hierarchy\n",
 					"df_emp_anchor = df_load_sap_hr.alias(\"H1\").join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\")).filter(col(\"H1.PersNo1\") == \"00000000\").select(\n",
@@ -271,7 +272,7 @@
 					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
-				"execution_count": 43
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -290,9 +291,18 @@
 					"    FROM live_sap_employee_hierarchy\n",
 					"    WHERE EmpLevel > 1\n",
 					"\"\"\")\n",
-					""
+					"\n",
+					"# Step 5: Add SGL-based hierarchy from dim_inspector\n",
+					"df_sgl = df_live_dim_inspector.filter(\"is_sgl = 1 AND active_status = 'ACTIVE'\").join(df_vw_sap_email, df_live_dim_inspector.pins_email_address == df_vw_sap_email.email_address).selectExpr(\n",
+					"        \"resource_code as resource_group\",\n",
+					"        \"PersNo as mgr_id\",\n",
+					"        \"concat(Firstname, ' ',Lastname) as mgr_name\",\n",
+					"        \"1 as mgr_level\",\n",
+					"        \"pins_email_address as mgr_email_address\",\n",
+					"        \"concat('Chart (', resource_code, ')') as hierarchy\"\n",
+					"    )"
 				],
-				"execution_count": null
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
@@ -310,9 +320,9 @@
 					"\n",
 					"\n",
 					"\n",
-					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
-					"#SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
-					"#WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
+					"SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
+					"WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
 					"\n",
 					"#spark.sql(\"\"\"MERGE INTO odw_harmonised_db.load_sap_hr_monthly AS target\n",
 					"#USING odw_standardised_db.sap_hr_history_monthly  AS source\n",
@@ -332,7 +342,7 @@
 					"#df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
 					""
 				],
-				"execution_count": 95
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
