@@ -18,7 +18,6 @@ class NameFactory():
             return {
                 **base_names,
                 **{
-                    "base_syn"
                     "data_lake_resource_group": f"pins-rg-data-odw-{env}-ukw",
                     "data_lake_resource_group_backup": f"pins-rg-data-odw-{env}-uks",
                     "data_lake_name": f"pinsstodw{env}ukw",
