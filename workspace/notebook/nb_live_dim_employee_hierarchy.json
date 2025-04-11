@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "62bc6e86-cf14-44fe-bddf-8281fe83def9"
+				"spark.autotune.trackingId": "8ec3d0ce-b9b8-4694-a79d-cc1e4e058f2f"
 			}
 		},
 		"metadata": {
@@ -264,18 +264,32 @@
 					"df_emp_hierarchy_final = df_emp_hierarchy.withColumn(\"LastUpdated\", current_date())\n",
 					"\n",
 					"# Create tempview\n",
-					"df_emp_hierarchy_final.createOrReplaceTempView(\"sap_employee_hierarchy\")\n",
+					"df_emp_hierarchy_final.createOrReplaceTempView(\"live_sap_employee_hierarchy\")\n",
 					"\n",
 					"# load final employee hierarchy with manager information\n",
 					"print(df_emp_hierarchy_final.count())\n",
 					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
-				"execution_count": 41
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"# Step 4: Get hierarchy tree with adjusted levels\n",
+					"df_hierarchy_tree_with_levels = spark.sql(\"\"\"\n",
+					"    SELECT \n",
+					"        PersNo AS emp_id,\n",
+					"        FullName AS emp_name,\n",
+					"        email_address AS emp_email_address,\n",
+					"        ManagerNo AS mgr_id,\n",
+					"        Manager AS mgr_name,\n",
+					"        EmpLevel - 1 AS mgr_level,\n",
+					"        ManagerEmail AS mgr_email_address,\n",
+					"        'SAP' AS hierarchy\n",
+					"    FROM live_sap_employee_hierarchy\n",
+					"    WHERE EmpLevel > 1\n",
+					"\"\"\")\n",
 					""
 				],
 				"execution_count": null
