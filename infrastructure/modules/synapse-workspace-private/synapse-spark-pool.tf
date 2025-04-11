@@ -114,7 +114,7 @@ resource "azurerm_synapse_spark_pool" "synapse34" {
       spark.sql.parquet.int96RebaseModeInWrite CORRECTED
       spark.sql.constraintPropagation.enabled false
       EOT
-    filename = "configuration.txt"
+    filename = "sparkConfiguration34"
   }
 
   tags = local.tags
