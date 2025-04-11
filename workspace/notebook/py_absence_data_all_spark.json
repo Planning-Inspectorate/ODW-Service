@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4710f2ef-b2c6-4e34-95a0-56ff13dfd210"
+				"spark.autotune.trackingId": "2e820881-d96e-405a-8109-781d77da23ec"
 			}
 		},
 		"metadata": {
@@ -102,7 +102,7 @@
 					"import pandas as pd\n",
 					"import logging"
 				],
-				"execution_count": 24
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
@@ -111,7 +111,7 @@
 					"\n",
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 25
+				"execution_count": 51
 			},
 			{
 				"cell_type": "markdown",
@@ -135,14 +135,19 @@
 					"\n",
 					"\n",
 					"# Set legacy time parser for compatibility\n",
+					"logInfo(\"Setting legacy time parser policy\")\n",
 					"spark.sql(\"\"\"SET spark.sql.legacy.timeParserPolicy = LEGACY\"\"\")\n",
+					"logInfo(\"Legacy time parser policy set successfully\")\n",
 					"\n",
 					"# Step 1: Delete all rows from the target table\n",
+					"logInfo(\"Starting deletion of all rows from odw_harmonised_db.sap_hr_absence_all\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.sap_hr_absence_all\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully deleted all rows from odw_harmonised_db.sap_hr_absence_all\")\n",
 					"\n",
 					"# Step 2: Insert data into the target table with RowID generated inline\n",
+					"logInfo(\"Starting data insertion into odw_harmonised_db.sap_hr_absence_all from hr_absence_monthly\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.sap_hr_absence_all\n",
 					"(   \n",
@@ -207,11 +212,42 @@
 					"    )) AS RowID,\n",
 					"    'Y' AS IsActive\n",
 					"FROM odw_standardised_db.hr_absence_monthly\n",
-					"\"\"\");\n",
+					"\"\"\")\n",
+					"logInfo(\"Successfully inserted data into odw_harmonised_db.sap_hr_absence_all\")\n",
 					"\n",
-					"logError(f\"prathap log test\")"
+					"# Step 3: Remove rows with null values in key columns\n",
+					"logInfo(\"Starting removal of rows with null key values\")\n",
+					"spark.sql(\"\"\"\n",
+					"DELETE FROM odw_harmonised_db.sap_hr_absence_all\n",
+					"WHERE\n",
+					"    StaffNumber IS NULL\n",
+					"    OR StartDate IS NULL\n",
+					"    OR EndDate IS NULL\n",
+					"\"\"\")\n",
+					"logInfo(\"Successfully removed rows with null key values\")\n",
+					"\n",
+					"# Step 4: Use MERGE to remove duplicates\n",
+					"logInfo(\"Starting deduplication process using MERGE\")\n",
+					"spark.sql(\"\"\"\n",
+					"MERGE INTO odw_harmonised_db.sap_hr_absence_all AS target\n",
+					"USING (\n",
+					"    SELECT \n",
+					"        StaffNumber, \n",
+					"        StartDate, \n",
+					"        ROW_NUMBER() OVER (PARTITION BY StaffNumber, StartDate ORDER BY StaffNumber, StartDate) AS Val\n",
+					"    FROM odw_harmonised_db.sap_hr_absence_all\n",
+					") AS source\n",
+					"ON target.StaffNumber = source.StaffNumber\n",
+					"    AND target.StartDate = source.StartDate\n",
+					"    AND source.Val > 1\n",
+					"WHEN MATCHED THEN DELETE\n",
+					"\"\"\")\n",
+					"logInfo(\"Successfully completed deduplication process\")\n",
+					"\n",
+					"# Final success message\n",
+					"logInfo(\"Absence data processing completed successfully\")"
 				],
-				"execution_count": 27
+				"execution_count": 52
 			},
 			{
 				"cell_type": "code",
@@ -248,7 +284,31 @@
 					"WHEN MATCHED THEN DELETE\n",
 					"\"\"\")"
 				],
-				"execution_count": 28
+				"execution_count": 53
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Add this after your %run command\n",
+					"logInfo(\"TEST_MESSAGE - Check Application Insights for this\")\n",
+					"flushLogging()  # Forces immediate export"
+				],
+				"execution_count": 54
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"key = mssparkutils.credentials.getSecretWithLS(\"ls_kv\", \"application-insights-connection-string\")\n",
+					"exporter = AzureMonitorLogExporter.from_connection_string(key.split(\";\")[0])"
+				],
+				"execution_count": 55
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
