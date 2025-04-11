@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4a221489-2ecb-458c-a260-d482958e9735"
+				"spark.autotune.trackingId": "1175ebe7-2681-4ae3-b2d3-2340e4d28299"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 5
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 65
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -217,7 +217,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -230,14 +230,11 @@
 					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
 					"\n",
 					"# Anchor (top-level employees with no manager)\n",
-					"df_anchor = df_load_sap_hr.alias(\"H1\")\n",
-					"    .join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\"))\n",
-					"    .filter(col(\"H1.PersNo1\") == \"00000000\")\n",
-					"    .select(\n",
+					"df_emp_anchor = df_load_sap_hr.alias(\"H1\").join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\")).filter(col(\"H1.PersNo1\") == \"00000000\").select(\n",
 					"        col(\"H1.PersNo\").alias(\"PersNo\"),\n",
 					"        concat_ws(\" \", col(\"H1.Firstname\"), col(\"H1.Lastname\")).alias(\"FullName\"),\n",
 					"        col(\"em.email_address\"),\n",
-					"        col(\"H1.Pers#No#1\").alias(\"ManagerNo\"),\n",
+					"        col(\"H1.PersNo1\").alias(\"ManagerNo\"),\n",
 					"        lit(None).cast(\"string\").alias(\"Manager\"),\n",
 					"        lit(1).alias(\"EmpLevel\"),\n",
 					"        lit(None).cast(\"string\").alias(\"ManagerEmail\"),\n",
@@ -245,14 +242,11 @@
 					"    )\n",
 					"\n",
 					"# Initialize recursive loop\n",
-					"df_hierarchy = df_anchor\n",
-					"prev_level = df_anchor\n",
+					"df_emp_hierarchy = df_emp_anchor\n",
+					"prev_emp_level = df_emp_anchor\n",
 					"\n",
 					"for i in range(10): # Adjust for expected hierarchy depth\n",
-					"        df_next = df_load_sap_hr.alias(\"e\")\n",
-					"        .join(prev_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.PersNo\"))\n",
-					"        .join(df_vw_sap_email.alias(\"em2\"), col(\"e.PersNo\") == col(\"em2.PersNo\"))\n",
-					"        .select(\n",
+					"        df_next_employee = df_load_sap_hr.alias(\"e\").join(prev_emp_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.PersNo\")).join(df_vw_sap_email.alias(\"em2\"), col(\"e.PersNo\") == col(\"em2.PersNo\")).select(\n",
 					"            col(\"e.PersNo\").alias(\"PersNo\"),\n",
 					"            concat_ws(\" \", col(\"e.Firstname\"), col(\"e.Lastname\")).alias(\"FullName\"),\n",
 					"            col(\"em2.email_address\"),\n",
@@ -262,21 +256,22 @@
 					"            col(\"r.email_address\").alias(\"ManagerEmail\"),\n",
 					"            lit(\"\").alias(\"Hierarchy_name\")\n",
 					"        )\n",
-					"\n",
-					"    df_hierarchy = df_hierarchy.unionByName(df_next).dropDuplicates([\"PersNo\", \"EmpLevel\"])\n",
-					"    prev_level = df_next\n",
+					"    \n",
+					"        df_emp_hierarchy = df_emp_hierarchy.unionByName(df_next_employee) #.dropDuplicates([\"PersNo\",\"EmpLevel\"])\n",
+					"        prev_emp_level = df_next_employee\n",
 					"\n",
 					"# Add LastUpdated column\n",
-					"df_final = df_hierarchy.withColumn(\"LastUpdated\", current_date())\n",
+					"df_emp_hierarchy_final = df_emp_hierarchy.withColumn(\"LastUpdated\", current_date())\n",
 					"\n",
 					"# Optional: Create temp view\n",
-					"df_final.createOrReplaceTempView(\"employee_hierarchy\")\n",
+					"df_emp_hierarchy_final.createOrReplaceTempView(\"sap_employee_hierarchy\")\n",
 					"\n",
 					"# Optional: show final\n",
-					"df_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").show()\n",
+					"print(df_emp_hierarchy_final.count())\n",
+					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
