@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5f93618c-1f45-43f2-9262-444457dbb40f"
+				"spark.autotune.trackingId": "8d288549-244b-4774-a968-1c8b4eacc8bc"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 61
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 62
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -123,19 +123,27 @@
 			},
 			{
 				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "code",
 				"metadata": {
 					"collapsed": false
 				},
 				"source": [
 					"\n",
-					"# Load source tables\n",
+					"logInfo('Rohit writing source data')\n",
+					"\n",
+					"#Load source tables\n",
 					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
 					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
 					"\n",
 					"#declare alias\n",
 					"hr = df_vw_sap_email.alias(\"hr\")\n",
 					"email = df_vw_sap_email.alias(\"email\")\n",
-					"\n",
 					"\n",
 					"# filter employees with no manager (PersNo1 = '00000000')\n",
 					"df_ctereports=   spark.sql(\"\"\"SELECT \n",
@@ -202,11 +210,14 @@
 					"#  employee_hierarchy_with_manager temp view\n",
 					"df_sap_emp_hierarchy.createOrReplaceTempView(\"sap_emp_hierarchy\")\n",
 					"\n",
+					"\n",
 					"display(df_sap_emp_hierarchy)\n",
+					"\n",
+					"logInfo(\"Rohit - Running test3\")\n",
 					"\n",
 					""
 				],
-				"execution_count": 100
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -351,50 +362,56 @@
 					"collapsed": false
 				},
 				"source": [
-					"src_horizon_appeals_inspectors_kludge_sql = \"\"\"\n",
-					"                with cte_missing_insp as\n",
-					"                (\n",
-					"                select\n",
-					"                    RANK() OVER  (PARTITION BY H.ID ORDER BY record_start_date DESC) AS Ranker,  \n",
-					"                    H.ID, H.LeadInspector, \n",
-					"                    H.record_start_date, \n",
-					"                    H.record_end_date \n",
-					"                from \n",
-					"                    odw_standardised_db.hist_iss_job H left join odw_standardised_db.load_iss_job j on H.ID = J.ID\n",
-					"                where \n",
-					"                    j.LeadInspector IS NULL\n",
-					"                    and j.ID like '3%'\n",
-					"                    and LENGTH(j.ID) = 7\n",
-					"                    and j.Status not in ('W', 'E')\n",
-					"                    and H.LeadInspector is not null\n",
-					"                )\n",
-					"                select \n",
-					"                    ID, \n",
-					"                    LeadInspector as lead_inspector, \n",
-					"                    i.inspector_name,\n",
-					"                    record_start_date, \n",
-					"                    record_end_date\n",
-					"                from cte_missing_insp left outer join odw_harmonised_db.live_dim_inspector i on cte_missing_insp.LeadInspector = i.source_id\n",
-					"                where Ranker = 1\n",
-					"                order by ID, record_start_date desc\"\"\"\n",
+					"# Load tables\n",
+					"df_sap_hr = spark.sql(\"SELECT * FROM load.SAP_HR\")\n",
+					"df_sap_email = spark.sql(\"SELECT * FROM load.vw_SAP_HR_email\")\n",
 					"\n",
-					"df_horizon_appeals_inspectors_kludge = spark.sql(src_horizon_appeals_inspectors_kludge_sql)\n",
+					"# Anchor (top-level employees with no manager)\n",
+					"df_anchor = df_sap_hr.alias(\"H1\") \\\n",
+					"    .join(df_sap_email.alias(\"em\"), col(\"H1.`Pers#No#`\") == col(\"em.`Pers#No#`\")) \\\n",
+					"    .filter(col(\"H1.`Pers#No#1`\") == \"00000000\") \\\n",
+					"    .select(\n",
+					"        col(\"H1.`Pers#No#`\").alias(\"PersNo\"),\n",
+					"        concat_ws(\" \", col(\"H1.`First name`\"), col(\"H1.`Last name`\")).alias(\"FullName\"),\n",
+					"        col(\"em.email_address\"),\n",
+					"        col(\"H1.`Pers#No#1`\").alias(\"ManagerNo\"),\n",
+					"        lit(None).cast(\"string\").alias(\"Manager\"),\n",
+					"        lit(1).alias(\"EmpLevel\"),\n",
+					"        lit(None).cast(\"string\").alias(\"ManagerEmail\"),\n",
+					"        lit(\"\").alias(\"Hierarchy_name\")\n",
+					"    )\n",
 					"\n",
+					"# Initialize recursive loop\n",
+					"df_hierarchy = df_anchor\n",
+					"prev_level = df_anchor\n",
 					"\n",
-					"# Write new records to target Delta Table\n",
-					"try:\n",
-					"    # Overwrite the entire delta table with transfored dataframe\n",
-					"    df_horizon_appeals_inspectors_kludge.write.format(\"delta\").mode(\"overwrite\").save(delta_horizon_table_path)\n",
+					"for i in range(10): # Adjust for expected hierarchy depth\n",
+					"        df_next = df_sap_hr.alias(\"e\") \\\n",
+					"        .join(prev_level.alias(\"r\"), col(\"e.`Pers#No#1`\") == col(\"r.PersNo\")) \\\n",
+					"        .join(df_sap_email.alias(\"em2\"), col(\"e.`Pers#No#`\") == col(\"em2.`Pers#No#`\")) \\\n",
+					"        .select(\n",
+					"            col(\"e.`Pers#No#`\").alias(\"PersNo\"),\n",
+					"            concat_ws(\" \", col(\"e.`First name`\"), col(\"e.`Last name`\")).alias(\"FullName\"),\n",
+					"            col(\"em2.email_address\"),\n",
+					"            col(\"e.`Pers#No#1`\").alias(\"ManagerNo\"),\n",
+					"            col(\"r.FullName\").alias(\"Manager\"),\n",
+					"            (col(\"r.EmpLevel\") + 1).alias(\"EmpLevel\"),\n",
+					"            col(\"r.email_address\").alias(\"ManagerEmail\"),\n",
+					"            lit(\"\").alias(\"Hierarchy_name\")\n",
+					"        )\n",
 					"\n",
+					"    df_hierarchy = df_hierarchy.unionByName(df_next).dropDuplicates([\"PersNo\", \"EmpLevel\"])\n",
+					"    prev_level = df_next\n",
 					"\n",
-					"    print(f\" Records overwritten successfully to {target_horizon_delta_table}\")\n",
+					"# Add LastUpdated column\n",
+					"df_final = df_hierarchy.withColumn(\"LastUpdated\", current_date())\n",
 					"\n",
-					"except Exception as e:\n",
-					"    print(f\" Error writing to {target_horizon_delta_table}: {str(e)}\")\n",
-					"    raise\n",
+					"# Optional: Create temp view\n",
+					"df_final.createOrReplaceTempView(\"employee_hierarchy\")\n",
 					"\n",
-					"\n",
-					"display(df_horizon_appeals_inspectors_kludge)"
+					"# Optional: show final\n",
+					"df_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").show()\n",
+					""
 				],
 				"execution_count": 10
 			},
