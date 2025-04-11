@@ -39,32 +39,44 @@ class NameFactory():
         }
 
 
+def run_az_cli_command(args: List[str]):
+    """
+        Run an az cli command. Raises a `RuntimeException` if something goes wrong
+    """
+    print(f"Running command: '{' '.join(args)}'")
+    try:
+        return subprocess.check_output(args)
+    except subprocess.CalledProcessError as e:
+        exception = e
+    raise RuntimeError(f"Exception raised when running the above command: {exception.output.decode('utf-8')}")
+
+
 def get_storage_accounts(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all storage accounts under the given resource group
     """
-    return json.loads(subprocess.check_output(["az", "storage", "account", "list", "--resource-group", resource_group_name]))
+    return json.loads(run_az_cli_command(["az", "storage", "account", "list", "--resource-group", resource_group_name]))
 
 
 def get_key_vaults(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all key vaults under the given resource group
     """
-    return json.loads(subprocess.check_output(["az", "keyvault", "list", "--resource-group", resource_group_name]))
+    return json.loads(run_az_cli_command(["az", "keyvault", "list", "--resource-group", resource_group_name]))
 
 
 def get_services_buses(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all service buses under the given resource group
     """
-    return json.loads(subprocess.check_output(["az", "servicebus", "namespace", "list", "--resource-group", resource_group_name]))
+    return json.loads(run_az_cli_command(["az", "servicebus", "namespace", "list", "--resource-group", resource_group_name]))
 
 
 def get_synapse_workspace(resource_group_name: str) -> List[Dict[str, Any]]:
     """
         Return all synapse workspaces under the given resource group
     """
-    return json.loads(subprocess.check_output(["az", "synapse", "workspace", "list", "--resource-group", resource_group_name]))
+    return json.loads(run_az_cli_command(["az", "synapse", "workspace", "list", "--resource-group", resource_group_name]))
 
 
 def get_service_bus_connection_string(resource_group_name: str, service_bus_name: str) -> str:
@@ -85,7 +97,7 @@ def get_service_bus_connection_string(resource_group_name: str, service_bus_name
     ]
     command_to_run = ["az", "servicebus", "namespace", "authorization-rule", "keys", "list"] + args
 
-    return subprocess.check_output(command_to_run).decode("ascii")
+    return run_az_cli_command(command_to_run).decode("ascii")
 
 
 def get_resource(resource_type: str, resource_group_name: str, resource_name_prefix: str, optional: bool = False) -> Union[Dict[str, Any], None]:
