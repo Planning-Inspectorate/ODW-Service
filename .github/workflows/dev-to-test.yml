@@ -4,7 +4,7 @@
 name: Create Pull Request from dev branch to test branch
 
 on:
-  push:
+  ppull_request:
     branches:
       - dev
 
@@ -37,21 +37,9 @@ jobs:
         echo "$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
         echo "$delimiter" >> $GITHUB_OUTPUT
       id: extract_commit_message
-    - name: Raise Pull Request
+    - name: Echo branch exists variable
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COMMIT_MESSAGE: ${{ steps.extract_commit_message.outputs.message }}
       run: |
-        git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-        git config user.name "${GITHUB_ACTOR}"
-        if [[ ${{ steps.check_test_branch_exists.outputs.createTestBranch }} ]]; then
-            echo "The $TEST_BRANCH_NAME branch does not exist, creating the branch and raising a pull request"
-            git fetch
-            git checkout main
-            git pull
-            git checkout -b $TEST_BRANCH_NAME
-            git push --set-upstream origin $TEST_BRANCH_NAME
-            gh pr create -B $TEST_BRANCH_NAME -H dev --title "Automated Pull Request from dev branch to ${{ env.TEST_BRANCH_NAME }} branch" --body "$COMMIT_MESSAGE"
-        else
-            echo "The $TEST_BRANCH_NAME branch already exists, not raising a Pull Request"
-        fi
+        echo "${{ steps.check_test_branch_exists.outputs.createTestBranch }}"
