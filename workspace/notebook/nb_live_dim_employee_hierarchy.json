@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5883dd06-45b6-4e59-8769-59b9abee8170"
+				"spark.autotune.trackingId": "a76ba3bc-1471-417f-b37b-e280022b0095"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 19
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 20
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -217,7 +217,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 22
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -272,7 +272,7 @@
 					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
-				"execution_count": 48
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -322,7 +322,90 @@
 					"# Final temp view\n",
 					"df_deduped.createOrReplaceTempView(\"dim_emp_hierarchy\")"
 				],
-				"execution_count": 56
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"\n",
+					"# 2. Create base dataframe for traversal - include EmpLevel and Parent ManagerNo\n",
+					"base = df_emp_hierarchy_final.select(\n",
+					"    col(\"PersNo\").alias(\"emp_id\"),\n",
+					"    col(\"FullName\").alias(\"emp_name\"),\n",
+					"    col(\"email_address\").alias(\"emp_email_address\"),\n",
+					"    col(\"ManagerNo\").alias(\"mgr_id\"),\n",
+					"    col(\"Manager\").alias(\"mgr_name\"),\n",
+					"    col(\"EmpLevel\").alias(\"mgr_level\"),\n",
+					"    col(\"ManagerEmail\").alias(\"mgr_email_address\"),\n",
+					"    lit(\"SAP\").alias(\"hierarchy\")\n",
+					")\n",
+					"\n",
+					"df_emp_hierarchy_final = df_emp_hierarchy_final.withColumn(\"EmpLevelInt\",col(\"EmpLevel\").cast(\"int\"))\n",
+					"\n",
+					"range_val_row = df_emp_hierarchy_final.select(max(col(\"EmpLevelInt\"))).collect()[0]\n",
+					"#range_val = range_val_row[0]  # or use .get(0)\n",
+					"\n",
+					"#print(\"Max EmpLevel =\", range_val)\n",
+					"\n",
+					"# 3. Flatten hierarchy for each employee to trace their full manager chain\n",
+					"flattened = base.alias(\"root\")\n",
+					"\n",
+					"for i in range(5): # max depth to traverse upward\n",
+					"    join_df = base.alias(\"next\")\n",
+					"\n",
+					"    flattened = flattened.alias(\"f\").join(\n",
+					"        join_df,\n",
+					"        col(\"f.mgr_id\") == col(\"next.emp_id\"), how=\"left\").select(\n",
+					"        col(\"f.emp_id\"),\n",
+					"        col(\"f.emp_name\"),\n",
+					"        col(\"f.emp_email_address\"),\n",
+					"        col(\"next.emp_id\").alias(\"mgr_id\"),\n",
+					"        col(\"next.emp_name\").alias(\"mgr_name\"),\n",
+					"        col(\"next.mgr_level\").alias(\"mgr_level\"),\n",
+					"        col(\"next.emp_email_address\").alias(\"mgr_email_address\"),\n",
+					"        col(\"f.hierarchy\")\n",
+					"    ).filter(col(\"mgr_id\").isNotNull())\n",
+					"\n",
+					"# 4. Remove duplicates\n",
+					"window_spec = Window.partitionBy(\"emp_email_address\", \"mgr_email_address\").orderBy(col(\"mgr_level\"))\n",
+					"flattened_dedup = flattened.withColumn(\"row_num\", row_number().over(window_spec)).filter(col(\"row_num\") == 1).drop(\"row_num\")\n",
+					"\n",
+					"# 5. Union with SGL based hierarchy\n",
+					"sgl_df = spark.sql(\"\"\"\n",
+					"    SELECT \n",
+					"        E2.PersNo AS emp_id,\n",
+					"        E2.Firstname + ' ' + E2.Lastname AS emp_name,\n",
+					"        I2.pins_email_address AS emp_email_address,\n",
+					"        SGL.mgr_id,\n",
+					"        SGL.mgr_name,\n",
+					"        SGL.mgr_level,\n",
+					"        SGL.mgr_email_address,\n",
+					"        SGL.hierarchy\n",
+					"    FROM odw_harmonised_db.live_dim_inspector I2 \n",
+					"    INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E2 ON I2.pins_email_address = E2.email_address\n",
+					"    INNER JOIN (\n",
+					"        SELECT \n",
+					"            I.resource_code AS resource_group,\n",
+					"            E.PersNo AS mgr_id,\n",
+					"            E.Firstname + ' ' + E.Lastname AS mgr_name,\n",
+					"            1 AS mgr_level,\n",
+					"            I.pins_email_address AS mgr_email_address,\n",
+					"            'Chart (' + resource_code + ')' AS hierarchy\n",
+					"        FROM odw_harmonised_db.live_dim_inspector I \n",
+					"        INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E ON I.pins_email_address = E.email_address\n",
+					"        WHERE I.is_sgl = 1 AND I.active_status = 'ACTIVE'\n",
+					"    ) SGL ON I2.resource_code = SGL.resource_group\n",
+					"    WHERE I2.is_sgl = 0\n",
+					"\"\"\")\n",
+					"\n",
+					"final_dim_hierarchy = flattened_dedup.unionByName(sgl_df).dropDuplicates()\n",
+					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
+					"display(final_dim_hierarchy)"
+				],
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
