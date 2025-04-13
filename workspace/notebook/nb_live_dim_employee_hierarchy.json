@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "70207e43-0c1e-4b14-b919-1b1127d50cec"
+				"spark.autotune.trackingId": "6e834425-40bb-4f6c-8820-fb7a4beed551"
 			}
 		},
 		"metadata": {
@@ -518,12 +518,10 @@
 					"# Create array of structs (level_1 is closest manager, level_n is highest)\n",
 					"mgr_struct_expr = expr(\n",
 					"    \"array(\" + \", \".join([\n",
-					"        f\"named_struct('mgr_level', {i}, 'mgr_id', level_{i}_mgr_id, 'mgr_name', level_{i}_mgr_name, 'mgr_email_address', level_{i}_mgr_email)\"\n",
-					"        for i in range(1, range_val + 1)\n",
+					"        f\"named_struct('mgr_id', level_{i}_mgr_id, 'mgr_name', level_{i}_mgr_name, 'mgr_email_address', level_{i}_mgr_email)\"\n",
+					"        for i in range(range_val, 0, -1)\n",
 					"    ]) + \")\"\n",
 					")\n",
-					"\n",
-					"\n",
 					"\n",
 					"# Unpivot the array into row format, mapping mgr_level, name, email\n",
 					"flattened_exploded = flattened.withColumn(\"mgr_struct\", mgr_struct_expr).selectExpr(\n",
@@ -533,13 +531,12 @@
 					"        \"emp_id\",\n",
 					"        \"emp_name\",\n",
 					"        \"emp_email_address\",\n",
-					"        (lit(range_val) - col(\"mgr_level_pos\")).alias(\"mgr_level\"),\n",
+					"        (col(\"mgr_level_pos\") + 1).alias(\"mgr_level\"),\n",
 					"        col(\"mgr_info.mgr_id\").alias(\"mgr_id\"),\n",
 					"        col(\"mgr_info.mgr_name\").alias(\"mgr_name\"),\n",
 					"        col(\"mgr_info.mgr_email_address\").alias(\"mgr_email_address\"),\n",
 					"        \"hierarchy\"\n",
 					"    ).filter(col(\"mgr_name\").isNotNull())\n",
-					"\n",
 					"\n",
 					"\n",
 					"# Deduplicate (optional)\n",
@@ -566,13 +563,14 @@
 					"\"\"\")\n",
 					"\n",
 					"\n",
+					"# Final output sorted in descending mgr_level = closest at top\n",
 					"final_dim_hierarchy = flattened_exploded.unionByName(sgl_df.select(flattened_exploded.columns)).dropDuplicates()\n",
-					"final_dim_hierarchy = final_dim_hierarchy.orderBy(\"emp_id\", \"mgr_level\")\n",
+					"final_dim_hierarchy = final_dim_hierarchy.orderBy(\"emp_id\", col(\"mgr_level\").desc())\n",
 					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
 					"display(final_dim_hierarchy)\n",
 					""
 				],
-				"execution_count": 60
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
