@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "af25273d-987f-4cdf-9155-dab75dd2c406"
+				"spark.autotune.trackingId": "a6cc8d5d-8105-4529-a4b0-2165c089a76a"
 			}
 		},
 		"metadata": {
@@ -527,20 +527,26 @@
 					"\n",
 					"\n",
 					"# Unpivot the array into row format, mapping mgr_level, name, email\n",
-					"flattened_exploded = flattened_with_array.selectExpr(\"emp_id\", \"emp_name\", \"emp_email_address\", \"hierarchy_source as hierarchy\", \"mgr_count\",\n",
-					"        \"posexplode(mgr_struct) as (pos, mgr_info)\").select(\n",
-					"        \"emp_id\",\n",
-					"        \"emp_name\",\n",
-					"        \"emp_email_address\",\n",
-					"        (col(\"mgr_count\") - col(\"pos\")).alias(\"mgr_level\"),\n",
-					"        col(\"mgr_info.mgr_id\").alias(\"mgr_id\"),\n",
-					"        col(\"mgr_info.mgr_name\").alias(\"mgr_name\"),\n",
-					"        col(\"mgr_info.mgr_email_address\").alias(\"mgr_email_address\"),\n",
-					"        \"hierarchy\"\n",
-					"    ).filter(col(\"mgr_name\").isNotNull())\n",
+					"flattened_exploded = flattened_with_array.selectExpr(\n",
+					"    \"emp_id\",\n",
+					"    \"emp_name\",\n",
+					"    \"emp_email_address\",\n",
+					"    \"hierarchy_source as hierarchy\",\n",
+					"    \"mgr_count\",\n",
+					"    \"posexplode(mgr_struct) as (pos, mgr_info)\"\n",
+					").select(\n",
+					"    \"emp_id\",\n",
+					"    \"emp_name\",\n",
+					"    \"emp_email_address\",\n",
+					"    \"hierarchy\",\n",
+					"    \"pos\",  # <-- modified: keep pos for window function\n",
+					"    col(\"mgr_info.mgr_id\").alias(\"mgr_id\"),\n",
+					"    col(\"mgr_info.mgr_name\").alias(\"mgr_name\"),\n",
+					"    col(\"mgr_info.mgr_email_address\").alias(\"mgr_email_address\")\n",
+					").filter(col(\"mgr_name\").isNotNull())\n",
 					"\n",
-					"window = Window.partitionBy(\"emp_id\").orderBy(col(\"pos\").desc())\n",
-					"flattened_exploded = flattened_exploded.withColumn(\"mgr_level\", row_number().over(window))\n",
+					"window = Window.partitionBy(\"emp_id\").orderBy(col(\"pos\").asc())\n",
+					"flattened_exploded = flattened_exploded.withColumn(\"mgr_level\", row_number().over(window)).drop(\"pos\")\n",
 					"\n",
 					"# Deduplicate (optional)\n",
 					"window_spec = Window.partitionBy(\"emp_email_address\", \"mgr_email_address\").orderBy(col(\"mgr_level\").desc())\n",
@@ -574,7 +580,7 @@
 					"display(final_dim_hierarchy)\n",
 					""
 				],
-				"execution_count": 69
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
