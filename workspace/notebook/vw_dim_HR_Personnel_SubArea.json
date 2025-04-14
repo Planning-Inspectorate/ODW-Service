@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "226631ad-0086-468f-8169-6b2d76df11e8"
+				"spark.autotune.trackingId": "10ce3537-7f57-47cd-9184-b9cc3f89e7ec"
 			}
 		},
 		"metadata": {
@@ -53,51 +53,54 @@
 		"cells": [
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE VIEW IF NOT EXISTS odw_curated_db.vw_dim_HR_Personnel_SubArea AS\n",
-					"\n",
-					"SELECT\n",
-					"\t\tRANK() OVER(ORDER BY a.PersonnelSubAreaCode, a.PersonnelSubArea) AS dim_personnel_subarea_key\n",
-					"\t   ,a.*\n",
-					"FROM\n",
-					"(\n",
-					"\tSELECT DISTINCT\n",
-					"\t\t\tPSubarea AS PersonnelSubAreaCode\n",
-					"\t\t   ,CASE PSubarea  WHEN 'P210' THEN 'Digital' \n",
-					"\t\t\t\t\t\t   WHEN 'P205' THEN 'Perf Com & Ops' \n",
-					"\t\t\t\t\t\t   WHEN 'P515' THEN 'EST/Central Ops'\n",
-					"\t\t\t\t\t\t   WHEN 'P610' THEN 'Knowledge'\n",
-					"\t\t\tELSE PersonnelSubarea\n",
-					"\t\t\tEND AS PersonnelSubArea\n",
-					"\tFROM odw_harmonised_db.hist_SAP_HR\t  \n",
-					") a "
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"create or replace table odw_curated_db.pbi_dim_HR_Personnel_SubArea\n",
-					"using delta\n",
-					"as\n",
-					"SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_SubArea"
+					"try:\n",
+					"   # Create the view if it doesn't exist\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_Personnel_SubArea AS\n",
+					"   SELECT\n",
+					"       RANK() OVER(ORDER BY a.PersonnelSubAreaCode, a.PersonnelSubArea) AS dim_personnel_subarea_key,\n",
+					"       a.*\n",
+					"   FROM\n",
+					"   (\n",
+					"       SELECT DISTINCT\n",
+					"           PSubarea AS PersonnelSubAreaCode,\n",
+					"           CASE PSubarea  \n",
+					"               WHEN 'P210' THEN 'Digital' \n",
+					"               WHEN 'P205' THEN 'Perf Com & Ops' \n",
+					"               WHEN 'P515' THEN 'EST/Central Ops'\n",
+					"               WHEN 'P610' THEN 'Knowledge'\n",
+					"               ELSE PersonnelSubarea\n",
+					"           END AS PersonnelSubArea\n",
+					"       FROM odw_harmonised_db.hist_SAP_HR\t  \n",
+					"   ) a \n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Create the table with the view data\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE TABLE odw_curated_db.pbi_dim_HR_Personnel_SubArea\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_SubArea\n",
+					"   \"\"\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"   # Log the exception\n",
+					"   logError(f\"Error in Personnel SubArea dimension setup: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs\n",
+					"   flushLogging()"
 				],
-				"execution_count": 4
+				"execution_count": null
 			}
 		]
 	}
