@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0645c9f0-ac33-4ccb-a5e3-75cacace96c7"
+				"spark.autotune.trackingId": "962ad71b-c03f-4b1a-8378-86d661059470"
 			}
 		},
 		"metadata": {
@@ -91,6 +91,13 @@
 				"execution_count": 1
 			},
 			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 3
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -109,15 +116,25 @@
 					"collapsed": false
 				},
 				"source": [
+					"\n",
+					"\n",
+					"\n",
+					"logInfo(\"Starting absence sickness fact table processing\")\n",
+					"\n",
 					"# First, set ANSI mode to false to handle potential type conversion issues\n",
+					"logInfo(\"Setting ANSI mode to false\")\n",
 					"spark.sql(\"SET spark.sql.ansi.enabled=false\")\n",
+					"logInfo(\"ANSI mode set successfully\")\n",
 					"\n",
 					"# Then clean the target table\n",
+					"logInfo(\"Starting deletion of all rows from odw_harmonised_db.sap_hr_fact_absence_sickness\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.sap_hr_fact_absence_sickness\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully deleted all rows from odw_harmonised_db.sap_hr_fact_absence_sickness\")\n",
 					"\n",
 					"# Step 1: Create the initial sickness view with base data\n",
+					"logInfo(\"Creating initial sickness view with base data\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMP VIEW sickness AS\n",
 					"SELECT \n",
@@ -134,8 +151,10 @@
 					"LEFT JOIN odw_harmonised_db.live_dim_date de ON CAST(a.EndDate AS DATE) = de.date\n",
 					"WHERE a.AttendanceorAbsenceType = 'Sickness'\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created initial sickness view\")\n",
 					"\n",
 					"# Step 2: Create a view with row numbers to help identify unique records\n",
+					"logInfo(\"Creating view with row numbers for unique record identification\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_with_row_numbers AS\n",
 					"SELECT \n",
@@ -153,8 +172,10 @@
 					"    LEAD(sickness_end) OVER (PARTITION BY StaffNumber ORDER BY sickness_start DESC) AS prev_sickness_end\n",
 					"FROM sickness\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created view with row numbers\")\n",
 					"\n",
 					"# Step 3: Identify contiguous periods using a date function that respects working days\n",
+					"logInfo(\"Creating view to identify contiguous sickness periods\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_with_contiguity AS\n",
 					"SELECT \n",
@@ -177,8 +198,10 @@
 					"    date_add(prev_sickness_end, 1) AS next_working_day_after_previous_sickness\n",
 					"FROM sickness_with_row_numbers\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created contiguity detection view\")\n",
 					"\n",
 					"# Step 4: Create a view that assigns sickness IDs\n",
+					"logInfo(\"Creating view to assign sickness IDs\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_with_ids AS\n",
 					"SELECT \n",
@@ -191,8 +214,10 @@
 					"        END) OVER (PARTITION BY StaffNumber ORDER BY sickness_start) AS BIGINT) AS sickness_id\n",
 					"FROM sickness_with_contiguity s\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created view with sickness IDs\")\n",
 					"\n",
 					"# Step 5: Group the results properly by sickness ID\n",
+					"logInfo(\"Creating final sickness view with grouping by sickness ID\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMP VIEW sickness_final AS\n",
 					"SELECT \n",
@@ -217,8 +242,10 @@
 					"FROM sickness_with_ids\n",
 					"GROUP BY StaffNumber, sickness_id\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created final grouped sickness view\")\n",
 					"\n",
 					"# Step 6: Insert the final results into the target table with RowID included\n",
+					"logInfo(\"Starting insertion of final data into odw_harmonised_db.sap_hr_fact_absence_sickness\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT OVERWRITE TABLE odw_harmonised_db.sap_hr_fact_absence_sickness\n",
 					"SELECT \n",
@@ -284,9 +311,12 @@
 					"    'Y' AS IsActive,\n",
 					"    current_timestamp() AS LastUpdated\n",
 					"FROM sickness_final\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"logInfo(\"Successfully inserted data into odw_harmonised_db.sap_hr_fact_absence_sickness\")\n",
+					"\n",
+					"logInfo(\"Absence sickness fact table processing completed successfully\")"
 				],
-				"execution_count": 10
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -297,6 +327,9 @@
 					}
 				},
 				"source": [
+					"\n",
+					"# Step 1: Create a view of holidays\n",
+					"logInfo(\"Creating temporary view of holidays\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMPORARY VIEW holidays_view AS\n",
 					"SELECT \n",
@@ -304,16 +337,19 @@
 					"FROM \n",
 					"    odw_standardised_db.Live_Holidays;\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully created holidays temporary view\")\n",
 					"\n",
 					"# Step 2: Use MERGE to delete rows where absencedate matches a holiday\n",
+					"logInfo(\"Starting deletion of sickness records that fall on holidays\")\n",
 					"spark.sql(\"\"\"\n",
 					"MERGE INTO odw_harmonised_db.sap_hr_fact_absence_sickness AS target\n",
 					"USING holidays_view AS source\n",
 					"ON CAST(target.sickness_start AS DATE) =  CAST(TO_TIMESTAMP(HolidayDate, 'dd/MM/yyyy') AS DATE)\n",
 					"WHEN MATCHED THEN DELETE;\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"logInfo(\"Successfully removed sickness records that fall on holidays\")"
 				],
-				"execution_count": 11
+				"execution_count": 5
 			}
 		]
 	}
