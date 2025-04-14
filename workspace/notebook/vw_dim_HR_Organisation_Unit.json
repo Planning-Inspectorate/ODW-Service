@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8748ea14-6930-4744-9152-a831efe5dd79"
+				"spark.autotune.trackingId": "6aee375c-d47c-45c0-be70-fd2f9af7a997"
 			}
 		},
 		"metadata": {
@@ -69,59 +69,64 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"-- Create view for HR Organization Unit in Synapse\n",
-					"CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_Organisation_Unit AS\n",
-					"WITH RankedData AS (\n",
-					"    SELECT \n",
-					"        Orgunit AS OrganisationUnitCode,\n",
-					"        OrganizationalUnit AS OrganisationUnitDesc,\n",
-					"        ROW_NUMBER() OVER(PARTITION BY Orgunit ORDER BY COUNT(*) DESC) AS Rnk\n",
-					"    FROM odw_harmonised_db.hist_sap_hr\n",
-					"    WHERE Report_MonthEnd_Date = (SELECT MAX(Report_MonthEnd_Date) FROM odw_harmonised_db.hist_sap_hr)\n",
-					"    GROUP BY Orgunit, OrganizationalUnit, Report_MonthEnd_Date\n",
-					"),\n",
-					"DistinctUnits AS (\n",
-					"    SELECT DISTINCT\n",
-					"        OrganisationUnitCode,\n",
-					"        OrganisationUnitDesc\n",
-					"    FROM RankedData\n",
-					"    WHERE Rnk = 1\n",
-					")\n",
-					"SELECT\n",
-					"    RANK() OVER(ORDER BY OrganisationUnitCode) AS dim_organisation_key,\n",
-					"    OrganisationUnitCode,\n",
-					"    OrganisationUnitDesc\n",
-					"FROM DistinctUnits"
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
+					"try:\n",
+					"   # Create view for HR Organization Unit\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_Organisation_Unit AS\n",
+					"   WITH RankedData AS (\n",
+					"       SELECT \n",
+					"           Orgunit AS OrganisationUnitCode,\n",
+					"           OrganizationalUnit AS OrganisationUnitDesc,\n",
+					"           ROW_NUMBER() OVER(PARTITION BY Orgunit ORDER BY COUNT(*) DESC) AS Rnk\n",
+					"       FROM odw_harmonised_db.hist_sap_hr\n",
+					"       WHERE Report_MonthEnd_Date = (SELECT MAX(Report_MonthEnd_Date) FROM odw_harmonised_db.hist_sap_hr)\n",
+					"       GROUP BY Orgunit, OrganizationalUnit, Report_MonthEnd_Date\n",
+					"   ),\n",
+					"   DistinctUnits AS (\n",
+					"       SELECT DISTINCT\n",
+					"           OrganisationUnitCode,\n",
+					"           OrganisationUnitDesc\n",
+					"       FROM RankedData\n",
+					"       WHERE Rnk = 1\n",
+					"   )\n",
+					"   SELECT\n",
+					"       RANK() OVER(ORDER BY OrganisationUnitCode) AS dim_organisation_key,\n",
+					"       OrganisationUnitCode,\n",
+					"       OrganisationUnitDesc\n",
+					"   FROM DistinctUnits\n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Drop the table if it exists and create a new one\n",
+					"   spark.sql(\"\"\"\n",
+					"   DROP TABLE IF EXISTS odw_curated_db.pbi_dim_HR_Organisation_Unit\n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Create the table with the view data\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE TABLE odw_curated_db.pbi_dim_HR_Organisation_Unit\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.vw_dim_HR_Organisation_Unit\n",
+					"   \"\"\")\n",
 					"\n",
-					"DROP TABLE IF EXISTS odw_curated_db.pbi_dim_HR_Organisation_Unit;\n",
-					"CREATE TABLE IF NOT EXISTS odw_curated_db.pbi_dim_HR_Organisation_Unit\n",
-					"USING delta\n",
-					"AS\n",
-					"SELECT * FROM odw_curated_db.vw_dim_HR_Organisation_Unit"
+					"except Exception as e:\n",
+					"   # Log the exception\n",
+					"   logError(f\"Error in Organisation Unit dimension setup: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs\n",
+					"   flushLogging()"
 				],
-				"execution_count": 4
+				"execution_count": null
 			}
 		]
 	}
