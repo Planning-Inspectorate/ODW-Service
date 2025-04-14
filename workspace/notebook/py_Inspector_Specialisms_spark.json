@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d63d56c9-1869-47af-ac42-7cd0034c1894"
+				"spark.autotune.trackingId": "84b08f7f-2ad9-40f2-a734-0c406e05bdf5"
 			}
 		},
 		"metadata": {
@@ -118,6 +118,14 @@
 				]
 			},
 			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator\n",
+					""
+				],
+				"execution_count": 7
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -136,12 +144,19 @@
 					"collapsed": false
 				},
 				"source": [
+					"\n",
+					"\n",
+					"logInfo(\"Starting inspector specialisms data processing\")\n",
+					"\n",
 					"# Step 1: Delete all records from the transform table\n",
+					"logInfo(\"Step 1: Deleting records from transform_inspector_Specialisms\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.transform_inspector_Specialisms\n",
 					"\"\"\")\n",
+					"logInfo(\"Records deleted from transform table\")\n",
 					"\n",
 					"# Step 2: Insert new records into the transform table\n",
+					"logInfo(\"Step 2: Inserting records into transform_inspector_Specialisms\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.transform_inspector_Specialisms (\n",
 					"    StaffNumber,\n",
@@ -197,9 +212,18 @@
 					"    odw_standardised_db.inspector_specialisms_monthly t1\n",
 					"WHERE \n",
 					"    StaffNumber IS NOT NULL\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"\n",
+					"# Get count of inserted records\n",
+					"record_count = spark.sql(\"SELECT COUNT(*) as record_count FROM odw_harmonised_db.transform_inspector_Specialisms\").collect()[0]['record_count']\n",
+					"logInfo(f\"Inserted {record_count} records into transform_inspector_Specialisms\")\n",
+					"\n",
+					"logInfo(\"Inspector specialisms data processing completed successfully\")\n",
+					"\n",
+					"# Ensure logs are flushed\n",
+					"flushLogging()"
 				],
-				"execution_count": 2
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -220,7 +244,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Insert new records that don't exist in the target table\n",
+					"logInfo(\"Insert new records that don't exist in the target table\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.sap_hr_inspector_Specialisms (\n",
 					"    StaffNumber, \n",
@@ -267,7 +291,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Update records that are no longer present in the source data\n",
+					"logInfo(\"Update records that are no longer present in the source data\")\n",
 					"spark.sql(\"\"\"\n",
 					"MERGE INTO odw_harmonised_db.sap_hr_inspector_Specialisms AS target\n",
 					"USING (\n",
@@ -302,7 +326,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Insert new versions of records that have changed (different RowID)\n",
+					"logInfo(\"Insert new versions of records that have changed (different RowID)\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.sap_hr_inspector_Specialisms (\n",
 					"    StaffNumber, \n",
@@ -349,7 +373,7 @@
 					"collapsed": false
 				},
 				"source": [
-					"# Use CTE to deduplicate and then MERGE in a single operation\n",
+					"logInfo(\"Use CTE to deduplicate and then MERGE in a single operation\")\n",
 					"spark.sql(\"\"\"\n",
 					"-- Step 1: Deduplicate the source table (newSpe)\n",
 					"WITH DeduplicatedSource AS (\n",
