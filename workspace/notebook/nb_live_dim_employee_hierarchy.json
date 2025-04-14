@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6f516c5d-bec3-4a30-9724-62b256521ac0"
+				"spark.autotune.trackingId": "8f967cfd-c4a7-4a71-b6ad-8834518e621b"
 			}
 		},
 		"metadata": {
@@ -100,7 +100,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -109,9 +109,9 @@
 					"source_database_name = \"odw_standardised_db\"\n",
 					"target_database_name = \"odw_harmonised_db\"\n",
 					"source_delta_table = f\"{source_database_name}.inspector_addresses_weekly\"\n",
-					"target_delta_table = f\"{target_database_name}.live_dim_inspector\"\n",
+					"target_delta_table = f\"{target_database_name}.live_dim_emp_hierarchy\"\n",
 					"target_horizon_delta_table = f\"{target_database_name}.load_horizon_appeals_inspectors_kludge\"\n",
-					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_inspector\"\n",
+					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
 					"\n",
 					"delta_horizon_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_horizon_appeals_inspectors_kludge\"\n",
 					"\n",
@@ -119,7 +119,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 7
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -378,10 +378,10 @@
 					"df_final_dim_hierarchy = flattened_exploded.unionByName(sgl_df.select(flattened_exploded.columns)).dropDuplicates()\n",
 					"df_final_dim_hierarchy = final_dim_hierarchy.orderBy(\"emp_id\", col(\"mgr_level\").desc())\n",
 					"\n",
-					"rowid_columns = [c for c in final_dim_hierarchy.columns]\n",
+					"rowid_columns = [c for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}]\n",
 					"\n",
 					"df_final_dim_hierarchy = df_final_dim_hierarchy.select(\n",
-					"    *[col(c) for c in df_final_dim_hierarchy.columns ],\n",
+					"    *[col(c) for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}],\n",
 					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
 					"    current_timestamp().alias(\"IngestionDate\"),\n",
 					"    current_date().cast(\"timestamp\").alias(\"ValidFrom\"),\n",
@@ -389,6 +389,8 @@
 					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
 					"    lit(\"Y\").alias(\"IsActive\")\n",
 					"    )\n",
+					"\n",
+					"display(df_final_dim_hierarchy)\n",
 					"\n",
 					"# Write data to target Delta Table\n",
 					"try:\n",
@@ -404,10 +406,10 @@
 					"    raise\n",
 					"\n",
 					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
-					"display(final_dim_hierarchy)\n",
+					"#display(df_final_dim_hierarchy)\n",
 					""
 				],
-				"execution_count": 13
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
