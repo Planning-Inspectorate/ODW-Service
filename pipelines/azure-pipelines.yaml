@@ -29,31 +29,43 @@ trigger:
   include:
   - main
 
-# Automatically run against the testing branch at a set time every day
-schedules:
-- cron: '0 10 * * 1-5' # cron syntax defining a schedule. At 10am every week day
-  displayName: Daily testing branch run
-  branches:
-    include:
-    - testing
-  always: true
-  batch: false
-
 variables:
 - name: branchName
   value: $[replace(variables['Build.SourceBranch'], 'refs/heads/', '')]
+- name: targetBranch
+  ${{ if eq(variables['Build.Reason'], 'PullRequest')}}:
+    value: $[replace(variables['System.PullRequest.TargetBranch'], 'refs/heads/', '')]
+  ${{ else }}:
+    value: ''
 - name: env
   ${{ if ne(parameters.env, 'auto') }}:
+    # If the override env has been set, then use this as the target environment. This is only for manual runs
     value: ${{ parameters.env }}
   ${{ else }}:
-    ${{ if eq(variables.branchName, 'dev') }}:
-      value: dev
-    ${{ elseif eq(variables.branchName, 'testing') }}:
-      value: test
-    ${{ elseif eq(variables.branchName, 'main') }}:
-      value: prod
+    # If no override env has been set...
+    ${{ if eq(variables.targetBranch, '') }}:
+      # If this is not a pull request, then set the target env based on the branch name
+      ${{ if eq(variables.branchName, 'dev') }}:
+        value: dev
+      ${{ elseif eq(variables.branchName, 'testing') }}:
+        value: test
+      ${{ elseif eq(variables.branchName, 'main') }}:
+        value: prod
+      ${{ else }}:
+        # Set the env to dev by default
+        value: dev
     ${{ else }}:
-      value: dev
+      # If this is a pull request, then set the env based on the target branch name
+      ${{ if eq(variables.targetBranch, 'dev') }}:
+        value: dev
+      ${{ elseif eq(variables.targetBranch, 'testing') }}:
+        value: test
+      ${{ elseif eq(variables.targetBranch, 'main') }}:
+        # Only run PRs against the test env at a maximum
+        value: test
+      ${{ else }}:
+        # Set the env to dev by default
+        value: dev
 
 - name: variableGroupName
   ${{ if eq(variables.env, 'prod') }}:
