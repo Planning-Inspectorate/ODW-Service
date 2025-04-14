@@ -4,9 +4,114 @@
 		"description": "Pipeline to publish a message to the Service Bus",
 		"activities": [
 			{
-				"name": "Publish messages",
-				"description": "Sends a message to a Service Bus queue or topic via a POST request",
-				"type": "WebActivity",
+				"name": "Loop Thru Files",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Filter Non Json",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Files List').output.childItems",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Publish messages",
+							"description": "Sends a message to a Service Bus queue or topic via a POST request",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "Lookup ReadFileContent",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"headers": {
+									"Content-Type": "application/vnd.microsoft.servicebus.json"
+								},
+								"url": {
+									"value": "@concat('https://', pipeline().parameters.service_bus_name, '.servicebus.windows.net/', pipeline().parameters.topic_name, '/messages')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "AutoResolveIntegrationRuntime",
+									"type": "IntegrationRuntimeReference"
+								},
+								"body": {
+									"value": "@string(activity('Lookup ReadFileContent').output)",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": {
+										"value": "@concat('https://', pipeline().parameters.service_bus_name, '.servicebus.windows.net/')",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "Lookup ReadFileContent",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "JsonSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "JsonReadSettings"
+									}
+								},
+								"dataset": {
+									"referenceName": "ds_json_adls",
+									"type": "DatasetReference",
+									"parameters": {
+										"directory": "listed_building_test/data",
+										"filename": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": false
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Get Files List",
+				"type": "GetMetadata",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -17,28 +122,46 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"method": "POST",
-					"headers": {
-						"Content-Type": "application/vnd.microsoft.servicebus.json"
-					},
-					"url": {
-						"value": "@concat('https://', pipeline().parameters.service_bus_name, '.servicebus.windows.net/', pipeline().parameters.topic_name, '/messages')",
-						"type": "Expression"
-					},
-					"connectVia": {
-						"referenceName": "AutoResolveIntegrationRuntime",
-						"type": "IntegrationRuntimeReference"
-					},
-					"body": {
-						"value": "@pipeline().parameters.messages",
-						"type": "Expression"
-					},
-					"authentication": {
-						"type": "MSI",
-						"resource": {
-							"value": "@concat('https://', pipeline().parameters.service_bus_name, '.servicebus.windows.net/')",
-							"type": "Expression"
+					"dataset": {
+						"referenceName": "ds_json_adls",
+						"type": "DatasetReference",
+						"parameters": {
+							"directory": "listed_building_test/data",
+							"filename": "\"\""
 						}
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "JsonReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Filter Non Json",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Get Files List",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Files List').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@endswith(item().name, '.json')",
+						"type": "Expression"
 					}
 				}
 			}
