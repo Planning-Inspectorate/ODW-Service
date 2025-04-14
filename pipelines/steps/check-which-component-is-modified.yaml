@@ -5,7 +5,22 @@ parameters:
 ##
 steps:
 - bash: |
-    modifiedFiles="$(git diff --name-status origin/dev)"
+    sourceBranch=${{ replace(variables['Build.SourceBranch'], refs/heads/', '') }}
+    deployEverything=false
+    echo "Source branch is '$sourceBranch'"
+    if [[ $sourceBranch = dev ]]; then
+        targetBranch=testing
+    elif [[ $sourceBranch = testing ]]; then
+        targetBranch=main
+    elif [[ $sourceBranch = main ]]; then
+        echo "The source branch is main, so forcing a full deployment"
+        deployEverything=true
+        targetBranch=main
+    else
+        targetBranch=dev
+    fi
+    echo "Using target branch '$targetBranch'"
+    modifiedFiles="$(git diff --name-status origin/$targetBranch)"
     echo "The following files have been modified"
     echo "${modifiedFiles}"
 
@@ -33,7 +48,7 @@ steps:
         synapseModified=true
         echo "Detected a change for the CI/CD process under 'pipelines/'"
     fi
-    if [[ ${{ lower(parameters.fullDeployment) }} = true ]]; then
+    if [[ ${{ lower(parameters.fullDeployment) }} = true] || "$deployEverything" = true]; then
         # If fullDeployment is true, then deploy everything
         infrastructureModified=true
         functionsModified=true
