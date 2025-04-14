@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "02cd7665-e385-417c-b393-c58ed8db1a90"
+				"spark.autotune.trackingId": "3bc151e6-f648-4fb7-87fc-794581820d89"
 			}
 		},
 		"metadata": {
@@ -69,42 +69,76 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"CREATE VIEW IF NOT EXISTS odw_curated_db.PayrollArea AS\n",
-					"SELECT DISTINCT PArea,PayrollArea\n",
-					"FROM odw_harmonised_db.hist_SAP_HR\n",
-					"UNION\n",
-					"SELECT '-1','Unknown'\n",
-					"ORDER BY 1;"
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 5
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
+					"try:\n",
+					"   logInfo(\"Starting Payroll Area dimension setup\")\n",
+					"   \n",
+					"   # Create the view if it doesn't exist\n",
+					"   logInfo(\"Creating view odw_curated_db.PayrollArea\")\n",
+					"   \n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE VIEW odw_curated_db.PayrollArea AS\n",
+					"   SELECT DISTINCT PArea, PayrollArea\n",
+					"   FROM odw_harmonised_db.hist_SAP_HR\n",
+					"   UNION\n",
+					"   SELECT '-1', 'Unknown'\n",
+					"   ORDER BY 1\n",
+					"   \"\"\")\n",
+					"   logInfo(\"Successfully created view odw_curated_db.PayrollArea\")\n",
+					"   \n",
+					"   # Get distinct payroll area count for verification\n",
+					"   payroll_area_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.PayrollArea\").collect()[0]['count']\n",
+					"   logInfo(f\"View contains {payroll_area_count} distinct payroll area records\")\n",
+					"   \n",
+					"   # Drop the table if it exists\n",
+					"   logInfo(\"Dropping table odw_curated_db.pbi_PayrollArea if it exists\")\n",
+					"   spark.sql(\"\"\"\n",
+					"   DROP TABLE IF EXISTS odw_curated_db.pbi_PayrollArea\n",
+					"   \"\"\")\n",
+					"   logInfo(\"Table dropped or did not exist\")\n",
+					"   \n",
+					"   # Create the table with the view data\n",
+					"   logInfo(\"Creating table odw_curated_db.pbi_PayrollArea from view\")\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE TABLE odw_curated_db.pbi_PayrollArea\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.PayrollArea\n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Get count of records in created table\n",
+					"   table_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.pbi_PayrollArea\").collect()[0]['count']\n",
+					"   logInfo(f\"Created table with {table_count} records\")\n",
+					"   \n",
+					"   # Verify data consistency between view and table\n",
+					"   if payroll_area_count == table_count:\n",
+					"       logInfo(\"Data verification passed: View and table contain the same number of records\")\n",
+					"   else:\n",
+					"       logError(f\"Data verification failed: View has {payroll_area_count} records but table has {table_count} records\")\n",
+					"   \n",
+					"   # Final success message\n",
+					"   logInfo(\"Payroll Area dimension setup completed successfully\")\n",
 					"\n",
-					"DROP TABLE IF EXISTS odw_curated_db.pbi_PayrollArea;\n",
-					"\n",
-					"create or replace table odw_curated_db.pbi_PayrollArea\n",
-					"using delta\n",
-					"as\n",
-					"SELECT * FROM odw_curated_db.PayrollArea"
+					"except Exception as e:\n",
+					"   # Log the exception in detail\n",
+					"   logError(f\"Error in Payroll Area dimension setup: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   \n",
+					"   # Re-raise the exception to ensure the notebook fails properly\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs regardless of success or failure\n",
+					"   logInfo(\"Flushing logs\")\n",
+					"   flushLogging()"
 				],
-				"execution_count": 6
+				"execution_count": 3
 			}
 		]
 	}
