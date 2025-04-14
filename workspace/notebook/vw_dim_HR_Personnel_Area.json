@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6e07a885-452f-4736-ad7c-41144047cf91"
+				"spark.autotune.trackingId": "f441d49d-c828-435b-8a5e-5699e3388ad3"
 			}
 		},
 		"metadata": {
@@ -90,45 +90,50 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE VIEW IF NOT EXISTS odw_curated_db.vw_dim_HR_Personnel_Area AS\n",
-					"SELECT\n",
-					"\t  RANK() OVER(ORDER BY a.PersonnelArea, a.PersonnelAreaCode) AS dim_personnel_area_key\n",
-					"\t  ,a.*\n",
-					"FROM\n",
-					"(\n",
-					"\tSELECT DISTINCT \n",
-					"\t\t\tPA AS PersonnelAreaCode\n",
-					"\t\t   ,PersonnelArea AS PersonnelArea\n",
-					"\tFROM odw_harmonised_db.hist_SAP_HR\n",
-					") a ;"
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"create or replace table odw_curated_db.pbi_dim_HR_Personnel_Area\n",
-					"using delta\n",
-					"as\n",
-					"SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_Area"
+					"\n",
+					"\n",
+					"try:\n",
+					"    # Create the view if it doesn't exist\n",
+					"    spark.sql(\"\"\"\n",
+					"    CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_Personnel_Area AS\n",
+					"    SELECT\n",
+					"        RANK() OVER(ORDER BY a.PersonnelArea, a.PersonnelAreaCode) AS dim_personnel_area_key,\n",
+					"        a.*\n",
+					"    FROM\n",
+					"    (\n",
+					"        SELECT DISTINCT \n",
+					"            PA AS PersonnelAreaCode,\n",
+					"            PersonnelArea AS PersonnelArea\n",
+					"        FROM odw_harmonised_db.hist_SAP_HR\n",
+					"    ) a\n",
+					"    \"\"\")\n",
+					"    \n",
+					"    # Create the table with the view data\n",
+					"    spark.sql(\"\"\"\n",
+					"    CREATE OR REPLACE TABLE odw_curated_db.pbi_dim_HR_Personnel_Area\n",
+					"    USING delta\n",
+					"    AS\n",
+					"    SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_Area\n",
+					"    \"\"\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    # Log the exception\n",
+					"    logError(f\"Error in Personnel Area dimension setup: {str(e)}\")\n",
+					"    logException(e)\n",
+					"    raise e\n",
+					"finally:\n",
+					"    # Always flush logs\n",
+					"    flushLogging()"
 				],
-				"execution_count": 3
+				"execution_count": null
 			}
 		]
 	}
