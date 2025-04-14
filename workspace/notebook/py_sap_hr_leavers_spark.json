@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "618f4ccf-c506-49df-b4ac-b9b281ab3f21"
+				"spark.autotune.trackingId": "0dfceedf-044c-4a57-b76d-e57aabbb9756"
 			}
 		},
 		"metadata": {
@@ -102,7 +102,15 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 1
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -123,17 +131,26 @@
 					"collapsed": false
 				},
 				"source": [
+					"\n",
+					"\n",
+					"logInfo(\"Starting SAP HR Leavers processing\")\n",
+					"\n",
 					"# Set legacy time parser policy\n",
+					"logInfo(\"Setting legacy time parser policy\")\n",
 					"spark.sql(\"\"\"\n",
 					"SET spark.sql.legacy.timeParserPolicy = LEGACY\n",
 					"\"\"\")\n",
+					"logInfo(\"Legacy time parser policy set successfully\")\n",
 					"\n",
 					"# Step 1: Clear the staging table first\n",
+					"logInfo(\"Starting deletion of all rows from odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.stage_SAP_HR_Leavers\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully deleted all rows from odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
 					"\n",
 					"# Step 2: Insert data into the harmonised table with transformations\n",
+					"logInfo(\"Starting data insertion into odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.stage_SAP_HR_Leavers\n",
 					"(\n",
@@ -245,28 +262,37 @@
 					"FROM \n",
 					"    odw_standardised_db.sap_hr_leavers_monthly\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully inserted data into odw_harmonised_db.stage_SAP_HR_Leavers\")\n",
 					"\n",
 					"# Step 3: Handle NULL EmployeeNo values\n",
+					"logInfo(\"Starting update to handle NULL EmployeeNo values\")\n",
 					"spark.sql(\"\"\"\n",
 					"UPDATE odw_harmonised_db.stage_SAP_HR_Leavers\n",
 					"SET EmployeeNo = '' \n",
 					"WHERE EmployeeNo IS NULL\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully updated NULL EmployeeNo values\")\n",
 					"\n",
 					"# Step 4: Special case update for specific employee\n",
+					"logInfo(\"Starting update for special case employee PersNo 50426514\")\n",
 					"spark.sql(\"\"\"\n",
 					"UPDATE odw_harmonised_db.stage_SAP_HR_Leavers\n",
 					"SET Leaving = '2024-02-29'\n",
 					"WHERE PersNo = '50426514'\n",
 					"\"\"\")\n",
+					"logInfo(\"Successfully updated special case employee record\")\n",
 					"\n",
 					"# Step 5: Clear all Annualsalary values\n",
+					"logInfo(\"Starting update to clear all Annualsalary values\")\n",
 					"spark.sql(\"\"\"\n",
 					"UPDATE odw_harmonised_db.stage_SAP_HR_Leavers \n",
 					"SET Annualsalary = NULL\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"logInfo(\"Successfully cleared all Annualsalary values\")\n",
+					"\n",
+					"logInfo(\"SAP HR Leavers processing completed successfully\")"
 				],
-				"execution_count": 1
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -388,7 +414,7 @@
 					"FROM temp_deduplicated_leavers\n",
 					"\"\"\")"
 				],
-				"execution_count": 2
+				"execution_count": 6
 			}
 		]
 	}
