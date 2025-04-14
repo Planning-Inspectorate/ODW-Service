@@ -7,7 +7,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodw",
+			"referenceName": "pinssynspodwpr",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "eb2b22d3-bba3-48d9-b5fb-8b9bbbf8530e"
+				"spark.autotune.trackingId": "9494c308-4449-4569-b6d7-edcfc77c128e"
 			}
 		},
 		"metadata": {
@@ -34,10 +34,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-				"name": "pinssynspodw",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
+				"name": "pinssynspodwpr",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -105,6 +105,13 @@
 				"execution_count": 2
 			},
 			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -124,19 +131,22 @@
 				},
 				"source": [
 					"# Set ANSI mode to false to handle potential type conversion issues\n",
+					"logInfo(\"Setting ANSI mode to false\")\n",
 					"spark.sql(\"SET spark.sql.ansi.enabled=false\")\n",
 					"\n",
 					"# Step 1: Clear temporary and final tables\n",
+					"logInfo(\"Clearing temporary table\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.sap_hr_fact_Absence_All_TEMP\n",
 					"\"\"\")\n",
 					"\n",
+					"logInfo(\"Clearing final table\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.sap_hr_fact_Absence_All\n",
 					"\"\"\")\n",
 					"\n",
 					"# Step 2: Create a date dimension table to handle date expansion\n",
-					"# Using Spark SQL compatible syntax with explode()\n",
+					"logInfo(\"Creating date dimension table\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMPORARY VIEW date_dimension AS\n",
 					"WITH date_sequence AS (\n",
@@ -152,8 +162,10 @@
 					"FROM date_sequence\n",
 					"WHERE dayofweek(date_value) BETWEEN 2 AND 6  -- Only include weekdays (Monday to Friday)\n",
 					"\"\"\")\n",
+					"logInfo(\"Date dimension table created\")\n",
 					"\n",
 					"# Step 3: Expand absence records into individual days using a join with date_dimension\n",
+					"logInfo(\"Expanding absence records into individual days\")\n",
 					"spark.sql(\"\"\"\n",
 					"INSERT INTO odw_harmonised_db.sap_hr_fact_Absence_All_TEMP (\n",
 					"    absencedate,\n",
@@ -251,8 +263,10 @@
 					"        ELSE 0\n",
 					"    END > 0\n",
 					"\"\"\")\n",
+					"logInfo(\"Records expanded into temporary table\")\n",
 					"\n",
 					"# Step 4: Remove duplicates and insert into final table\n",
+					"logInfo(\"Removing duplicates and inserting into final table\")\n",
 					"spark.sql(\"\"\"\n",
 					"WITH Duplicate_CTE AS (\n",
 					"    SELECT \n",
@@ -304,14 +318,18 @@
 					"WHERE \n",
 					"    Rno = 1\n",
 					"\"\"\")\n",
+					"logInfo(\"Data inserted into final table\")\n",
 					"\n",
 					"# Step 5: Delete rows for staff numbers that do not exist in SAP_HR data history\n",
+					"logInfo(\"Deleting rows for non-existent staff numbers\")\n",
 					"spark.sql(\"\"\"\n",
 					"DELETE FROM odw_harmonised_db.sap_hr_fact_Absence_All\n",
 					"WHERE staffnumber IN ('50410587', '50422294')\n",
 					"\"\"\")\n",
+					"logInfo(\"Deleted rows for non-existent staff numbers\")\n",
 					"\n",
 					"# Step 6: Create a staging table with best HR data matches\n",
+					"logInfo(\"Creating HR data staging table\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMPORARY VIEW hr_data_staging AS\n",
 					"SELECT \n",
@@ -345,8 +363,10 @@
 					"ON \n",
 					"    a.staffnumber = h.PersNo\n",
 					"\"\"\")\n",
+					"logInfo(\"HR data staging table created\")\n",
 					"\n",
 					"# Step 7: Deduplicate the staging data to ensure one row per staffnumber/absencedate\n",
+					"logInfo(\"Deduplicating HR data\")\n",
 					"spark.sql(\"\"\"\n",
 					"CREATE OR REPLACE TEMPORARY VIEW hr_data_final AS\n",
 					"SELECT \n",
@@ -365,8 +385,10 @@
 					"WHERE \n",
 					"    rn = 1\n",
 					"\"\"\")\n",
+					"logInfo(\"HR data deduplication completed\")\n",
 					"\n",
 					"# Step 8: Use MERGE to update the target table\n",
+					"logInfo(\"Merging HR data into final absence table\")\n",
 					"spark.sql(\"\"\"\n",
 					"MERGE INTO odw_harmonised_db.sap_hr_fact_Absence_All a\n",
 					"USING hr_data_final s\n",
@@ -376,9 +398,12 @@
 					"    PSGroup = s.PSGroup,\n",
 					"    PersonnelArea = s.PersonnelArea,\n",
 					"    PersonnelSubarea = s.PersonnelSubarea\n",
-					"\"\"\")"
+					"\"\"\")\n",
+					"logInfo(\"HR data merge completed\")\n",
+					"\n",
+					"logInfo(\"Absence data processing completed successfully\")"
 				],
-				"execution_count": 3
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
