@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c6dd2bf8-2fe5-497d-b737-b841086f74a8"
+				"spark.autotune.trackingId": "40b7db6e-0a01-4316-80fb-c512c725cadc"
 			}
 		},
 		"metadata": {
@@ -93,49 +93,88 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
 					"\n",
-					"\n",
-					"\n",
-					"CREATE VIEW IF NOT EXISTS odw_curated_db.vw_dim_HR_cost_centre  AS\n",
-					"SELECT\n",
-					"\t   RANK() OVER(ORDER BY a.CostCentreCode) AS dim_cost_centre_key\n",
-					"\t  ,a.*\n",
-					"FROM\n",
-					"(\n",
-					"\tSELECT DISTINCT \n",
-					"\t\t  CASE WHEN CostCtr ='' THEN '-1' ELSE CostCtr END AS CostCentreCode\n",
-					"\t\t ,CASE WHEN CostCentre ='' THEN '-' ELSE CostCentre END AS CostCentre\n",
-					"\tFROM odw_harmonised_db.hist_sap_hr\n",
-					") a ;"
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 8
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
 					"\n",
-					"DROP TABLE IF EXISTS odw_curated_db.pbi_dim_HR_cost_centre;\n",
-					"create or replace table odw_curated_db.pbi_dim_HR_cost_centre\n",
-					"using delta\n",
-					"as\n",
-					"SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_Area"
+					"\n",
+					"try:\n",
+					"   logInfo(\"Starting HR Cost Centre dimension setup\")\n",
+					"   \n",
+					"   # Create the view if it doesn't exist\n",
+					"   logInfo(\"Creating view odw_curated_db.vw_dim_HR_cost_centre\")\n",
+					"   \n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_cost_centre AS\n",
+					"   SELECT\n",
+					"       RANK() OVER(ORDER BY a.CostCentreCode) AS dim_cost_centre_key,\n",
+					"       a.*\n",
+					"   FROM\n",
+					"   (\n",
+					"       SELECT DISTINCT \n",
+					"           CASE WHEN CostCtr ='' THEN '-1' ELSE CostCtr END AS CostCentreCode,\n",
+					"           CASE WHEN CostCentre ='' THEN '-' ELSE CostCentre END AS CostCentre\n",
+					"       FROM odw_harmonised_db.hist_sap_hr\n",
+					"   ) a\n",
+					"   \"\"\")\n",
+					"   logInfo(\"Successfully created view odw_curated_db.vw_dim_HR_cost_centre\")\n",
+					"   \n",
+					"   # Get distinct cost centre count for verification\n",
+					"   cost_centre_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.vw_dim_HR_cost_centre\").collect()[0]['count']\n",
+					"   logInfo(f\"View contains {cost_centre_count} distinct cost centre records\")\n",
+					"   \n",
+					"   # Drop the table if it exists\n",
+					"   logInfo(\"Dropping table odw_curated_db.pbi_dim_HR_cost_centre if it exists\")\n",
+					"   spark.sql(\"\"\"\n",
+					"   DROP TABLE IF EXISTS odw_curated_db.pbi_dim_HR_cost_centre\n",
+					"   \"\"\")\n",
+					"   logInfo(\"Table dropped or did not exist\")\n",
+					"   \n",
+					"   # Create the table with the view data\n",
+					"   logInfo(\"Creating table odw_curated_db.pbi_dim_HR_cost_centre from view\")\n",
+					"   \n",
+					"   # NOTE: There appears to be an error in your original SQL - it references vw_dim_HR_Personnel_Area\n",
+					"   # instead of vw_dim_HR_cost_centre. I've corrected it below:\n",
+					"   \n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE TABLE odw_curated_db.pbi_dim_HR_cost_centre\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.vw_dim_HR_cost_centre\n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Get count of records in created table\n",
+					"   table_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.pbi_dim_HR_cost_centre\").collect()[0]['count']\n",
+					"   logInfo(f\"Created table with {table_count} records\")\n",
+					"   \n",
+					"   # Verify data consistency between view and table\n",
+					"   if cost_centre_count == table_count:\n",
+					"       logInfo(\"Data verification passed: View and table contain the same number of records\")\n",
+					"   else:\n",
+					"       logError(f\"Data verification failed: View has {cost_centre_count} records but table has {table_count} records\")\n",
+					"   \n",
+					"   # Final success message\n",
+					"   logInfo(\"HR Cost Centre dimension setup completed successfully\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"   # Log the exception in detail\n",
+					"   logError(f\"Error in HR Cost Centre dimension setup: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   \n",
+					"   # Re-raise the exception to ensure the notebook fails properly\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs regardless of success or failure\n",
+					"   logInfo(\"Flushing logs\")\n",
+					"   flushLogging()"
 				],
-				"execution_count": 4
+				"execution_count": 2
 			}
 		]
 	}
