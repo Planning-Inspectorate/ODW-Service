@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "18d12c42-4b3a-421e-902e-c5a78f9130e9"
+				"spark.autotune.trackingId": "fd8bcdc9-e11e-4e83-bf1a-8c975f43a8fa"
 			}
 		},
 		"metadata": {
@@ -69,53 +69,54 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"\n",
-					"CREATE VIEW IF NOT EXISTS  odw_curated_db.vw_dim_HR_Work_Contract  AS\n",
-					"\n",
-					"SELECT \n",
-					"\t\t RANK() OVER(ORDER BY a.WorkContractCode, WorkContract) AS dim_work_contract_key\n",
-					"\t\t,a.*\n",
-					"FROM\n",
-					"(\n",
-					"\tSELECT DISTINCT\n",
-					"\t\t\tWorkC        AS WorkContractCode\n",
-					"\t\t   ,WorkContract AS WorkContract\n",
-					"\tFROM odw_harmonised_db.hist_SAP_HR\n",
-					"\n",
-					"\tunion \n",
-					"\n",
-					"\tselect distinct\n",
-					"\t\tWorkC as WorkContractCode\n",
-					"\t\t,WorkContract as WorkContract\n",
-					"\tfrom odw_harmonised_db.SAP_HR_Leavers\n",
-					") a "
+					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
-					"CREATE TABLE IF NOT EXISTS odw_curated_db.pbi_dim_HR_Work_Contract\n",
-					"USING delta\n",
-					"AS\n",
-					"SELECT * FROM odw_curated_db.vw_dim_HR_Work_Contract"
+					"try:\n",
+					"   # Create the view if it doesn't exist\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE VIEW odw_curated_db.vw_dim_HR_Personnel_SubArea AS\n",
+					"   SELECT\n",
+					"       RANK() OVER(ORDER BY a.PersonnelSubAreaCode, a.PersonnelSubArea) AS dim_personnel_subarea_key,\n",
+					"       a.*\n",
+					"   FROM\n",
+					"   (\n",
+					"       SELECT DISTINCT\n",
+					"           PSubarea AS PersonnelSubAreaCode,\n",
+					"           CASE PSubarea  \n",
+					"               WHEN 'P210' THEN 'Digital' \n",
+					"               WHEN 'P205' THEN 'Perf Com & Ops' \n",
+					"               WHEN 'P515' THEN 'EST/Central Ops'\n",
+					"               WHEN 'P610' THEN 'Knowledge'\n",
+					"               ELSE PersonnelSubarea\n",
+					"           END AS PersonnelSubArea\n",
+					"       FROM odw_harmonised_db.hist_SAP_HR\t  \n",
+					"   ) a \n",
+					"   \"\"\")\n",
+					"   \n",
+					"   # Create the table with the view data\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE OR REPLACE TABLE odw_curated_db.pbi_dim_HR_Personnel_SubArea\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.vw_dim_HR_Personnel_SubArea\n",
+					"   \"\"\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"   # Log the exception\n",
+					"   logError(f\"Error in Personnel SubArea dimension setup: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs\n",
+					"   flushLogging()"
 				],
-				"execution_count": 3
+				"execution_count": null
 			}
 		]
 	}
