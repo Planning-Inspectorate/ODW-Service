@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ec88de05-a7a4-4dbb-9d2e-4e14164d5b5b"
+				"spark.autotune.trackingId": "9cd1060e-5d20-48fa-baad-152302e2a1f3"
 			}
 		},
 		"metadata": {
@@ -94,7 +94,15 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 13
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -114,17 +122,14 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
 					"\n",
-					"CREATE VIEW IF NOT EXISTS odw_curated_db.vw_hr_measures AS\n",
-					"--  CTE for the main historical data\n",
+					"\n",
+					"try:\n",
+					"   # Drop and recreate the HR measures table\n",
+					"   spark.sql(\"\"\"\n",
+					"\n",
+					"\n",
 					"WITH BaseData AS (\n",
 					"    SELECT \n",
 					"        hist_sap.PersNo,\n",
@@ -478,29 +483,33 @@
 					"    NULL AS LeaveEntitlementDays,\n",
 					"    NULL AS PartTimeFullTime,\n",
 					"    NULL AS Country\n",
-					"FROM LeaversData"
-				],
-				"execution_count": 36
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
+					"FROM LeaversData\n",
+					"\"\"\"\n",
+					")\n",
+					"   # Drop the table if it exists\n",
+					"   logInfo(\"Dropping table odw_curated_db.pbi_PayrollArea if it exists\")\n",
+					"   spark.sql(\"\"\"\n",
+					"   DROP TABLE IF EXISTS odw_curated_db.pbi_hr_measures\n",
+					"   \"\"\")\n",
+					"   logInfo(\"Table dropped or did not exist\")\n",
 					"\n",
-					"DROP TABLE IF EXISTS odw_curated_db.pbi_hr_measures;\n",
+					"   spark.sql(\"\"\"\n",
+					"   CREATE TABLE odw_curated_db.pbi_hr_measures\n",
+					"   USING delta\n",
+					"   AS\n",
+					"   SELECT * FROM odw_curated_db.vw_hr_measures\n",
+					"   \"\"\")\n",
 					"\n",
-					"create or replace table odw_curated_db.pbi_hr_measures\n",
-					"using delta\n",
-					"as\n",
-					"SELECT * FROM odw_curated_db.vw_hr_measures"
+					"except Exception as e:\n",
+					"   # Log the exception\n",
+					"   logError(f\"Error in HR measures table creation: {str(e)}\")\n",
+					"   logException(e)\n",
+					"   raise e\n",
+					"finally:\n",
+					"   # Always flush logs\n",
+					"   flushLogging()"
 				],
-				"execution_count": 38
+				"execution_count": 4
 			}
 		]
 	}
