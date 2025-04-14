@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b7021f0f-dd94-40b7-a73a-faa8a1f9c243"
+				"spark.autotune.trackingId": "db9c3f76-fd8f-4ba1-b332-a0692e7ff055"
 			}
 		},
 		"metadata": {
@@ -140,6 +140,88 @@
 					"FROM odw_standardised_db.sap_email_monthly;"
 				],
 				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"try:\n",
+					"    logInfo(\"Starting load of SAP PINS email monthly data\")\n",
+					"    \n",
+					"    # First get count of records to be loaded\n",
+					"    source_count = spark.sql(\"\"\"\n",
+					"    SELECT COUNT(*) as count \n",
+					"    FROM odw_standardised_db.sap_email_monthly\n",
+					"    \"\"\").collect()[0]['count']\n",
+					"    \n",
+					"    logInfo(f\"Found {source_count} records in source table\")\n",
+					"    \n",
+					"    # Delete existing data\n",
+					"    logInfo(\"Deleting existing data from load_sap_pins_email_monthly\")\n",
+					"    spark.sql(\"DELETE FROM odw_harmonised_db.load_sap_pins_email_monthly\")\n",
+					"    \n",
+					"    # Insert new data\n",
+					"    logInfo(\"Inserting new records into load_sap_pins_email_monthly\")\n",
+					"    spark.sql(\"\"\"\n",
+					"    INSERT INTO odw_harmonised_db.load_sap_pins_email_monthly\n",
+					"    SELECT \n",
+					"        StaffNumber,\n",
+					"        Firstname,\n",
+					"        Lastname,\n",
+					"        EmailAddress,\n",
+					"        'saphr' AS SourceSystemID,\n",
+					"        current_date() AS IngestionDate,\n",
+					"        current_date() AS ValidTo,\n",
+					"        md5(\n",
+					"            concat_ws('|',\n",
+					"                StaffNumber,\n",
+					"                Firstname,\n",
+					"                Lastname,\n",
+					"                EmailAddress,\n",
+					"                'Y',\n",
+					"                current_date(),\n",
+					"                current_date()\n",
+					"            )\n",
+					"        ) AS RowID,\n",
+					"        'Y' AS IsActive\n",
+					"    FROM odw_standardised_db.sap_email_monthly\n",
+					"    \"\"\")\n",
+					"    \n",
+					"    # Verify the load was successful\n",
+					"    loaded_count = spark.sql(\"\"\"\n",
+					"    SELECT COUNT(*) as count \n",
+					"    FROM odw_harmonised_db.load_sap_pins_email_monthly\n",
+					"    WHERE IngestionDate = current_date()\n",
+					"    \"\"\").collect()[0]['count']\n",
+					"    \n",
+					"    logInfo(f\"Successfully loaded {loaded_count} records\")\n",
+					"    \n",
+					"    if loaded_count != source_count:\n",
+					"        logWarning(f\"Count mismatch: Source had {source_count} records, loaded {loaded_count} records\")\n",
+					"    else:\n",
+					"        logInfo(\"Record counts match between source and target\")\n",
+					"    \n",
+					"    logInfo(\"SAP PINS email monthly load completed successfully\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    # Log the exception in detail\n",
+					"    logError(f\"Error during SAP PINS email monthly load: {str(e)}\")\n",
+					"    logException(e)\n",
+					"    \n",
+					"    # Re-raise the exception to ensure the notebook fails properly\n",
+					"    raise e\n",
+					"finally:\n",
+					"    # Always flush logs regardless of success or failure\n",
+					"    logInfo(\"Flushing logs\")\n",
+					"    flushLogging()"
+				],
+				"execution_count": 3
 			}
 		]
 	}
