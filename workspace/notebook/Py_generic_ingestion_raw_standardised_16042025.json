@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ec1c797a-0270-40b0-89ec-d84fc890b7c6"
+				"spark.autotune.trackingId": "3a03b655-5117-42a8-a774-c554dea76456"
 			}
 		},
 		"metadata": {
@@ -330,9 +330,10 @@
 					"            expected_to = datetime.now()\r\n",
 					"\r\n",
 					"            # Add metadata columns to main DF\r\n",
-					"            sparkTableDF = sparkDF.withColumn(\"ingested_datetime\", current_timestamp())\r\n",
-					"            .withColumn(\"expected_from\", expected_from)\r\n",
-					"            .withColumn(\"expected_to\", expected_to)\r\n",
+					"            sparkTableDF = (sparkDF.withColumn(\"ingested_datetime\",current_timestamp())\r\n",
+					"                                    .withColumn(\"expected_from\",expected_from)\r\n",
+					"                                    .withColumn(\"expected_to\",lit(expected_to))\r\n",
+					"                                )\r\n",
 					"\r\n",
 					"            delta_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}/{definition['Standardised_Table_Name']}\"\r\n",
 					"            full_table_name = f\"{database_name}.{definition['Standardised_Table_Name']}\"\r\n",
@@ -350,12 +351,13 @@
 					"            standardised_table_df = spark.read.format(\"delta\").load(delta_path)\r\n",
 					"            rows_new = standardised_table_df.filter((col(\"expected_from\") == expected_from) & (col(\"expected_to\") == expected_to)).count()\r\n",
 					"\r\n",
-					"            sparkLogDF = sparkDF.withColumn(\"ingested_by_process_name\", lit(process_name))\r\n",
+					"            sparkLogDF = (sparkDF.withColumn(\"ingested_by_process_name\", lit(process_name))\r\n",
 					"                                .withColumn(\"input_file\", lit(matching_file))\r\n",
 					"                                .withColumn(\"modified_datetime\", current_timestamp())\r\n",
 					"                                .withColumn(\"modified_by_process_name\", lit(process_name))\r\n",
 					"                                .withColumn(\"entity_name\", lit(definition['Source_Filename_Start']))\r\n",
 					"                                .withColumn(\"file_ID\", sha2(concat(lit(matching_file), current_timestamp().cast(\"string\")), 256))\r\n",
+					"                            )\r\n",
 					"\r\n",
 					"            new_log_entry = sparkLogDF.select(\r\n",
 					"                \"file_ID\",\r\n",
@@ -366,9 +368,10 @@
 					"                \"entity_name\"\r\n",
 					"            ).limit(1)\r\n",
 					"\r\n",
-					"            new_log_entry = new_log_entry.withColumn(\"ingested_datetime\", current_timestamp())\r\n",
+					"            new_log_entry = (new_log_entry.withColumn(\"ingested_datetime\", current_timestamp())\r\n",
 					"                                        .withColumn(\"rows_raw\", lit(rows_raw))\r\n",
 					"                                        .withColumn(\"rows_new\", lit(rows_new))\r\n",
+					"                            )\r\n",
 					"\r\n",
 					"            table_exists = DeltaTable.isDeltaTable(spark, ingestion_log_table_location)\r\n",
 					"            if not table_exists:\r\n",
@@ -387,7 +390,7 @@
 					"            logError(f\" Failed processing for definition {definition['Source_ID']} - Error: {e}\")\r\n",
 					"            logError(\"Logging to tables_logs failed\")"
 				],
-				"execution_count": 41
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
