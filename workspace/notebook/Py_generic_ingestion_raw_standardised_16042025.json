@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0ac49df0-cdff-41c0-8707-afed764e64b8"
+				"spark.autotune.trackingId": "ec1c797a-0270-40b0-89ec-d84fc890b7c6"
 			}
 		},
 		"metadata": {
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -173,14 +173,14 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 28
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 29
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -231,7 +231,7 @@
 					"print(ingestion_log_table_location)\r\n",
 					"ingestion_log_table_location"
 				],
-				"execution_count": 23
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -241,7 +241,7 @@
 					"df_orch = spark.read.option(\"multiline\", \"true\").json(json_schema_file_path)\r\n",
 					"definitions = json.loads(df_orch.toJSON().first())[\"definitions\"]"
 				],
-				"execution_count": 24
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -252,7 +252,7 @@
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\r\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": 25
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -283,18 +283,18 @@
 					"        deduped.append(f\"{c}{count + 1}\" if count else c)\r\n",
 					"    return df.toDF(*deduped)"
 				],
-				"execution_count": 26
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"@logging_to_appins\r\n",
 					"def create_table_if_not_exists(path, table_name, schema_path):\r\n",
-					"     try:\r\n",
-					"         if not DeltaTable.isDeltaTable(spark, path):\r\n",
-					"            schema_json = json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))\r\n",
-					"            schema_str = \", \".join([f\"{f['name']} {f['type']}\" for f in schema_json[\"fields\"]])\r\n",
-					"            spark.sql(f\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{path}'\")\r\n",
+					"    try:\r\n",
+					"        if not DeltaTable.isDeltaTable(spark, path):\r\n",
+					"           schema_json = json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))\r\n",
+					"           schema_str = \", \".join([f\"{f['name']} {f['type']}\" for f in schema_json[\"fields\"]])\r\n",
+					"           spark.sql(f\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{path}'\")\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
 					"\r\n",
@@ -331,8 +331,8 @@
 					"\r\n",
 					"            # Add metadata columns to main DF\r\n",
 					"            sparkTableDF = sparkDF.withColumn(\"ingested_datetime\", current_timestamp())\r\n",
-					"                                    .withColumn(\"expected_from\", lit(expected_from))\r\n",
-					"                                    .withColumn(\"expected_to\", lit(expected_to))\r\n",
+					"            .withColumn(\"expected_from\", expected_from)\r\n",
+					"            .withColumn(\"expected_to\", expected_to)\r\n",
 					"\r\n",
 					"            delta_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}/{definition['Standardised_Table_Name']}\"\r\n",
 					"            full_table_name = f\"{database_name}.{definition['Standardised_Table_Name']}\"\r\n",
@@ -384,10 +384,10 @@
 					"                logError(f\"All rows have NOT been successfully written. Expected {rows_raw} but {rows_new} written\")\r\n",
 					"\r\n",
 					"        except Exception as e:\r\n",
-					"                logError(f\" Failed processing for definition {definition['Source_ID']} - Error: {e}\")\r\n",
+					"            logError(f\" Failed processing for definition {definition['Source_ID']} - Error: {e}\")\r\n",
 					"            logError(\"Logging to tables_logs failed\")"
 				],
-				"execution_count": null
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
