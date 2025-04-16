@@ -1,0 +1,30 @@
+name: Update the dev branch with the testing branch
+
+on:
+  pull_request:
+    branches: 
+      - testing
+
+jobs:
+  check_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update the dev branch with the testing branch
+        run: |
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git config user.name "${GITHUB_ACTOR}"
+          git fetch
+          git checkout testing
+          git pull
+          git checkout dev
+          git pull
+          git checkout -b automatedUpdateDevWithTestingBranch
+          git merge -X ours testing --no-edit
+          git push --set-upstream origin automatedUpdateDevWithTestingBranch
+          pullRequests=$(gh pr list -B dev -H automatedUpdateDevWithTestingBranch)
+          if [[ -z "$pullRequests" ]]; then
+              echo "No pull requests found from automatedUpdateDevWithTestingBranch->dev , raising a pull request"
+              gh pr create -B dev -H dev --title "Automatically update dev branch with testing branch" --body "$COMMIT_MESSAGE"
+          else
+              echo "A pull request from the automatedUpdateDevWithTestingBranch branch to the dev branch already exists" 
+          fi
