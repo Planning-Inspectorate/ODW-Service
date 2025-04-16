@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fd940274-63eb-44b9-a922-2af8c5260f90"
+				"spark.autotune.trackingId": "a5cb371d-1ad4-46b6-86cd-a22bdf27c719"
 			}
 		},
 		"metadata": {
@@ -69,7 +69,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 2
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -87,7 +87,7 @@
 				"source": [
 					"%run archive/utils/py_logging_decorator"
 				],
-				"execution_count": 4
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -103,9 +103,11 @@
 					}
 				},
 				"source": [
-					"#%run archive/0-odw-source-to-raw/Fileshare/SAP_HR/py_0_source_to_raw_hr_functions"
+					"#%run 5-odw-common/py_0_source_to_raw_hr_functions_Copy1\n",
+					"\n",
+					"%run 5-odw-common/TestRunner"
 				],
-				"execution_count": 7
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -123,7 +125,188 @@
 				"source": [
 					"#%run archive/utils/py_mount_storage"
 				],
-				"execution_count": 11
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#%run utils/py_logging_decorator"
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Code copied from py_0_source_to_raw_hr_functions_Copy1\n",
+					"\n",
+					"@logging_to_appins\n",
+					"@retry(wait=wait_random_exponential(multiplier=1, max=60), before_sleep=before_sleep)\n",
+					"def azfileshare_new_files(akv_name:str, secret_name:str, kv_linked_service:str, share_name:str, directory_path:str, jsonschema:str, target_container:str, target_folder:str, db_name:str, table_name:str):\n",
+					"    '''\n",
+					"    Function which determines if any new files are available in the datalabs environment\n",
+					"    \n",
+					"    Args:\n",
+					"        akv_name (str): Name of the key vault resource\n",
+					"        secret_name (str): Name of the secret\n",
+					"        kv_linked_service (str): Name of the key vault linked service in Azure Synapse\n",
+					"        share_name (str): Azure File Share resource name\n",
+					"        directory_path (str):  Root path to establish ShareDirectoryClient connection to \n",
+					"        jsonschema (str): Pyspark StructType representation of a dataframe schema \n",
+					"        target_container (str): Container containing the Fileshare logs\n",
+					"        target_folder (str): Folder containing the Fileshare delta table\n",
+					"        db_name (str) : name of the database the table will be created within\n",
+					"        table_name (str) : name of the table the parquet will be associated with\n",
+					"\n",
+					"    Returns:\n",
+					"        Nothing\n",
+					"\n",
+					"    Actions:\n",
+					"        Appends any new files to the fileshare logs (a delta table) from a Fileshare\n",
+					"        \n",
+					"    Raises:\n",
+					"        ValueError(\"Empty directory has been provided\") - avoids a Fileshare client directory which is empty\n",
+					"\n",
+					"    '''\n",
+					"    ### start datetime REMOVE?\n",
+					"    import datetime\n",
+					"    dt = datetime.datetime.now()\n",
+					"\n",
+					"\n",
+					"    ### establish connection to azure files and create client\n",
+					"    from azure.storage.fileshare import ShareDirectoryClient\n",
+					"    from notebookutils import mssparkutils\n",
+					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\n",
+					"\n",
+					"    ### recursive function to find all files within a directory\n",
+					"    all_files = []\n",
+					"    def _recursive_find_all_files(share_directory_client):\n",
+					"        files_and_dirs = list(share_directory_client.list_directories_and_files())\n",
+					"        if files_and_dirs == []:\n",
+					"            raise ValueError(\"S2R-SAPHR: Empty directory has been provided\")\n",
+					"        ### add some ms type checks \n",
+					"        # import azure.storage.fileshare\n",
+					"        # isinstance(my_list[0], azure.storage.fileshare._models.DirectoryProperties)\n",
+					"        files_and_dirs_len = len(files_and_dirs)\n",
+					"        count = 0\n",
+					"        for li in files_and_dirs:\n",
+					"            if li['is_directory']:\n",
+					"                _recursive_find_all_files(share_directory_client.get_subdirectory_client(li['name']))\n",
+					"            else:\n",
+					"                fileprops = share_directory_client.get_file_client(li['name']).get_file_properties()\n",
+					"                all_files.append([dt, fileprops.path, fileprops.last_modified]) # correct this to timestamp?\n",
+					"                count += 1\n",
+					"                if files_and_dirs_len == count:\n",
+					"                    break\n",
+					"\n",
+					"    _recursive_find_all_files(parent_dir)\n",
+					"    \n",
+					"    from pyspark.sql import SparkSession\n",
+					"    from pyspark.sql.functions import lit\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"    from pyspark.sql.types import StructType\n",
+					"    import json\n",
+					"\n",
+					"    schema = StructType.fromJson(json.loads(jsonschema))\n",
+					"    logs_now_df = spark.createDataFrame(all_files, schema)\n",
+					"    logs_table_df = spark.read.format(\"delta\").load(target_container+target_folder)\n",
+					"    filtered_cols = logs_now_df.columns\n",
+					"    filtered_cols.remove(\"Process_Date\")\n",
+					"    logs_now_df_compare = logs_now_df.select(filtered_cols)\n",
+					"    logs_table_df_compare = logs_table_df.select(filtered_cols)\n",
+					"    new_paths = logs_now_df_compare.subtract(logs_table_df_compare)\n",
+					"    new_paths = new_paths.withColumn(\"Process_Date\", lit(dt))\n",
+					"\n",
+					"    # new_paths.write.format(\"delta\").mode(\"append\").saveAsTable(f\"{db_name}.{table_name}\")\n",
+					"    if new_paths.count() == 0:\n",
+					"        mssparkutils.notebook.exit(\"[]\")\n",
+					"    else:\n",
+					"        all_paths = [paths[\"Filepath\"] for paths in new_paths.collect()]\n",
+					"        mssparkutils.notebook.exit(\",,,\".join(all_paths))"
+				],
+				"execution_count": 36
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#code copied from py_0_source_to_raw_hr_functions_Copy1\n",
+					"\n",
+					"@logging_to_appins\n",
+					"def create_table_from_schema(jsonschema:str, db_name:str, table_name:str, target_container:str, target_folder:str, change_data_feed=False):\n",
+					"    '''\n",
+					"    Function to create a table from a schema definition. Schema merge is disabled.\n",
+					"    \n",
+					"    Args:\n",
+					"    jsonschema (str) : json representation of the dataframe schema\n",
+					"    db_name (str) : name of the database the table will be created within\n",
+					"    table_name (str) : name of the table the parquet will be associated with\n",
+					"    target_container (str) : storage container within which the parquet will be located\n",
+					"    target_folder (str) : folder within which the filelog and parquet file will be located\n",
+					"    \n",
+					"    Returns:\n",
+					"        Nothing\n",
+					"\n",
+					"    Actions:\n",
+					"        Creates a table if the table doesn't already exist in a target location \n",
+					"        \n",
+					"    Exceptions:\n",
+					"        NameError(f\"{db_name} doesn't exist\") - generated if the desired database doesn't exist already\n",
+					"        ValueError(\"The table is represented by multiple parquet files- please investigate!\")\n",
+					"        ValueError(f\"Table already exists but the location provided doesn't match the existing parquet location for the table!, {table_deets}, {target_loc}\")\n",
+					"    '''\n",
+					"    ### type checks\n",
+					"\n",
+					"    ### imports\n",
+					"    from pyspark.sql.types import StructType\n",
+					"    from pyspark.sql import SparkSession\n",
+					"    import json\n",
+					"    from delta import DeltaTable\n",
+					"    spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"    ### define target location\n",
+					"    target_loc = target_container + target_folder\n",
+					"\n",
+					"    ### change any array field to string \n",
+					"    jsonschema = json.loads(jsonschema)\n",
+					"    for field in jsonschema['fields']:\n",
+					"        if field['type'] == 'array':\n",
+					"            field['type'] = 'string'\n",
+					"    \n",
+					"    ### use json to create dataframe\n",
+					"    schema = StructType.fromJson(jsonschema)\n",
+					"    df = spark.createDataFrame([], schema)\n",
+					"\n",
+					"    ### table checks\n",
+					"    if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\n",
+					"        if any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\n",
+					"            table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\n",
+					"            if len(table_details) > 1:\n",
+					"                raise ValueError(\"S2R-SAPHR: The table is represented by multiple parquet files- please investigate!\")\n",
+					"            else:\n",
+					"                if table_details['location'][0].rstrip(\"/\") == target_loc.rstrip(\"/\"):\n",
+					"                    logInfo(f\"S2R-SAPHR: Table already exists with correct location\")\n",
+					"                else:\n",
+					"                    table_deets = table_details['location'][0]\n",
+					"        \n",
+					"                    raise ValueError(f\"S2R-SAPHR: Table already exists but the location provided doesn't match the existing parquet location for the table!, {table_deets}, {target_loc}\")\n",
+					"        else:\n",
+					"            ### create spark sql table from parquet\n",
+					"            if any([dbs.name == db_name for dbs in spark.catalog.listDatabases()]):\n",
+					"            ### write df to parquet location\n",
+					"                if not (DeltaTable.isDeltaTable(spark,target_loc)):\n",
+					"                    df.write.option(\"mergeSchema\", \"false\").format('delta').save(target_loc)# no overwrite on table creation\n",
+					"                    \n",
+					"                if not any([table.name == table_name for table in spark.catalog.listTables(db_name)]):\n",
+					"                    logInfo(f\"Creating {db_name}.{table_name}\")\n",
+					"                    spark.sql(\"CREATE TABLE {0}.{1} USING DELTA LOCATION '{2}'\".format(db_name,table_name,target_loc))\n",
+					"                    if change_data_feed == True:\n",
+					"                        spark.sql(\"ALTER TABLE {0}.{1} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)\".format(db_name,table_name))\n",
+					"                    logInfo(f\"Created {db_name}.{table_name}\")\n",
+					"    else:\n",
+					"        raise NameError(f\"{db_name} doesn't exist\")"
+				],
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -192,7 +375,7 @@
 					"        raise TypeError(\"Header row should be an integer value\")\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -287,7 +470,7 @@
 					"    logInfo(f\"Written to {targetpath}\")\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
@@ -327,7 +510,7 @@
 					"        deltaTable = DeltaTable.convertToDelta(spark, f\"parquet.`{target_delta_folder}`\") \n",
 					"        logInfo(f\"Converted to {target_delta_folder}\")"
 				],
-				"execution_count": 15
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -366,7 +549,7 @@
 					"    spark.sql(f\"CREATE TABLE {db_name}.{delta_lake_table_name} USING DELTA LOCATION '{target_delta_folder}'\")\n",
 					"    logInfo(f\"Created delta table {db_name}.{delta_lake_table_name}\")"
 				],
-				"execution_count": 16
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -599,7 +782,7 @@
 					"    return (ingestion_failure, rows_raw)\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -676,7 +859,7 @@
 					"    logInfo(f\"Metrics table {metrics_table_name} updated successfully.\")\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 43
 			}
 		]
 	}
