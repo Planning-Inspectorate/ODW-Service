@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "85871014-c0bb-46e4-92d6-2e67031cee39"
+				"spark.autotune.trackingId": "9c637b84-4ab5-4da3-acf3-627863a79ece"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"Param_FileFolder_Path = 'SapHrData'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 1
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -140,7 +140,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 2
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -173,14 +173,14 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 4
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -231,7 +231,7 @@
 					"print(ingestion_log_table_location)\r\n",
 					"ingestion_log_table_location"
 				],
-				"execution_count": 5
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -241,23 +241,25 @@
 					"df_orch = spark.read.option(\"multiline\", \"true\").json(json_schema_file_path)\r\n",
 					"definitions = json.loads(df_orch.toJSON().first())[\"definitions\"]"
 				],
-				"execution_count": 6
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"# --- Helper Functions ---\r\n",
+					"# Get latest folder\r\n",
 					"def get_latest_folder(path):\r\n",
 					"    folders = [f.name for f in mssparkutils.fs.ls(path) if f.isDir]\r\n",
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\r\n",
 					"    print(folders[0])\r\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": 7
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"#Defining all functions\r\n",
+					" \r\n",
 					"@logging_to_appins\r\n",
 					"def read_file(file_path):\r\n",
 					"    try:\r\n",
@@ -295,12 +297,12 @@
 					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"# --- MAIN INGESTION LOGIC ---\r\n",
+					"#-- Main Delta Table Ingestion Logic---\r\n",
 					"@logging_to_appins\r\n",
 					"def process_definitions(Param_File_Load_Type):\r\n",
 					"    matched_definitions = []\r\n",
@@ -356,14 +358,14 @@
 					"                                  .withColumn(\"expected_from\", lit(expected_from)) \\\r\n",
 					"                                  .withColumn(\"expected_to\", lit(expected_to))\r\n",
 					"\r\n",
-					"            delta_table_path = f\"abfss://odw-standardised@{storage_account}/{Param_Json_SchemaFolder_Name}/{definition['Standardised_Table_Name']}\"\r\n",
+					"            delta_table_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}/{definition['Standardised_Table_Name']}\"\r\n",
 					"            full_table_name = f\"{database_name}.{definition['Standardised_Table_Name']}\"\r\n",
-					"            schema_path = f\"abfss://odw-config@{storage_account}/{definition['Standardised_Table_Definition']}\"\r\n",
+					"            schema_path = f\"abfss://odw-config@{storage_account}{definition['Standardised_Table_Definition']}\"\r\n",
 					"\r\n",
-					"            print(schema_path)\r\n",
-					"            print(delta_table_path)\r\n",
-					"            print(full_table_name)\r\n",
-					"\r\n",
+					"            print(f\"schema_path: {schema_path}\")\r\n",
+					"            print(f\"delta_table_path: {delta_table_path}\")\r\n",
+					"            print(f\"full_table_name: {full_table_name}\")\r\n",
+					"            \r\n",
 					"            create_table_if_not_exists(delta_table_path, full_table_name, schema_path)\r\n",
 					"            sparkTableDF.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\r\n",
 					"\r\n",
@@ -384,7 +386,7 @@
 					"            logError(f\"Failed processing for {definition['Standardised_Table_Name']} - {e}\")\r\n",
 					"            logError(\"Logging to tables_logs failed\")"
 				],
-				"execution_count": 16
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -392,7 +394,7 @@
 					"# --- Run the main process ---\r\n",
 					"process_definitions(Param_File_Load_Type)"
 				],
-				"execution_count": 17
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
