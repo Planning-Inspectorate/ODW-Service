@@ -1,0 +1,207 @@
+{
+	"name": "Delta_backup_poc",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "17712460-16b9-4724-8309-23bbe9f560a9"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"\n",
+					"###### Delta Data \n",
+					"###### Analysis to move delta records to another region (target). \n",
+					"###### Current version has a new record inserted or modified\n",
+					"###### When delta is moved to target it should have the latest delta changes"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"db_name='odw_curated_db'\n",
+					"table_name='listed_building'\n",
+					"primary_key='entity'"
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql.functions import col, lit, when\n",
+					"import json\n",
+					"from azure.identity import DefaultAzureCredential\n",
+					"import requests\n",
+					"\n",
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
+					"table_name_full = f\"{db_name}.{table_name}\""
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def get_delta_table_path(table_name):\n",
+					"    table_path = spark.sql(f\"DESCRIBE DETAIL {table_name}\").select(\"location\").first()[\"location\"]\n",
+					"    return table_path\n",
+					"    \n",
+					"def get_delta_table_lastest_version(table_path):\n",
+					"    delta_table = DeltaTable.forPath(spark, table_path)\n",
+					"    history_df = delta_table.history()\n",
+					"    version = history_df.select(\"version\").orderBy(\"version\", ascending=False).first()[\"version\"]\n",
+					"    return version"
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_path: str = get_delta_table_path(table_name_full)\n",
+					"latest_version: int = get_delta_table_lastest_version(table_path)\n",
+					"\n",
+					"if latest_version == 0:\n",
+					"    logInfo(f\"Failed to read changes in delta table: {table_name_full}. Exception: No history found\")\n",
+					"    mssparkutils.notebook.exit('[]')"
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_path"
+				],
+				"execution_count": 17
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df = spark.table(\"odw_curated_db.listed_building\")"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"df.limit(10).write.mode(\"append\").format(\"delta\").option(\"path\",'abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/').saveAsTable(\"odw_curated_db.listed_building_delta\")"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# mssparkutils.fs.cp(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/\",\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta_backup\", True)"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"DESCRIBE history odw_curated_db.listed_building_delta"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\n",
+					"DESCRIBE history odw_curated_db.listed_building_delta_backup"
+				],
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Find non-matching files\n",
+					"# Define the source and target directories\n",
+					"source = \"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/\"\n",
+					"target = \"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta_backup/\"\n",
+					"\n",
+					"# List files in both directories\n",
+					"files_source = mssparkutils.fs.ls(source)\n",
+					"files_target = mssparkutils.fs.ls(target)\n",
+					"\n",
+					"# Extract file names only\n",
+					"filenames_source = set([file.name for file in files_source])\n",
+					"filenames_target = set([file.name for file in files_target])\n",
+					"\n",
+					"# Find non-matching files\n",
+					"only_in_source = filenames_source - filenames_target\n",
+					"only_in_target = filenames_target - filenames_source"
+				],
+				"execution_count": 35
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"print(only_in_target)"
+				],
+				"execution_count": 38
+			}
+		]
+	}
+}
