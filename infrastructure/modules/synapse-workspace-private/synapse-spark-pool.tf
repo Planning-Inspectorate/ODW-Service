@@ -79,7 +79,7 @@ resource "azurerm_synapse_spark_pool" "synapse_preview" {
 
 }
 
-resource "azurerm_synapse_spark_pool" "synapse34" {
+resource "azurerm_synapse_spark_pool" "synapse" {
   count = var.spark_pool_enabled ? 1 : 0
 
   name                           = "pinssynspodw34"
@@ -114,7 +114,7 @@ resource "azurerm_synapse_spark_pool" "synapse34" {
       spark.sql.parquet.int96RebaseModeInWrite CORRECTED
       spark.sql.constraintPropagation.enabled false
       EOT
-    filename = "sparkConfiguration34"
+    filename = "configuration.txt"
   }
 
   tags = local.tags
