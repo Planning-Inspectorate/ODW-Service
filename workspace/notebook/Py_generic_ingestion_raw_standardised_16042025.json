@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "82697298-51f5-4a29-86c7-76c359876d38"
+				"spark.autotune.trackingId": "b0e83607-aeae-4939-87ba-b48d1cbd3b9c"
 			}
 		},
 		"metadata": {
@@ -282,7 +282,18 @@
 					"    for i, c in enumerate(cols):\r\n",
 					"        count = cols[:i].count(c)\r\n",
 					"        deduped.append(f\"{c}{count + 1}\" if count else c)\r\n",
-					"    return df.toDF(*deduped)"
+					"    return df.toDF(*deduped)\r\n",
+					"\r\n",
+					"@logging_to_appins\r\n",
+					"def create_table_if_not_exists(path, table_name, schema_path):\r\n",
+					"    try:\r\n",
+					"        if not DeltaTable.isDeltaTable(spark, path):\r\n",
+					"            schema_json = json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))\r\n",
+					"            schema_str = \", \".join([f\"{f['name']} {f['type']}\" for f in schema_json[\"fields\"]])\r\n",
+					"            spark.sql(f\"CREATE TABLE IF NOT EXISTS {table_name} ({schema_str}) USING DELTA LOCATION '{path}'\")\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
+					""
 				],
 				"execution_count": 8
 			},
@@ -301,13 +312,14 @@
 					"\r\n",
 					"# --- Process Each Definition ---\r\n",
 					"@logging_to_appins\r\n",
-					"def process_definitions():\r\n",
+					"def process_definitions(Param_File_Load_Type):\r\n",
 					"    for definition in definitions:\r\n",
 					"        try:\r\n",
-					"            if definition['Source_Frequency_Folder'].lower() != param_file_load_type.lower():\r\n",
-					"                continue\r\n",
+					"            #if definition['Source_Frequency_Folder'].lower() != param_file_load_type.lower():\r\n",
+					"            #    print()\r\n",
+					"            #    continue\r\n",
 					"\r\n",
-					"            source_path = f\"abfss://odw-raw@{storage_account}/{definition['Source_Folder']}/{param_file_load_type}/\"\r\n",
+					"            source_path = f\"abfss://odw-raw@{storage_account}/{definition['Source_Folder']}/{Param_File_Load_Type}/\"\r\n",
 					"            latest_folder = get_latest_folder(source_path)\r\n",
 					"            if not latest_folder:\r\n",
 					"                logError(f\"No folder found at {source_path}\")\r\n",
@@ -391,15 +403,15 @@
 					"            logError(f\" Failed processing for definition {definition['Source_ID']} - Error: {e}\")\r\n",
 					"            logError(\"Logging to tables_logs failed\")"
 				],
-				"execution_count": 9
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# --- Run the main process ---\r\n",
-					"process_definitions()"
+					"process_definitions(Param_File_Load_Type)"
 				],
-				"execution_count": 12
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
