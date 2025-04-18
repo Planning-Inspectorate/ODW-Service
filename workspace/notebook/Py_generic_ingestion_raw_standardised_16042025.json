@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5a9930bc-ff46-4208-9e35-ab0de3f93614"
+				"spark.autotune.trackingId": "f9c1546b-b397-47fd-b90d-e563e989178a"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"Param_FileFolder_Path = 'SapHrData'\r\n",
 					"Param_Json_SchemaFolder_Name = 'saphr'"
 				],
-				"execution_count": 148
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -138,7 +138,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 149
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -171,14 +171,14 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"print(storage_account)"
 				],
-				"execution_count": 150
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 151
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -212,11 +212,9 @@
 					"odw_raw_base_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\r\n",
 					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}\"\r\n",
 					"schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\r\n",
-					"\r\n",
 					"json_schema_file_path = f\"abfss://odw-config@{storage_account}/orchestration/orchestration.json\"\r\n",
 					"\r\n",
 					"database_name = \"odw_standardised_db\"\r\n",
-					"\r\n",
 					"process_name = 'py_raw_to_std'\r\n",
 					"\r\n",
 					"logging_container = f\"abfss://logging@{storage_account}\"\r\n",
@@ -229,7 +227,7 @@
 					"print(ingestion_log_table_location)\r\n",
 					"ingestion_log_table_location"
 				],
-				"execution_count": 154
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -239,7 +237,7 @@
 					"df_orch = spark.read.option(\"multiline\", \"true\").json(json_schema_file_path)\r\n",
 					"definitions = json.loads(df_orch.toJSON().first())[\"definitions\"]"
 				],
-				"execution_count": 156
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -250,7 +248,7 @@
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\r\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": 157
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -286,7 +284,7 @@
 					"        log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\r\n",
 					"        logInfo(\" Appended new entry to logging table.\")"
 				],
-				"execution_count": 158
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -341,7 +339,7 @@
 					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
 					""
 				],
-				"execution_count": 159
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -422,6 +420,14 @@
 					"                                  .withColumn(\"expected_from\", lit(expected_from)) \\\r\n",
 					"                                  .withColumn(\"expected_to\", lit(expected_to))\r\n",
 					"            \r\n",
+					"            # Schema validation to catch missing columns\r\n",
+					"            expected_schema_fields = [f['name'] for f in json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))['fields']]\r\n",
+					"            actual_fields = sparkTableDF.columns\r\n",
+					"            missing_columns = set(expected_schema_fields) - set(actual_fields)\r\n",
+					"            if missing_columns:\r\n",
+					"                logError(f\"Missing columns for table {definition['Standardised_Table_Name']}: {', '.join(missing_columns)}\")\r\n",
+					"                logInfo(f\"Skipping ingestion for {definition['Standardised_Table_Name']} due to schema mismatch.\")\r\n",
+					"                continue\r\n",
 					"            \r\n",
 					"            # Reorder metadata columns for the standardised delta table\r\n",
 					"            sparkTableDF = reorder_columns(sparkTableDF)\r\n",
@@ -458,7 +464,7 @@
 					"            logError(\"Logging to tables_logs failed\")\r\n",
 					""
 				],
-				"execution_count": 162
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -466,7 +472,7 @@
 					"# --- Run the main process ---\r\n",
 					"process_definitions(Param_File_Load_Type)"
 				],
-				"execution_count": 163
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
