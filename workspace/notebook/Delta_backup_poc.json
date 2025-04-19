@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6498f28c-ad64-4e40-bfba-9fb95177a31f"
+				"spark.autotune.trackingId": "9572377c-8d8e-4a6d-94bb-09cb3609df93"
 			}
 		},
 		"metadata": {
@@ -69,117 +69,40 @@
 				"cell_type": "code",
 				"source": [
 					"db_name='odw_curated_db'\n",
+					"container_name = 'odw-curated'\n",
 					"table_name='listed_building'\n",
 					"primary_key='entity'"
 				],
-				"execution_count": 39
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"from pyspark.sql import SparkSession\n",
-					"from notebookutils import mssparkutils\n",
-					"from delta.tables import DeltaTable\n",
-					"from pyspark.sql.functions import col, lit, when\n",
-					"import json\n",
-					"from azure.identity import DefaultAzureCredential\n",
-					"import requests\n",
-					"\n",
-					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
-					"table_name_full = f\"{db_name}.{table_name}\""
+					"from notebookutils import mssparkutils"
 				],
-				"execution_count": 40
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"def get_delta_table_path(table_name):\n",
-					"    table_path = spark.sql(f\"DESCRIBE DETAIL {table_name}\").select(\"location\").first()[\"location\"]\n",
-					"    return table_path\n",
-					"    \n",
-					"def get_delta_table_lastest_version(table_path):\n",
-					"    delta_table = DeltaTable.forPath(spark, table_path)\n",
-					"    history_df = delta_table.history()\n",
-					"    version = history_df.select(\"version\").orderBy(\"version\", ascending=False).first()[\"version\"]\n",
-					"    return version"
+					"storage_account_name: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"table_path: str = get_delta_table_path(table_name_full)\n",
-					"latest_version: int = get_delta_table_lastest_version(table_path)\n",
-					"\n",
-					"if latest_version == 0:\n",
-					"    logInfo(f\"Failed to read changes in delta table: {table_name_full}. Exception: No history found\")\n",
-					"    mssparkutils.notebook.exit('[]')"
+					"# backup_storage_account_name: str =  '' mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 16
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"table_path"
-				],
-				"execution_count": 17
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"df = spark.table(\"odw_curated_db.listed_building\")"
-				],
-				"execution_count": 18
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"df.limit(10).write.mode(\"append\").format(\"delta\").option(\"path\",'abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/').saveAsTable(\"odw_curated_db.listed_building_delta\")"
-				],
-				"execution_count": 32
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# mssparkutils.fs.cp(\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/\",\"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta_backup\", True)"
-				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"DESCRIBE history odw_curated_db.listed_building_delta"
-				],
-				"execution_count": 33
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"DESCRIBE history odw_curated_db.listed_building_delta_backup"
-				],
-				"execution_count": 34
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Find non-matching files\n",
 					"# Define the source and target directories\n",
-					"source = \"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta/\"\n",
-					"target = \"abfss://odw-curated@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_delta_backup/\"\n",
+					"source = f\"abfss://{container_name}@{storage_account_name}.dfs.core.windows.net/{table_name}/\"\n",
+					"target = f\"abfss://{container_name}@{backup_storage_account_name}.dfs.core.windows.net/{table_name}/\"\n",
 					"\n",
 					"# List files in both directories\n",
 					"files_source = mssparkutils.fs.ls(source)\n",
@@ -190,17 +113,139 @@
 					"filenames_target = set([file.name for file in files_target])\n",
 					"\n",
 					"# Find non-matching files\n",
-					"only_in_source = filenames_source - filenames_target\n",
-					"only_in_target = filenames_target - filenames_source"
+					"only_in_source = filenames_source - filenames_target"
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"for i in only_in_source:\n",
+					"    mssparkutils.fs.cp(source+i,target)\n",
+					"mssparkutils.fs.cp(source+\"_delta_log\",target,True)"
+				],
+				"execution_count": 25
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					" odw-harmonised / appeal_s78"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"import os\n",
+					"\n",
+					"def list_all_files(base_dir):\n",
+					"    \"\"\"\n",
+					"    Recursively lists all files in a directory, returning their relative paths.\n",
+					"    \"\"\"\n",
+					"    file_paths = []\n",
+					"    for root, dirs, files in os.walk(base_dir):\n",
+					"        for name in files:\n",
+					"            full_path = os.path.join(root, name)\n",
+					"            relative_path = os.path.relpath(full_path, base_dir)\n",
+					"            file_paths.append(relative_path)\n",
+					"    return set(file_paths)\n",
+					"\n",
+					"def compare_directories(dir1, dir2):\n",
+					"    \"\"\"\n",
+					"    Compares two directories by structure (relative file paths) and prints differences.\n",
+					"    \"\"\"\n",
+					"    files1 = list_all_files(dir1)\n",
+					"    files2 = list_all_files(dir2)\n",
+					"\n",
+					"    only_in_dir1 = files1 - files2\n",
+					"    only_in_dir2 = files2 - files1\n",
+					"\n",
+					"    print(\"Files only in\", dir1)\n",
+					"    for f in sorted(only_in_dir1):\n",
+					"        print(\"  \", f)\n",
+					"\n",
+					"    print(\"\\nFiles only in\", dir2)\n",
+					"    for f in sorted(only_in_dir2):\n",
+					"        print(\"  \", f)\n",
+					"\n",
+					"# Example usage\n",
+					"dirA = \"abfss://odw-harmonised@pinsstodwdevuks9h80mb.dfs.core.windows.net/appeal_s78_backup/\"\n",
+					"dirB = \"abfss://odw-harmonised@pinsstodwdevuks9h80mb.dfs.core.windows.net/appeal_s78_backup_delta/\"\n",
+					"\n",
+					"compare_directories(dirA, dirB)"
+				],
+				"execution_count": 33
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"\n",
+					"# List files in both directories\n",
+					"files_source = mssparkutils.fs.ls(dirA)\n",
+					"files_target = mssparkutils.fs.ls(dirB)\n",
+					"\n",
+					"# Extract file names only\n",
+					"filenames_source = set([file.name for file in files_source])\n",
+					"filenames_target = set([file.name for file in files_target])\n",
+					"\n",
+					"# Find non-matching files\n",
+					"only_in_source = filenames_source - filenames_target"
+				],
+				"execution_count": 34
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"only_in_source"
 				],
 				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"print(only_in_target)"
+					"#mssparkutils.fs.cp(dirA,dirB,True)"
 				],
-				"execution_count": null
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": true
+					}
+				},
+				"source": [
+					"def list_all_files_recursively(base_path):\n",
+					"    all_files = []\n",
+					"\n",
+					"    def traverse(path, prefix=\"\"):\n",
+					"        entries = mssparkutils.fs.ls(path)\n",
+					"        for entry in entries:\n",
+					"            full_path = entry.path\n",
+					"            relative_path = full_path.replace(base_path, \"\")\n",
+					"            print(relative_path)\n",
+					"            all_files.append(prefix + relative_path)\n",
+					"            if entry.isDir:\n",
+					"                traverse( prefix + relative_path)\n",
+					"            # else:\n",
+					"            #     all_files.append(prefix + relative_path)\n",
+					"\n",
+					"    traverse(base_path)\n",
+					"    return set(all_files)\n",
+					"\n",
+					"source = dirA\n",
+					"target = dirB\n",
+					"# Get all files recursively from both paths\n",
+					"files_source = list_all_files_recursively(source)\n",
+					"files_target = list_all_files_recursively(target)\n",
+					"\n",
+					"# Find non-matching files\n",
+					"only_in_source = files_source - files_target\n",
+					"\n",
+					"print(only_in_source)"
+				],
+				"execution_count": 41
 			}
 		]
 	}
