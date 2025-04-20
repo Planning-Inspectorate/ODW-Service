@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e35b9676-3d78-4332-b5d1-46cef79a875c"
+				"spark.autotune.trackingId": "8d9a4c30-aa9b-4604-81bb-0f6fbbada4d6"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,20 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 14
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get Storage account"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -100,7 +113,40 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 15
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 16
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all storage paths"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -111,11 +157,22 @@
 					"#source_delta_table = f\"{source_database_name}.sap_email_weekly\"\n",
 					"#target_delta_table = f\"{target_database_name}.load_sap_pins_email_weekly\"\n",
 					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}saphr/\"\n",
-					"\n",
-					"print(target_delta_table)\n",
-					"print(delta_table_base_path)"
+					""
 				],
-				"execution_count": 8
+				"execution_count": 17
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define Process Delta table update function"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -131,7 +188,7 @@
 					"                table_list.append(item.name)\n",
 					"        return table_list\n",
 					"    except Exception as e:\n",
-					"        print(f\"Error retrieving Delta tables: {e}\")\n",
+					"        logInfo(f\"Error retrieving Delta tables: {e}\")\n",
 					"        return []\n",
 					"\n",
 					"def process_delta_table(table_name):\n",
@@ -139,14 +196,14 @@
 					"    delta_table_path = f\"{delta_table_base_path}{table_name}\"\n",
 					"\n",
 					"    if DeltaTable.isDeltaTable(spark, delta_table_path):\n",
-					"        print(f\"Processing Delta Table: {table_name}\")\n",
+					"        logInfo(f\"Processing Delta Table: {table_name}\")\n",
 					"        df = spark.read.format(\"delta\").load(delta_table_path)\n",
 					"\n",
 					"        # Identify columns that need modification\n",
 					"        target_columns = [col_name for col_name in [\"PersNo\",\"PersNo1\", \"StaffNumber\"] if col_name in df.columns]\n",
 					"\n",
 					"        if target_columns:\n",
-					"            print(f\"Modifying columns: {target_columns}\")\n",
+					"            prlogInfoint(f\"Modifying columns: {target_columns}\")\n",
 					"\n",
 					"            for col_name in target_columns:\n",
 					"                df = df.withColumn(col_name, when(col(col_name).isNotNull() & (col(col_name).cast(\"string\").rlike(\"^\\\\d{1,7}$\")), lpad(col(col_name).cast(\"string\"), 8, '0'))\n",
@@ -154,70 +211,88 @@
 					"\n",
 					"            # Write back to Delta Table\n",
 					"            df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
-					"            print(f\"Updated Delta Table: {table_name}\")\n",
+					"            logInfo(f\"Updated Delta Table: {table_name}\")\n",
 					"        else:\n",
-					"            print(f\"No matching columns found in {table_name}\")\n",
+					"            logInfo(f\"No matching columns found in {table_name}\")\n",
 					"    else:\n",
-					"        print(f\"Not a Delta Table: {table_name}\")\n",
+					"        logInfo(f\"Not a Delta Table: {table_name}\")\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Main Execution for delta table updates"
+				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Main Execution for processing\n",
-					"print(\"Retrieving Delta tables...\")\n",
+					"logInfo(\"Retrieving Delta tables...\")\n",
 					"delta_tables = get_delta_tables(delta_table_base_path)\n",
-					"print(get_delta_tables(delta_table_base_path))\n",
+					"logInfo(get_delta_tables(delta_table_base_path))\n",
 					"for table in delta_tables:\n",
 					"    process_delta_table(table)\n",
 					"\n",
-					"print(\"Processing completed.\")\n",
+					"logInfo(\"Delta table updates completed successfully.\")\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"#Define source and target Delta tables\n",
 					"\n",
-					"source_table = \"odw_standardised_db.sap_hr_previous_employee_numbers\"\n",
-					"target_tables = [\n",
-					"    \"odw_standardised_db.sap_hr_weekly\",\n",
-					"    \"odw_standardised_db.sap_hr_history_monthly\",\n",
-					"    \"odw_standardised_db.sap_hr_leavers_monthly\"\n",
-					"]\n",
+					"try:\n",
+					"    source_table = \"odw_standardised_db.sap_hr_previous_employee_numbers\"\n",
+					"    target_tables = [\n",
+					"        \"odw_standardised_db.sap_hr_weekly\",\n",
+					"        \"odw_standardised_db.sap_hr_history_monthly\",\n",
+					"        \"odw_standardised_db.sap_hr_leavers_monthly\"\n",
+					"    ]\n",
 					"\n",
-					"# Load source data\n",
-					"df_source = spark.read.format(\"delta\").table(source_table)\n",
+					"    # Load source data\n",
+					"    df_source = spark.read.format(\"delta\").table(source_table)\n",
 					"\n",
-					"# Loop through target tables and update EmployeeNo where PersNo matches\n",
-					"for target_table in target_tables:\n",
-					"    print(f\"Updating {target_table}\")\n",
+					"    # Loop through target tables and update EmployeeNo where PersNo matches\n",
+					"    for target_table in target_tables:\n",
+					"        print(f\"Updating {target_table}\")\n",
 					"\n",
-					"    spark.sql(f\"\"\"\n",
-					"        MERGE INTO {target_table} AS target\n",
-					"        USING {source_table} AS source\n",
-					"        ON target.PersNo = source.PersNo\n",
-					"        WHEN MATCHED THEN\n",
-					"        UPDATE SET target.EmployeeNo = source.EmployeeNo\n",
-					"    \"\"\")\n",
+					"        spark.sql(f\"\"\"\n",
+					"            MERGE INTO {target_table} AS target\n",
+					"            USING {source_table} AS source\n",
+					"            ON target.PersNo = source.PersNo\n",
+					"            WHEN MATCHED THEN\n",
+					"            UPDATE SET target.EmployeeNo = source.EmployeeNo\n",
+					"        \"\"\")\n",
 					"\n",
-					"    print(f\"Updated {target_table}\")\n",
+					"        logInfo(f\"Updated {target_table}\")\n",
 					"\n",
-					"print(\"Delta table updates completed.\")\n",
+					"    logInfo(\"Delta table updates completed.\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"            logError(f\"Failed processing for {target_table} - {e}\")\n",
+					"            logError(\"Delta table updates failed\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"#spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.load_sap_hr_weekly\")"
 				],
-				"execution_count": 7
+				"execution_count": 21
 			}
 		]
 	}
