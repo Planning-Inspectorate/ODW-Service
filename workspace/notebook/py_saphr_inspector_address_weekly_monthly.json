@@ -2,7 +2,7 @@
 	"name": "py_saphr_inspector_address_weekly_monthly",
 	"properties": {
 		"folder": {
-			"name": "2-odw-standardised-to-harmonised/SapHR"
+			"name": "2-odw-standardised-to-harmonised/saphr"
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bc36e0fc-3d8e-497a-bd1b-7802a0178612"
+				"spark.autotune.trackingId": "3010b78f-3482-4591-9bd2-d823c5c11886"
 			}
 		},
 		"metadata": {
@@ -64,9 +64,25 @@
 					"#### The purpose of this pyspark notebook is to read Delta tables from owb_standarsied_db to owb_harmonisied_db and load all records as Delta tables along with metadata columns.\n",
 					"\n",
 					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
-					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table transform_inspector_address into owb-harmonisied_db layer.\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table transform_inspector_address into owb-harmonisied_db layer. Following stored procedures have been reverse engineered &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;from MiPiNS using this notebook :\n",
+					"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 1. [sap_hr].[transform_inspector_addresses]\n",
+					"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2. [sap_hr].[inspector_addresses]\n",
 					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\n",
 					""
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Import all required Python Libraries"
 				]
 			},
 			{
@@ -94,6 +110,19 @@
 				"execution_count": 1
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get storage account"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"#Get Storage account name\n",
@@ -101,6 +130,19 @@
 					"print(storage_account)"
 				],
 				"execution_count": 2
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all storage path"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -111,12 +153,42 @@
 					"source_delta_table = f\"{source_database_name}.inspector_addresses\"\n",
 					"target_delta_table = f\"{target_database_name}.sap_hr_inspector_address\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/sap_hr_inspector_address\"\n",
-					"\n",
-					"print(source_delta_table)\n",
-					"print(target_delta_table)\n",
-					"print(delta_table_path)"
+					""
 				],
 				"execution_count": 3
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### process all transformation"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -126,7 +198,6 @@
 				"source": [
 					"\n",
 					"# Step 1: Read source Delta Table\n",
-					"#df_source_inspector_address = spark.read.format(\"delta\").option(\"inferSchema\", \"false\").table(source_delta_table)\n",
 					"\n",
 					"src_spark_sql = f\"\"\"SELECT  StaffNumber,\n",
 					"                            StreetandHouseNumber,\n",
@@ -178,8 +249,6 @@
 					"\n",
 					"df_transform_inspector_address = spark.sql(src_spark_sql)\n",
 					"\n",
-					"#display(df_transform_inspector_address.count())\n",
-					"\n",
 					"# Add the RowID column to the DataFrame\n",
 					"rowid_columns = [c for c in df_transform_inspector_address.columns]\n",
 					"\n",
@@ -195,8 +264,6 @@
 					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'dd/MM/yyyy').desc())\n",
 					"df_transform_inspector_address = df_transform_inspector_address.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn == 1\").drop(\"rn\")\n",
 					"\n",
-					"#display(df_transform_inspector_address.count())\n",
-					"\n",
 					"df_tgt_inspector_address = spark.table(f\"{target_delta_table}\")\n",
 					"\n",
 					"# Update the existing records\n",
@@ -209,14 +276,29 @@
 					"    how=\"left_anti\"\n",
 					").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
 					"\n",
-					"#display(df_transform_inspector_address.count())\n",
-					"#display(df_tgt_inspector_address.count())\n",
-					"#display(df_new_records_inspector_address.count())\n",
 					"\n",
 					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_new_records_inspector_address).dropDuplicates()\n",
 					"\n",
-					"#display(df_merged_records_inspector_address)\n",
-					"\n",
+					""
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Overwrite new records to target Delta Table"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"# Write new records to target Delta Table\n",
 					"try:\n",
 					"    # Overwrite the entire delta table with transfored dataframe\n",
@@ -228,11 +310,9 @@
 					"except Exception as e:\n",
 					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
 					"    raise\n",
-					"\n",
-					"\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
