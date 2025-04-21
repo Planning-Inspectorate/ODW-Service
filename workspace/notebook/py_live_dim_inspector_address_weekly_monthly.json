@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "56b5b61d-e691-40df-b1a3-d31d17a2fc4e"
+				"spark.autotune.trackingId": "ef301c50-7cbd-43d3-8733-90da97fc2892"
 			}
 		},
 		"metadata": {
@@ -108,7 +108,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -130,7 +130,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -162,7 +162,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 3
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -182,7 +182,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 4
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -303,7 +303,7 @@
 					"df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -439,7 +439,7 @@
 					"df_inactive_inspector_address = spark.sql(src_spark_inspector_inactive_sql)\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -545,7 +545,7 @@
 					"                        )\"\"\"\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -611,7 +611,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -641,7 +641,7 @@
 					"    logError(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
 					"    raise"
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -691,9 +691,31 @@
 					"\n",
 					"df_horizon_appeals_inspectors_kludge = spark.sql(src_horizon_appeals_inspectors_kludge_sql)\n",
 					"\n",
+					"# Add the RowID column to the DataFrame\n",
+					"rowid_columns = [c for c in df_dedup_all_inspector_address.columns]\n",
+					"\n",
+					"# Convert RowID columns to hash values\n",
+					"rowid_expr = md5(concat_ws(\"|\", *[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns]))\n",
+					"\n",
+					"# Add the RowID column to the DataFrame\n",
+					"#df_transform_inspector_address = df_transform_inspector_address.withColumn(\"RowID\", rowid_expr)\n",
+					"\n",
+					"#Add Audit columns records including ROWID\n",
+					"df_dedup_all_inspector_address = df_dedup_all_inspector_address.select(\n",
+					"    *[col(c) for c in df_dedup_all_inspector_address.columns if c not in [\"is_sgl\"]],\n",
+					"    col(\"is_sgl\").cast(\"string\").alias(\"is_sgl\"),\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    expr(\"current_timestamp() - INTERVAL 1 DAY\").alias(\"ValidFrom\"),\n",
+					"    current_timestamp().alias(\"ValidTo\"),\n",
+					"    rowid_expr.alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					")\n",
+					"\n",
+					"\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -723,7 +745,7 @@
 					"    logError(f\" Error writing to {target_horizon_delta_table}: {str(e)}\")\n",
 					"    raise"
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -736,7 +758,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 10
+				"execution_count": 23
 			}
 		]
 	}
