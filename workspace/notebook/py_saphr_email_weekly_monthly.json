@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ccf5e5a0-30e7-4fef-a9e2-d0c9a078d919"
+				"spark.autotune.trackingId": "6e1214ab-5fc0-4d6d-9f88-7d91b0d8b98e"
 			}
 		},
 		"metadata": {
@@ -64,9 +64,26 @@
 					"#### The purpose of this pyspark notebook is to read Delta tables from owb_standarsied_db to owb_harmonisied_db and load all records as Delta tables along with metadata columns.\n",
 					"\n",
 					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
-					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to load Delta Table SAP_HR_Weekly into owb-harmonisied_db layer.\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to load Delta Table load_load_sap_pins_email and vw_sap_hr_email into owb-harmonisied_db layer from MiPiNS using this stored procedure:\n",
+					"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Build].[sap_PINS_email_weekly_adf] and view [load].[vw_SAP_HR_email] \n",
+					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\n",
+					"\n",
 					"\n",
 					""
+				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Import all required Python Libraries"
 				]
 			},
 			{
@@ -93,6 +110,19 @@
 				"execution_count": 4
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get storage account"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"#Get Storage account name\n",
@@ -100,6 +130,39 @@
 					"print(storage_account)"
 				],
 				"execution_count": 5
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all storage path"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -118,6 +181,19 @@
 					""
 				],
 				"execution_count": 6
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process all steps to transform load_sap_pins_email"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -147,8 +223,26 @@
 					"    lit(\"Y\").alias(\"IsActive\")\n",
 					")\n",
 					"\n",
-					"#target_sap_hr_weekly_df.printSchema()\n",
-					"\n",
+					""
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Overwrite data to target Delta Table  load_sap_pins_email"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"# Write data to target Delta Table\n",
 					"try:\n",
 					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
@@ -163,7 +257,20 @@
 					"    raise\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process all steps to transform load_vw_sap_hr_email"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -197,7 +304,26 @@
 					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
 					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
 					"    lit(\"Y\").alias(\"IsActive\"))\n",
-					"\n",
+					""
+				],
+				"execution_count": 9
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process all steps to transform load_vw_sap_hr_email"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"# Write data to target Delta Table\n",
 					"try:\n",
 					"    df_load_vw_sap_email.write.format(\"delta\").mode(\"overwrite\").save(delta_view_path)\n",
@@ -211,7 +337,7 @@
 					"    print(f\" Error writing to {df_load_vw_sap_email}: {str(e)}\")\n",
 					"    raise"
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
