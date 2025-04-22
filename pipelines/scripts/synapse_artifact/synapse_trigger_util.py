@@ -29,3 +29,5 @@ class SynapseTriggerUtil(SynapseArtifactUtil):
 
     def get_nullable_properties(self) -> List[str]:
         return []
+
+
