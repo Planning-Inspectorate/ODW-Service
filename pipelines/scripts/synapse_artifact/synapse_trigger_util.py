@@ -1,6 +1,5 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
 from typing import List, Dict, Any
-import json
 
 
 class SynapseTriggerUtil(SynapseArtifactUtil):
@@ -20,14 +19,12 @@ class SynapseTriggerUtil(SynapseArtifactUtil):
             all_triggers.extend(response["value"])
         return all_triggers
 
-    def get_uncomparable_properties(self) -> List[str]:
+    def get_uncomparable_attributes(self) -> List[str]:
         return [
             r"^id$",
             r"^etag$",
             r"^type$"
         ]
 
-    def get_nullable_properties(self) -> List[str]:
+    def get_nullable_attributes(self) -> List[str]:
         return []
-
-

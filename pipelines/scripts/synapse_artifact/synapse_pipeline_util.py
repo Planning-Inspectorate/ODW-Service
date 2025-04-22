@@ -19,14 +19,14 @@ class SynapsePipelineUtil(SynapseArtifactUtil):
             all_pipelines.extend(response["value"])
         return all_pipelines
 
-    def get_uncomparable_properties(self) -> List[str]:
+    def get_uncomparable_attributes(self) -> List[str]:
         return [
             r"^id$",
             r"^etag$",
             r"^properties.lastPublishTime"
         ]
 
-    def get_nullable_properties(self) -> List[str]:
+    def get_nullable_attributes(self) -> List[str]:
         return [
             r"^properties.activities.\d+.inputs.\d+.parameters$",
             r"^properties.activities.\d+.outputs.\d+.parameters$",
