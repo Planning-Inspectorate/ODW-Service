@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d247221e-b3c6-4842-98ed-d3fa2f82a650"
+				"spark.autotune.trackingId": "868c472d-990d-440f-8b44-124892e13869"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -117,7 +117,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 2
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -137,7 +137,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 3
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -163,7 +163,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -188,6 +188,14 @@
 					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
 					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
 					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
+					"\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
+					"set a.PersNo1 = '00000000'\n",
+					"where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
+					"\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
+					"SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
+					"WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
 					"\n",
 					"# Recursive CTE to build SAP employee hierarchy\n",
 					"df_emp_anchor = df_load_sap_hr.alias(\"H1\").join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\")).filter(col(\"H1.PersNo1\") == \"00000000\").select(\n",
@@ -230,7 +238,7 @@
 					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -326,8 +334,6 @@
 					"            f\"b.mgr_email_address as level_{i}_mgr_email\"\n",
 					"        )\n",
 					"\n",
-					"display(flattened.count())\n",
-					"\n",
 					"# Create array of structs (level_1 is closest manager, level_n is highest)\n",
 					"mgr_struct_expr = expr(\n",
 					"    \"array(\" + \", \".join([\n",
@@ -388,7 +394,7 @@
 					"\n",
 					"# Final output sorted in descending mgr_level = closest at top\n",
 					"df_final_dim_hierarchy = flattened_exploded.unionByName(sgl_df.select(flattened_exploded.columns)).dropDuplicates()\n",
-					"df_final_dim_hierarchy = final_dim_hierarchy.orderBy(\"emp_id\", col(\"mgr_level\").desc())\n",
+					"df_final_dim_hierarchy = df_final_dim_hierarchy.orderBy(\"emp_id\", col(\"mgr_level\").desc())\n",
 					"\n",
 					"rowid_columns = [c for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}]\n",
 					"\n",
@@ -420,11 +426,11 @@
 					"col(\"IsActive\")\n",
 					")\n",
 					"    \n",
-					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
+					"df_final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
 					"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -456,7 +462,7 @@
 					"    raise\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -467,16 +473,6 @@
 					"#spark.sql(f\"delete from odw_harmonised_db.sap_hr_inspector_address\")\n",
 					"\n",
 					"# Read source data from Delta Tables\n",
-					"\n",
-					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
-					"#set a.PersNo1 = '00000000'\n",
-					"#where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
-					"\n",
-					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
-					"#SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
-					"#WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
-					"\n",
-					"\n",
 					""
 				],
 				"execution_count": null
