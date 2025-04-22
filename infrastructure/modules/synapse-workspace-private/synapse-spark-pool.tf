@@ -79,7 +79,7 @@ resource "azurerm_synapse_spark_pool" "synapse_preview" {
 
 }
 
-resource "azurerm_synapse_spark_pool" "synapse" {
+resource "azurerm_synapse_spark_pool" "synapse34" {
   count = var.spark_pool_enabled ? 1 : 0
 
   name                           = "pinssynspodw34"
