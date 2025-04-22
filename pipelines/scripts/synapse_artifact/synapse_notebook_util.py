@@ -19,7 +19,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             all_notebooks.extend(response["value"])
         return all_notebooks
 
-    def get_uncomparable_properties(self) -> List[str]:
+    def get_uncomparable_attributes(self) -> List[str]:
         return [
             r"id",
             r"type",
@@ -37,5 +37,5 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"properties.metadata.kernelspec.display_name"
         ]
 
-    def get_nullable_properties(self) -> List[str]:
+    def get_nullable_attributes(self) -> List[str]:
         return []
