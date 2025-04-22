@@ -3,6 +3,9 @@ from typing import List, Dict, Any
 
 
 class SynapsePipelineUtil(SynapseArtifactUtil):
+    """
+        Class for managing the retrieval and analysis of Synapse Pipeline artifacts
+    """
     def get(self, artifact_name: str) -> Dict[str, Any]:
         return self._web_request(
             f"{self.synapse_endpoint}/pipelines/{artifact_name}?api-version=2020-12-01",

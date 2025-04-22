@@ -10,6 +10,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 class SynapseArtifactUtil(ABC):
+    """
+        Abstract class for managing the retrieval and analysis of Synapse artifacts
+    """
     def __init__(self, workspace_name: str):
         """
             :param workspace_name: The name of the Synapse workspace
