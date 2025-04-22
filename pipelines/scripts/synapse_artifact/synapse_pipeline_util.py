@@ -29,17 +29,18 @@ class SynapsePipelineUtil(SynapseArtifactUtil):
 
     def compare(self, artifact_a, artifact_b) -> bool:
         uncomparable_properties = [
-            r"id",
-            r"etag"
+            r"^id$",
+            r"^etag$",
+            r"^properties.lastPublishTime"
         ]
         nullable_properties = [
-            r"properties.activities.\d+.inputs.\d+.parameters",
-            r"properties.activities.\d+.outputs.\d+.parameters",
-            r"properties.activities.\d+.policy",
-            r"properties.activities.\d+.policy.secureInput",
-            r"properties.activities.\d+.typeProperties.parameters",
-            r"properties.policy",
-            r"properties.policy.elapsedTimeMetric"
+            r"^properties.activities.\d+.inputs.\d+.parameters$",
+            r"^properties.activities.\d+.outputs.\d+.parameters$",
+            r"^properties.activities.\d+.policy$",
+            r"^properties.activities.\d+.policy.secureInput$",
+            r"^properties.activities.\d+.typeProperties.parameters$",
+            r"^properties.policy$",
+            r"^properties.policy.elapsedTimeMetric$"
         ]
         artifact_a_properties = self._extract_dict_keys(artifact_a)
         artifact_b_properties = self._extract_dict_keys(artifact_b)
@@ -55,6 +56,6 @@ class SynapsePipelineUtil(SynapseArtifactUtil):
             uncomparable_properties,
             nullable_properties
         )
-        artifact_a_string = json.dumps(artifact_a_properties_cleaned, sort_keys=True)
-        artifact_b_string = json.dumps(artifact_b_properties_cleaned, sort_keys=True)
-        return artifact_a_string == artifact_b_string
+        if artifact_a_properties_cleaned != artifact_b_properties_cleaned:
+            return False
+        return self._compare_properties(artifact_a_properties_cleaned, artifact_a, artifact_b)

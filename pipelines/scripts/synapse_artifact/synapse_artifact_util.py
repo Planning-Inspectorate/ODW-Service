@@ -3,7 +3,10 @@ import requests
 from abc import ABC, abstractmethod
 from typing import Union, List, Dict, Any, Set
 import re
+import logging
 import json
+
+logging.basicConfig(level=logging.INFO)
 
 
 class SynapseArtifactUtil(ABC):
@@ -63,7 +66,7 @@ class SynapseArtifactUtil(ABC):
                 if elem:
                     return False
             return True
-        return property is None
+        return not bool(property)
 
     def get_all_properties(self, target_json: Dict[str, Any]) -> Set[str]:
         """
@@ -118,7 +121,7 @@ class SynapseArtifactUtil(ABC):
             ```
         """
         current_level_prefix = f"{current_level}." if current_level else ""
-        dict_keys = {current_level: None}
+        dict_keys = dict()
         for i, val in enumerate(target_list):
             new_level = f"{current_level_prefix}{i}"
             if isinstance(val, dict):
@@ -153,18 +156,10 @@ class SynapseArtifactUtil(ABC):
             ```
         """
         current_level_prefix = f"{current_level}." if current_level else ""
-        dict_keys = {current_level: None} if current_level else dict()
-        dict_keys = dict(
-            dict_keys,
-            **{
-                f"{current_level_prefix}{key}": None
-                for key in target_dict.keys()
-            }
-        )
+        dict_keys = dict()
         for key, val in target_dict.items():
             new_level = f"{current_level_prefix}{key}"
             if isinstance(val, dict):
-                dict_keys[new_level] = None
                 dict_keys = dict(dict_keys, **self._extract_dict_keys(val, new_level))
             elif isinstance(val, list):
                 dict_keys = dict(dict_keys, **self._extract_list_keys(val, new_level))
@@ -180,25 +175,9 @@ class SynapseArtifactUtil(ABC):
             nullable_properties: Set[str]
         ) -> Set[str]:
         """
-            Remove uncomparable properties, or nullified properties from the given json
+            Return the properties that can be compared, and are nullable but with non-null values
         """
-        def extract_value_from_property(json_dict: Dict[str, Any], property: str) -> Any:
-            """
-                Access json properties by a dot-notation string.
-                e.g `extract_value_from_property({"a": {"b": 2}}, "a.b") -> 2`
-            """
-            property_split = property.split(".")
-            property_value = json_dict
-            for subproperty in property_split:
-                if isinstance(property_value, dict):
-                    property_value = property_value[subproperty]
-                elif isinstance(property_value, list):
-                    property_value = property_value[int(subproperty)]
-                else:
-                    raise ValueError(f"Could not access property {property_value} by key '{subproperty}'")
-            return property_value
-
-        return [
+        return {
             property
             for property in properties
             if (
@@ -207,9 +186,51 @@ class SynapseArtifactUtil(ABC):
                     (not any(re.match(pattern, property) for pattern in nullable_properties)) or
                     (
                         any(re.match(pattern, property) for pattern in nullable_properties) and
-                        not self.is_property_empty(extract_value_from_property(json_dict, property))
+                        not self.is_property_empty(self._extract_value_from_property(json_dict, property))
                     )
                 )
             )
-        ]
+        }
     
+    def _extract_value_from_property(self, json_dict: Dict[str, Any], property: str) -> Any:
+        """
+            Access json properties by a dot-notation string.
+            e.g `extract_value_from_property({"a": {"b": 2}}, "a.b") -> 2`
+        """
+        property_split = property.split(".")
+        property_value = json_dict
+        for i, subproperty in enumerate(property_split):
+            remaining_subproperties = ".".join(property_split[i:])
+            if remaining_subproperties in property_value:
+                # This is for cases like spark variables which may be stored in the json
+                return property_value[remaining_subproperties]
+            if isinstance(property_value, dict):
+                if subproperty not in property_value:
+                    raise ValueError(f"Unable to extract subproperty '{subproperty}' from {property_value}. Full property name is '{property}'")
+                property_value = property_value[subproperty]
+            elif isinstance(property_value, list):
+                if int(subproperty) >= len(property_value):
+                    raise ValueError(f"Unable to extract subproperty '{subproperty}' from {property_value}. Full property name is '{property}'")
+                property_value = property_value[int(subproperty)]
+            else:
+                if i != len(property_split) - 1:
+                    # Only allow returning leaf values if they are the last name to be resolved
+                    raise ValueError(f"Could not access property {property_value} by key '{subproperty}' - the value is not a collection")
+        return property_value
+    
+    def _compare_properties(self, properties: Set[str], dict_a: Dict[str, Any], dict_b: Dict[str, Any]) -> Dict[str, bool]:
+        """
+            Compare each property between the two dictionaries
+        """
+        for property in properties:
+            val_a = self._extract_value_from_property(dict_a, property)
+            val_b = self._extract_value_from_property(dict_b, property)
+            if val_a != val_b:
+                logging.info(
+                    (
+                        f"Mismatch between artifacts for property '{property}'. {json.dumps(val_a, indent=4)} != {json.dumps(val_b, indent=4)}"
+                        ". Ending comparison of artifacts"
+                    )
+                )
+                return False
+        return True
