@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ba50d9a5-b07d-4664-ba64-0e6ffe3189e7"
+				"spark.autotune.trackingId": "90593d20-abd8-499c-a64d-e3a179119e57"
 			}
 		},
 		"metadata": {
@@ -64,7 +64,11 @@
 					"#### The purpose of this pyspark notebook is to read Delta tables from owb_standarsied_db to owb_harmonisied_db and load all records as Delta tables along with metadata columns.\n",
 					"\n",
 					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
-					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table dim_employee_hierarchy into owb-harmonisied_db layer.\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table transform_inspector_address into owb-harmonisied_db &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;layer. Following stored procedures have been reverse engineered from MiPiNS using these stored prcedures : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. [Build].[sap_employee_hierarchy] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. [Build].[dim_employee_hierarchy] and function &nbsp;&nbsp;\n",
+					"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. [Live].[udf_sap_LineManagement_H]\n",
+					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\n",
+					"\n",
 					"\n",
 					""
 				]
@@ -94,6 +98,19 @@
 				"execution_count": 6
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get storage account"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"#Get Storage account name\n",
@@ -101,6 +118,39 @@
 					"print(storage_account)"
 				],
 				"execution_count": 15
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all storage path"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -115,18 +165,24 @@
 					"\n",
 					"delta_horizon_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_horizon_appeals_inspectors_kludge\"\n",
 					"\n",
-					"print(source_delta_table)\n",
-					"print(target_delta_table)\n",
-					"print(delta_table_path)"
+					"#print(source_delta_table)\n",
+					"#print(target_delta_table)\n",
+					"#print(delta_table_path)"
 				],
 				"execution_count": 16
 			},
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
 				"source": [
-					"%run utils/py_logging_decorator"
-				],
-				"execution_count": 7
+					"##### Process to transform Manager's hierarchy"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -182,56 +238,6 @@
 					""
 				],
 				"execution_count": 10
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# Step 4: Get hierarchy tree with adjusted levels discard\n",
-					"df_hierarchy_tree_with_levels = spark.sql(\"\"\"\n",
-					"    SELECT \n",
-					"        PersNo AS emp_id,\n",
-					"        FullName AS emp_name,\n",
-					"        email_address AS emp_email_address,\n",
-					"        ManagerNo AS mgr_id,\n",
-					"        Manager AS mgr_name,\n",
-					"        EmpLevel - 1 AS mgr_level,\n",
-					"        ManagerEmail AS mgr_email_address,\n",
-					"        'SAP' AS hierarchy\n",
-					"    FROM live_sap_employee_hierarchy\n",
-					"    WHERE EmpLevel > 1\n",
-					"\"\"\")\n",
-					"\n",
-					"# Add SGL-based hierarchy from dim_inspector\n",
-					"df_sgl = df_live_dim_inspector.filter(\"is_sgl = 1 AND active_status = 'ACTIVE'\").join(df_vw_sap_email, df_live_dim_inspector.pins_email_address == df_vw_sap_email.email_address).selectExpr(\n",
-					"        \"resource_code as resource_group\",\n",
-					"        \"PersNo as mgr_id\",\n",
-					"        \"concat(Firstname, ' ',Lastname) as mgr_name\",\n",
-					"        \"1 as mgr_level\",\n",
-					"        \"pins_email_address as mgr_email_address\",\n",
-					"        \"concat('Chart (', resource_code, ')') as hierarchy\"\n",
-					"    )\n",
-					"\n",
-					"df_sgl_join = df_live_dim_inspector.filter(\"is_sgl = 0\").join(df_vw_sap_email, df_live_dim_inspector.pins_email_address == df_vw_sap_email.email_address).join(df_sgl, \"resource_group\").selectExpr(\n",
-					"        \"PersNo as emp_id\",\n",
-					"        \"concat(Firstname, ' ', Lastname) as emp_name\",\n",
-					"        \"pins_email_address as emp_email_address\",\n",
-					"        \"mgr_id\",\n",
-					"        \"mgr_name\",\n",
-					"        \"mgr_level\",\n",
-					"        \"mgr_email_address\",\n",
-					"        \"hierarchy\"\n",
-					"    )\n",
-					"\n",
-					"# De-duplicate entries\n",
-					"df_combined = df_hierarchy_tree.unionByName(df_sgl_join)\n",
-					"\n",
-					"window_spec = Window.partitionBy(\"emp_email_address\", \"mgr_email_address\").orderBy(col(\"hierarchy\").desc())\n",
-					"df_deduped = df_combined.withColumn(\"row_number\", row_number().over(window_spec)).filter(col(\"row_number\") == 1).drop(\"row_number\")\n",
-					"\n",
-					"# Final temp view\n",
-					"df_deduped.createOrReplaceTempView(\"dim_emp_hierarchy\")"
-				],
-				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -432,92 +438,26 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
 				"source": [
-					"%%sql\n",
 					"\n",
-					"--select * from dim_emp_hierarchy where hierarchy_source = 'SAP'\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.live_dim_emp_hierarchy\")\n",
 					"\n",
-					"--    \tselect\t\n",
-					"--\t\temp_email_address\n",
-					"--\t\t,mgr_email_address\n",
-					"--\tfrom \n",
-					"--\t\tdim_emp_hierarchy\n",
-					"--\tgroup by \n",
-					"--\t\temp_email_address\n",
-					"--\t\t,mgr_email_address\n",
-					"--\thaving count(*) > 1\n",
-					"\n",
-					"    select * from dim_emp_hierarchy where emp_email_address = 'NICHOLA.ROBINSON.JH@PLANNINGINSPECTORATE.GOV.UK' --AND mgr_email_address'MATTHEW.BALE.H9@PLANNINGINSPECTORATE.GOV.UK'\n",
-					""
-				],
-				"execution_count": 51
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
+					"#spark.sql(f\"delete from odw_harmonised_db.sap_hr_inspector_address\")\n",
 					"\n",
 					"# Read source data from Delta Tables\n",
 					"\n",
-					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
-					"set a.PersNo1 = '00000000'\n",
-					"where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
+					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
+					"#set a.PersNo1 = '00000000'\n",
+					"#where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
 					"\n",
-					"\n",
-					"\n",
-					"\n",
-					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
-					"SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
-					"WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
-					"\n",
-					"#spark.sql(\"\"\"MERGE INTO odw_harmonised_db.load_sap_hr_monthly AS target\n",
-					"#USING odw_standardised_db.sap_hr_history_monthly  AS source\n",
-					"#ON target.PersNo = source.PersNo\n",
-					"#WHEN MATCHED THEN\n",
-					"#  UPDATE SET target.PersNo1 = source.PersNo1\"\"\")\n",
-					"\n",
-					"#spark.sql(\"\"\"with upd_pers as\n",
-					"#(\n",
-					"#select PersNo,PersNo1 from odw_standardised_db.sap_hr_history_monthly     \n",
-					"#)\n",
-					"#UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
-					"#SET a.persno1 = upd_pers.PersNo1\n",
-					"#FROM upd_pers\n",
-					"#INNER JOIN  odw_harmonised_db.load_sap_hr_monthly ON a.PersNo = upd_pers.PersNo\"\"\")\n",
-					"\n",
-					"#df_active_inspector_address = spark.sql(src_spark_inspector_active_sql)\n",
-					""
-				],
-				"execution_count": 9
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"\n",
-					"spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.live_dim_emp_hierarchy\")\n",
-					"\n",
-					"#spark.sql(f\"delete from odw_harmonised_db.sap_hr_inspector_address\")\n",
+					"#spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
+					"#SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
+					"#WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
 					"\n",
 					"\n",
 					""
 				],
 				"execution_count": 31
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"#update odw_standardised_db.load_iss_job\n",
-					"#set Status = 'C'"
-				],
-				"execution_count": null
 			}
 		]
 	}
