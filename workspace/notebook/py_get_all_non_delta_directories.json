@@ -1,0 +1,119 @@
+{
+	"name": "py_get_all_non_delta_directories",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "bed09f3c-3528-4202-945e-92bce0992bb4"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
+				"name": "pinssynspodw",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from notebookutils import mssparkutils\n",
+					"import re\n",
+					"\n",
+					"storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_source')).group(1)\n",
+					""
+				],
+				"execution_count": 41
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"container_name = 'odw-harmonised'"
+				],
+				"execution_count": 42
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"storage_account_path"
+				],
+				"execution_count": 43
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"storage_account = storage_account_path.split(\".\")[0]"
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from notebookutils import mssparkutils\n",
+					"\n",
+					"# Define the container path (use abfss:// if ADLS Gen2, or wasbs:// for blob)\n",
+					"container_path = f\"abfss://{container_name}@{storage_account}.dfs.core.windows.net/\"\n",
+					"\n",
+					"# List top-level directories in the container\n",
+					"top_level_items = mssparkutils.fs.ls(container_path)\n",
+					"top_level_dirs = [item.path for item in top_level_items if item.isDir and not item.path.endswith('_delta_log/')]\n",
+					"\n",
+					"# Function to check if a directory directly contains _delta_log\n",
+					"def has_direct_delta_log(dir_path):\n",
+					"    try:\n",
+					"        children = mssparkutils.fs.ls(dir_path)\n",
+					"        return any(child.isDir and child.path.rstrip('/').endswith('_delta_log') for child in children)\n",
+					"    except Exception as e:\n",
+					"        print(f\"Error accessing {dir_path}: {e}\")\n",
+					"        return False\n",
+					"\n",
+					"# Filter directories that DO NOT contain _delta_log directly inside\n",
+					"dirs_without_delta_log = [d for d in top_level_dirs if not has_direct_delta_log(d)]\n",
+					"\n",
+					"# Display the result\n",
+					"for d in dirs_without_delta_log:\n",
+					"    print(d)\n",
+					"\n",
+					"print(f\"\\nTotal directories without _delta_log inside them: {len(dirs_without_delta_log)}\")\n",
+					"\n",
+					""
+				],
+				"execution_count": 48
+			}
+		]
+	}
+}
