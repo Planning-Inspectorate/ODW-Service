@@ -3,6 +3,9 @@ from typing import List, Dict, Any
 
 
 class SynapseTriggerUtil(SynapseArtifactUtil):
+    """
+        Class for managing the retrieval and analysis of Synapse Trigger artifacts
+    """
     def get(self, artifact_name: str) -> Dict[str, Any]:
         return self._web_request(
             f"{self.synapse_endpoint}/triggers/{artifact_name}?api-version=2020-12-01",
