@@ -1,7 +1,5 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
 from typing import List, Dict, Any
-import json
-import re
 
 
 class SynapsePipelineUtil(SynapseArtifactUtil):
