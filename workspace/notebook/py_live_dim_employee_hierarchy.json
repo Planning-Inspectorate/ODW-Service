@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "90593d20-abd8-499c-a64d-e3a179119e57"
+				"spark.autotune.trackingId": "f192b77b-bb61-4ed4-9393-503499c734b9"
 			}
 		},
 		"metadata": {
@@ -160,14 +160,8 @@
 					"target_database_name = \"odw_harmonised_db\"\n",
 					"source_delta_table = f\"{source_database_name}.inspector_addresses_weekly\"\n",
 					"target_delta_table = f\"{target_database_name}.live_dim_emp_hierarchy\"\n",
-					"target_horizon_delta_table = f\"{target_database_name}.load_horizon_appeals_inspectors_kludge\"\n",
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
-					"\n",
-					"delta_horizon_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/load_horizon_appeals_inspectors_kludge\"\n",
-					"\n",
-					"#print(source_delta_table)\n",
-					"#print(target_delta_table)\n",
-					"#print(delta_table_path)"
+					""
 				],
 				"execution_count": 16
 			},
@@ -233,11 +227,23 @@
 					"df_emp_hierarchy_final.createOrReplaceTempView(\"live_sap_employee_hierarchy\")\n",
 					"\n",
 					"# load final employee hierarchy with manager information\n",
-					"print(df_emp_hierarchy_final.count())\n",
 					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
 					""
 				],
 				"execution_count": 10
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process to transform and flatten employee's hierarchy"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -414,9 +420,28 @@
 					"col(\"IsActive\")\n",
 					")\n",
 					"    \n",
+					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
 					"\n",
-					"display(df_final_dim_hierarchy)\n",
-					"\n",
+					""
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Overwrie delta table for Live_dim_employee_hierarchy"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"# Write data to target Delta Table\n",
 					"try:\n",
 					"    df_final_dim_hierarchy.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
@@ -424,17 +449,14 @@
 					"    # Ensure the table exists\n",
 					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
 					"\n",
-					"    print(f\" Data successfully written to {target_delta_table}\")\n",
+					"    logInfo(f\" Data successfully written to {target_delta_table}\")\n",
 					"\n",
 					"except Exception as e:\n",
-					"    print(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    logError(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
 					"    raise\n",
-					"\n",
-					"final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
-					"#display(df_final_dim_hierarchy)\n",
 					""
 				],
-				"execution_count": 32
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
