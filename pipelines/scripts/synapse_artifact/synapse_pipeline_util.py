@@ -29,6 +29,7 @@ class SynapsePipelineUtil(SynapseArtifactUtil):
     def get_uncomparable_attributes(self) -> List[str]:
         return [
             r"^id$",
+            r"^type$",
             r"^etag$",
             r"^properties.lastPublishTime"
         ]
@@ -41,5 +42,20 @@ class SynapsePipelineUtil(SynapseArtifactUtil):
             r"^properties.activities.\d+.policy.secureInput$",
             r"^properties.activities.\d+.typeProperties.parameters$",
             r"^properties.policy$",
-            r"^properties.policy.elapsedTimeMetric$"
+            r"^properties.policy.elapsedTimeMetric$",
+            r"properties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.minExecutors",
+            r"properties.activities.\d+.typeProperties.numExecutors",
+            r"properties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.enabled",
+            r"properties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.maxExecutors",
+            r"properties.activities.\d+.typeProperties.ifTrueActivities.\d+.typeProperties.conf.spark.dynamicAllocation.minExecutors",
+            r"properties.activities.\d+.typeProperties.ifTrueActivities.\d+.typeProperties.conf.spark.dynamicAllocation.enabled",
+            r"properties.activities.\d+.typeProperties.ifTrueActivities.\d+.typeProperties.conf.spark.dynamicAllocation.maxExecutors",
+            r"properties.activities.\d+.typeProperties.ifTrueActivities.\d+.typeProperties.numExecutors",
+            r"properties.activities.\d+.typeProperties.ifFalseActivities.\d+.policy.secureInput",
+            r"properties.activities.\d+.typeProperties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.maxExecutors",
+            r"properties.activities.\d+.typeProperties.activities.\d+.typeProperties.numExecutors",
+            r"properties.activities.\d+.typeProperties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.enabled",
+            r"properties.activities.\d+.typeProperties.activities.\d+.typeProperties.conf.spark.dynamicAllocation.minExecutors",
+            r"properties.activities.\d+.typeProperties.activities.\d+.policy.secureInput",
+            r"properties.activities.\d+.typeProperties.ifTrueActivities.\d+.policy.secureInput"
         ]

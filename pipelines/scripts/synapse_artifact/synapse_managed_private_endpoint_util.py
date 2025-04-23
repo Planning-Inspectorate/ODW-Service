@@ -56,7 +56,18 @@ class SynapseManagedPrivateEndpointUtil(SynapseArtifactUtil):
                     json.dump(artifact, f, indent=4)
 
     def get_uncomparable_attributes(self) -> List[str]:
-        return []
+        return [
+            r"^id$",
+            r"^etag$",
+            r"^type$",
+            # Ignore these because they are auto-generated after creation, or are not relevant to the MPE's config
+            r"properties.connectionState",
+            r"^properties.resourceId$",
+            r"^properties.isCompliant$",
+            r"^properties.isReserved$",
+            r"^properties.ipAddress$",
+            r"^properties.provisioningState$"
+        ]
 
     def get_nullable_attributes(self) -> List[str]:
         return []
