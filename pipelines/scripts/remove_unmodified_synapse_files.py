@@ -1,5 +1,8 @@
+from pipelines.scripts.synapse_artifact.synapse_artifact_util_factory import SynapseArtifactUtilFactory
 from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
+from itertools import repeat
 from typing import Set, List, Iterable, Dict, Any, Callable
+from concurrent.futures import ThreadPoolExecutor
 import argparse
 import requests
 import json
@@ -15,128 +18,33 @@ class SynapseWorkspaceUtil:
     """
         Tool to handle using the Synapse REST API to query a Synapse workspace
     """
-    def __init__(self, workspace_name: str):
-        self.workspace_name = workspace_name
-        credential = ChainedTokenCredential(
-            #ManagedIdentityCredential(),
-            AzureCliCredential()
-        )
-        self._token = credential.get_token("https://dev.azuresynapse.net").token
-    
-    def _web_request(self, endpoint: str):
-        """
-            Submit a http request against the specified endpoint
-        """
-        api_call_headers = {'Authorization': 'Bearer ' + self._token}
-        return requests.get(endpoint, headers=api_call_headers)
-
-    def get_notebook(self, notebook_name: str) -> Dict[str, Any]:
-        """
-            Return the json for the specified notebook
-        """
-        return self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/notebooks/{notebook_name}?api-version=2020-12-01",
-        ).json()
-
-    def get_all_notebooks(self) -> List[Dict[str, Any]]:
-        """
-            Return the json for all Synapse notebooks
-        """
-        response = self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/notebooks?api-version=2020-12-01",
-        ).json()
-        all_notebooks = response["value"]
-        while "nextLink" in response:
-            next_link = response["nextLink"]
-            response = self._web_request(next_link,).json()
-            all_notebooks.extend(response["value"])
-        return all_notebooks
-
-    def get_pipeline(self, pipeline_name: str) -> Dict[str, Any]:
-        """
-            Return the json for the specified Synapse pipeline
-        """
-        return self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/pipelines/{pipeline_name}?api-version=2020-12-01",
-        ).json()
-
-    def get_all_pipelines(self) -> List[Dict[str, Any]]:
-        """
-            Return the json for all Synapse pipelines
-        """
-        response = self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/pipelines?api-version=2020-12-01",
-        ).json()
-        all_pipelines = response["value"]
-        while "nextLink" in response:
-            next_link = response["nextLink"]
-            response = self._web_request(next_link,).json()
-            all_pipelines.extend(response["value"])
-        return all_pipelines
-
-    def get_trigger(self, trigger_name: str):
-        """
-            Return the json for the specified Synapse trigger
-        """
-        return self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/triggers/{trigger_name}?api-version=2020-12-01",
-        ).json()
-
-    def get_all_triggers(self) -> List[Dict[str, Any]]:
-        """
-            Return the json for all Synapse triggers
-        """
-        response = self._web_request(
-            f"https://{self.workspace_name}.dev.azuresynapse.net/triggers?api-version=2020-12-01",
-        ).json()
-        all_triggers = response["value"]
-        while "nextLink" in response:
-            next_link = response["nextLink"]
-            response = self._web_request(next_link,).json()
-            all_triggers.extend(response["value"])
-        return all_triggers
-
-    def _download_all(self, local_folder: str, subfolder: str, get_all_function: Callable):
-        """
-            Download all artifacts using the given function `get_all_function`, and store them under the given `local_folder/subfolder/`
-        """
-        base_folder = f"{local_folder}/{subfolder}"
-        os.makedirs(base_folder)
-        all_artifacts = get_all_function()
-        logging.info(f"Download {len(all_artifacts)} artifacts of type '{subfolder}'")
-        for artifact in all_artifacts:
-            artifact_name = artifact["name"]
-            with open(f"{base_folder}/{artifact_name}.json", "w") as f:
-                json.dump(artifact, f, indent=4)
-
-    def _download_all_notebooks(self, local_folder: str):
-        """
-            Download all Synapse notebooks and store them under `local_folder/notebook/`
-        """
-        self._download_all(local_folder, "notebook", self.get_all_notebooks)
-
-    def _download_all_pipelines(self, local_folder: str):
-        """
-            Download all Synapse pipelines and store them under `local_folder/pipeline/`
-        """
-        self._download_all(local_folder, "pipeline", self.get_all_pipelines)
-
-    def _download_all_triggers(self, local_folder: str):
-        """
-            Download all Synapse triggers and store them under `local_folder/trigger/`
-        """
-        self._download_all(local_folder, "trigger", self.get_all_triggers)
-
-    def download_workspace(self, local_folder: str):
+    def download_workspace(self, workspace_name: str, local_folder: str):
         """
             Download the full json content of the live Synapse workspace, and save it uner `local_folder/`
         """
         if os.path.exists(local_folder):
             shutil.rmtree(local_folder)
+        synapse_artifact_names = [
+            f
+            for f in os.listdir("workspace")
+            if os.path.isdir(os.path.join("workspace", f))
+        ]
+        artifact_util_classes = {
+            type_name: SynapseArtifactUtilFactory.get(type_name)(workspace_name)
+            for type_name in synapse_artifact_names
+            if SynapseArtifactUtilFactory.is_valid_type_name(type_name)
+        }
+        # Filter out any artifacts that had no associated util class
+        synapse_artifact_names = [x for x in synapse_artifact_names if x in artifact_util_classes]
+        get_artifacts = lambda type_name: artifact_util_classes[type_name].download_live_workspace(local_folder)
         os.makedirs(local_folder)
-        self._download_all_notebooks(local_folder)
-        self._download_all_pipelines(local_folder)
-        self._download_all_triggers(local_folder)
+        with ThreadPoolExecutor() as tpe:
+            # Download all artifacts in parallel
+            [
+                thread_response
+                for thread_response in tpe.map(get_artifacts, synapse_artifact_names)
+                if thread_response
+            ]
 
 
 def get_all_files_under_folder(folder: str):
@@ -202,7 +110,7 @@ def delete_modified_files(modified_files: Iterable[str]):
     for file in all_files:
         if file not in modified_files:
             logging.info(f"    Deleting file '{file}'")
-            os.remove(f"workspace/{file}")
+            #os.remove(f"workspace/{file}")
 
 
 if __name__ == "__main__":
@@ -211,8 +119,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     synapse_workspace = args.synapse_workspace
     local_workspace = "my_local_workspace"
-    SynapseWorkspaceUtil(synapse_workspace).download_workspace(local_workspace)
+    SynapseWorkspaceUtil().download_workspace(synapse_workspace, local_workspace)
     modified_files = get_modified_files(local_workspace)
     logging.info(f"Total modified files: {len(modified_files)}")
     delete_modified_files(modified_files)
-    shutil.rmtree(local_workspace)
+    #shutil.rmtree(local_workspace)
