@@ -1,6 +1,6 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util_factory import SynapseArtifactUtilFactory
 from pipelines.scripts.synapse_artifact.synapse_workspace_util import SynapseWorkspaceUtil
-from typing import Set, Iterable, Dict, Any
+from typing import Set, Iterable
 import argparse
 import json
 import os
