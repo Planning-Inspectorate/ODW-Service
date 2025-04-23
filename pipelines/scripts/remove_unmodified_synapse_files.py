@@ -1,116 +1,104 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util_factory import SynapseArtifactUtilFactory
-from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
-from itertools import repeat
-from typing import Set, List, Iterable, Dict, Any, Callable
-from concurrent.futures import ThreadPoolExecutor
+from pipelines.scripts.synapse_artifact.synapse_workspace_util import SynapseWorkspaceUtil
+from typing import Set, Iterable, Dict, Any
 import argparse
-import requests
 import json
 import os
-import shutil
 import logging
 
 
 logging.basicConfig(level=logging.INFO)
 
 
-class SynapseWorkspaceUtil:
-    """
-        Tool to handle using the Synapse REST API to query a Synapse workspace
-    """
-    def download_workspace(self, workspace_name: str, local_folder: str):
+class Util():
+    def __init__(self, workspace_name: str):
+        self.workspace_name = workspace_name
+        self.local_workspace = "my_local_workspace"
+    
+    def remove_unmodified_files(self):
+        SynapseWorkspaceUtil().download_workspace(synapse_workspace, self.local_workspace)
+        modified_files = self._get_modified_files(self.local_workspace)
+        logging.info(f"Total modified files: {len(modified_files)}")
+        self._delete_modified_files(modified_files)
+        #shutil.rmtree(local_workspace)
+
+    def _get_all_files_under_folder(self, folder: str):
         """
-            Download the full json content of the live Synapse workspace, and save it uner `local_folder/`
+            Return all leaf files in under the target folder
+
+            :param folder: Folder to start from
         """
-        if os.path.exists(local_folder):
-            shutil.rmtree(local_folder)
-        synapse_artifact_names = [
-            f
-            for f in os.listdir("workspace")
-            if os.path.isdir(os.path.join("workspace", f))
-        ]
-        artifact_util_classes = {
-            type_name: SynapseArtifactUtilFactory.get(type_name)(workspace_name)
-            for type_name in synapse_artifact_names
-            if SynapseArtifactUtilFactory.is_valid_type_name(type_name)
+        return {
+            os.path.join(path, name).replace(f"{folder}/", "", 1)
+            for path, subdirs, files in os.walk(folder)
+            for name in files
         }
-        # Filter out any artifacts that had no associated util class
-        synapse_artifact_names = [x for x in synapse_artifact_names if x in artifact_util_classes]
-        get_artifacts = lambda type_name: artifact_util_classes[type_name].download_live_workspace(local_folder)
-        os.makedirs(local_folder)
-        with ThreadPoolExecutor() as tpe:
-            # Download all artifacts in parallel
-            [
-                thread_response
-                for thread_response in tpe.map(get_artifacts, synapse_artifact_names)
-                if thread_response
-            ]
 
+    def _compare_live_and_local_artifacts(self, artifact_name: str):
+        """
+            Compare the local artifacts to the locally-downloaded live workspace
 
-def get_all_files_under_folder(folder: str):
-    """
-        Return all leaf files in under the target folder
+            :param artifact_name: Name of the artifact to compare
+            :return: True if the artifacts match and both exist, False otherwise
+        """
+        local_artifact_name = f"workspace/{artifact_name}"
+        live_artifact_name = f"{self.local_workspace}/{artifact_name}"
+        if not os.path.exists(local_artifact_name):
+            print(f"Could not find local artifact '{local_artifact_name}'")
+            return False
+        if not os.path.exists(live_artifact_name):
+            print(f"Could not find live artifact '{live_artifact_name}'")
+            return False
+        local_workspace_file = json.load(open(local_artifact_name, "r"))
+        live_workspace_file = json.load(open(live_artifact_name, "r"))
+        artifact_type = artifact_name.replace("workspace/", "").split("/")[0]
+        artifact_util = SynapseArtifactUtilFactory.get(artifact_type)(self.workspace_name)
+        return artifact_util.compare(local_workspace_file, live_workspace_file)
 
-        Parameters
-        - folder: Folder to start from
-    """
-    return {
-        os.path.join(path, name).replace(f"{folder}/", "", 1)
-        for path, subdirs, files in os.walk(folder)
-        for name in files
-    }
+    def _get_modified_files(self, live_workspace_local_download_folder: str) -> Set[str]:
+        """
+            Return all Synapse workspace files modified between the `workspace` folder and the `live_workspace_local_download_folder` folder
 
+            :param live_workspace_local_download_folder: The folder where the live Synapse workspace was downloaded to locally
+        """
+        live_file_names = self._get_all_files_under_folder(live_workspace_local_download_folder)
+        workspace_file_names = self._get_all_files_under_folder("workspace")
 
-def get_modified_files(live_workspace_local_download_folder: str) -> Set[str]:
-    """
-        Return all Synapse workspace files modified between the `workspace` folder and the `live_workspace_local_download_folder` folder
+        new_files = workspace_file_names - live_file_names
+        deleted_files = live_file_names - workspace_file_names
+        common_files = (workspace_file_names - deleted_files) - new_files
 
-        Parameters
-        - live_workspace_local_download_folder: The folder where the live Synapse workspace was downloaded to locally
-    """
-    live_file_names = get_all_files_under_folder(live_workspace_local_download_folder)
-    workspace_file_names = get_all_files_under_folder("workspace")
+        modified_files = {
+            file
+            for file in common_files
+            if not self._compare_live_and_local_artifacts(file)
+        }
+        diff = modified_files.union(new_files)
+        logging.info(f"Total files in local workspace: {len(workspace_file_names)}")
+        logging.info(f"Total files in the live workspace {len(live_file_names)}")
+        logging.info(f"Total files common between local and live workspace {len(common_files)}")
+        logging.info(f"Total common files that have modifications: {len(modified_files)}")
+        logging.info(f"Total number of files that have been modified or created: {len(diff)}")
+        logging.info("The below files do not exist in the live workspace")
+        logging.info(json.dumps(list(new_files), indent=4))
+        logging.info("The below files exist in the live workspace but do not exist locally")
+        logging.info(json.dumps(list(deleted_files), indent=4))
+        logging.info("The below files have been modified in the local workspace")
+        logging.info(json.dumps(list(modified_files), indent=4))
+        return diff
 
-    new_files = workspace_file_names - live_file_names
-    deleted_files = live_file_names - workspace_file_names
-    common_files = (workspace_file_names - deleted_files) - new_files
+    def _delete_modified_files(self, modified_files: Iterable[str]):
+        """
+            Delete all files under `workspace/` that have not been modified
 
-    live_files = {
-        file_name: json.dumps(json.load(open(f"{live_workspace_local_download_folder}/{file_name}", "r")), sort_keys=True)
-        for file_name in common_files
-    }
-    workspace_files = {
-        file_name: json.dumps(json.load(open(f"workspace/{file_name}", "r")), sort_keys=True)
-        for file_name in common_files
-    }
-    modified_files = {
-        file_name
-        for file_name, file in workspace_files.items()
-        if file != live_files[file_name]
-    }
-    diff = modified_files.union(new_files)
-    logging.info("The below files have been added")
-    logging.info(json.dumps(list(new_files), indent=4))
-    logging.info("The below files have been deleted")
-    logging.info(json.dumps(list(deleted_files), indent=4))
-    logging.info("The below files have been modified")
-    logging.info(json.dumps(list(modified_files), indent=4))
-    return diff
-
-
-def delete_modified_files(modified_files: Iterable[str]):
-    """
-        Delete all files under `workspace/` that have not been modified
-
-        Parameters
-        - modified_files: The file names that have been modified
-    """
-    logging.info("Deleting unmodified files")
-    all_files = get_all_files_under_folder("workspace")
-    for file in all_files:
-        if file not in modified_files:
-            logging.info(f"    Deleting file '{file}'")
-            #os.remove(f"workspace/{file}")
+            :param modified_files: The file names that have been modified
+        """
+        logging.info("Deleting unmodified files")
+        all_files = self._get_all_files_under_folder("workspace")
+        for file in all_files:
+            if file not in modified_files:
+                logging.info(f"    Deleting file '{file}'")
+                #os.remove(f"workspace/{file}")
 
 
 if __name__ == "__main__":
@@ -118,9 +106,4 @@ if __name__ == "__main__":
     parser.add_argument("-sw", "--synapse_workspace", help="The synapse workspace to check against")
     args = parser.parse_args()
     synapse_workspace = args.synapse_workspace
-    local_workspace = "my_local_workspace"
-    SynapseWorkspaceUtil().download_workspace(synapse_workspace, local_workspace)
-    modified_files = get_modified_files(local_workspace)
-    logging.info(f"Total modified files: {len(modified_files)}")
-    delete_modified_files(modified_files)
-    #shutil.rmtree(local_workspace)
+    Util(synapse_workspace).remove_unmodified_files()
