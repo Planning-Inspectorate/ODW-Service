@@ -2,29 +2,29 @@ from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArti
 from typing import List, Dict, Any
 
 
-class SynapseTriggerUtil(SynapseArtifactUtil):
+class SynapseDatasetUtil(SynapseArtifactUtil):
     """
-        Class for managing the retrieval and analysis of Synapse Trigger artifacts
+        Class for managing the retrieval and analysis of Synapse Dataset artifacts
     """
     @classmethod
     def get_type_name(cls) -> str:
-        return "trigger"
+        return "dataset"
 
     def get(self, artifact_name: str, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
         return self._web_request(
-            f"{self.synapse_endpoint}/triggers/{artifact_name}?api-version=2020-12-01",
+            f"{self.synapse_endpoint}/datasets/{artifact_name}?api-version=2020-12-01",
         ).json()
 
     def get_all(self, **kwargs: Dict[str, Any]) -> List[Dict[str, Any]]:
         response = self._web_request(
-            f"{self.synapse_endpoint}/triggers?api-version=2020-12-01",
+            f"{self.synapse_endpoint}/datasets?api-version=2020-12-01",
         ).json()
-        all_triggers = response["value"]
+        all_datasets = response["value"]
         while "nextLink" in response:
             next_link = response["nextLink"]
             response = self._web_request(next_link,).json()
-            all_triggers.extend(response["value"])
-        return all_triggers
+            all_datasets.extend(response["value"])
+        return all_datasets
 
     def get_uncomparable_attributes(self) -> List[str]:
         return [

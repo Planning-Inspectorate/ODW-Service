@@ -6,12 +6,16 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
     """
         Class for managing the retrieval and analysis of Synapse Notebook artifacts
     """
-    def get(self, artifact_name: str) -> Dict[str, Any]:
+    @classmethod
+    def get_type_name(cls) -> str:
+        return "notebook"
+
+    def get(self, artifact_name: str, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
         return self._web_request(
             f"{self.synapse_endpoint}/notebooks/{artifact_name}?api-version=2020-12-01",
         ).json()
 
-    def get_all(self) -> List[Dict[str, Any]]:
+    def get_all(self, **kwargs: Dict[str, Any]) -> List[Dict[str, Any]]:
         response = self._web_request(
             f"{self.synapse_endpoint}/notebooks?api-version=2020-12-01",
         ).json()

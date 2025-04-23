@@ -5,6 +5,7 @@ from typing import Union, List, Dict, Any, Set
 import re
 import logging
 import json
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +25,11 @@ class SynapseArtifactUtil(ABC):
         )
         self._token = credential.get_token("https://dev.azuresynapse.net").token
         self.synapse_endpoint = f"https://{self.workspace_name}.dev.azuresynapse.net"
+    
+    @classmethod
+    @abstractmethod
+    def get_type_name(cls) -> str:
+        pass
 
     def _web_request(self, endpoint: str) -> requests.Response:
         """
@@ -36,23 +42,40 @@ class SynapseArtifactUtil(ABC):
         return requests.get(endpoint, headers=api_call_headers)
 
     @abstractmethod
-    def get(self, artifact_name: str) -> Dict[str, Any]:
+    def get(self, artifact_name: str, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
             Return the attributes for the given artifact
 
             :param artifact_name: The name of the artifact to fetch from the Synapse REST API
+            :param kwargs: Any additional arguments that are required
             :return: The json object retrieved by the Synapse REST API
         """
         pass
 
     @abstractmethod
-    def get_all(self) -> List[Dict[str, Any]]:
+    def get_all(self, **kwargs: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
             Return all artifacts
 
+            :param kwargs: Any additional arguments that are required
             :return: A list of json objects retrieved by the Synapse REST API
         """
         pass
+
+    def download_live_workspace(self, local_folder: str):
+        """
+            Download all artifacts to a local folder
+            
+            :param local_folder: Where to store
+        """
+        artifacts = self.get_all()
+        logging.info(f"Downloaded {len(artifacts)} artifacts of type '{self.get_type_name()}'")
+        base_folder = f"{local_folder}/{self.get_type_name()}"
+        os.makedirs(base_folder)
+        for artifact in artifacts:
+            artifact_name = artifact["name"]
+            with open(f"{base_folder}/{artifact_name}.json", "w") as f:
+                json.dump(artifact, f, indent=4)
 
     @abstractmethod
     def get_uncomparable_attributes(self) -> List[str]:
