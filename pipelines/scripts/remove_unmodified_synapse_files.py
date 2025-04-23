@@ -44,10 +44,8 @@ class Util():
         local_artifact_name = f"workspace/{artifact_name}"
         live_artifact_name = f"{self.local_workspace}/{artifact_name}"
         if not os.path.exists(local_artifact_name):
-            print(f"Could not find local artifact '{local_artifact_name}'")
             return False
         if not os.path.exists(live_artifact_name):
-            print(f"Could not find live artifact '{live_artifact_name}'")
             return False
         local_workspace_file = json.load(open(local_artifact_name, "r"))
         live_workspace_file = json.load(open(live_artifact_name, "r"))
