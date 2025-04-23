@@ -34,4 +34,6 @@ class SynapseCredentialUtil(SynapseArtifactUtil):
         ]
 
     def get_nullable_attributes(self) -> List[str]:
-        return []
+        return [
+            r"^properties.typeProperties$"
+        ]

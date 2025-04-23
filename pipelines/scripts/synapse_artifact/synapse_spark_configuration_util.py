@@ -11,17 +11,15 @@ class SynapseSparkConfigurationUtil(SynapseArtifactUtil):
         return "sparkConfiguration"
 
     def get(self, artifact_name: str, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        # There doesn't seem to be a REST API endpoint for these, so leaving blank for now
         return dict()
 
     def get_all(self, **kwargs: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # There doesn't seem to be a REST API endpoint for these, so leaving blank for now
         return []
 
     def get_uncomparable_attributes(self) -> List[str]:
-        return [
-            r"^id$",
-            r"^etag$",
-            r"^type$"
-        ]
+        return []
 
     def get_nullable_attributes(self) -> List[str]:
         return []
