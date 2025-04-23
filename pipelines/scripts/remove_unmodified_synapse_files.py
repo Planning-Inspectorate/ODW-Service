@@ -11,6 +11,12 @@ import shutil
 logging.basicConfig(level=logging.INFO)
 
 
+"""
+    Script to compare local Synapse workspace files against the specified live workspace, and to delete unmodified files
+    Example usage: `python3 pipelines/scripts/remove_unmodified_synapse_files.py -sw "SYNAPSE_WORKSPACE_NAME_HERE"`
+"""
+
+
 class Util():
     def __init__(self, workspace_name: str):
         self.workspace_name = workspace_name
