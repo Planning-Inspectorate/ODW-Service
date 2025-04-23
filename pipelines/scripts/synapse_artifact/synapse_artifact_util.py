@@ -116,6 +116,16 @@ class SynapseArtifactUtil(ABC):
             nullable_attributes
         )
         if artifact_a_attributes_cleaned != artifact_b_attributes_cleaned:
+            '''
+            # This block should be uncommented to help identify any extra regex patterns that could be added to the util classes
+            old = [x for x in artifact_a_attributes_cleaned if x not in artifact_b_attributes_cleaned]
+            new = [x for x in artifact_b_attributes_cleaned if x not in artifact_a_attributes_cleaned]
+            if new:
+                print("name: ", artifact_a["name"])
+                print(json.dumps(list(old), indent=4))
+                print(json.dumps(list(new), indent=4))
+                raise Exception("Stopping code execution so that the difference can be analysed")
+            '''
             return False
         return self._compare_dictionaries_by_attributes(artifact_a_attributes_cleaned, artifact_a, artifact_b)
 

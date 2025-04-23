@@ -38,11 +38,18 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"properties.sessionProperties.runAsWorkspaceSystemIdentity",
             r"properties.metadata.a365ComputeOptions.extraHeader",
             r"properties.metadata.a365ComputeOptions.auth.authHeader",
+            r"properties.cells.\d+.execution_count",
             r"properties.cells.\d+.outputs",
             r"properties.metadata.kernelspec",
             r"properties.metadata.kernelspec.name",
-            r"properties.metadata.kernelspec.display_name"
+            r"properties.metadata.kernelspec.display_name",
         ]
 
     def get_nullable_attributes(self) -> List[str]:
-        return []
+        return [
+            r"properties.metadata.a365ComputeOptions.automaticScaleJobs",
+            r"properties.cells.\d+.metadata",
+            r"properties.folder",
+            r"properties.bigDataPool",
+            r"properties.metadata.a365ComputeOptions"
+        ]
