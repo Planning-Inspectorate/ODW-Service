@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import logging
+import shutil
 
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +21,7 @@ class Util():
         modified_files = self._get_modified_files(self.local_workspace)
         logging.info(f"Total modified files: {len(modified_files)}")
         self._delete_modified_files(modified_files)
-        #shutil.rmtree(local_workspace)
+        shutil.rmtree(self.local_workspace)
 
     def _get_all_files_under_folder(self, folder: str):
         """
@@ -96,7 +97,7 @@ class Util():
         for file in all_files:
             if file not in modified_files:
                 logging.info(f"    Deleting file '{file}'")
-                #os.remove(f"workspace/{file}")
+                os.remove(f"workspace/{file}")
 
 
 if __name__ == "__main__":
