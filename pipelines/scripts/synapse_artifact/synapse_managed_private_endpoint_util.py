@@ -56,11 +56,7 @@ class SynapseManagedPrivateEndpointUtil(SynapseArtifactUtil):
                     json.dump(artifact, f, indent=4)
 
     def get_uncomparable_attributes(self) -> List[str]:
-        return [
-            r"^id$",
-            r"^etag$",
-            r"^type$"
-        ]
+        return []
 
     def get_nullable_attributes(self) -> List[str]:
         return []
