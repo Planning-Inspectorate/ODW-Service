@@ -121,8 +121,9 @@ class SparkPoolReferenceUpdater():
                 }
             }
         }
-        if notebook["properties"]["bigDataPool"]["referenceName"] == self._old_pool_name:
-            return self._merge_dictionaries(notebook, properties_to_overwrite)
+        if "bigDataPool" in  notebook["properties"]:
+            if notebook["properties"]["bigDataPool"]["referenceName"] == self._old_pool_name:
+                return self._merge_dictionaries(notebook, properties_to_overwrite)
         return notebook
 
     
