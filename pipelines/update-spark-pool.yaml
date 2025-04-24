@@ -1,0 +1,71 @@
+name: Spark pool update
+
+# This pipeline is used to roll out infrastructure updates to spark pools
+parameters:
+# Environment to deploy to
+- name: env
+  default: 'auto'
+  values:
+  - 'dev'
+  - 'test'
+  - 'prod'
+# Whether or not to run tests
+- name: runTests
+  type: boolean
+  default: true
+
+variables:
+- name: variableGroupName
+  ${{ if eq(variables.env, 'prod') }}:
+    value: "Terraform Prod"
+  ${{ elseif eq(variables.env, 'test') }}:
+    value: "Terraform Test"
+  ${{ else }}:
+    value: "Terraform Dev"
+- name: agentPool
+  value: 'pins-agent-pool-odw-${{ parameters.env }}-uks'
+- name: azureSubscription
+  value: 'pins-agent-pool-odw-${{ parameters.env }}-uks'
+- group: ${{ variables.variableGroupName }}
+
+stages:
+- template: stages/wait-for-approval.yaml
+- stage: RemoveSparkPoolReferences
+  displayName: 'Deploy Synapse to the ${{ parameters.env }} environment'
+  condition: succeeded()
+  jobs:
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/jobs/deploy-synapse-with-replaced-pool.yaml
+    parameters:
+      agentPool: ${{ parameters.agentPool }}
+      env: ${{ parameters.env }}
+      armServiceConnectionName: ${{ parameters.armServiceConnectionName }}
+      activateTriggers: false
+      fullDeployment: false
+      oldPoolName: ${{ parameters.oldPoolName }}
+      newPoolName: ${{ parameters.newPoolName }}
+
+- stage: DeployInfrastructure
+  displayName: 'Deploy Infrastructure to the ${{ parameters.env }} environment'
+  condition: succeeded()
+  jobs:
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/jobs/deploy-infrastructure.yaml
+    parameters:
+      agentPool: ${{ parameters.agentPool }}
+      env: ${{ parameters.env }}
+      armServiceConnectionName: ${{ parameters.armServiceConnectionName }}
+      failoverDeployment: ${{ parameters.failoverDeployment }}
+      outputsFileName: ${{ parameters.outputsFileName }}
+
+- stage: RestoreSparkPoolReferences
+  displayName: 'Deploy Synapse to the ${{ parameters.env }} environment'
+  condition: succeeded()
+  jobs:
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/jobs/deploy-synapse-with-replaced-pool.yaml
+    parameters:
+      agentPool: ${{ parameters.agentPool }}
+      env: ${{ parameters.env }}
+      armServiceConnectionName: ${{ parameters.armServiceConnectionName }}
+      activateTriggers: false
+      fullDeployment: false
+      oldPoolName: ${{ parameters.newPoolName }}
+      newPoolName: ${{ parameters.oldPoolName }}
