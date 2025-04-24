@@ -19,6 +19,9 @@ class SparkPoolReferenceUpdater():
             artifact_name: self.replace_spark_pool_references_in_artifact(artifact_name)
             for artifact_name in artifact_names
         }
+        for artifact_path, artifact_json in cleaned_artifacts.items():
+            with open(artifact_path, "w") as f:
+                json.dump(artifact_json, f, indent=4)
 
     def get_all_relevant_artifact_names(self) -> List[str]:
         return [
