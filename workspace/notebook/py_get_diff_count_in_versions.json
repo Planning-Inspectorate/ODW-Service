@@ -1,0 +1,156 @@
+{
+	"name": "py_get_diff_count_in_versions",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "1f9c3b9e-cb57-4d6f-b571-da6de3139a1d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"db_name='odw_curated_db'\n",
+					"table_name='listed_building'\n",
+					"primary_key='entity'"
+				],
+				"execution_count": 3
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql.functions import col, lit, when\n",
+					"import json\n",
+					"\n",
+					"spark: SparkSession = SparkSession.builder.getOrCreate()\n",
+					"table_name_full = f\"{db_name}.{table_name}\""
+				],
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def get_delta_table_path(table_name):\n",
+					"    table_path = spark.sql(f\"DESCRIBE DETAIL {table_name}\").select(\"location\").first()[\"location\"]\n",
+					"    return table_path\n",
+					"    \n",
+					"def get_delta_table_lastest_version(table_path):\n",
+					"    delta_table = DeltaTable.forPath(spark, table_path)\n",
+					"    history_df = delta_table.history()\n",
+					"    version = history_df.select(\"version\").orderBy(\"version\", ascending=False).first()[\"version\"]\n",
+					"    return version"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"table_path: str = get_delta_table_path(table_name_full)\n",
+					"latest_version: int = get_delta_table_lastest_version(table_path)\n",
+					"\n",
+					"if latest_version == 0:\n",
+					"    raise (f\"Failed to read changes in delta table: {table_name_full}. Exception: No history found\")\n",
+					"    mssparkutils.notebook.exit('[]')"
+				],
+				"execution_count": 6
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"\n",
+					"delta_table = DeltaTable.forPath(spark, table_path)\n",
+					"\n",
+					"\n",
+					"\n",
+					"# Get the full history\n",
+					"history_df = delta_table.history()\n",
+					"versions = history_df.select(\"version\").orderBy(\"version\").rdd.flatMap(lambda x: x).collect()\n",
+					"# display(history_df)\n",
+					"\n",
+					"len(versions)\n",
+					"columns_to_compare = ['name', 'reference', 'listedBuildingGrade'] \n",
+					"\n",
+					"\n",
+					"# Get version history\n",
+					"history_df = delta_table.history()\n",
+					"versions = history_df.select(\"version\").orderBy(\"version\").rdd.flatMap(lambda x: x).collect()\n",
+					"\n",
+					"# Iterate through versions\n",
+					"for i in range(6, len(versions)):\n",
+					"    v_prev = versions[i - 1]\n",
+					"    v_curr = versions[i]\n",
+					"    \n",
+					"    df_prev = spark.read.format(\"delta\").option(\"versionAsOf\", v_prev).load(table_path)\n",
+					"    df_curr = spark.read.format(\"delta\").option(\"versionAsOf\", v_curr).load(table_path)\n",
+					"    \n",
+					"    # Perform full outer join\n",
+					"    df_joined = df_prev.alias(\"prev\").join(df_curr.alias(\"curr\"), on=\"entity\", how=\"full_outer\")\n",
+					"    \n",
+					"    # Build the condition for differences\n",
+					"    diff_condition = None\n",
+					"    for col_name in columns_to_compare:\n",
+					"        condition = (col(f\"prev.{col_name}\") != col(f\"curr.{col_name}\")) | \\\n",
+					"                    (col(f\"prev.{col_name}\").isNull() != col(f\"curr.{col_name}\").isNull())\n",
+					"        diff_condition = condition if diff_condition is None else diff_condition | condition\n",
+					"    \n",
+					"    # Filter rows with differences\n",
+					"    df_diff = df_joined.filter(diff_condition)\n",
+					"    \n",
+					"    # Count and display the number of differences\n",
+					"    count = df_diff.count()\n",
+					"    print(f\"Changes between version {v_prev} and {v_curr}: {count} records\")\n",
+					"\n",
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
