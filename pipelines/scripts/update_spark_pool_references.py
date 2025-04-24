@@ -121,7 +121,9 @@ class SparkPoolReferenceUpdater():
                 }
             }
         }
-        return self._merge_dictionaries(notebook, properties_to_overwrite)
+        if notebook["properties"]["bigDataPool"]["referenceName"] == self._old_pool_name:
+            return self._merge_dictionaries(notebook, properties_to_overwrite)
+        return notebook
 
     
     def _update_spark_pool_references_in_pipeline(self, pipeline: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,7 +131,8 @@ class SparkPoolReferenceUpdater():
         new_pool_details = self.get_spark_pool_details(self._new_pool_name)
         sub_attributes_to_update = self._search_for_dict_attribute(pipeline_copy, "sparkPool")
         for attribute in sub_attributes_to_update:
-            attribute["referenceName"] = new_pool_details["name"]
+            if attribute["referenceName"] == self._old_pool_name:
+                attribute["referenceName"] = new_pool_details["name"]
         return pipeline_copy
         """
         wherever this is seen
