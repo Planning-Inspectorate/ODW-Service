@@ -114,7 +114,7 @@ class SparkPoolReferenceUpdater():
             }
         }
         metadata = {
-            "metadata": {
+            "a365ComputeOptions": {
                 "id": new_pool_details["id"],
                 "name": pool_name,
                 "endpoint": f"https://{self._synapse_workspace_name}.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/{pool_name}",
