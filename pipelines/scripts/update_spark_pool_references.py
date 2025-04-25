@@ -24,6 +24,7 @@ class SparkPoolReferenceUpdater():
             artifact_name: self.replace_spark_pool_references_in_artifact(artifact_name)
             for artifact_name in artifact_names
         }
+        logging.info("\nSaving changes\n")
         for artifact_path, artifact_json in cleaned_artifacts.items():
             logging.info(f"Overwriting artifact '{artifact_path}'")
             with open(artifact_path, "w") as f:
