@@ -5,7 +5,14 @@
 			{
 				"name": "Get_SapHr_Monthly_Files",
 				"type": "GetMetadata",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "ExecuteSapHrMonthlyFileExtract",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -17,7 +24,10 @@
 				"typeProperties": {
 					"dataset": {
 						"referenceName": "Ds_odw_saphr_get_latest_files",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"Get_Load_Frequency": "MONTHLY"
+						}
 					},
 					"fieldList": [
 						"exists"
@@ -48,6 +58,40 @@
 						"value": "@equals(activity('Get_SapHr_Monthly_Files').output.exists,true)",
 						"type": "Expression"
 					},
+					"ifFalseActivities": [
+						{
+							"name": "Get_SapHr_Weekly_Files",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "Ds_odw_saphr_get_latest_files",
+									"type": "DatasetReference",
+									"parameters": {
+										"Get_Load_Frequency": "WEEKLY"
+									}
+								},
+								"fieldList": [
+									"exists"
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							}
+						}
+					],
 					"ifTrueActivities": [
 						{
 							"name": "Wait1",
@@ -59,6 +103,51 @@
 							}
 						}
 					]
+				}
+			},
+			{
+				"name": "ExecuteSapHrWeeklyFileExtract",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_saphr_odw_source_odw_raw",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"FileLoad_Type": "WEEKLY"
+					}
+				}
+			},
+			{
+				"name": "ExecuteSapHrMonthlyFileExtract",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "ExecuteSapHrWeeklyFileExtract",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_saphr_odw_source_odw_raw",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"FileLoad_Type": "MONTHLY"
+					}
 				}
 			}
 		],
