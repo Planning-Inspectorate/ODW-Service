@@ -99,10 +99,6 @@ class SparkPoolReferenceUpdater():
 
         properties_to_overwrite = {
             "properties": {
-                "bigDataPool": {
-                    "referenceName": pool_name,
-                    "type": "BigDataPoolReference"
-                },
                 "sessionProperties": {
                     "driverMemory": f"{driver_and_executor_memory}g",
                     "driverCores": node_size_details["vCores"],
@@ -114,23 +110,28 @@ class SparkPoolReferenceUpdater():
                         #"spark.dynamicAllocation.minExecutors": "1",
                         #"spark.dynamicAllocation.maxExecutors": "4",
                     }
-                },
-                "metadata": {
-                    "a365ComputeOptions": {
-                        "id": new_pool_details["id"],
-                        "name": pool_name,
-                        "endpoint": f"https://{self._synapse_workspace_name}.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/{pool_name}",
-                        "sparkVersion": new_pool_details["properties"]["sparkVersion"],
-                        #"nodeCount": 10,
-                        "cores": node_size_details["vCores"],
-                        "memory": node_size_details["memory"],
-                        "automaticScaleJobs": new_pool_details["properties"]["autoScale"]["enabled"]
-                    }
                 }
             }
         }
+        compute_options = {
+            "id": new_pool_details["id"],
+            "name": pool_name,
+            "endpoint": f"https://{self._synapse_workspace_name}.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/{pool_name}",
+            "sparkVersion": new_pool_details["properties"]["sparkVersion"],
+            #"nodeCount": 10,
+            "cores": node_size_details["vCores"],
+            "memory": node_size_details["memory"],
+            "automaticScaleJobs": new_pool_details["properties"]["autoScale"]["enabled"]
+        }
         logging.info(f"    Replacing references for notebook {notebook['name']}")
+        if "bigDataPool" in notebook["properties"]:
+            properties_to_overwrite["properties"]["bigDataPool"] = {
+                "referenceName": pool_name
+            }
+        if "a365ComputeOptions" in notebook["properties"]["metadata"]:
+            properties_to_overwrite["properties"]["bigDataPool"]["metadata"]["a365ComputeOptions"] = compute_options
         return self._merge_dictionaries(notebook, properties_to_overwrite)
+
 
     
     def _update_spark_pool_references_in_pipeline(self, pipeline: Dict[str, Any]) -> Dict[str, Any]:
