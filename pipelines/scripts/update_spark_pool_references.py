@@ -101,7 +101,7 @@ class SparkPoolReferenceUpdater():
             "properties": {
                 "bigDataPool": {
                     "referenceName": pool_name,
-                },
+                } if "bigDataPool" in  notebook["properties"] else None,
                 "sessionProperties": {
                     "driverMemory": f"{driver_and_executor_memory}g",
                     "driverCores": node_size_details["vCores"],
@@ -128,13 +128,8 @@ class SparkPoolReferenceUpdater():
                 }
             }
         }
-        if "bigDataPool" in  notebook["properties"]:
-            if notebook["properties"]["bigDataPool"]["referenceName"] == self._old_pool_name:
-                logging.info(f"    Replacing references for notebook {notebook['name']}")
-                return self._merge_dictionaries(notebook, properties_to_overwrite)
-        else:
-            logging.info(f"    Skipping notebook {notebook['name']}")
-        return notebook
+        logging.info(f"    Replacing references for notebook {notebook['name']}")
+        return self._merge_dictionaries(notebook, properties_to_overwrite)
 
     
     def _update_spark_pool_references_in_pipeline(self, pipeline: Dict[str, Any]) -> Dict[str, Any]:
