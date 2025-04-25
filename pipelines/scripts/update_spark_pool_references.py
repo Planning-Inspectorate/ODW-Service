@@ -129,7 +129,7 @@ class SparkPoolReferenceUpdater():
                 "referenceName": pool_name
             }
         if "metadata" in notebook["properties"] and "a365ComputeOptions" in notebook["properties"]["metadata"]:
-            properties_to_overwrite["properties"]["bigDataPool"]["metadata"]["a365ComputeOptions"] = compute_options
+            properties_to_overwrite["properties"]["metadata"]["a365ComputeOptions"] = compute_options
         return self._merge_dictionaries(notebook, properties_to_overwrite)
 
 
