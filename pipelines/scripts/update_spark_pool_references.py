@@ -99,6 +99,10 @@ class SparkPoolReferenceUpdater():
 
         properties_to_overwrite = {
             "properties": {
+                "bigDataPool": {
+                    "referenceName": pool_name,
+                    "type": "BigDataPoolReference"
+                },
                 "sessionProperties": {
                     "driverMemory": f"{driver_and_executor_memory}g",
                     "driverCores": node_size_details["vCores"],
@@ -125,11 +129,6 @@ class SparkPoolReferenceUpdater():
                 }
             }
         }
-        if "bigDataPool" in  notebook["properties"]:
-            properties_to_overwrite["properties"]["bigDataPool"] = {
-                "referenceName": pool_name,
-                "type": "BigDataPoolReference"
-            }
         logging.info(f"    Replacing references for notebook {notebook['name']}")
         return self._merge_dictionaries(notebook, properties_to_overwrite)
 
