@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from copy import deepcopy
+import logging
 
 
 class SparkPoolReferenceUpdater():
@@ -14,7 +15,11 @@ class SparkPoolReferenceUpdater():
         self._new_pool_name = new_pool_name
     
     def update_all_spark_pool_references(self):
+        logging.info("Starting to replace spark pool references")
         artifact_names = self.get_all_relevant_artifact_names()
+        logging.info("Performing replacement on the below files")
+        logging.info(json.dumps(artifact_names, indent=4))
+        logging.info("\nBegin replacement")
         cleaned_artifacts = {
             artifact_name: self.replace_spark_pool_references_in_artifact(artifact_name)
             for artifact_name in artifact_names
@@ -123,7 +128,10 @@ class SparkPoolReferenceUpdater():
         }
         if "bigDataPool" in  notebook["properties"]:
             if notebook["properties"]["bigDataPool"]["referenceName"] == self._old_pool_name:
+                logging.info(f"    Replacing references for notebook {notebook['name']}")
                 return self._merge_dictionaries(notebook, properties_to_overwrite)
+        else:
+            logging.info(f"    Skipping notebook {notebook['name']}")
         return notebook
 
     
@@ -131,6 +139,10 @@ class SparkPoolReferenceUpdater():
         pipeline_copy = deepcopy(pipeline)
         new_pool_details = self.get_spark_pool_details(self._new_pool_name)
         sub_attributes_to_update = self._search_for_dict_attribute(pipeline_copy, "sparkPool")
+        if sub_attributes_to_update:
+            logging.info(f"   Replacing references for pipeline {pipeline['name']}")
+        else:
+            logging.info(f"    Skipping pipeline {pipeline['name']}")
         for attribute in sub_attributes_to_update:
             if attribute["referenceName"] == self._old_pool_name:
                 attribute["referenceName"] = new_pool_details["name"]
