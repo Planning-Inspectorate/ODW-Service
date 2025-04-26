@@ -34,6 +34,7 @@
 					],
 					"storeSettings": {
 						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
 						"enablePartitionDiscovery": false
 					},
 					"formatSettings": {
@@ -60,7 +61,7 @@
 					},
 					"ifFalseActivities": [
 						{
-							"name": "Get_SapHr_Weekly_Files",
+							"name": "Get_SapHr_Weekly_Files_Exists",
 							"type": "GetMetadata",
 							"dependsOn": [],
 							"policy": {
@@ -84,10 +85,35 @@
 								],
 								"storeSettings": {
 									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
 									"enablePartitionDiscovery": false
 								},
 								"formatSettings": {
 									"type": "DelimitedTextReadSettings"
+								}
+							}
+						},
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Get_SapHr_Weekly_Files_Exists",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "check_folder_exists",
+								"value": {
+									"value": "@activity('Get_SapHr_Weekly_Files_Exists').output.exists",
+									"type": "Expression"
 								}
 							}
 						}
@@ -149,11 +175,44 @@
 						"FileLoad_Type": "MONTHLY"
 					}
 				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "If_SapHr_Monthly_Files_Exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('check_folder_exists'),true)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Wait2",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					]
+				}
 			}
 		],
 		"variables": {
 			"Get_File_Count": {
 				"type": "String"
+			},
+			"check_folder_exists": {
+				"type": "Boolean"
 			}
 		},
 		"folder": {
