@@ -1,345 +1,206 @@
 {
-	"name": "pln_saphr_standadised",
+	"name": "pln_saphr_master",
 	"properties": {
 		"activities": [
 			{
-				"name": "SaprHrOdwRawOdwStandardised",
-				"type": "IfCondition",
-				"dependsOn": [],
+				"name": "Loading SAPHR Tables_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Record loading SAPHR Tables_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
 				"userProperties": [],
 				"typeProperties": {
-					"expression": {
-						"value": "@contains(pipeline().parameters.horizon_feed, 'Appeals Events')",
-						"type": "Expression"
+					"pipeline": {
+						"referenceName": "pln_saphr_odw_standardised_Monthly",
+						"type": "PipelineReference"
 					},
-					"ifFalseActivities": [
-						{
-							"name": "Send appeals advice disabled warning",
-							"type": "ExecutePipeline",
-							"dependsOn": [],
-							"policy": {
-								"secureInput": true
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_utl_Send_Teams_Message",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"dataFactorySubscription": {
-										"value": "@pipeline().parameters.subscription_id",
-										"type": "Expression"
-									},
-									"dataFactoryResourceGroup": {
-										"value": "@pipeline().parameters.resource_group",
-										"type": "Expression"
-									},
-									"pipelineRunId": {
-										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"teamsWebhookUrl": {
-										"value": "@pipeline().parameters.webhook_url",
-										"type": "Expression"
-									},
-									"activityName": {
-										"value": "@pipeline().Pipeline",
-										"type": "Expression"
-									},
-									"activityMessage": "Loading Horizon data",
-									"activityDuration": {
-										"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
-										"type": "Expression"
-									},
-									"activityStatus": "On Progress",
-									"Colour": {
-										"value": "@pipeline().parameters.warning_colour",
-										"type": "Expression"
-									},
-									"Image": {
-										"value": "@pipeline().parameters.warning_image",
-										"type": "Expression"
-									},
-									"Message_title": "ODW - Master pipeline warning",
-									"Message_subtitle": "Horizon appeals event data load disabled"
-								}
-							}
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Send SAPHR failed_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Loading SAPHR Tables_copy1",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@pipeline().parameters.subscription_id",
+							"type": "Expression"
 						},
-						{
-							"name": "Record appeals event warning",
-							"type": "ExecutePipeline",
-							"dependsOn": [
-								{
-									"activity": "Send appeals advice disabled warning",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_log_to_appins",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"Stage": "Warning",
-									"PipelineName": {
-										"value": "@pipeline().Pipeline",
-										"type": "Expression"
-									},
-									"PipelineRunID": {
-										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"StartTime": {
-										"value": "@formatDateTime(utcnow(), 'yyyy-MM-ddTHH:mm:ssZ')",
-										"type": "Expression"
-									},
-									"EndTime": {
-										"value": "@formatDateTime(utcnow(), 'yyyy-MM-ddTHH:mm:ssZ')",
-										"type": "Expression"
-									},
-									"ErrorMessage": "Horizon -appeals event disabled",
-									"StatusMessage": "Warning",
-									"PipelineTriggerID": {
-										"value": "@pipeline().TriggerId",
-										"type": "Expression"
-									},
-									"PipelineTriggerName": {
-										"value": "@pipeline().TriggerName",
-										"type": "Expression"
-									},
-									"PipelineTriggerType": {
-										"value": "@pipeline().TriggerType",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineName": {
-										"value": "@pipeline()?.TriggeredByPipelineName",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineRunID": {
-										"value": "@pipeline()?.TriggeredByPipelineRunId",
-										"type": "Expression"
-									},
-									"ActivityType": "Pipeline",
-									"AppInsIKey": {
-										"value": "@pipeline().parameters.apps_insights_ikey",
-										"type": "Expression"
-									}
-								}
-							}
+						"dataFactoryResourceGroup": {
+							"value": "@pipeline().parameters.resource_group",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@pipeline().parameters.webhook_url",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "SAPHR data load failed",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@pipeline().parameters.failed_colour",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@pipeline().parameters.failed_image",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - SAP HR data failed",
+						"Message_subtitle": "SAPHR data feed failed"
+					}
+				}
+			},
+			{
+				"name": "Record loading SAPHR Tables_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "OnProgress",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@formatDateTime(utcnow(), 'yyyy-MM-ddTHH:mm:ssZ')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Loading SAPHR Tables",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
 						}
-					],
-					"ifTrueActivities": [
-						{
-							"name": "Loading SAPHR Tables",
-							"type": "ExecutePipeline",
-							"dependsOn": [
-								{
-									"activity": "Record loading SAPHR Tables",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_saphr_odw_standardised_Monthly",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true
-							}
+					}
+				}
+			},
+			{
+				"name": "Record completed appeals event_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Loading SAPHR Tables_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completion",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
 						},
-						{
-							"name": "Send SAPHR failed",
-							"type": "ExecutePipeline",
-							"dependsOn": [
-								{
-									"activity": "Loading SAPHR Tables",
-									"dependencyConditions": [
-										"Failed"
-									]
-								}
-							],
-							"policy": {
-								"secureInput": true
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_utl_Send_Teams_Message",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"dataFactorySubscription": {
-										"value": "@pipeline().parameters.subscription_id",
-										"type": "Expression"
-									},
-									"dataFactoryResourceGroup": {
-										"value": "@pipeline().parameters.resource_group",
-										"type": "Expression"
-									},
-									"pipelineRunId": {
-										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"teamsWebhookUrl": {
-										"value": "@pipeline().parameters.webhook_url",
-										"type": "Expression"
-									},
-									"activityName": {
-										"value": "@pipeline().Pipeline",
-										"type": "Expression"
-									},
-									"activityMessage": "SAPHR data load failed",
-									"activityDuration": {
-										"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
-										"type": "Expression"
-									},
-									"activityStatus": "Failed",
-									"Colour": {
-										"value": "@pipeline().parameters.failed_colour",
-										"type": "Expression"
-									},
-									"Image": {
-										"value": "@pipeline().parameters.failed_image",
-										"type": "Expression"
-									},
-									"Message_title": "ODW - SAP HR data failed",
-									"Message_subtitle": "SAPHR data feed failed"
-								}
-							}
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
 						},
-						{
-							"name": "Record loading SAPHR Tables",
-							"type": "ExecutePipeline",
-							"dependsOn": [],
-							"policy": {
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_log_to_appins",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"Stage": "OnProgress",
-									"PipelineName": {
-										"value": "@pipeline().Pipeline",
-										"type": "Expression"
-									},
-									"PipelineRunID": {
-										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"StartTime": {
-										"value": "@formatDateTime(utcnow(), 'yyyy-MM-ddTHH:mm:ssZ')",
-										"type": "Expression"
-									},
-									"StatusMessage": "Loading SAPHR Tables",
-									"PipelineTriggerID": {
-										"value": "@pipeline().TriggerId",
-										"type": "Expression"
-									},
-									"PipelineTriggerName": {
-										"value": "@pipeline().TriggerName",
-										"type": "Expression"
-									},
-									"PipelineTriggerType": {
-										"value": "@pipeline().TriggerType",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineName": {
-										"value": "@pipeline()?.TriggeredByPipelineName",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineRunID": {
-										"value": "@pipeline()?.TriggeredByPipelineRunId",
-										"type": "Expression"
-									},
-									"ActivityType": "Pipeline",
-									"AppInsIKey": {
-										"value": "@pipeline().parameters.apps_insights_ikey",
-										"type": "Expression"
-									}
-								}
-							}
+						"StatusMessage": "loading SAPHR Tables",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
 						},
-						{
-							"name": "Record completed appeals event",
-							"type": "ExecutePipeline",
-							"dependsOn": [
-								{
-									"activity": "Loading SAPHR Tables",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"pipeline": {
-									"referenceName": "pln_log_to_appins",
-									"type": "PipelineReference"
-								},
-								"waitOnCompletion": true,
-								"parameters": {
-									"Stage": "Completion",
-									"PipelineName": {
-										"value": "@pipeline().Pipeline",
-										"type": "Expression"
-									},
-									"PipelineRunID": {
-										"value": "@pipeline().RunId",
-										"type": "Expression"
-									},
-									"StatusMessage": "loading SAPHR Tables",
-									"PipelineTriggerID": {
-										"value": "@pipeline().TriggerId",
-										"type": "Expression"
-									},
-									"PipelineTriggerName": {
-										"value": "@pipeline().TriggerName",
-										"type": "Expression"
-									},
-									"PipelineTriggerType": {
-										"value": "@pipeline().TriggerType",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineName": {
-										"value": "@pipeline()?.TriggeredByPipelineName",
-										"type": "Expression"
-									},
-									"PipelineTriggeredbyPipelineRunID": {
-										"value": "@pipeline()?.TriggeredByPipelineRunId",
-										"type": "Expression"
-									},
-									"ActivityType": "Pipeline",
-									"AppInsIKey": {
-										"value": "@pipeline().parameters.apps_insights_ikey",
-										"type": "Expression"
-									}
-								}
-							}
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
 						}
-					]
+					}
 				}
 			}
 		],
