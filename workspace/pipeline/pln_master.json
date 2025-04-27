@@ -2099,6 +2099,146 @@
 						}
 					}
 				}
+			},
+			{
+				"name": "Record SAP HR",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "pln_saphr_master",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Fail",
+						"PipelineName": {
+							"value": "@activity('pln_saphr_master').output.pipelineName",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@activity('pln_saphr_master').output.pipelineRunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@activity('pln_saphr_master').ExecutionStartTime",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@activity('pln_saphr_master').ExecutionEndTime",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@activity('pln_saphr_master').Error.message",
+							"type": "Expression"
+						},
+						"StatusMessage": {
+							"value": "@activity('pln_saphr_master').Status",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@activity('pln_saphr_master').PipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@activity('pln_saphr_master').PipelineRunId",
+							"type": "Expression"
+						},
+						"PipelineExecutionTimeInSec": {
+							"value": "@activity('pln_saphr_master').Duration",
+							"type": "Expression"
+						},
+						"ActivityType": {
+							"value": "@activity('pln_saphr_master').ActivityType",
+							"type": "Expression"
+						},
+						"DurationSeconds": {
+							"value": "@activity('pln_saphr_master').Duration",
+							"type": "Expression"
+						},
+						"AppInsCustomEventName": "ODW_Master_Pipeline_Logs",
+						"StatusCode": {
+							"value": "@activity('pln_saphr_master').StatusCode",
+							"type": "Expression"
+						},
+						"AppInsIKey": {
+							"value": "@variables('apps_insights_ikey')",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Send SAP HR failed",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "pln_saphr_master",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "SAP HR data failed",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@variables('failed_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('failed_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline failed",
+						"Message_subtitle": "ODW failed to load data from SAP HR"
+					}
+				}
 			}
 		],
 		"variables": {
