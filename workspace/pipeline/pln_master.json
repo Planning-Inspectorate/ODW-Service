@@ -1958,8 +1958,6 @@
 			{
 				"name": "Record moving on to loading Horizon data_copy1",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Record pipeline starting",
@@ -2024,11 +2022,15 @@
 			{
 				"name": "pln_saphr_master",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "Record moving on to loading Horizon data_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Send SAP HR Loading notification",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -2107,8 +2109,6 @@
 			{
 				"name": "Record SAP HR",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "pln_saphr_master",
@@ -2188,8 +2188,6 @@
 			{
 				"name": "Send SAP HR failed",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "pln_saphr_master",
@@ -2251,8 +2249,6 @@
 			{
 				"name": "Record SAP HR pipeline completed",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "pln_saphr_master",
@@ -2307,6 +2303,125 @@
 							"value": "@variables('apps_insights_ikey')",
 							"type": "Expression"
 						}
+					}
+				}
+			},
+			{
+				"name": "Send Completed to SAP HR data",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "pln_saphr_master",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Completed SAP HR data",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(variables('start_time'),'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "On Progress",
+						"Colour": {
+							"value": "@variables('on_progress_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('progress_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - Master pipeline completed",
+						"Message_subtitle": "ODW has completed to load data from SAP HR data successfully"
+					}
+				}
+			},
+			{
+				"name": "Send SAP HR Loading notification",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Send starting teams notification",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@variables('subscription_id')",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@variables('resource_group')",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@variables('webhook_url')",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Progressing SAP HR data load",
+						"activityDuration": "0H:00M:00s",
+						"activityStatus": "Starting",
+						"Colour": {
+							"value": "@variables('starting_colour')",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@variables('starting_image')",
+							"type": "Expression"
+						},
+						"Message_title": "ODW - SAP HR data load progressing",
+						"Message_subtitle": "The SAP HR loading data to ODW is progressing"
 					}
 				}
 			}
