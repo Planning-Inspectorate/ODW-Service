@@ -15,9 +15,6 @@ parameters:
 - name: oldPoolName
   type: string
   default: 'pinssynspodw'
-- name: newPoolName
-  type: string
-  default: 'pinssynspodwpr'
 
 variables:
 - name: variableGroupName
@@ -29,22 +26,24 @@ variables:
     value: "Terraform Dev"
 - name: agentPool
   value: 'pins-agent-pool-odw-${{ parameters.env }}-uks'
+- name: newPoolName
+  value: adoTempSparkPool
 - group: ${{ variables.variableGroupName }}
 
 stages:
-#- stage: RemoveSparkPoolReferences
-#  displayName: 'Deploy Synapse to the ${{ parameters.env }} environment'
-#  condition: succeeded()
-#  jobs:
-#  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/jobs/deploy-synapse-with-replaced-pool.yaml
-#    parameters:
-#      agentPool: ${{ variables.agentPool }}
-#      env: ${{ parameters.env }}
-#      armServiceConnectionName: "ODW ${{ upper(parameters.env) }} - Infrastructure"
-#      activateTriggers: false
-#      fullDeployment: false
-#      oldPoolName: ${{ parameters.oldPoolName }}
-#      newPoolName: ${{ parameters.newPoolName }}
+- stage: RemoveSparkPoolReferences
+  displayName: 'Deploy Synapse to the ${{ parameters.env }} environment'
+  condition: succeeded()
+  jobs:
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/jobs/deploy-synapse-with-replaced-pool.yaml
+    parameters:
+      agentPool: ${{ variables.agentPool }}
+      env: ${{ parameters.env }}
+      armServiceConnectionName: "ODW ${{ upper(parameters.env) }} - Infrastructure"
+      activateTriggers: false
+      fullDeployment: false
+      oldPoolName: ${{ parameters.oldPoolName }}
+      newPoolName: ${{ variables.newPoolName }}
 
 - stage: DeployInfrastructure
   displayName: 'Deploy Infrastructure to the ${{ parameters.env }} environment'
@@ -69,3 +68,25 @@ stages:
       armServiceConnectionName: "ODW ${{ upper(parameters.env) }} - Infrastructure"
       activateTriggers: false
       fullDeployment: true
+
+- stage: DeleteTempSparkPool
+  displayName: 'Delete the temporary Spark Pool'
+  condition: succeeded()
+  jobs:
+  - job: DeploySynapseJob
+    pool: ${{ variables.agentPool }}
+    timeoutInMinutes: 0 # Max timeout
+    steps:
+    # Checkout repo
+    - checkout: self
+      displayName: 'Checkout'
+      persistCredentials: true
+      fetchDepth: 0
+    # Login to Azure using Terraform service principal
+    - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml
+    # Delete the new spark pool
+    - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/delete-temp-spark-pool.yaml
+      parameters:
+        env: ${{ parameters.env }}
+        pythonVersion: 3
+        poolName: ${{ variables.newPoolName }}

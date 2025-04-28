@@ -1,5 +1,6 @@
 from pipelines.scripts.synapse_artifact.synapse_spark_pool_util import SynapseSparkPoolUtil
 import argparse
+import logging
 
 
 if __name__ == "__main__":
@@ -9,4 +10,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     synapse_workspace = args.synapse_workspace
     pool_name = args.pool_name
+    logging.info(f"Deleting spark pool with name '{pool_name}'")
     SynapseSparkPoolUtil(synapse_workspace).delete(pool_name)
