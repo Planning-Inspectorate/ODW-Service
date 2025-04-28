@@ -89,7 +89,7 @@ class SynapseSparkPoolUtil(SynapseArtifactUtil):
                 provisioned = target_pool[0]["properties"]["provisioningState"] == "Succeeded"
         if current_timeout >= max_timeout:
             raise RuntimeError(
-                f"Exceeded max wait time when creating the spark pool '{pool_name}'. Http response was:\n {json.dumps(resp, indent=4)}"
+                f"Exceeded max wait time when creating the spark pool '{pool_name}'. Http response was:\n {json.dumps(resp.json(), indent=4)}"
             )
 
     def delete(self, pool_name: str):
