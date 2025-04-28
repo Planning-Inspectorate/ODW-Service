@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1db6ae41-320d-40b5-bfbd-3a7882a16253"
+				"spark.autotune.trackingId": "665fae9e-7392-495f-ac03-4ddb4ac85686"
 			}
 		},
 		"metadata": {
@@ -59,7 +59,7 @@
 					"import json\n",
 					"import os"
 				],
-				"execution_count": 1
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -68,14 +68,14 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -84,26 +84,28 @@
 					"\n",
 					"\n",
 					"odw_json_folder_path = f\"abfss://odw-config@{storage_account}odw-config/logging_table_definitions\"\n",
-					"delta_table_base_path = f\"abfss://odw-config@{storage_account}logging\"\n",
-					"#database_name = \"odw_standardised_db\"\n",
+					"delta_table_path = f\"abfss://logging@{storage_account}\"\n",
 					"\n",
-					"#print(odw_json_folder_path)\n",
-					"#print(delta_table_base_path)\n",
+					"schema_json_path = f\"abfss://odw-config@{storage_account}orchestration/orchestration.json\"\n",
 					"\n",
-					"path_to_orchestration_file: = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\""
+					"print(odw_json_folder_path)\n",
+					"print(delta_table_path)\n",
+					"\n",
+					"\n",
+					"\n",
+					"print(schema_json_path)"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"\n",
 					"\n",
-					"# Parameters (passed from pipeline or defined here)\n",
-					"delta_table_path = \"<your-delta-table-path>\"\n",
+					"# Create delta table steps\n",
+					"\n",
 					"database_name = \"logging\"\n",
-					"table_name = \"table_logs\"\n",
-					"schema_json_path = \"abfss://odw-config@\"+storage_account+\"orchestration/orchestration.json\"\n",
+					"table_name = \"tables_logs\"\n",
 					"\n",
 					"# Read JSON schema file\n",
 					"schema_df = spark.read.option(\"multiline\", \"true\").json(schema_json_path)\n",
@@ -117,21 +119,15 @@
 					"\n",
 					"# Create Delta Table if not exists\n",
 					"if not spark._jsparkSession.catalog().tableExists(database_name, table_name):\n",
-					"    (spark.createDataFrame([], schema_struct)\n",
-					"         .write\n",
-					"         .format(\"delta\")\n",
-					"         .mode(\"overwrite\")\n",
-					"         .option(\"overwriteSchema\", \"true\")\n",
-					"         .save(delta_table_path))\n",
 					"\n",
-					"    # Register Delta Table in Metastore\n",
+					"    # Create Delta Table\n",
 					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {database_name}.{table_name} USING DELTA LOCATION '{delta_table_path}'\")\n",
 					"\n",
 					"    print(f\"Delta table {database_name}.{table_name} created successfully.\")\n",
 					"else:\n",
 					"    print(f\"Delta table {database_name}.{table_name} already exists.\")"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
