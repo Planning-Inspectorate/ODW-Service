@@ -25,9 +25,31 @@ class Util():
     def remove_unmodified_files(self):
         SynapseWorkspaceUtil().download_workspace(synapse_workspace, self.local_workspace)
         modified_files = self._get_modified_files(self.local_workspace)
+        dependencies = self._get_dependencies_for_files(modified_files)
+        files_to_keep = modified_files.union(dependencies)
+        files_to_remove = self._get_all_files_under_folder("workspace").difference(files_to_keep)
         logging.info(f"Total modified files: {len(modified_files)}")
-        self._delete_modified_files(modified_files)
+        logging.info(f"Total dependencies: {len(dependencies)}")
+        logging.info(f"Total files to keep: {len(files_to_keep)}")
+        logging.info(f"Total files to remove: {len(files_to_remove)}")
+        self._delete_files(files_to_remove)
         shutil.rmtree(self.local_workspace)
+
+    def _get_dependencies_for_files(self, modified_files: Set[str]) -> Set[str]:
+        analysed_dependencies = set()
+        dependencies = set()
+        while dependencies:
+            file = dependencies.pop()
+            analysed_dependencies.add(file)
+            local_artifact_name = f"workspace/{file}"
+            if not os.path.exists(local_artifact_name):
+                return False
+            local_workspace_file = json.load(open(local_artifact_name, "r"))
+            artifact_type = modified_files.split("/")[1]
+            artifact_util = SynapseArtifactUtilFactory.get(artifact_type)(self.workspace_name)
+            dependencies = dependencies.union(artifact_util.dependent_artifacts(local_workspace_file))
+        return analysed_dependencies
+
 
     def _get_all_files_under_folder(self, folder: str):
         """
@@ -92,18 +114,15 @@ class Util():
         logging.info(json.dumps(list(modified_files), indent=4))
         return diff
 
-    def _delete_modified_files(self, modified_files: Iterable[str]):
+    def _delete_files(self, files_to_delete: Iterable[str]):
         """
-            Delete all files under `workspace/` that have not been modified
+            Delete all specified files
 
-            :param modified_files: The file names that have been modified
+            :param files_to_delete: The file names to delete
         """
-        logging.info("Deleting unmodified files")
-        all_files = self._get_all_files_under_folder("workspace")
-        for file in all_files:
-            if file not in modified_files:
-                logging.info(f"    Deleting file '{file}'")
-                os.remove(f"workspace/{file}")
+        for file in files_to_delete:
+            logging.info(f"    Deleting file '{file}'")
+            os.remove(f"workspace/{file}")
 
 
 if __name__ == "__main__":

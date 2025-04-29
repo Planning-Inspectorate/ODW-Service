@@ -340,3 +340,45 @@ class SynapseArtifactUtil(ABC):
                 )
                 return False
         return True
+
+    def dependent_artifacts(self, artifact: Dict[str, Any]) -> Set[str]:
+        """
+            Return all dependent artifacts for the given artifact json
+
+            :param artifact: The artifact to analyse
+            :return: Set of paths to synapse artifacts under the `workspace` folder
+        """
+        reference_map = {
+            "LinkedServiceReference": "linkedService",
+            "DatasetReference": "dataset",
+            "NotebookReference": "notebook",
+            "PipelineReference": "pipeline"
+        }
+        reference_types_to_ignore = {
+            "BigDataPoolReference"
+        }
+        attributes = self._extract_dict_attributes(artifact).keys()
+        reference_attributes = {
+            attribute: f"{'.'.join(attribute.split('.')[:-1])}.type"
+            for attribute in attributes
+            if attribute.endswith("referenceName")
+        }
+        reference_type_attributes = {k: v for k, v in reference_attributes.items() if v in attributes}
+        reference_type_attributes = {
+            k: v
+            for k, v in reference_type_attributes.items()
+            if not isinstance(self._extract_dictionary_value_by_attribute(artifact, k), dict)
+        }
+        reference_values = {
+            k: self._extract_dictionary_value_by_attribute(artifact, k)
+            for k in reference_type_attributes.keys()
+        }
+        reference_type_values = {
+            v: self._extract_dictionary_value_by_attribute(artifact, v)
+            for v in reference_type_attributes.values()
+        }
+        return {
+            f"{reference_map[reference_type_values[attribute_type]]}/{reference_values[attribute]}.json"
+            for attribute, attribute_type in reference_attributes.items()
+            if reference_type_values[attribute_type] not in reference_types_to_ignore
+        }
