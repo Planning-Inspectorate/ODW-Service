@@ -142,10 +142,6 @@ class Util():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("-sw", "--synapse_workspace", help="The synapse workspace to check against")
-    parser.add_argument("-fd", "--full_deployment", default=False, action="store_true", help="Whether or not this should be a full deployment")
-    parser.add_argument("--no_full_deployment", dest="full_deployment", action="store_false")
     args = parser.parse_args()
     synapse_workspace = args.synapse_workspace
-    full_deployment = args.full_deployment
-    if not full_deployment:
-        Util(synapse_workspace).remove_unmodified_files()
+    Util(synapse_workspace).remove_unmodified_files()
