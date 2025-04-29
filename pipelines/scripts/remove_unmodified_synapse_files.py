@@ -36,13 +36,19 @@ class Util():
         self._delete_files(files_to_remove)
         shutil.rmtree(self.local_workspace)
 
-    def _get_dependencies_for_files(self, modified_files: Set[str]) -> Set[str]:
+    def _get_dependencies_for_files(self, files_to_analyse: Set[str]) -> Set[str]:
+        """
+            Deeply return all dependencies for the given synapse artifact names
+
+            :param files_to_analyse: The files to detect dependencies for
+            :return: The paths to artifacts that are dependencies, including nested dependencies
+        """
         files_to_ignore = {
             "template-parameters-definition.json",
             "publish_config.json"
         }
         analysed_dependencies = set()
-        dependencies = {file for file in modified_files if file not in files_to_ignore}
+        dependencies = {file for file in files_to_analyse if file not in files_to_ignore}
         while dependencies:
             file = dependencies.pop()
             analysed_dependencies.add(file)
