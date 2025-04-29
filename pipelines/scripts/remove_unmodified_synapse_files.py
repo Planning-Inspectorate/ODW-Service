@@ -54,6 +54,8 @@ class Util():
                 else:
                     local_workspace_file = json.load(open(local_artifact_name, "r"))
                     dependencies = dependencies.union(SynapseArtifactUtil.dependent_artifacts(local_workspace_file))
+        logging.info("The below files have been identified as dependencies of the modified files")
+        logging.info(json.dumps(list(analysed_dependencies), indent=4))
         return analysed_dependencies
 
 
