@@ -310,11 +310,15 @@ class SynapseArtifactUtil(ABC):
                 return attribute_value[remaining_subattributes]
             if isinstance(attribute_value, dict):
                 if subattribute not in attribute_value:
-                    raise ValueError(f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'")
+                    raise ValueError(
+                        f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'"
+                    )
                 attribute_value = attribute_value[subattribute]
             elif isinstance(attribute_value, list):
                 if int(subattribute) >= len(attribute_value):
-                    raise ValueError(f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'")
+                    raise ValueError(
+                        f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'"
+                    )
                 attribute_value = attribute_value[int(subattribute)]
             else:
                 if i != len(attribute_split) - 1:
