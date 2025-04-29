@@ -41,7 +41,7 @@ class SparkPoolReferenceUpdater():
         for artifact_path, artifact_json in cleaned_artifacts.items():
             logging.info(f"Overwriting artifact '{artifact_path}'")
             with open(artifact_path, "w") as f:
-                json.dump(artifact_json, f, indent=4)
+                json.dump(artifact_json, f, indent="\t")
 
     def get_all_relevant_artifact_names(self) -> List[str]:
         """
