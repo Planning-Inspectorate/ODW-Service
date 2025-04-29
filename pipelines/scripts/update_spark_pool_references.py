@@ -140,7 +140,7 @@ class SparkPoolReferenceUpdater():
                     "executorCores": node_size_details["vCores"],
                     #"numExecutors": 1,  # Doesn't seem to be needed, can't see where this comes from
                     "conf": {
-                        "spark.dynamicAllocation.enabled": new_pool_details["properties"]["dynamicExecutorAllocation"]["enabled"],
+                        "spark.dynamicAllocation.enabled": str(new_pool_details["properties"]["dynamicExecutorAllocation"]["enabled"]),
                         #"spark.dynamicAllocation.minExecutors": "1",  # Doesn't seem to be needed, can't see where this comes from
                         #"spark.dynamicAllocation.maxExecutors": "4"  # Doesn't seem to be needed, can't see where this comes from
                     }
