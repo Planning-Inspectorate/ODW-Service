@@ -1,4 +1,5 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util_factory import SynapseArtifactUtilFactory
+from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
 from pipelines.scripts.synapse_artifact.synapse_workspace_util import SynapseWorkspaceUtil
 from typing import Set, Iterable
 import argparse
@@ -36,18 +37,23 @@ class Util():
         shutil.rmtree(self.local_workspace)
 
     def _get_dependencies_for_files(self, modified_files: Set[str]) -> Set[str]:
+        files_to_ignore = {
+            "template-parameters-definition.json",
+            "publish_config.json"
+        }
         analysed_dependencies = set()
-        dependencies = set()
+        dependencies = {file for file in modified_files if file not in files_to_ignore}
         while dependencies:
             file = dependencies.pop()
             analysed_dependencies.add(file)
-            local_artifact_name = f"workspace/{file}"
-            if not os.path.exists(local_artifact_name):
-                return False
-            local_workspace_file = json.load(open(local_artifact_name, "r"))
-            artifact_type = modified_files.split("/")[1]
-            artifact_util = SynapseArtifactUtilFactory.get(artifact_type)(self.workspace_name)
-            dependencies = dependencies.union(artifact_util.dependent_artifacts(local_workspace_file))
+            if file.endswith(".json"):
+                local_artifact_name = f"workspace/{file}"
+                if not os.path.exists(local_artifact_name):
+                    # This case is ok to skip, since Synapse just ignores it. Raise a warning just for awareness
+                    logging.warning(f"The artifact '{local_artifact_name}' is referenced by other artifacts but it does not exist")
+                else:
+                    local_workspace_file = json.load(open(local_artifact_name, "r"))
+                    dependencies = dependencies.union(SynapseArtifactUtil.dependent_artifacts(local_workspace_file))
         return analysed_dependencies
 
 

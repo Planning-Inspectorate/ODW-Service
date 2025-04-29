@@ -186,7 +186,8 @@ class SynapseArtifactUtil(ABC):
         """
         set(self._extract_dict_attributes(artifact_json, current_level="").keys())
 
-    def _extract_list_attributes(self, target_list: List[Any], current_level: str) -> Dict[str, None]:
+    @classmethod
+    def _extract_list_attributes(cls, target_list: List[Any], current_level: str) -> Dict[str, None]:
         """
             Extract attribute names from the given list in dot-notation
 
@@ -212,14 +213,15 @@ class SynapseArtifactUtil(ABC):
         for i, val in enumerate(target_list):
             new_level = f"{current_level_prefix}{i}"
             if isinstance(val, dict):
-                dict_keys = dict(dict_keys, **self._extract_dict_attributes(val, new_level))
+                dict_keys = dict(dict_keys, **cls._extract_dict_attributes(val, new_level))
             elif isinstance(val, list):
-                dict_keys = dict(dict_keys, **self._extract_list_attributes(val, new_level))
+                dict_keys = dict(dict_keys, **cls._extract_list_attributes(val, new_level))
             else:
                 dict_keys[new_level] = None
         return dict_keys
 
-    def _extract_dict_attributes(self, target_dict: Dict[str, Any], current_level: str = "") -> Dict[str, None]:
+    @classmethod
+    def _extract_dict_attributes(cls, target_dict: Dict[str, Any], current_level: str = "") -> Dict[str, None]:
         """
             Extract attribute names from the given dictionary
 
@@ -250,9 +252,9 @@ class SynapseArtifactUtil(ABC):
         for key, val in target_dict.items():
             new_level = f"{current_level_prefix}{key}"
             if isinstance(val, dict):
-                dict_keys = dict(dict_keys, **self._extract_dict_attributes(val, new_level))
+                dict_keys = dict(dict_keys, **cls._extract_dict_attributes(val, new_level))
             elif isinstance(val, list):
-                dict_keys = dict(dict_keys, **self._extract_list_attributes(val, new_level))
+                dict_keys = dict(dict_keys, **cls._extract_list_attributes(val, new_level))
             else:
                 dict_keys[new_level] = None
         return dict_keys
@@ -288,7 +290,8 @@ class SynapseArtifactUtil(ABC):
             )
         }
 
-    def _extract_dictionary_value_by_attribute(self, dictionary: Dict[str, Any], attribute: str) -> Any:
+    @classmethod
+    def _extract_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str) -> Any:
         """
             Access json attributes by a dot-notation string.
             e.g `extract_value_from_attribute({"a": {"b": 2}}, "a.b") -> 2`
@@ -341,7 +344,8 @@ class SynapseArtifactUtil(ABC):
                 return False
         return True
 
-    def dependent_artifacts(self, artifact: Dict[str, Any]) -> Set[str]:
+    @classmethod
+    def dependent_artifacts(cls, artifact: Dict[str, Any]) -> Set[str]:
         """
             Return all dependent artifacts for the given artifact json
 
@@ -352,12 +356,14 @@ class SynapseArtifactUtil(ABC):
             "LinkedServiceReference": "linkedService",
             "DatasetReference": "dataset",
             "NotebookReference": "notebook",
-            "PipelineReference": "pipeline"
+            "PipelineReference": "pipeline",
+            "ManagedVirtualNetworkReference": "managedVirtualNetwork",
+            "IntegrationRuntimeReference": "integrationRuntime"
         }
         reference_types_to_ignore = {
             "BigDataPoolReference"
         }
-        attributes = self._extract_dict_attributes(artifact).keys()
+        attributes = cls._extract_dict_attributes(artifact).keys()
         reference_attributes = {
             attribute: f"{'.'.join(attribute.split('.')[:-1])}.type"
             for attribute in attributes
@@ -367,14 +373,14 @@ class SynapseArtifactUtil(ABC):
         reference_type_attributes = {
             k: v
             for k, v in reference_type_attributes.items()
-            if not isinstance(self._extract_dictionary_value_by_attribute(artifact, k), dict)
+            if not isinstance(cls._extract_dictionary_value_by_attribute(artifact, k), dict)
         }
         reference_values = {
-            k: self._extract_dictionary_value_by_attribute(artifact, k)
+            k: cls._extract_dictionary_value_by_attribute(artifact, k)
             for k in reference_type_attributes.keys()
         }
         reference_type_values = {
-            v: self._extract_dictionary_value_by_attribute(artifact, v)
+            v: cls._extract_dictionary_value_by_attribute(artifact, v)
             for v in reference_type_attributes.values()
         }
         return {
