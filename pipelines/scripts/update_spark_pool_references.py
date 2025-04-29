@@ -41,7 +41,7 @@ class SparkPoolReferenceUpdater():
         for artifact_path, artifact_json in cleaned_artifacts.items():
             logging.info(f"Overwriting artifact '{artifact_path}'")
             with open(artifact_path, "w") as f:
-                json.dump(artifact_json, f, indent="\t")
+                json.dump(artifact_json, f, indent="\t", ensure_ascii=False)
 
     def get_all_relevant_artifact_names(self) -> List[str]:
         """
@@ -151,7 +151,7 @@ class SparkPoolReferenceUpdater():
             "a365ComputeOptions": {
                 "id": new_pool_details["id"],
                 "name": pool_name,
-                "endpoint": f"https://{self._synapse_workspace_name}.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/{pool_name}",
+                "endpoint": f"https://{self._synapse_workspace_name}.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/{pool_name}",
                 "sparkVersion": new_pool_details["properties"]["sparkVersion"],
                 #"nodeCount": 10,  # Doesn't seem to be needed, can't see where this comes from
                 "cores": node_size_details["vCores"],
