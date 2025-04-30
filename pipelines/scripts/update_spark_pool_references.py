@@ -85,7 +85,13 @@ class SparkPoolReferenceUpdater():
         else:
             raise ValueError(f"Artifact '{artifact_path}' is not a path to a Synapse notebook or pipeline")
         with open(artifact_path, "r") as f:
-            artifact = json.load(f)
+            read_exception = None
+            try:
+                artifact = json.load(f)
+            except json.JSONDecodeError as e:
+                read_exception = e
+            if read_exception:
+                logging.error(f"Failed to parse JSON in {artifact_path}: {read_exception}")
         if is_notebook:
             return self._update_spark_pool_references_in_notebook(artifact)
         return self._update_spark_pool_references_in_pipeline(artifact)
