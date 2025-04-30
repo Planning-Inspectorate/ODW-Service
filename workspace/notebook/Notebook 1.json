@@ -1,0 +1,107 @@
+{
+	"name": "Notebook 1",
+	"properties": {
+		"folder": {
+			"name": "0-odw-source-to-raw/Fileshare/SAP_HR"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "6da9ea02-5428-49c3-834c-7ed1f3b1ce0d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"### start datetime REMOVE?\n",
+					"    import datetime\n",
+					"    dt = datetime.datetime.now()\n",
+					"\n",
+					"\n",
+					"    ### establish connection to azure files and create client\n",
+					"    from azure.storage.fileshare import ShareDirectoryClient\n",
+					"    from notebookutils import mssparkutils"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Required variables\n",
+					"storage_account = \"<yourstorageaccount>\"\n",
+					"file_share = \"datalab\" # The file share name\n",
+					"secret_name = \"datalab-connectionstring\"\n",
+					"key_vault_linked_service = \"ls_kv\" # This should be the name used in your Synapse linked service\n",
+					"\n",
+					"# 1. Fetch the SAS token from Azure Key Vault\n",
+					"sas_token = mssparkutils.credentials.getSecret(key_vault_linked_service, secret_name)\n",
+					"\n",
+					"# 2. Set Spark config to allow access using SAS\n",
+					"spark.conf.set(\n",
+					"    f\"fs.azure.sas.{file_share}.{storage_account}.blob.core.windows.net\",\n",
+					"    sas_token\n",
+					")\n",
+					"\n",
+					"# 3. Build the WASBS path\n",
+					"file_path = f\"wasbs://{file_share}@{storage_account}.blob.core.windows.net/myfolder/myfile.csv\"\n",
+					"\n",
+					"# 4. Read the file\n",
+					"df = spark.read.option(\"header\", \"true\").csv(file_path)\n",
+					"df.show()"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"    creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"    parent_dir = ShareDirectoryClient.from_connection_string(conn_str=creds, share_name=share_name, directory_path=directory_path)\n",
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
