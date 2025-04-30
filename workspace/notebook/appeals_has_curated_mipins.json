@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5bfbcfbc-75fa-4b07-807f-28e5e149b08c"
+				"spark.autotune.trackingId": "1039088a-156a-4bfd-bdba-4674fc524954"
 			}
 		},
 		"metadata": {
@@ -54,12 +54,11 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"from pyspark.sql import SparkSession\n",
 					"from notebookutils import mssparkutils\n",
 					"from datetime import datetime, date\n",
-					"from pyspark.sql.functions import col, from_utc_timestamp"
+					"from pyspark.sql.functions import from_utc_timestamp"
 				],
-				"execution_count": 120
+				"execution_count": 138
 			},
 			{
 				"cell_type": "code",
@@ -157,7 +156,7 @@
 					"FROM odw_harmonised_db.sb_appeal_has AS AH \n",
 					"WHERE AH.lpaCode NOT in ('Q9999', 'Q1111')"
 				],
-				"execution_count": 121
+				"execution_count": 139
 			},
 			{
 				"cell_type": "code",
@@ -173,10 +172,9 @@
 					}
 				},
 				"source": [
-					"spark = SparkSession.builder.getOrCreate()\n",
 					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeals_has_curated_mipins\")"
 				],
-				"execution_count": 122
+				"execution_count": 140
 			},
 			{
 				"cell_type": "code",
@@ -185,34 +183,39 @@
 				},
 				"source": [
 					"# prepare dataframe convert UTC to Day light savings for all timestamp fields\n",
-					"final_view_df = (view_df\n",
-					"    .withColumn( 'caseValidDate', from_utc_timestamp('caseValidDate', 'Europe/London'))\n",
-					"    .withColumn( 'caseSubmittedDate', from_utc_timestamp('caseSubmittedDate','Europe/London')) \n",
-					"    .withColumn( 'caseCreatedDate', from_utc_timestamp('caseCreatedDate','Europe/London')) \n",
-					"    .withColumn( 'caseUpdatedDate', from_utc_timestamp('caseUpdatedDate','Europe/London')) \n",
-					"    .withColumn( 'caseValidDate', from_utc_timestamp('caseValidDate','Europe/London')) \n",
-					"    .withColumn( 'caseValidationDate',  from_utc_timestamp('caseValidationDate','Europe/London'))\n",
-					"    .withColumn( 'caseExtensionDate',  from_utc_timestamp( 'caseExtensionDate','Europe/London'))\n",
-					"    .withColumn( 'caseStartedDate',  from_utc_timestamp( 'caseStartedDate','Europe/London'))\n",
-					"    .withColumn( 'casePublishedDate',  from_utc_timestamp( 'casePublishedDate','Europe/London'))\n",
-					"    .withColumn( 'lpaQuestionnaireDueDate',  from_utc_timestamp( 'lpaQuestionnaireDueDate','Europe/London'))\n",
-					"    .withColumn( 'lpaQuestionnaireSubmittedDate',  from_utc_timestamp( 'lpaQuestionnaireSubmittedDate','Europe/London'))\n",
-					"    .withColumn( 'lpaQuestionnaireCreatedDate',  from_utc_timestamp( 'lpaQuestionnaireCreatedDate','Europe/London'))\n",
-					"    .withColumn( 'lpaQuestionnairePublishedDate',  from_utc_timestamp( 'lpaQuestionnairePublishedDate','Europe/London'))\n",
-					"    .withColumn( 'lpaQuestionnaireValidationOutcomeDate',  from_utc_timestamp( 'lpaQuestionnaireValidationOutcomeDate','Europe/London'))\n",
-					"    .withColumn( 'caseWithdrawnDate',  from_utc_timestamp( 'caseWithdrawnDate','Europe/London'))\n",
-					"    .withColumn( 'caseTransferredDate',  from_utc_timestamp( 'caseTransferredDate','Europe/London'))\n",
-					"    .withColumn( 'transferredCaseClosedDate',  from_utc_timestamp( 'transferredCaseClosedDate','Europe/London'))\n",
-					"    .withColumn( 'caseDecisionOutcomeDate',  from_utc_timestamp( 'caseDecisionOutcomeDate','Europe/London'))\n",
-					"    .withColumn( 'caseDecisionPublishedDate',  from_utc_timestamp( 'caseDecisionPublishedDate','Europe/London'))\n",
-					"    .withColumn( 'caseCompletedDate',  from_utc_timestamp( 'caseCompletedDate','Europe/London'))\n",
-					"    .withColumn( 'applicationDecisionDate',  from_utc_timestamp( 'applicationDecisionDate','Europe/London'))\n",
-					"    .withColumn( 'caseSubmissionDueDate',  from_utc_timestamp( 'caseSubmissionDueDate','Europe/London'))\n",
-					"    .withColumn( 'ValidTo',  from_utc_timestamp( 'ValidTo','Europe/London'))\n",
-					"    )\n",
-					""
+					"\n",
+					"# List of UTC timestamp columns to convert\n",
+					"timestamp_columns = [\n",
+					"    'caseValidDate',\n",
+					"    'caseSubmittedDate',\n",
+					"    'caseCreatedDate',\n",
+					"    'caseUpdatedDate',\n",
+					"    'caseValidationDate',\n",
+					"    'caseExtensionDate',\n",
+					"    'caseStartedDate',\n",
+					"    'casePublishedDate',\n",
+					"    'lpaQuestionnaireDueDate',\n",
+					"    'lpaQuestionnaireSubmittedDate',\n",
+					"    'lpaQuestionnaireCreatedDate',\n",
+					"    'lpaQuestionnairePublishedDate',\n",
+					"    'lpaQuestionnaireValidationOutcomeDate',\n",
+					"    'caseWithdrawnDate',\n",
+					"    'caseTransferredDate',\n",
+					"    'transferredCaseClosedDate',\n",
+					"    'caseDecisionOutcomeDate',\n",
+					"    'caseDecisionPublishedDate',\n",
+					"    'caseCompletedDate',\n",
+					"    'applicationDecisionDate',\n",
+					"    'caseSubmissionDueDate',\n",
+					"    'ValidTo'\n",
+					"]\n",
+					"\n",
+					"# Apply the UTC to London conversion for each column\n",
+					"final_view_df = view_df\n",
+					"for column_name in timestamp_columns:\n",
+					"    final_view_df = final_view_df.withColumn(column_name, from_utc_timestamp(col(column_name), 'Europe/London'))"
 				],
-				"execution_count": 123
+				"execution_count": 141
 			},
 			{
 				"cell_type": "code",
@@ -230,14 +233,14 @@
 				"source": [
 					"spark.sql(f\"drop table if exists odw_curated_db.appeals_has_curated_mipins;\")"
 				],
-				"execution_count": 124
+				"execution_count": 142
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"final_view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeals_has_curated_mipins\")"
 				],
-				"execution_count": 125
+				"execution_count": 143
 			},
 			{
 				"cell_type": "code",
@@ -251,7 +254,7 @@
 					"#%%sql\n",
 					"#select * from odw_curated_db.appeals_has_curated_mipins "
 				],
-				"execution_count": 126
+				"execution_count": 144
 			}
 		]
 	}
