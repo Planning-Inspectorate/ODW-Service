@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6da9ea02-5428-49c3-834c-7ed1f3b1ce0d"
+				"spark.autotune.trackingId": "752b33b2-8547-4569-bd4d-5e7f752c7e31"
 			}
 		},
 		"metadata": {
@@ -28,7 +28,7 @@
 			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
-				"display_name": "python"
+				"display_name": "Synapse PySpark"
 			},
 			"language_info": {
 				"name": "python"
@@ -55,21 +55,21 @@
 				"cell_type": "code",
 				"source": [
 					"### start datetime REMOVE?\n",
-					"    import datetime\n",
-					"    dt = datetime.datetime.now()\n",
+					"import datetime\n",
+					"dt = datetime.datetime.now()\n",
 					"\n",
 					"\n",
-					"    ### establish connection to azure files and create client\n",
-					"    from azure.storage.fileshare import ShareDirectoryClient\n",
-					"    from notebookutils import mssparkutils"
+					"### establish connection to azure files and create client\n",
+					"from azure.storage.fileshare import ShareDirectoryClient\n",
+					"from notebookutils import mssparkutils"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Required variables\n",
-					"storage_account = \"<yourstorageaccount>\"\n",
+					"storage_account = \"pinsdatalab\"\n",
 					"file_share = \"datalab\" # The file share name\n",
 					"secret_name = \"datalab-connectionstring\"\n",
 					"key_vault_linked_service = \"ls_kv\" # This should be the name used in your Synapse linked service\n",
@@ -77,6 +77,7 @@
 					"# 1. Fetch the SAS token from Azure Key Vault\n",
 					"sas_token = mssparkutils.credentials.getSecret(key_vault_linked_service, secret_name)\n",
 					"\n",
+					"print(sas_token)\n",
 					"# 2. Set Spark config to allow access using SAS\n",
 					"spark.conf.set(\n",
 					"    f\"fs.azure.sas.{file_share}.{storage_account}.blob.core.windows.net\",\n",
@@ -84,13 +85,42 @@
 					")\n",
 					"\n",
 					"# 3. Build the WASBS path\n",
-					"file_path = f\"wasbs://{file_share}@{storage_account}.blob.core.windows.net/myfolder/myfile.csv\"\n",
+					"file_path = f\"wasbs://{file_share}@{storage_account}.blob.core.windows.net/ODW/HR/SAPHR_SharepointData/MONTHLY/HR_Absence_20250403.csv\"\n",
 					"\n",
 					"# 4. Read the file\n",
 					"df = spark.read.option(\"header\", \"true\").csv(file_path)\n",
 					"df.show()"
 				],
-				"execution_count": null
+				"execution_count": 4
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"# Required variables\n",
+					"storage_account = \"pinsdatalab\"\n",
+					"file_share = \"datalab\"\n",
+					"secret_name = \"datalab-connectionstring\"\n",
+					"linked_service_name = \"ls_kv\"\n",
+					"\n",
+					"# Fetch SAS token securely\n",
+					"sas_token = mssparkutils.credentials.getSecret(linked_service_name, secret_name)\n",
+					"\n",
+					"# Set Spark config to use SAS token\n",
+					"spark.conf.set(\n",
+					"    f\"fs.azure.sas.{file_share}.{storage_account}.blob.core.windows.net\",\n",
+					"    sas_token\n",
+					")\n",
+					"\n",
+					"# File path\n",
+					"file_path = f\"wasbs://{file_share}@{storage_account}.blob.core.windows.net/ODW/HR/SAPHR_SharepointData/MONTHLY/HR_Absence_20250403.csv\"\n",
+					"\n",
+					"# Read file\n",
+					"df = spark.read.option(\"header\", \"true\").csv(file_path)\n",
+					"df.show()\n",
+					""
+				],
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
