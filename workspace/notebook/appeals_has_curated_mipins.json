@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1de92c74-8fbd-459b-9cd0-6b38f2e8309e"
+				"spark.autotune.trackingId": "41dc3713-5ef2-41dd-abb4-5f14fb00b15f"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,16 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"from datetime import datetime, date\n",
+					"from pyspark.sql.functions import col, from_utc_timestamp"
+				],
+				"execution_count": 83
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -144,10 +154,10 @@
 					"AH.IngestionDate                             AS IngestionDate,\n",
 					"AH.ValidTo                                   AS ValidTo,\n",
 					"AH.IsActive                                  AS IsActive\n",
-					"FROM odw_harmonised_db.sb_appeal_has AS AH\n",
-					"where AH.lpaCode NOT in ('Q9999', 'Q1111')"
+					"FROM odw_harmonised_db.sb_appeal_has AS AH \n",
+					"WHERE AH.lpaCode NOT in ('Q9999', 'Q1111')"
 				],
-				"execution_count": 25
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -165,7 +175,7 @@
 				"source": [
 					"spark.sql(f\"drop table if exists odw_curated_db.appeals_has_curated_mipins;\")"
 				],
-				"execution_count": 26
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
@@ -183,10 +193,52 @@
 				"source": [
 					"from pyspark.sql import SparkSession\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
-					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeals_has_curated_mipins\")\n",
-					"view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeals_has_curated_mipins\")"
+					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeals_has_curated_mipins\")"
 				],
-				"execution_count": 27
+				"execution_count": 76
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# UTC to DAY LIGHT SAVINGS ONLY IN CURATED TABLE\n",
+					"final_view_df = (view_df\n",
+					"    .withColumn( 'caseValidDate', from_utc_timestamp('caseValidDate', 'Europe/London'))\n",
+					"    .withColumn( 'caseSubmittedDate', from_utc_timestamp('caseSubmittedDate','Europe/London')) \n",
+					"    .withColumn( 'caseCreatedDate', from_utc_timestamp('caseCreatedDate','Europe/London')) \n",
+					"    .withColumn( 'caseUpdatedDate', from_utc_timestamp('caseUpdatedDate','Europe/London')) \n",
+					"    .withColumn( 'caseValidDate', from_utc_timestamp('caseValidDate','Europe/London')) \n",
+					"    .withColumn( 'caseValidationDate',  from_utc_timestamp('caseValidationDate','Europe/London'))\n",
+					"    .withColumn( 'caseExtensionDate',  from_utc_timestamp( 'caseExtensionDate','Europe/London'))\n",
+					"    .withColumn( 'caseStartedDate',  from_utc_timestamp( 'caseStartedDate','Europe/London'))\n",
+					"    .withColumn( 'casePublishedDate',  from_utc_timestamp( 'casePublishedDate','Europe/London'))\n",
+					"    .withColumn( 'lpaQuestionnaireDueDate',  from_utc_timestamp( 'lpaQuestionnaireDueDate','Europe/London'))\n",
+					"    .withColumn( 'lpaQuestionnaireSubmittedDate',  from_utc_timestamp( 'lpaQuestionnaireSubmittedDate','Europe/London'))\n",
+					"    .withColumn( 'lpaQuestionnaireCreatedDate',  from_utc_timestamp( 'lpaQuestionnaireCreatedDate','Europe/London'))\n",
+					"    .withColumn( 'lpaQuestionnairePublishedDate',  from_utc_timestamp( 'lpaQuestionnairePublishedDate','Europe/London'))\n",
+					"    .withColumn( 'lpaQuestionnaireValidationOutcomeDate',  from_utc_timestamp( 'lpaQuestionnaireValidationOutcomeDate','Europe/London'))\n",
+					"    .withColumn( 'caseWithdrawnDate',  from_utc_timestamp( 'caseWithdrawnDate','Europe/London'))\n",
+					"    .withColumn( 'caseTransferredDate',  from_utc_timestamp( 'caseTransferredDate','Europe/London'))\n",
+					"    .withColumn( 'transferredCaseClosedDate',  from_utc_timestamp( 'transferredCaseClosedDate','Europe/London'))\n",
+					"    .withColumn( 'caseDecisionOutcomeDate',  from_utc_timestamp( 'caseDecisionOutcomeDate','Europe/London'))\n",
+					"    .withColumn( 'caseDecisionPublishedDate',  from_utc_timestamp( 'caseDecisionPublishedDate','Europe/London'))\n",
+					"    .withColumn( 'caseCompletedDate',  from_utc_timestamp( 'caseCompletedDate','Europe/London'))\n",
+					"    .withColumn( 'applicationDecisionDate',  from_utc_timestamp( 'applicationDecisionDate','Europe/London'))\n",
+					"    .withColumn( 'caseSubmissionDueDate',  from_utc_timestamp( 'caseSubmissionDueDate','Europe/London'))\n",
+					"    .withColumn( 'ValidTo',  from_utc_timestamp( 'ValidTo','Europe/London'))\n",
+					"    )\n",
+					""
+				],
+				"execution_count": 78
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"final_view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeals_has_curated_mipins\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -206,7 +258,7 @@
 					"#%%sql\n",
 					"#select * from odw_curated_db.appeals_has_curated_mipins"
 				],
-				"execution_count": 28
+				"execution_count": 81
 			}
 		]
 	}
