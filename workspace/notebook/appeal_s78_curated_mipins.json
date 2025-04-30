@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6ad8415f-f1ab-4fec-b176-0f54d93d1d75"
+				"spark.autotune.trackingId": "92c564a2-935b-4886-8d17-877cb948a4a0"
 			}
 		},
 		"metadata": {
@@ -51,6 +51,16 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"from datetime import datetime, date\n",
+					"from pyspark.sql.functions import *"
+				],
+				"execution_count": 30
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -206,24 +216,68 @@
 					"FROM odw_harmonised_db.sb_appeal_s78 AS AH\n",
 					"where AH.lpaCode NOT in ('Q9999', 'Q1111')"
 				],
-				"execution_count": 28
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeals_s78_curated_mipins\")"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# prepare dataframe convert UTC to Day light savings for all timestamp fields\n",
+					"final_view_df = (view_df.withColumn( 'caseSubmittedDate',  from_utc_timestamp( 'caseSubmittedDate','Europe/London'))\n",
+					"        .withColumn( 'caseCreatedDate',  from_utc_timestamp( 'caseCreatedDate','Europe/London'))\n",
+					"        .withColumn( 'caseUpdatedDate',  from_utc_timestamp( 'caseUpdatedDate','Europe/London'))\n",
+					"        .withColumn( 'caseValidDate',  from_utc_timestamp( 'caseValidDate','Europe/London'))\n",
+					"        .withColumn( 'caseValidationDate',  from_utc_timestamp( 'caseValidationDate','Europe/London'))\n",
+					"        .withColumn( 'caseExtensionDate',  from_utc_timestamp( 'caseExtensionDate','Europe/London'))\n",
+					"        .withColumn( 'caseStartedDate',  from_utc_timestamp( 'caseStartedDate','Europe/London'))\n",
+					"        .withColumn( 'casePublishedDate',  from_utc_timestamp( 'casePublishedDate','Europe/London'))\n",
+					"        .withColumn( 'lpaQuestionnaireDueDate',  from_utc_timestamp( 'lpaQuestionnaireDueDate','Europe/London'))\n",
+					"        .withColumn( 'lpaQuestionnaireSubmittedDate',  from_utc_timestamp( 'lpaQuestionnaireSubmittedDate','Europe/London'))\n",
+					"        .withColumn( 'lpaQuestionnaireCreatedDate',  from_utc_timestamp( 'lpaQuestionnaireCreatedDate','Europe/London'))\n",
+					"        .withColumn( 'lpaQuestionnairePublishedDate',  from_utc_timestamp( 'lpaQuestionnairePublishedDate','Europe/London'))\n",
+					"        .withColumn( 'lpaQuestionnaireValidationOutcomeDate',  from_utc_timestamp( 'lpaQuestionnaireValidationOutcomeDate','Europe/London'))\n",
+					"        .withColumn( 'caseWithdrawnDate',  from_utc_timestamp( 'caseWithdrawnDate','Europe/London'))\n",
+					"        .withColumn( 'caseTransferredDate',  from_utc_timestamp( 'caseTransferredDate','Europe/London'))\n",
+					"        .withColumn( 'transferredCaseClosedDate',  from_utc_timestamp( 'transferredCaseClosedDate','Europe/London'))\n",
+					"        .withColumn( 'caseDecisionOutcomeDate',  from_utc_timestamp( 'caseDecisionOutcomeDate','Europe/London'))\n",
+					"        .withColumn( 'caseDecisionPublishedDate',  from_utc_timestamp( 'caseDecisionPublishedDate','Europe/London'))\n",
+					"        .withColumn( 'caseCompletedDate',  from_utc_timestamp( 'caseCompletedDate','Europe/London'))\n",
+					"        .withColumn( 'applicationDate',  from_utc_timestamp( 'applicationDate','Europe/London'))\n",
+					"        .withColumn( 'applicationDecisionDate',  from_utc_timestamp( 'applicationDecisionDate','Europe/London'))\n",
+					"        .withColumn( 'caseSubmissionDueDate',  from_utc_timestamp( 'caseSubmissionDueDate','Europe/London'))\n",
+					"        .withColumn( 'infrastructureLevyAdoptedDate',  from_utc_timestamp( 'infrastructureLevyAdoptedDate','Europe/London'))\n",
+					"        .withColumn( 'infrastructureLevyExpectedDate',  from_utc_timestamp( 'infrastructureLevyExpectedDate','Europe/London'))\n",
+					"        .withColumn( 'finalCommentsDueDate',  from_utc_timestamp( 'finalCommentsDueDate','Europe/London'))\n",
+					"        .withColumn( 'interestedPartyRepsDueDate',  from_utc_timestamp( 'interestedPartyRepsDueDate','Europe/London'))\n",
+					"        .withColumn( 'statementDueDate',  from_utc_timestamp( 'statementDueDate','Europe/London'))\n",
+					"        .withColumn( 'ValidTo',  from_utc_timestamp( 'ValidTo','Europe/London'))\n",
+					"    )"
+				],
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"spark.sql(f\"drop table if exists odw_curated_db.appeals_s78_curated_mipins;\")"
 				],
-				"execution_count": 29
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"from pyspark.sql import SparkSession\n",
-					"spark = SparkSession.builder.getOrCreate()\n",
-					"view_df = spark.sql(\"SELECT * FROM odw_curated_db.vw_appeals_s78_curated_mipins\")\n",
-					"view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeals_s78_curated_mipins\")"
+					"final_view_df.write.mode(\"overwrite\").saveAsTable(\"odw_curated_db.appeals_s78_curated_mipins\")"
 				],
-				"execution_count": 30
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -234,7 +288,7 @@
 					"#%%sql\n",
 					"#select * from odw_curated_db.appeals_s78_curated_mipins"
 				],
-				"execution_count": 31
+				"execution_count": 36
 			}
 		]
 	}
