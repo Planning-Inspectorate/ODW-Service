@@ -6,15 +6,49 @@
 		},
 		"nbformat": 4,
 		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "3f82d5ed-1417-45cb-ac8e-37594af624e5"
+			}
+		},
 		"metadata": {
 			"saveOutput": true,
+			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
 			},
 			"language_info": {
 				"name": "python"
-			}
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
 			{
@@ -68,14 +102,14 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 48
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 49
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
@@ -84,7 +118,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 50
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -102,7 +136,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 51
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -404,7 +438,7 @@
 					"   logInfo(\"Flushing logs\")\n",
 					"   flushLogging()"
 				],
-				"execution_count": 57
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -508,152 +542,7 @@
 					"except Exception as e:\n",
 					"    print(f\"Error in initial setup: {e}\")"
 				],
-				"execution_count": 58
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select count (*) from odw_harmonised_db.sap_hr_fact_Absence_All"
-				],
-				"execution_count": 59
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select count(*) from odw_harmonised_db.sap_hr_absence_All\n",
-					"--select count(*) from odw_standardised_db.work_schedules"
-				],
-				"execution_count": 55
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"-- Find specific staffnumber/date combinations present in one system but not the other\n",
-					"SELECT distinct staffnumber, absencedate \n",
-					"FROM odw_harmonised_db.sap_hr_fact_Absence_All\n",
-					"ORDER BY staffnumber, absencedate\n",
-					"LIMIT 100;"
-				],
-				"execution_count": 60
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"SELECT COUNT(*) FROM odw_harmonised_db.sap_hr_fact_Absence_All_TEMP;"
-				],
-				"execution_count": 61
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"\n",
-					"SELECT dayofweek(date_value), COUNT(*) \n",
-					"FROM date_dimension \n",
-					"GROUP BY dayofweek(date_value);"
-				],
-				"execution_count": 62
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"microsoft": {
-						"language": "sparksql"
-					},
-					"collapsed": false
-				},
-				"source": [
-					"%%sql\n",
-					"\n",
-					"select \n",
-					"\n",
-					"distinct StaffNumber,\n",
-					"\n",
-					"-- Notebook (more complex)\n",
-					"  CASE\n",
-					"           WHEN trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0')) LIKE '4%' THEN \n",
-					"               '50' || trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0'))\n",
-					"           WHEN trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0')) LIKE '5%' THEN \n",
-					"               '00' || trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0'))\n",
-					"           WHEN trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0')) LIKE '6%' THEN\n",
-					"               -- For staff numbers starting with 6, we have special handling:\n",
-					"               -- If it's already 8 digits (or more), keep it as is\n",
-					"               -- If it starts with 006, convert to 606 (adding a 6 at the beginning)\n",
-					"               CASE \n",
-					"                   WHEN length(trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0'))) >= 8 THEN \n",
-					"                       trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0'))\n",
-					"                   WHEN lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '006%' THEN\n",
-					"                       '6' || substring(lpad(CAST(aa.StaffNumber AS STRING), 8, '0'), 3)\n",
-					"                   ELSE '60' || trim(LEADING '0' FROM lpad(CAST(aa.StaffNumber AS STRING), 8, '0'))\n",
-					"               END\n",
-					"           ELSE lpad(CAST(aa.StaffNumber AS STRING), 7, '0')\n",
-					"       END AS staffnumber2,\n",
-					"CASE\n",
-					"    WHEN lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '004%' THEN \n",
-					"        '50' || substring(lpad(CAST(aa.StaffNumber AS STRING), 8, '0'), 3)\n",
-					"    WHEN lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '006%' THEN \n",
-					"        '60' || substring(lpad(CAST(aa.StaffNumber AS STRING), 8, '0'), 3)\n",
-					"    WHEN lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '5%' OR\n",
-					"         lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '005%' THEN\n",
-					"        lpad(CAST(aa.StaffNumber AS STRING), 8, '0') \n",
-					"    ELSE \n",
-					"        lpad(CAST(aa.StaffNumber AS STRING), 8, '0')\n",
-					"END AS staffnumber3\n",
-					"\n",
-					"\n",
-					"   FROM \n",
-					"       odw_harmonised_db.sap_hr_absence_All aa  where staffNumber like '%006' or staffNumber like '%6'"
-				],
-				"execution_count": 63
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"if staffnumber   like (00424136) starts with 004 - 50424136 \n",
-					"if staffnumber   like (00600576) starts with 006 - 60600576 \n",
-					"if staffnumber   like (50429576) starts with 5 -   50429576 (keep as is )\n",
-					"if staffnumber   like (00500816) starts with 005 - 00500816 (keep as is )"
-				],
-				"execution_count": null
+				"execution_count": 69
 			}
 		]
 	}
