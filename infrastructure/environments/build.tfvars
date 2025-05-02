@@ -24,7 +24,7 @@ data_lake_retention_days   = 7
 data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
-    "7c906e1b-ffbb-44d3-89a1-6772b9c9c148" # pins-odw-preprod-dataengineers
+    "7c906e1b-ffbb-44d3-89a1-6772b9c9c148", # pins-odw-preprod-dataengineers
     "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"  # Azure DevOps Pipelines - ODW Build - Infrastructure
   ]
 }
