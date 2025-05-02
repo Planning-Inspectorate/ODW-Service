@@ -1,0 +1,482 @@
+{
+	"name": "py_live_dim_employee_hierarchy",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised/saphr"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "55022ebb-e99f-4a63-b8ca-5311d337ac19"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read Delta tables from owb_standarsied_db to owb_harmonisied_db and load all records as Delta tables along with metadata columns.\n",
+					"\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;04-Mar-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to Delta Table transform_inspector_address into owb-harmonisied_db &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;layer. Following stored procedures have been reverse engineered from MiPiNS using these stored prcedures : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. [Build].[sap_employee_hierarchy] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. [Build].[dim_employee_hierarchy] and function &nbsp;&nbsp;\n",
+					"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. [Live].[udf_sap_LineManagement_H]\n",
+					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\n",
+					"\n",
+					"\n",
+					""
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#import all libraries and initialise Spark Session\n",
+					"import calendar\n",
+					"from datetime import datetime, timedelta, date\n",
+					"import requests\n",
+					"import pyspark.sql.functions as F \n",
+					"import re\n",
+					"from notebookutils import mssparkutils\n",
+					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce,concat_ws,row_number, to_timestamp, max as spark_max\n",
+					"from pprint import pprint as pp\n",
+					"from pyspark.sql.types import *\n",
+					"from pyspark.sql.window import Window\n",
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"from delta.tables import DeltaTable\n",
+					"#ignore FutureWarning messages \n",
+					"import warnings\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
+					""
+				],
+				"execution_count": 11
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get storage account"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Get Storage account name\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"print(storage_account)"
+				],
+				"execution_count": 12
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": 13
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all storage path"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Define delta table names, database name and table paths\n",
+					"source_database_name = \"odw_standardised_db\"\n",
+					"target_database_name = \"odw_harmonised_db\"\n",
+					"source_delta_table = f\"{source_database_name}.inspector_addresses_weekly\"\n",
+					"target_delta_table = f\"{target_database_name}.live_dim_emp_hierarchy\"\n",
+					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
+					""
+				],
+				"execution_count": 14
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process to transform Manager's hierarchy"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"#Load source tables keep it\n",
+					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
+					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
+					"\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly a\n",
+					"set a.PersNo1 = '00000000'\n",
+					"where firstname  = 'Paul' and lastname = 'Morrison'\"\"\")\n",
+					"\n",
+					"spark.sql(\"\"\"UPDATE odw_harmonised_db.load_sap_hr_monthly\n",
+					"SET PersNo1 = RIGHT(CONCAT('00000000', CAST(CAST(PersNo1 AS BIGINT) AS STRING)), 8)\n",
+					"WHERE LENGTH(CAST(PersNo1 AS STRING)) < 8\"\"\")\n",
+					"\n",
+					"# Recursive CTE to build SAP employee hierarchy\n",
+					"df_emp_anchor = df_load_sap_hr.alias(\"H1\").join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\")).filter(col(\"H1.PersNo1\") == \"00000000\").select(\n",
+					"        col(\"H1.PersNo\").alias(\"PersNo\"),\n",
+					"        concat_ws(\" \", col(\"H1.Firstname\"), col(\"H1.Lastname\")).alias(\"FullName\"),\n",
+					"        col(\"em.email_address\"),\n",
+					"        col(\"H1.PersNo1\").alias(\"ManagerNo\"),\n",
+					"        lit(None).cast(\"string\").alias(\"Manager\"),\n",
+					"        lit(1).alias(\"EmpLevel\"),\n",
+					"        lit(None).cast(\"string\").alias(\"ManagerEmail\"),\n",
+					"        lit(\"\").alias(\"Hierarchy_name\")\n",
+					"    )\n",
+					"\n",
+					"# Recursive managers and their employees under, Initialize recursive loop\n",
+					"df_emp_hierarchy = df_emp_anchor\n",
+					"prev_emp_level = df_emp_anchor\n",
+					"\n",
+					"for i in range(10):\n",
+					"        df_next_employee = df_load_sap_hr.alias(\"e\").join(prev_emp_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.PersNo\")).join(df_vw_sap_email.alias(\"em2\"), col(\"e.PersNo\") == col(\"em2.PersNo\")).select(\n",
+					"            col(\"e.PersNo\").alias(\"PersNo\"),\n",
+					"            concat_ws(\" \", col(\"e.Firstname\"), col(\"e.Lastname\")).alias(\"FullName\"),\n",
+					"            col(\"em2.email_address\"),\n",
+					"            col(\"e.PersNo1\").alias(\"ManagerNo\"),\n",
+					"            col(\"r.FullName\").alias(\"Manager\"),\n",
+					"            (col(\"r.EmpLevel\") + 1).alias(\"EmpLevel\"),\n",
+					"            col(\"r.email_address\").alias(\"ManagerEmail\"),\n",
+					"            lit(\"\").alias(\"Hierarchy_name\")\n",
+					"        )\n",
+					"    \n",
+					"        df_emp_hierarchy = df_emp_hierarchy.unionByName(df_next_employee)\n",
+					"        prev_emp_level = df_next_employee\n",
+					"\n",
+					"# Add LastUpdated column\n",
+					"df_emp_hierarchy_final = df_emp_hierarchy.withColumn(\"LastUpdated\", current_date())\n",
+					"\n",
+					"# Create tempview\n",
+					"df_emp_hierarchy_final.createOrReplaceTempView(\"live_sap_employee_hierarchy\")\n",
+					"\n",
+					"# load final employee hierarchy with manager information\n",
+					"df_emp_hierarchy_final.select(\"PersNo\", \"FullName\", \"email_address\", \"EmpLevel\", \"ManagerNo\", \"Manager\", \"ManagerEmail\", \"LastUpdated\").orderBy(\"EmpLevel\",\"Manager\").show()\n",
+					""
+				],
+				"execution_count": 15
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Process to transform and flatten employee's hierarchy"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"#new code to flatten the hierarchy\n",
+					"\n",
+					"from pyspark.sql.functions import col, lit, concat_ws, current_date, row_number, max as spark_max, expr, posexplode, array, struct, size\n",
+					"from pyspark.sql.window import Window\n",
+					"\n",
+					"# Load data\n",
+					"df_load_sap_hr = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
+					"df_vw_sap_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
+					"\n",
+					"# Anchor level\n",
+					"df_emp_anchor = df_load_sap_hr.alias(\"H1\").join(df_vw_sap_email.alias(\"em\"), col(\"H1.PersNo\") == col(\"em.PersNo\")).filter(col(\"H1.PersNo1\") == \"00000000\").select(\n",
+					"        col(\"H1.PersNo\").alias(\"pers_no\"),\n",
+					"        concat_ws(\" \", col(\"H1.Firstname\"), col(\"H1.Lastname\")).alias(\"full_name\"),\n",
+					"        col(\"em.email_address\"),\n",
+					"        col(\"H1.PersNo1\").alias(\"manager_no\"),\n",
+					"        lit(None).cast(\"string\").alias(\"manager_name\"),\n",
+					"        lit(1).alias(\"emp_level\"),\n",
+					"        lit(None).cast(\"string\").alias(\"manager_email\"),\n",
+					"        lit(\"SAP\").alias(\"hierarchy_source\")\n",
+					"    )\n",
+					"\n",
+					"# Recursive manager levels\n",
+					"df_emp_hierarchy = df_emp_anchor\n",
+					"prev_emp_level = df_emp_anchor\n",
+					"\n",
+					"for i in range(10):\n",
+					"    df_next_employee = df_load_sap_hr.alias(\"e\").join(prev_emp_level.alias(\"r\"), col(\"e.PersNo1\") == col(\"r.pers_no\")).join(df_vw_sap_email.alias(\"em2\"), col(\"e.PersNo\") == col(\"em2.PersNo\")).select(\n",
+					"            col(\"e.PersNo\").alias(\"pers_no\"),\n",
+					"            concat_ws(\" \", col(\"e.Firstname\"), col(\"e.Lastname\")).alias(\"full_name\"),\n",
+					"            col(\"em2.email_address\"),\n",
+					"            col(\"e.PersNo1\").alias(\"manager_no\"),\n",
+					"            col(\"r.full_name\").alias(\"manager_name\"),\n",
+					"            (col(\"r.emp_level\") + 1).alias(\"emp_level\"),\n",
+					"            col(\"r.email_address\").alias(\"manager_email\"),\n",
+					"            lit(\"SAP\").alias(\"hierarchy_source\")\n",
+					"        )\n",
+					"    \n",
+					"    df_emp_hierarchy = df_emp_hierarchy.unionByName(df_next_employee)\n",
+					"    prev_emp_level = df_next_employee\n",
+					"\n",
+					"df_emp_hierarchy_final = df_emp_hierarchy.withColumn(\"last_updated\", current_date())\n",
+					"df_emp_hierarchy_final.createOrReplaceTempView(\"live_sap_employee_hierarchy\")\n",
+					"\n",
+					"# Prep base\n",
+					"base = df_emp_hierarchy_final.select(\n",
+					"    col(\"pers_no\").alias(\"emp_id\"),\n",
+					"    col(\"full_name\").alias(\"emp_name\"),\n",
+					"    col(\"email_address\").alias(\"emp_email_address\"),\n",
+					"    col(\"manager_no\").alias(\"mgr_id\"),\n",
+					"    col(\"manager_name\").alias(\"mgr_name\"),\n",
+					"    col(\"emp_level\").alias(\"emp_level\"),\n",
+					"    col(\"manager_email\").alias(\"mgr_email_address\"),\n",
+					"    col(\"hierarchy_source\")\n",
+					")\n",
+					"\n",
+					"df_emp_hierarchy_final = df_emp_hierarchy_final.withColumn(\"emp_level_int\", col(\"emp_level\").cast(\"int\"))\n",
+					"range_val = df_emp_hierarchy_final.select(spark_max(\"emp_level_int\")).collect()[0][0]\n",
+					"\n",
+					"# Flatten into wide hierarchy levels\n",
+					"flattened = base.withColumn(\"level_1_mgr_id\", col(\"mgr_id\")).withColumn(\"level_1_mgr_name\", col(\"mgr_name\")).withColumn(\"level_1_mgr_email\", col(\"mgr_email_address\"))\n",
+					"\n",
+					"for i in range(2, range_val + 1):\n",
+					"    prev = i - 1\n",
+					"    flattened = flattened.alias(\"f\").join(base.alias(\"b\"), col(f\"f.level_{prev}_mgr_id\") == col(\"b.emp_id\"), how=\"left\").selectExpr(\n",
+					"            \"f.emp_id\", \"f.emp_name\", \"f.emp_email_address\",\n",
+					"            \"f.mgr_id\", \"f.mgr_name\", \"f.emp_level\", \"f.mgr_email_address\", \"f.hierarchy_source\",\n",
+					"            *[f\"f.level_{j}_mgr_id\" for j in range(1, prev + 1)],\n",
+					"            *[f\"f.level_{j}_mgr_name\" for j in range(1, prev + 1)],\n",
+					"            *[f\"f.level_{j}_mgr_email\" for j in range(1, prev + 1)],\n",
+					"            f\"b.mgr_id as level_{i}_mgr_id\",\n",
+					"            f\"b.mgr_name as level_{i}_mgr_name\",\n",
+					"            f\"b.mgr_email_address as level_{i}_mgr_email\"\n",
+					"        )\n",
+					"\n",
+					"# Create array of structs (level_1 is closest manager, level_n is highest)\n",
+					"mgr_struct_expr = expr(\n",
+					"    \"array(\" + \", \".join([\n",
+					"        f\"named_struct('mgr_id', level_{i}_mgr_id, 'mgr_name', level_{i}_mgr_name, 'mgr_email_address', level_{i}_mgr_email)\"\n",
+					"        for i in range(1, range_val + 1)\n",
+					"    ]) + \")\"\n",
+					")\n",
+					"\n",
+					"flattened_with_array = flattened.withColumn(\"mgr_struct\", mgr_struct_expr).withColumn(\"mgr_count\", size(col(\"mgr_struct\")))\n",
+					"\n",
+					"\n",
+					"# Unpivot the array into row format, mapping mgr_level, name, email\n",
+					"flattened_exploded = flattened_with_array.selectExpr(\n",
+					"    \"emp_id\",\n",
+					"    \"emp_name\",\n",
+					"    \"emp_email_address\",\n",
+					"    \"hierarchy_source as hierarchy\",\n",
+					"    \"mgr_count\",\n",
+					"    \"posexplode(mgr_struct) as (pos, mgr_info)\"\n",
+					").select(\n",
+					"    \"emp_id\",\n",
+					"    \"emp_name\",\n",
+					"    \"emp_email_address\",\n",
+					"    \"hierarchy\",\n",
+					"    \"pos\",  # <-- modified: keep pos for window function\n",
+					"    col(\"mgr_info.mgr_id\").alias(\"mgr_id\"),\n",
+					"    col(\"mgr_info.mgr_name\").alias(\"mgr_name\"),\n",
+					"    col(\"mgr_info.mgr_email_address\").alias(\"mgr_email_address\")\n",
+					").filter(col(\"mgr_name\").isNotNull())\n",
+					"\n",
+					"window = Window.partitionBy(\"emp_id\").orderBy(col(\"pos\").asc())\n",
+					"flattened_exploded = flattened_exploded.withColumn(\"mgr_level\", row_number().over(window)).drop(\"pos\")\n",
+					"\n",
+					"# Deduplicate (optional)\n",
+					"window_spec = Window.partitionBy(\"emp_email_address\", \"mgr_email_address\").orderBy(col(\"mgr_level\").desc())\n",
+					"flattened_dedup = flattened_exploded.withColumn(\"row_num\", row_number().over(window_spec)).filter(col(\"row_num\") == 1).drop(\"row_num\")\n",
+					"\n",
+					"\n",
+					"# SGL hierarchy\n",
+					"# Final output schema matches expected file: includes mgr_id and hierarchy\n",
+					"sgl_df = spark.sql(\"\"\"\n",
+					"    SELECT \n",
+					"        E2.PersNo AS emp_id,\n",
+					"        CONCAT(E2.Firstname, ' ', E2.Lastname) AS emp_name,\n",
+					"        I2.pins_email_address AS emp_email_address,\n",
+					"        1 AS mgr_level,\n",
+					"        E.PersNo AS mgr_id,\n",
+					"        CONCAT(E.Firstname, ' ', E.Lastname) AS mgr_name,\n",
+					"        I.pins_email_address AS mgr_email_address,\n",
+					"        CONCAT('Chart (', I.resource_code, ')') AS hierarchy\n",
+					"    FROM odw_harmonised_db.live_dim_inspector I2 \n",
+					"    INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E2 ON I2.pins_email_address = E2.email_address\n",
+					"    INNER JOIN odw_harmonised_db.live_dim_inspector I ON I2.resource_code = I.resource_code AND I.is_sgl = 1\n",
+					"    INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E ON I.pins_email_address = E.email_address\n",
+					"    WHERE I.is_sgl = 1 AND I.active_status = 'ACTIVE' AND I2.is_sgl = 0\n",
+					"\"\"\")\n",
+					"\n",
+					"\n",
+					"# Final output sorted in descending mgr_level = closest at top\n",
+					"df_final_dim_hierarchy = flattened_exploded.unionByName(sgl_df.select(flattened_exploded.columns)).dropDuplicates()\n",
+					"df_final_dim_hierarchy = df_final_dim_hierarchy.orderBy(\"emp_id\", col(\"mgr_level\").desc())\n",
+					"\n",
+					"rowid_columns = [c for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}]\n",
+					"\n",
+					"df_final_dim_hierarchy = df_final_dim_hierarchy.select(\n",
+					"    *[col(c) for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\",\"mgr_level\"}],\n",
+					"    col(\"mgr_level\").cast(\"string\").alias(\"mgr_level\"),\n",
+					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
+					"    current_timestamp().alias(\"IngestionDate\"),\n",
+					"    current_date().cast(\"timestamp\").alias(\"ValidFrom\"),\n",
+					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
+					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
+					"    lit(\"Y\").alias(\"IsActive\")\n",
+					"    )\n",
+					"\n",
+					"df_final_dim_hierarchy = df_final_dim_hierarchy.select(\n",
+					"col(\"emp_id\"),\n",
+					"col(\"emp_name\"),\n",
+					"col(\"emp_email_address\"),\n",
+					"col(\"mgr_id\"),\n",
+					"col(\"mgr_name\"),\n",
+					"col(\"mgr_level\"),\n",
+					"col(\"mgr_email_address\"),\n",
+					"col(\"hierarchy\"),\n",
+					"col(\"SourceSystemID\"),\n",
+					"col(\"IngestionDate\"),\n",
+					"col(\"ValidFrom\"),\n",
+					"col(\"ValidTo\"),\n",
+					"col(\"RowID\"),\n",
+					"col(\"IsActive\")\n",
+					")\n",
+					"    \n",
+					"df_final_dim_hierarchy.createOrReplaceTempView(\"dim_emp_hierarchy\")\n",
+					"\n",
+					""
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Overwrie delta table for Live_dim_employee_hierarchy"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Write data to target Delta Table\n",
+					"try:\n",
+					"    df_final_dim_hierarchy.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"\n",
+					"    # Ensure the table exists\n",
+					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
+					"\n",
+					"    logInfo(f\" Data successfully written to {target_delta_table}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    logError(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
+					"    raise\n",
+					""
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"#spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.live_dim_emp_hierarchy\")\n",
+					"\n",
+					"#spark.sql(f\"delete from odw_harmonised_db.sap_hr_inspector_address\")\n",
+					"\n",
+					"# Read source data from Delta Tables\n",
+					""
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
