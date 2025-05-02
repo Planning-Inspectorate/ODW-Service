@@ -4,7 +4,7 @@
 		"nbformat": 4,
 		"nbformat_minor": 2,
 		"bigDataPool": {
-			"referenceName": "pinssynspodw",
+			"referenceName": "pinssynspodwpr",
 			"type": "BigDataPoolReference"
 		},
 		"sessionProperties": {
@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d0dfbe3b-1815-4343-a285-fc993c56905f"
+				"spark.autotune.trackingId": "7d3d3992-252a-4a7a-889f-b33da13f2701"
 			}
 		},
 		"metadata": {
@@ -31,10 +31,10 @@
 				"name": "python"
 			},
 			"a365ComputeOptions": {
-				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw",
-				"name": "pinssynspodw",
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodwpr",
+				"name": "pinssynspodwpr",
 				"type": "Spark",
-				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodwpr",
 				"auth": {
 					"type": "AAD",
 					"authResource": "https://dev.azuresynapse.net"
@@ -57,7 +57,7 @@
 					"import re\n",
 					"from pyspark.sql.functions import col, explode"
 				],
-				"execution_count": 1
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -67,14 +67,14 @@
 					"full_storage_path = f'abfss://{container}@{storage_account_path}'\n",
 					"full_storage_path"
 				],
-				"execution_count": 36
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account_backup_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 30
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -83,17 +83,17 @@
 					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
 					"df  = spark.read.json(metadata_path, multiLine=True)"
 				],
-				"execution_count": 22
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"all_file_path_list = []\n",
 					"for i in mssparkutils.fs.ls(full_storage_path):\n",
-					"    all_file_path_list.append(str(i).split(\"=\")[1].split(\",\")[0].split(\"'\")[1])\n",
-					"all_file_path_list = [ x for all_file_path_list in l if \"test\" not in x ]"
+					"    all_file_path_list.append(str(i).split(\"=\")[1].split(\",\")[0])\n",
+					"all_file_path_list = [ x for x in all_file_path_list if \"test\" not in x ]"
 				],
-				"execution_count": 53
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -108,7 +108,7 @@
 					"# Select the relevant fields\n",
 					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")"
 				],
-				"execution_count": 15
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +119,7 @@
 					"ls_delta = df_exploded.filter(col(\"table_format\") == 'delta').filter(col(\"database_name\")==\"odw_standardised_db\").select(\"table_location\").collect()\n",
 					""
 				],
-				"execution_count": 74
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -128,21 +128,21 @@
 					"for i in ls_delta:\n",
 					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
 				],
-				"execution_count": 75
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"non_delta_file_list = set(all_file_path_list)-set(delta_file_list)"
 				],
-				"execution_count": 76
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"mssparkutils.notebook.exit(list(non_delta_file_list))"
 				],
-				"execution_count": 78
+				"execution_count": 18
 			}
 		]
 	}
