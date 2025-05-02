@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8ad45d8c-739d-41a8-9ad8-2d9c5b5150f4"
+				"spark.autotune.trackingId": "ff22b85d-2304-4bf0-af30-8ad30a18ade8"
 			}
 		},
 		"metadata": {
@@ -102,14 +102,14 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 1
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 2
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -118,7 +118,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 3
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -136,7 +136,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 4
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -217,26 +217,26 @@
 					"   )\n",
 					"   SELECT DISTINCT\n",
 					"       CAST(d.date_value AS DATE) AS absencedate,\n",
-					"       CASE\n",
-					"           WHEN (CAST(aa.Days AS DOUBLE) BETWEEN 0.01 AND 0.99) THEN \n",
-					"               CASE d.day_of_week\n",
-					"                   WHEN 2 THEN CAST(ws.Mo AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
-					"                   WHEN 3 THEN CAST(ws.Tu AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
-					"                   WHEN 4 THEN CAST(ws.We AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
-					"                   WHEN 5 THEN CAST(ws.Th AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
-					"                   WHEN 6 THEN CAST(ws.Fr AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
-					"                   ELSE 0 \n",
-					"               END\n",
-					"           ELSE \n",
-					"               CASE d.day_of_week\n",
-					"                   WHEN 2 THEN CAST(ws.Mo AS DOUBLE)\n",
-					"                   WHEN 3 THEN CAST(ws.Tu AS DOUBLE)\n",
-					"                   WHEN 4 THEN CAST(ws.We AS DOUBLE)\n",
-					"                   WHEN 5 THEN CAST(ws.Th AS DOUBLE)\n",
-					"                   WHEN 6 THEN CAST(ws.Fr AS DOUBLE)\n",
-					"                   ELSE 0 \n",
-					"               END \n",
-					"       END AS absencehours,\n",
+					"       ROUND(CASE\n",
+					"    WHEN (CAST(aa.Days AS DOUBLE) BETWEEN 0.01 AND 0.99) THEN \n",
+					"        CASE d.day_of_week\n",
+					"            WHEN 2 THEN CAST(ws.Mo AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
+					"            WHEN 3 THEN CAST(ws.Tu AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
+					"            WHEN 4 THEN CAST(ws.We AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
+					"            WHEN 5 THEN CAST(ws.Th AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
+					"            WHEN 6 THEN CAST(ws.Fr AS DOUBLE) * CAST(aa.Days AS DOUBLE)\n",
+					"            ELSE 0 \n",
+					"        END\n",
+					"    ELSE \n",
+					"        CASE d.day_of_week\n",
+					"            WHEN 2 THEN CAST(ws.Mo AS DOUBLE)\n",
+					"            WHEN 3 THEN CAST(ws.Tu AS DOUBLE)\n",
+					"            WHEN 4 THEN CAST(ws.We AS DOUBLE)\n",
+					"            WHEN 5 THEN CAST(ws.Th AS DOUBLE)\n",
+					"            WHEN 6 THEN CAST(ws.Fr AS DOUBLE)\n",
+					"            ELSE 0 \n",
+					"        END \n",
+					"END, 2) AS absencehours,\n",
 					"CASE\n",
 					"    WHEN lpad(CAST(aa.StaffNumber AS STRING), 8, '0') LIKE '004%' THEN \n",
 					"        '50' || substring(lpad(CAST(aa.StaffNumber AS STRING), 8, '0'), 3)\n",
@@ -253,12 +253,12 @@
 					"       aa.SicknessGroup,\n",
 					"       aa.AttendanceorAbsenceType,\n",
 					"       ROUND(CASE\n",
-					"           WHEN (aa.AbsType = 'CB01' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
-					"           WHEN (aa.AbsType = 'MT01' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
-					"           WHEN (aa.AttendanceorAbsenceType = 'Spec u/p-up to 3mths' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
-					"           WHEN CAST(aa.Caldays AS DOUBLE) = 0 THEN CAST(aa.Hrs AS DOUBLE) / CAST(aa.HrsDay AS DOUBLE)\n",
-					"           ELSE 1 \n",
-					"       END, 2) AS Leave,\n",
+					"    WHEN (aa.AbsType = 'CB01' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
+					"    WHEN (aa.AbsType = 'MT01' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
+					"    WHEN (aa.AttendanceorAbsenceType = 'Spec u/p-up to 3mths' AND CAST(aa.Days AS DOUBLE) = 0) THEN 1\n",
+					"    WHEN CAST(aa.Caldays AS DOUBLE) = 0 THEN CAST(aa.Hrs AS DOUBLE) / CAST(aa.HrsDay AS DOUBLE)\n",
+					"    ELSE 1 \n",
+					"END, 2) as Leave,\n",
 					"       NULL AS PSGroup,\n",
 					"       NULL AS PersonnelArea,\n",
 					"       NULL AS PersonnelSubarea,\n",
@@ -321,13 +321,13 @@
 					"   )\n",
 					"   SELECT \n",
 					"       CAST(absencedate AS DATE),\n",
-					"       absencehours,\n",
+					"       CAST(ROUND(absencehours, 2) AS DECIMAL(10,2)) AS absencehours,\n",
 					"       staffnumber,\n",
 					"       WorkScheduleRule,\n",
 					"       AbsType,\n",
 					"       SicknessGroup,\n",
 					"       AttendanceorAbsenceType,\n",
-					"       Leave,\n",
+					"       CAST(ROUND(Leave, 2) AS DECIMAL(10,2)) AS Leave,\n",
 					"       NULL AS PSGroup,\n",
 					"       NULL AS PersonnelArea,\n",
 					"       NULL AS PersonnelSubarea,\n",
@@ -438,7 +438,7 @@
 					"   logInfo(\"Flushing logs\")\n",
 					"   flushLogging()"
 				],
-				"execution_count": 5
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -542,7 +542,14 @@
 					"except Exception as e:\n",
 					"    print(f\"Error in initial setup: {e}\")"
 				],
-				"execution_count": 6
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
+				],
+				"execution_count": null
 			}
 		]
 	}
