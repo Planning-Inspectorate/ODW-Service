@@ -25,7 +25,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
     "7c906e1b-ffbb-44d3-89a1-6772b9c9c148" # pins-odw-preprod-dataengineers
-    #"9d4c68d1-c43d-4502-b35f-74f31c497757"  # Azure DevOps Pipelines - ODW Build - Infrastructure # SKIP FOR NOW
+    "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"  # Azure DevOps Pipelines - ODW Build - Infrastructure
   ]
 }
 data_lake_storage_containers = [
@@ -236,10 +236,10 @@ synapse_role_assignments = [
     role_definition_name = "Synapse Administrator",
     principal_id         = "be52cb0c-858f-4698-8c40-3a5ec793a2e3"
   },
-  #{ # Azure DevOps Pipelines - ODW Test - Infrastructure # SKIP FOR NOW
-  #  role_definition_name = "Synapse Administrator",
-  #  principal_id         = "9d4c68d1-c43d-4502-b35f-74f31c497757"
-  #},
+  { # Azure DevOps Pipelines - ODW Build - Infrastructure
+    role_definition_name = "Synapse Administrator",
+    principal_id         = "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"
+  },
   { # pins-odw-data-preprod-syn-ws-contributors
     role_definition_name = "Synapse Contributor",
     principal_id         = "d59a3e85-58db-4b70-8f88-3f4a4a82ee27"
