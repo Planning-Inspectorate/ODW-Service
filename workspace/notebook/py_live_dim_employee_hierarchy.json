@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cc89f9c5-44a7-4d8d-903b-2f8242851952"
+				"spark.autotune.trackingId": "2af0effd-8d7d-4f13-9730-9e2f97bba8b1"
 			}
 		},
 		"metadata": {
@@ -206,7 +206,7 @@
 					"max_depth = level\n",
 					"print(f\"Max hierarchy depth = {max_depth}\")"
 				],
-				"execution_count": 38
+				"execution_count": 56
 			},
 			{
 				"cell_type": "markdown",
@@ -234,8 +234,8 @@
 					"#sap_df = spark.table(\"load.SAP_HR\")\n",
 					"#email_df = spark.table(\"load.vw_SAP_HR_email\")\n",
 					"\n",
-					"sap_df = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
-					"email_df = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_sap = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
+					"df_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
 					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
 					"\n",
 					"\n",
@@ -254,11 +254,11 @@
 					"\n",
 					"# Simulate recursion\n",
 					"for _ in range(max_depth):\n",
-					"    next_level = sap_df.alias(\"e\").join(\n",
+					"    next_level = df_sap.alias(\"e\").join(\n",
 					"        current_level.alias(\"r\"),\n",
 					"        col(\"e.PersNo1\") == col(\"r.PersNo\")\n",
 					"    ).join(\n",
-					"        email_df.alias(\"em2\"),\n",
+					"        df_email.alias(\"em2\"),\n",
 					"        col(\"e.PersNo\") == col(\"em2.PersNo\")\n",
 					"    ).select(\n",
 					"        col(\"e.PersNo\"),\n",
@@ -280,7 +280,7 @@
 					"#display(cteReports)\n",
 					"\n",
 					"# Load Live.sap_employee_hierarchy equivalent for hierarchy building\n",
-					"df = cteReports.alias(\"r\").join(sap_df.alias(\"mgr\"), col(\"r.ManagerNo\") == col(\"mgr.PersNo\"), \"left\").join(email_df.alias(\"emgr\"), col(\"mgr.PersNo\") == col(\"emgr.PersNo\"), \"left\").selectExpr(\n",
+					"df_sap = cteReports.alias(\"r\").join(df_sap.alias(\"mgr\"), col(\"r.ManagerNo\") == col(\"mgr.PersNo\"), \"left\").join(email_df.alias(\"emgr\"), col(\"mgr.PersNo\") == col(\"emgr.PersNo\"), \"left\").selectExpr(\n",
 					"        \"r.PersNo as PersNo\",\n",
 					"        \"r.FirstName\",\n",
 					"        \"r.LastName\",\n",
@@ -294,11 +294,11 @@
 					"    ).withColumn(\"FullName\", concat_ws(\" \", col(\"FirstName\"), col(\"LastName\"))).withColumn(\"Manager\", concat_ws(\" \", col(\"ManagerFirst\"), col(\"ManagerLast\")))\n",
 					"\n",
 					"\n",
-					"df = df.withColumn(\"FullName\", concat_ws(\" \", col(\"FirstName\"), col(\"LastName\"))) \\\n",
+					"df_sap = df_sap.withColumn(\"FullName\", concat_ws(\" \", col(\"FirstName\"), col(\"LastName\"))) \\\n",
 					"       .withColumn(\"Manager\", concat_ws(\" \", col(\"ManagerFirst\"), col(\"ManagerLast\")))\n",
 					""
 				],
-				"execution_count": 55
+				"execution_count": 60
 			},
 			{
 				"cell_type": "markdown",
@@ -325,7 +325,7 @@
 					"from pyspark.sql.window import Window\n",
 					"\n",
 					"# Load source data\n",
-					"sap_df = df.selectExpr(\n",
+					"df_sap = df.selectExpr(\n",
 					"        \"PersNo as persno\", \"ManagerNo as managerno\",\n",
 					"        \"FullName\", \"email_address\", \"Manager\", \"EmpLevel\", \"ManagerEmail\"\n",
 					"    )\n",
