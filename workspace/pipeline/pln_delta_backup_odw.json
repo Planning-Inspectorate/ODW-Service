@@ -5,7 +5,14 @@
 			{
 				"name": "non_delta_directories",
 				"type": "SynapseNotebook",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Set subscription",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -164,6 +171,82 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Set key vault URL",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Key_Vault_Url",
+					"value": {
+						"value": "@if(equals(pipeline().DataFactory, 'pins-synw-odw-dev-uks'), 'https://pinskvsynwodwdevuks.vault.azure.net/secrets/', if(equals(pipeline().DataFactory, 'pins-synw-odw-test-uks'), 'https://pinskvsynwodwtestuks.vault.azure.net/secrets/', 'https://pinskvsynwodwproduks.vault.azure.net/secrets/'))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Get resource group",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "Set key vault URL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": true,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@concat(variables('Key_Vault_Url'), 'DBResourceGroup',variables('Key_Vault_API'))",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					},
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "Set subscription",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Get resource group",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": true,
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "subscription_id",
+					"value": {
+						"value": "@activity('Get subscription').output.value",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"variables": {
@@ -180,6 +263,12 @@
 				"type": "String"
 			},
 			"table_name": {
+				"type": "String"
+			},
+			"Key_Vault_Url": {
+				"type": "String"
+			},
+			"Key_Vault_API": {
 				"type": "String"
 			}
 		},
