@@ -295,4 +295,4 @@ vnet_subnets = [
 ]
 
 
-ado_agent_vm_size = "F4s_v2"
+ado_agent_vm_size = "Standard_F4s_v2"
