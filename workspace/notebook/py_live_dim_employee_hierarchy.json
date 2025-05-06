@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e4fea830-969f-4604-8b69-02789d613d81"
+				"spark.autotune.trackingId": "dd208805-f4bf-458a-b5bb-22dc52dff3d5"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -115,9 +115,9 @@
 				"source": [
 					"#Get Storage account name\n",
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
-					"print(storage_account)"
+					""
 				],
-				"execution_count": 12
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -137,7 +137,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 13
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -163,7 +163,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -175,7 +175,7 @@
 					}
 				},
 				"source": [
-					"##### Find the maximum depth of the employee hierarchy"
+					"##### Find Maximum Depth of Employee Hierarchy"
 				]
 			},
 			{
@@ -219,7 +219,7 @@
 					"max_depth = level\n",
 					"#print(f\"Max hierarchy depth = {max_depth}\")"
 				],
-				"execution_count": 56
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -250,13 +250,13 @@
 					"\n",
 					"\n",
 					"# Anchor: top-level employees with ManagerNo = '00000000'\n",
-					"anchor_df = sap_df.filter((col(\"PersNo1\").isNull()) | (col(\"PersNo1\") == '00000000')).join(email_df, \"PersNo\").select(\n",
-					"        sap_df[\"PersNo\"],\n",
-					"        sap_df[\"Firstname\"].alias(\"FirstName\"),\n",
-					"        sap_df[\"Lastname\"].alias(\"LastName\"),\n",
-					"        sap_df[\"PersNo1\"].alias(\"ManagerNo\"),\n",
+					"anchor_df = df_sap.filter((col(\"PersNo1\").isNull()) | (col(\"PersNo1\") == '00000000')).join(df_email, \"PersNo\").select(\n",
+					"        df_sap[\"PersNo\"],\n",
+					"        df_sap[\"Firstname\"].alias(\"FirstName\"),\n",
+					"        df_sap[\"Lastname\"].alias(\"LastName\"),\n",
+					"        df_sap[\"PersNo1\"].alias(\"ManagerNo\"),\n",
 					"        lit(1).alias(\"EmpLevel\"),\n",
-					"        email_df[\"email_address\"]\n",
+					"        df_email[\"email_address\"]\n",
 					"    )\n",
 					"\n",
 					"cteReports = anchor_df\n",
@@ -290,7 +290,7 @@
 					"#display(cteReports)\n",
 					"\n",
 					"# Load Live.sap_employee_hierarchy equivalent for hierarchy building\n",
-					"df_sap = cteReports.alias(\"r\").join(df_sap.alias(\"mgr\"), col(\"r.ManagerNo\") == col(\"mgr.PersNo\"), \"left\").join(email_df.alias(\"emgr\"), col(\"mgr.PersNo\") == col(\"emgr.PersNo\"), \"left\").selectExpr(\n",
+					"df_sap = cteReports.alias(\"r\").join(df_sap.alias(\"mgr\"), col(\"r.ManagerNo\") == col(\"mgr.PersNo\"), \"left\").join(df_email.alias(\"emgr\"), col(\"mgr.PersNo\") == col(\"emgr.PersNo\"), \"left\").selectExpr(\n",
 					"        \"r.PersNo as PersNo\",\n",
 					"        \"r.FirstName\",\n",
 					"        \"r.LastName\",\n",
@@ -308,7 +308,7 @@
 					"       .withColumn(\"Manager\", concat_ws(\" \", col(\"ManagerFirst\"), col(\"ManagerLast\")))\n",
 					""
 				],
-				"execution_count": 60
+				"execution_count": 8
 			},
 			{
 				"cell_type": "markdown",
@@ -335,13 +335,13 @@
 					"from pyspark.sql.window import Window\n",
 					"\n",
 					"# Load source data\n",
-					"df_sap = df.selectExpr(\n",
+					"df_sap = df_sap.selectExpr(\n",
 					"        \"PersNo as persno\", \"ManagerNo as managerno\",\n",
 					"        \"FullName\", \"email_address\", \"Manager\", \"EmpLevel\", \"ManagerEmail\"\n",
 					"    )\n",
 					"\n",
 					"# Start with each employee as their own anchor\n",
-					"anchor_df = sap_df.selectExpr(\"persno as orig_emp_id\").distinct()\n",
+					"anchor_df = df_sap.selectExpr(\"persno as orig_emp_id\").distinct()\n",
 					"\n",
 					"# Join to build a full flattened hierarchy for each employee using iterative approach\n",
 					"all_hierarchy = None\n",
@@ -454,7 +454,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 72
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
