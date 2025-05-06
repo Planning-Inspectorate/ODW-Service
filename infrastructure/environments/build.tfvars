@@ -293,3 +293,6 @@ vnet_subnets = [
     service_delegation = []
   },
 ]
+
+
+ado_agent_vm_size = "F4s_v2"
