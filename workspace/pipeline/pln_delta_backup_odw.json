@@ -65,96 +65,6 @@
 							}
 						},
 						{
-							"name": "backup_odw_standardised",
-							"type": "Copy",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
-							"dependsOn": [
-								{
-									"activity": "file_name_variable",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [
-								{
-									"name": "Source",
-									"value": "odw-standardised//"
-								},
-								{
-									"name": "Destination",
-									"value": "odw-standardised//"
-								}
-							],
-							"typeProperties": {
-								"source": {
-									"type": "BinarySource",
-									"storeSettings": {
-										"type": "AzureBlobFSReadSettings",
-										"recursive": true,
-										"wildcardFileName": "*"
-									},
-									"formatSettings": {
-										"type": "BinaryReadSettings"
-									}
-								},
-								"sink": {
-									"type": "BinarySink",
-									"storeSettings": {
-										"type": "AzureBlobFSWriteSettings",
-										"copyBehavior": "PreserveHierarchy"
-									}
-								},
-								"enableStaging": false,
-								"preserve": [
-									"ACL",
-									"Owner",
-									"Group",
-									"Attributes"
-								],
-								"enableSkipIncompatibleRow": false,
-								"skipErrorFile": {
-									"fileMissing": true,
-									"dataInconsistency": true
-								},
-								"validateDataConsistency": true,
-								"logSettings": {
-									"enableCopyActivityLog": true,
-									"copyActivityLogSettings": {
-										"logLevel": "Warning",
-										"enableReliableLogging": true
-									},
-									"logLocationSettings": {
-										"linkedServiceName": {
-											"referenceName": "ls_backup_source",
-											"type": "LinkedServiceReference"
-										},
-										"path": "backup-logs"
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "bkp_src_odw_standardised",
-									"type": "DatasetReference"
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "bkp_dst_odw_standardised",
-									"type": "DatasetReference"
-								}
-							]
-						},
-						{
 							"name": "container_name",
 							"type": "SetVariable",
 							"dependsOn": [],
@@ -204,6 +114,53 @@
 									"type": "Expression"
 								}
 							}
+						},
+						{
+							"name": "dynamic_copy_data",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "BinarySource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"deleteFilesAfterCompletion": false
+									},
+									"formatSettings": {
+										"type": "BinaryReadSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_dynamic_delta_backup",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@split(split(item(), '://')[1], '@')[0]",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@last(split(item(), '/'))",
+											"type": "Expression"
+										},
+										"storage_account_name": {
+											"value": "@split(split(split(item(), '://')[1], '@')[1], '.')[0]",
+											"type": "Expression"
+										}
+									}
+								}
+							]
 						}
 					]
 				}
