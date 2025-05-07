@@ -294,6 +294,3 @@ vnet_subnets = [
     service_delegation = []
   },
 ]
-
-
-ado_agent_vm_size = "Standard_DS2_v2"

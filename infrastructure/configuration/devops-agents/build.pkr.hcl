@@ -34,7 +34,7 @@ build {
     image_sku       = "20_04-lts"
 
     location        = "UK South"
-    vm_size         = "{var.ado_agent_vm_size}"
+    vm_size         = "Standard_F2s_v2"
   }
 
   provisioner "shell" {
@@ -71,10 +71,5 @@ variable "subscription_id" {
 
 variable "tenant_id" {
   description = "The ID of the tenant containing the service principal used to build the image"
-  type        = string
-}
-
-variable "ado_agent_vm_size" {
-  description = "The VM SKU size to use for Azure DevOps agents"
   type        = string
 }
