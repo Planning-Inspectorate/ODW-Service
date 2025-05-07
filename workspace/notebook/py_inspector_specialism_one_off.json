@@ -1,0 +1,167 @@
+{
+	"name": "py_inspector_specialism_one_off",
+	"properties": {
+		"folder": {
+			"name": "odw-harmonised/saphr"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "9d385d1c-d999-4d8f-a4db-0de62b4fdbd8"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this notebook is to read data from Standardised layer and build a table for Curated Layer.\n",
+					"\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;   **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \n",
+					"Prathap Adicherla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25-Feb-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This template is designed to facilitate the monthly processing and harmonization of Inspector Specialism. It includes steps for initializing the environment, creating and managing Delta tables, and inserting data into harmonized tables. The template ensures that Inspector Specialism data is accurately transformed, stored, and made available for reporting and analysis."
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import udf, col, lit, when, coalesce, concat, sum, avg, max, min, count, countDistinct, date_format, to_date, datediff, months_between, year, month,  hour, minute, second, expr, asc, desc\n",
+					"from pyspark.sql.types import DateType, TimestampType, StringType, IntegerType, FloatType, DoubleType, BooleanType, StructType, StructField, ArrayType, MapType\n",
+					"from pyspark.sql.window import Window\n",
+					"from pyspark.sql.functions import row_number, rank, dense_rank, lag, lead, ntile\n",
+					"from pyspark.sql import SQLContext\n",
+					"from pyspark.sql import DataFrame\n",
+					"from pyspark.sql import functions as F\n",
+					"from pyspark.sql.avro.functions import from_avro, to_avro\n",
+					"from pyspark.sql.streaming import DataStreamReader, DataStreamWriter\n",
+					"from pyspark.sql.utils import AnalysisException\n",
+					"from pyspark.sql.catalog import Catalog\n",
+					"from pyspark.sql.column import Column\n",
+					"from pyspark.sql.group import GroupedData\n",
+					"from pyspark.sql.pandas.functions import pandas_udf\n",
+					"\n",
+					"from datetime import datetime, timedelta\n",
+					"import pandas as pd\n",
+					"import numpy as np"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					}
+				},
+				"source": [
+					"%%sql\n",
+					"\n",
+					"\n",
+					"INSERT INTO odw_harmonised_db.transform_inspector_Specialisms (\n",
+					"    StaffNumber,\n",
+					"    Firstname,\n",
+					"    Lastname,\n",
+					"    QualificationName,\n",
+					"    Proficien,\n",
+					"    SourceSystemID,\n",
+					"    IngestionDate,\n",
+					"    ValidTo,\n",
+					"    RowID,\n",
+					"    IsActive\n",
+					")\n",
+					"SELECT \n",
+					"    -- Format StaffNumber based on length and prefix\n",
+					"    CASE \n",
+					"        WHEN LENGTH(StaffNumber) = 6 THEN\n",
+					"            CASE \n",
+					"                WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
+					"                WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
+					"                ELSE StaffNumber\n",
+					"            END\n",
+					"        WHEN LENGTH(StaffNumber) = 8 THEN StaffNumber\n",
+					"        ELSE StaffNumber\n",
+					"    END AS StaffNumber,\n",
+					"    Firstname,\n",
+					"    Lastname,\n",
+					"    QualificationName,\n",
+					"    Proficien,\n",
+					"    'saphr' AS SourceSystemID,\n",
+					"    CURRENT_DATE() AS IngestionDate,\n",
+					"    CURRENT_DATE() AS ValidTo,\n",
+					"    -- Generate RowID during insert instead of separate update\n",
+					"    md5(concat_ws('|', \n",
+					"        coalesce(cast(\n",
+					"            CASE \n",
+					"                WHEN LENGTH(StaffNumber) = 6 THEN\n",
+					"                    CASE \n",
+					"                        WHEN StaffNumber LIKE '50%' THEN CONCAT('00', StaffNumber)\n",
+					"                        WHEN StaffNumber LIKE '42%' THEN CONCAT('50', StaffNumber)\n",
+					"                        ELSE StaffNumber\n",
+					"                    END\n",
+					"                WHEN LENGTH(StaffNumber) = 8 THEN StaffNumber\n",
+					"                ELSE StaffNumber\n",
+					"            END as string), ''), \n",
+					"        coalesce(cast(Firstname as string), ''), \n",
+					"        coalesce(cast(Lastname as string), ''), \n",
+					"        coalesce(cast(QualificationName as string), ''), \n",
+					"        coalesce(cast(Proficien as string), '')\n",
+					"    )) AS RowID,\n",
+					"    'Y' AS IsActive"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
