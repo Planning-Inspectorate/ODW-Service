@@ -44,6 +44,8 @@
 			{
 				"name": "ForEach_deltaFile",
 				"type": "ForEach",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "non_delta_directories",
@@ -55,7 +57,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@json(replace(replace(activity('non_delta_directories').output.status.Output.result.exitValue, '''', '\"'), '\\\"[', '['))\n\n",
+						"value": "@json(replace(replace(activity('non_delta_directories').output.status.Output.result.exitValue.non_delta_file_list, '''', '\"'), '\\\"[', '['))\n",
 						"type": "Expression"
 					},
 					"isSequential": true,
@@ -329,6 +331,179 @@
 						"type": "Expression"
 					}
 				}
+			},
+			{
+				"name": "ForEach_deltaFile_copy1",
+				"type": "ForEach",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@json(replace(replace(activity('non_delta_directories').output.status.Output.result.exitValue, '''', '\"'), '\\\"[', '['))\n\n",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "file_name_variable_copy1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "file_name",
+								"value": {
+									"value": "@item()",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "container_name_copy1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "container_name",
+								"value": {
+									"value": "@split(split(item(), '://')[1], '@')[0]",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "storage_account_copy1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "storage_account_name",
+								"value": {
+									"value": "@split(split(split(item(), '://')[1], '@')[1], '.')[0]\n",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "table_name_copy1",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "table_name",
+								"value": {
+									"value": "@last(split(item(), '/'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "dynamic_copy_data_copy1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "BinarySource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"deleteFilesAfterCompletion": false
+									},
+									"formatSettings": {
+										"type": "BinaryReadSettings"
+									}
+								},
+								"sink": {
+									"type": "BinarySink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_dynamic_delta_backup",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@split(split(item(), '://')[1], '@')[0]",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@last(split(item(), '/'))",
+											"type": "Expression"
+										},
+										"storage_account_name": {
+											"value": "@split(split(split(item(), '://')[1], '@')[1], '.')[0]",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_dynamic_delta_backup",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": "@split(split(item(), '://')[1], '@')[0]",
+										"table_name": "@last(split(item(), '/'))",
+										"storage_account_name": "@split(split(split(item(), '://')[1], '@')[1], '.')[0]"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Set variable1",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "non_delta_directories",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "path_list",
+					"value": {
+						"value": "@json(activity('non_delta_directories').output.status.Output.result.exitValue)",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"variables": {
@@ -358,6 +533,9 @@
 				"type": "String"
 			},
 			"subscription_id": {
+				"type": "String"
+			},
+			"path_list": {
 				"type": "String"
 			}
 		},
