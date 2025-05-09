@@ -44,8 +44,8 @@ variable "key_vault_name" {
   type        = string
 }
 
-variable "odt_appeals_back_office_service_bus_name" {
-  description = "The name of the Appeals BO Service Bus namespace"
+variable "odt_appeals_back_office_service_bus_id" {
+  description = "The id of the Appeals BO Service Bus namespace"
   type        = string
   default     = null
 }
