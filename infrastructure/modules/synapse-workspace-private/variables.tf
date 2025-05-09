@@ -44,6 +44,11 @@ variable "key_vault_name" {
   type        = string
 }
 
+variable "create_service_bus_resources" {
+  description = "If we should create extra resources related to the service bus"
+  type        = bool
+  default     = false
+}
 variable "odt_appeals_back_office_service_bus_id" {
   description = "The id of the Appeals BO Service Bus namespace"
   type        = string
