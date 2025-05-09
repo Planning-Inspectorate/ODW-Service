@@ -46,6 +46,17 @@ resource "azurerm_private_dns_zone_virtual_network_link" "back_office_private_dn
   tags = local.tags
 }
 
+data "azurerm_resources" "odt_pe_backoffice_sb" {
+  resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
+  name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
+  type                = "Microsoft.ServiceBus/namespaces"
+
+  provider = azurerm.odt
+  depends_on = [
+    module.synapse_ingestion
+  ]
+}
+
 module "odt_backoffice_sb" {
   count = var.odt_back_office_service_bus_enabled ? 1 : 0
 
@@ -56,8 +67,7 @@ module "odt_backoffice_sb" {
   location                                        = module.azure_region.location_cli
   service_name                                    = local.service_name
   odt_backoffice_sb_topic_subscriptions           = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
-  odt_back_office_service_bus_resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
+  odt_back_office_service_bus_id                  = data.azurerm_resources.odt_pe_backoffice_sb.resources[0].id
   odt_back_office_private_endpoint_dns_zone_id    = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name            = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets           = module.synapse_network.vnet_subnets
@@ -82,8 +92,7 @@ module "odt_backoffice_sb_failover" {
   location                                        = module.azure_region.location_cli
   service_name                                    = local.service_name
   odt_backoffice_sb_topic_subscriptions           = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
-  odt_back_office_service_bus_resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
+  odt_back_office_service_bus_id                  = data.azurerm_resources.odt_pe_backoffice_sb.resources[0].id
   odt_back_office_private_endpoint_dns_zone_id    = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name            = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets           = module.synapse_network_failover.vnet_subnets
@@ -110,8 +119,7 @@ module "odt_appeals_back_office_sb" {
   location                                        = module.azure_region.location_cli
   service_name                                    = local.service_name
   odt_backoffice_sb_topic_subscriptions           = var.odt_appeals_back_office_sb_topic_subscriptions
-  odt_back_office_service_bus_name                = var.odt_appeals_back_office.service_bus_name
-  odt_back_office_service_bus_resource_group_name = var.odt_appeals_back_office.resource_group_name
+  odt_back_office_service_bus_id                  = module.synapse_ingestion.service_bus_namespace_id
   odt_back_office_private_endpoint_dns_zone_id    = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name            = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets           = module.synapse_network.vnet_subnets
