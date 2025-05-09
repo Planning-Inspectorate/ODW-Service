@@ -45,7 +45,6 @@ module "synapse_workspace_private" {
 
   create_service_bus_resources                            = true
   odt_appeals_back_office_service_bus_id                  = module.synapse_ingestion.service_bus_namespace_id
-  odt_appeals_back_office_service_bus_resource_group_name = var.odt_appeals_back_office.resource_group_name
 
   tags = local.tags
 
