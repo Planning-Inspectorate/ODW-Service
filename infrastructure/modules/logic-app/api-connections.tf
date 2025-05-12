@@ -19,7 +19,7 @@ resource "azurerm_api_connection" "service_bus_api_connection" {
 }
 
 resource "azurerm_resource_group_template_deployment" "zendesk_custom_api_template" {
-  count = var.logic_app_enabled ? 1 : 0
+  count = var.logic_app_enabled && var.external_resource_links_enabled ? 1 : 0
 
   name                = "zendesk-custom-api"
   resource_group_name = var.resource_group_name

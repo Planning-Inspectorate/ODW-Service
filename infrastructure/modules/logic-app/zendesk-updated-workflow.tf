@@ -1,5 +1,5 @@
 resource "azurerm_logic_app_workflow" "zendesk_updated" {
-  count = var.logic_app_enabled ? 1 : 0
+  count = var.logic_app_enabled && var.external_resource_links_enabled ? 1 : 0
 
   name                = "pins-la-zendesk-updated-${local.resource_suffix}"
   location            = var.location
@@ -33,7 +33,7 @@ resource "azurerm_logic_app_workflow" "zendesk_updated" {
 }
 
 resource "azurerm_logic_app_trigger_custom" "zendesk_updated_trigger" {
-  count = var.logic_app_enabled ? 1 : 0
+  count = var.logic_app_enabled && var.external_resource_links_enabled ? 1 : 0
 
   logic_app_id = azurerm_logic_app_workflow.zendesk_updated[count.index].id
   name         = "Triggers_when_a_new_ticket_is_updated"
@@ -60,7 +60,7 @@ resource "azurerm_logic_app_trigger_custom" "zendesk_updated_trigger" {
 }
 
 resource "azurerm_logic_app_action_custom" "zendesk_updated_action" {
-  count = var.logic_app_enabled ? 1 : 0
+  count = var.logic_app_enabled && var.external_resource_links_enabled ? 1 : 0
 
   logic_app_id = azurerm_logic_app_workflow.zendesk_updated[count.index].id
   name         = "Send_message"

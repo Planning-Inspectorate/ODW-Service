@@ -9,6 +9,7 @@ resource "azurerm_log_analytics_workspace" "synapse" {
 }
 
 resource "azurerm_log_analytics_storage_insights" "data_lake" {
+  count               = var.external_resource_links_enabled ? 1 : 0
   name                = "pins-log-si-${local.resource_suffix}"
   resource_group_name = var.resource_group_name
   workspace_id        = azurerm_log_analytics_workspace.synapse.id
