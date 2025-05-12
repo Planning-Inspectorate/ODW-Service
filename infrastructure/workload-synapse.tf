@@ -47,6 +47,8 @@ module "synapse_workspace_private" {
 
   tags = local.tags
 
+  external_resource_links_enabled = var.external_resource_links_enabled
+
   providers = {
     azurerm     = azurerm,
     azurerm.odt = azurerm.odt
@@ -100,6 +102,8 @@ module "synapse_workspace_private_failover" {
   }
 
   tags = local.tags
+
+  external_resource_links_enabled = var.external_resource_links_enabled
 
   providers = {
     azurerm     = azurerm,

@@ -1,4 +1,5 @@
 resource "azurerm_monitor_activity_log_alert" "key_vault_deleted" {
+  count               = var.external_resource_links_enabled ? 1 : 0
   name                = "Key Vault Deleted"
   resource_group_name = var.resource_group_name
   scopes              = [var.key_vault_id]
@@ -21,6 +22,7 @@ resource "azurerm_monitor_activity_log_alert" "key_vault_deleted" {
 }
 
 resource "azurerm_monitor_activity_log_alert" "key_vault_resource_health" {
+  count               = var.external_resource_links_enabled ? 1 : 0
   name                = "Key Vault Resource Health"
   resource_group_name = var.resource_group_name
   scopes              = [var.key_vault_id]

@@ -37,7 +37,8 @@ module "synapse_monitoring" {
   synapse_workspace_id                     = module.synapse_workspace_private.synapse_workspace_id
   synapse_vnet_id                          = module.synapse_network.vnet_id
 
-  tags = local.tags
+  tags                            = local.tags
+  external_resource_links_enabled = var.external_resource_links_enabled
 }
 
 module "synapse_monitoring_failover" {
@@ -65,5 +66,6 @@ module "synapse_monitoring_failover" {
   synapse_workspace_id                     = module.synapse_workspace_private_failover[0].synapse_workspace_id
   synapse_vnet_id                          = module.synapse_network_failover.vnet_id
 
-  tags = local.tags
+  tags                            = local.tags
+  external_resource_links_enabled = var.external_resource_links_enabled
 }

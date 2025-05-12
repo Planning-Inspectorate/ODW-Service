@@ -106,3 +106,8 @@ variable "tags" {
   description = "A collection of tags to assign to taggable resources"
   type        = map(string)
 }
+
+variable "external_resource_links_enabled" {
+  description = "If connections and links to resources outside of the ODW should be made"
+  type        = bool
+}

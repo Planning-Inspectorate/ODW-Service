@@ -224,3 +224,8 @@ variable "tooling_config" {
     synapse_dev_private_dns_zone_id = string
   })
 }
+
+variable "external_resource_links_enabled" {
+  description = "If connections and links to resources outside of the ODW should be made"
+  type        = bool
+}
