@@ -31,6 +31,8 @@ module "logic_app" {
   service_bus_primary_connection_string = module.synapse_ingestion.service_bus_primary_connection_string
 
   tags = local.tags
+
+  external_resource_links_enabled = var.external_resource_links_enabled
 }
 
 module "logic_app_failover" {
@@ -48,4 +50,6 @@ module "logic_app_failover" {
   service_bus_primary_connection_string = module.synapse_ingestion_failover[0].service_bus_primary_connection_string
 
   tags = local.tags
+
+  external_resource_links_enabled = var.external_resource_links_enabled
 }
