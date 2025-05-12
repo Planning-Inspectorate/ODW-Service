@@ -149,7 +149,7 @@ odt_appeals_back_office = {
 service_bus_failover_enabled = false
 service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = {
-    groups = ["pins-odw-preprod-administrators"]
+    groups = [] # "pins-odw-preprod-administrators"
   }
 }
 
