@@ -17,7 +17,7 @@ resource "azurerm_key_vault" "synapse" {
     virtual_network_subnet_ids = [
       var.vnet_subnet_ids[var.devops_agent_subnet_name],
       var.vnet_subnet_ids_failover[var.devops_agent_subnet_name],
-      data.azurerm_subnet.horizon_database.id
+      data.azurerm_subnet.horizon_database[0].id
     ]
   }
 
