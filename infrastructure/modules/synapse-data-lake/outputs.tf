@@ -20,7 +20,7 @@ output "data_lake_filesystem_id" {
 
 output "key_vault_id" {
   description = "The ID of the Key Vault"
-  value       = azurerm_key_vault.synapse.id
+  value       = azurerm_key_vault.synapse[0].id
 }
 
 output "key_vault_name" {
