@@ -20,15 +20,15 @@ output "data_lake_filesystem_id" {
 
 output "key_vault_id" {
   description = "The ID of the Key Vault"
-  value       = azurerm_key_vault.synapse[0].id
+  value       = var.external_resource_links_enabled ? azurerm_key_vault.synapse[0].id : null
 }
 
 output "key_vault_name" {
   description = "The name of the Key Vault"
-  value       = azurerm_key_vault.synapse[0].name
+  value       = var.external_resource_links_enabled ? azurerm_key_vault.synapse[0].name : null
 }
 
 output "key_vault_uri" {
   description = "The URI of the Key Vault"
-  value       = azurerm_key_vault.synapse[0].vault_uri
+  value       = var.external_resource_links_enabled ? azurerm_key_vault.synapse[0].vault_uri : null
 }
