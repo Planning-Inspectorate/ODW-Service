@@ -25,10 +25,10 @@ output "key_vault_id" {
 
 output "key_vault_name" {
   description = "The name of the Key Vault"
-  value       = azurerm_key_vault.synapse.name
+  value       = azurerm_key_vault.synapse[0].name
 }
 
 output "key_vault_uri" {
   description = "The URI of the Key Vault"
-  value       = azurerm_key_vault.synapse.vault_uri
+  value       = azurerm_key_vault.synapse[0].vault_uri
 }
