@@ -9,7 +9,7 @@ resource "azurerm_storage_account_network_rules" "synapse" {
     var.vnet_subnet_ids_failover[var.devops_agent_subnet_name],
     var.vnet_subnet_ids[var.function_app_subnet_name],
     var.vnet_subnet_ids_failover[var.function_app_subnet_name],
-    data.azurerm_subnet.horizon_database.id
+    data.azurerm_subnet.horizon_database[0].id
   ]
 }
 
