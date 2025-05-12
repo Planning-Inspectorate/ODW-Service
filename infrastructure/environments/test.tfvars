@@ -294,3 +294,5 @@ vnet_subnets = [
     service_delegation = []
   },
 ]
+
+external_resource_links_enabled = true

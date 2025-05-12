@@ -540,3 +540,9 @@ variable "vnet_subnets" {
     private_endpoint_network_policies = optional(string)
   }))
 }
+
+
+variable "external_resource_links_enabled" {
+  description = "If connections and links to resources outside of the ODW should be made"
+  type        = bool
+}
