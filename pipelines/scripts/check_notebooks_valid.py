@@ -7,6 +7,7 @@ import logging
 """
     Script to check if notebooks are valid.
     Run using `python3 pipelines/scripts/check_notebooks_valid.py`
+    You can use `pipelines/scripts/clean_notebooks.py` to clean notebook errors identified by this script
 """
 
 logging.basicConfig(level=logging.INFO)
