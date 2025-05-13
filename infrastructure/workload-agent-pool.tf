@@ -17,6 +17,7 @@ module "devops_agent_pool" {
 }
 
 module "devops_agent_pool_failover" {
+  count  = var.devops_agent_failover_enabled ? 1 : 0
   source = "./modules/devops-agent-pool"
 
   environment         = var.environment
