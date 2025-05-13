@@ -25,11 +25,11 @@ def is_notebook_execution_count_valid(notebook: Dict[str, Any]) -> bool:
 
         :return: `True` if the execution count is null, `False` otherwise
     """
-    return not any(
+    return all(
         [
             x
             for x in notebook["properties"]["cells"]
-            if x.get("execution_count", None) is not None
+            if x.get("execution_count", None) is None
         ]
     )
 
