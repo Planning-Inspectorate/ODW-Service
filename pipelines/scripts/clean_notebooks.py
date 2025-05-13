@@ -21,7 +21,7 @@ def clean_notebook(notebook: Dict[str, Any]) -> bool:
         :return: `True` if the notebook had any of its properties cleaned, `False` otherwise
     """
     modified_attribute = False
-    for cell in notebook["properties"]["cell"]:
+    for cell in notebook["properties"]["cells"]:
         if "execution_count" in cell:
             if cell["execution_count"] is not None:
                 cell["execution_count"] = None
