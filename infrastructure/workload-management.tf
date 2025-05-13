@@ -23,7 +23,7 @@ module "synapse_management" {
   service_name        = local.service_name
 
   data_lake_account_id                   = module.synapse_data_lake.data_lake_account_id
-  deploy_purview                         = true
+  deploy_purview                         = var.create_purview_account
   devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_name
   firewall_allowed_ip_addresses          = local.firewall_allowed_ip_addresses
   key_vault_private_endpoint_dns_zone_id = azurerm_private_dns_zone.key_vault.id

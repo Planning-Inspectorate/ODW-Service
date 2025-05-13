@@ -552,3 +552,8 @@ variable "external_resource_links_enabled" {
   description = "If connections and links to resources outside of the ODW should be made"
   type        = bool
 }
+
+variable "create_purview_account" {
+  description = "If a purview account should be created. Only 3 Purview accounts can exist per tenant"
+  type        = bool
+}
