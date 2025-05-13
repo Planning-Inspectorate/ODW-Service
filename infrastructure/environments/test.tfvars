@@ -296,3 +296,5 @@ vnet_subnets = [
 ]
 
 external_resource_links_enabled = true
+
+create_purview_account = true
