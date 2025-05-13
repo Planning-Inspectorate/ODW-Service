@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "76160327-38aa-4a10-94be-3a5b0a40e990"
+				"spark.autotune.trackingId": "ba2f7f2a-9c0d-4a53-abeb-208c651e5fc3"
 			}
 		},
 		"metadata": {
@@ -57,7 +57,7 @@
 					"import re\n",
 					"from pyspark.sql.functions import col, explode"
 				],
-				"execution_count": 1
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -67,14 +67,21 @@
 					"full_storage_path = f'abfss://{container}@{storage_account_path}'\n",
 					"full_storage_path"
 				],
-				"execution_count": null
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account_backup_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": null
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"storage_account_backup_path"
+				],
+				"execution_count": 48
 			},
 			{
 				"cell_type": "code",
@@ -83,7 +90,7 @@
 					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
 					"df  = spark.read.json(metadata_path, multiLine=True)"
 				],
-				"execution_count": null
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -93,7 +100,7 @@
 					"    all_file_path_list.append(str(i).split(\"=\")[1].split(\",\")[0])\n",
 					"all_file_path_list = [ x for x in all_file_path_list if \"test\" not in x ]"
 				],
-				"execution_count": null
+				"execution_count": 26
 			},
 			{
 				"cell_type": "code",
@@ -108,7 +115,7 @@
 					"# Select the relevant fields\n",
 					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")"
 				],
-				"execution_count": null
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -119,7 +126,49 @@
 					"ls_delta = df_exploded.filter(col(\"table_format\") == 'delta').filter(col(\"database_name\")==\"odw_standardised_db\").select(\"table_location\").collect()\n",
 					""
 				],
+				"execution_count": 31
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"delta_file_list = []\n",
+					"for i in ls_delta:\n",
+					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
+				],
+				"execution_count": 29
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def list_all_files(base_path, relative_path=\"\"):\n",
+					"    files = []\n",
+					"    full_path = base_path + \"/\" + relative_path if relative_path else base_path\n",
+					"    items = mssparkutils.fs.ls(full_path)\n",
+					"    \n",
+					"    for item in items:\n",
+					"        item_path = f\"{relative_path}/{item.name}\".rstrip(\"/\")\n",
+					"        if item.isDir:\n",
+					"            files.extend(list_all_files(base_path, item_path))\n",
+					"        else:\n",
+					"            files.append(item_path)\n",
+					"    return set(files)"
+				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"for i in delta_file_list[:1]:\n",
+					"    pcontainer_name = i.split(\"@\")[0].split(\"//\")[1]\n",
+					"    base_path = i.split(\"'\")[1]\n",
+					"    base_path_lst = list_all_files(i.split(\"'\")[1])\n",
+					"    backup_path_lst = list_all_files(i.split(\"'\")[1].replace(storage_account_path,storage_account_backup_path)).replace(container_name,\"delta-backup-container\")\n",
+					"    delta_files = base_path_lst-backup_path_lst\n",
+					"    print(len(delta_files))\n",
+					"    for file in delta_files:\n",
+					"        mssparkutils.fs.cp(base_path+file,backup_path+file)"
+				],
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
@@ -159,14 +208,14 @@
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"#mssparkutils.notebook.exit(list(non_delta_file_list))"
 				],
-				"execution_count": 11
+				"execution_count": null
 			}
 		]
 	}
