@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cab8384e-c0bb-4557-8595-19daaa9abaa5"
+				"spark.autotune.trackingId": "d1768952-6ddb-4d65-9feb-63ac346784c2"
 			}
 		},
 		"metadata": {
@@ -89,7 +89,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 16
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,7 @@
 					"\n",
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 17
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -199,12 +199,17 @@
 					"        CostCentre,\n",
 					"CASE \n",
 					"        WHEN CivilServiceStart IS NULL THEN NULL\n",
-					"        ELSE DATE_FORMAT(TO_DATE(CivilServiceStart, 'yyyy/MM/dd'), 'yyyy-MM-dd') \n",
+					"        ELSE DATE_FORMAT(TO_DATE(CivilServiceStart, 'dd/MM/yyyy'), 'yyyy-MM-dd') \n",
 					"    END AS CivilServiceStart,\n",
-					"CASE \n",
-					"        WHEN DatetoCurrentJob IS NULL THEN NULL\n",
-					"        ELSE date_format(to_date(DatetoCurrentJob, 'MM/dd/yyyy'), 'yyyy-MM-dd')\n",
-					"    END AS DatetoCurrentJob,\n",
+					"    CASE \n",
+					"        WHEN DatetoCurrentJob IS NULL OR TRIM(DatetoCurrentJob) = '' OR TRIM(DatetoCurrentJob) = 'NULL' \n",
+					"            THEN NULL\n",
+					"        -- For yyyy-MM-dd format\n",
+					"        WHEN DatetoCurrentJob RLIKE '^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$'\n",
+					"            THEN to_date(DatetoCurrentJob, 'yyyy-MM-dd')\n",
+					"        -- For MM/dd/yyyy format (the most common in your data)\n",
+					"        ELSE try_cast(to_date(DatetoCurrentJob, 'MM/dd/yyyy') AS DATE)\n",
+					"    END AS DatetoCurrentJob ,\n",
 					"    CASE \n",
 					"        WHEN SeniorityDate IS NULL THEN NULL\n",
 					"        ELSE date_format(to_date(SeniorityDate, 'yyyy/MM/dd'), 'yyyy-MM-dd')\n",
@@ -248,7 +253,10 @@
 					"         Annualsalary,\n",
 					"        Curr,\n",
 					"         NInumber,\n",
-					"        Birthdate,\n",
+					"        CASE \n",
+					"        WHEN Birthdate IS NULL THEN NULL\n",
+					"        ELSE DATE_FORMAT(TO_DATE(Birthdate, 'dd/MM/yyyy'), 'yyyy-MM-dd') \n",
+					"    END AS Birthdate,\n",
 					"       case when Ageofemployee ='NULL' then '' else Ageofemployee end as  Ageofemployee,\n",
 					"        EO,\n",
 					"        Ethnicorigin,\n",
@@ -263,7 +271,7 @@
 					"        Schemereference,\n",
 					"        PensionSchemeName,\n",
 					"       DisabilityCode,\n",
-					"        case when DisabilityText = 'NULL' then '' else DisabilityText end as DisabilityText,\n",
+					"        case when DisabilityText = NULL then '' else DisabilityText end as DisabilityText,\n",
 					"        DisabilityCodeDescription,\n",
 					"        PArea,\n",
 					"        PayrollArea,\n",
@@ -274,7 +282,7 @@
 					"END AS FTE2,\n",
 					"        CASE \n",
 					"            WHEN TRIM(Report_MonthEnd_Date) = '' OR TRIM(Report_MonthEnd_Date) = 'NULL' THEN NULL \n",
-					"            ELSE TRY_CAST(to_timestamp(Report_MonthEnd_Date, \"yyyy/MM/dd\") AS DATE) \n",
+					"            ELSE TRY_CAST(to_timestamp(Report_MonthEnd_Date, \"dd/MM/yyyy\") AS DATE) \n",
 					"        END AS Report_MonthEnd_Date,\n",
 					"        CURRENT_DATE() AS PDAC_ETL_Date,\n",
 					"        'saphr' AS SourceSystemID,\n",
@@ -333,7 +341,7 @@
 					"    logInfo(\"Flushing logs\")\n",
 					"    flushLogging()"
 				],
-				"execution_count": 18
+				"execution_count": 6
 			}
 		]
 	}
