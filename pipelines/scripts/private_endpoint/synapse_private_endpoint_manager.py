@@ -1,5 +1,4 @@
 from pipelines.scripts.private_endpoint.private_endpoint_manager import PrivateEndpointManager
-from pipelines.scripts.util import Util
 from azure.mgmt.synapse import SynapseManagementClient
 from typing import List, Type
 
