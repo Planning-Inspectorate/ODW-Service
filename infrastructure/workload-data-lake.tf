@@ -28,7 +28,7 @@ module "synapse_data_lake" {
   data_lake_role_assignments             = var.data_lake_role_assignments
   data_lake_storage_containers           = var.data_lake_storage_containers
   devops_agent_subnet_name               = module.synapse_network.devops_agent_subnet_name
-  firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
+  firewall_allowed_ip_addresses          = local.firewall_allowed_ip_addresses
   function_app_principal_ids             = local.function_app_identity
   horizon_integration_config             = var.horizon_integration_config
   key_vault_role_assignments             = var.key_vault_role_assignments
@@ -36,7 +36,8 @@ module "synapse_data_lake" {
   synapse_private_endpoint_subnet_name   = module.synapse_network.synapse_private_endpoint_subnet_name
   tenant_id                              = var.tenant_id
   tooling_config = {
-    storage_private_dns_zone_id = local.tooling_storage_dns_zone_ids
+    key_vault_private_dns_zone_id = data.azurerm_private_dns_zone.tooling_key_vault.id
+    storage_private_dns_zone_id   = local.tooling_storage_dns_zone_ids
   }
   vnet_subnet_ids          = module.synapse_network.vnet_subnets
   vnet_subnet_ids_failover = module.synapse_network_failover.vnet_subnets
@@ -65,7 +66,7 @@ module "synapse_data_lake_failover" {
   data_lake_role_assignments             = var.data_lake_role_assignments
   data_lake_storage_containers           = var.data_lake_storage_containers
   devops_agent_subnet_name               = module.synapse_network_failover.devops_agent_subnet_name
-  firewall_allowed_ip_addresses          = yamldecode(file(local.firewall_config_file_path))
+  firewall_allowed_ip_addresses          = local.firewall_allowed_ip_addresses
   function_app_principal_ids             = local.function_app_identity
   horizon_integration_config             = var.horizon_integration_config
   key_vault_role_assignments             = var.key_vault_role_assignments
@@ -73,7 +74,8 @@ module "synapse_data_lake_failover" {
   synapse_private_endpoint_subnet_name   = module.synapse_network_failover.synapse_private_endpoint_subnet_name
   tenant_id                              = var.tenant_id
   tooling_config = {
-    storage_private_dns_zone_id = local.tooling_storage_dns_zone_ids
+    key_vault_private_dns_zone_id = data.azurerm_private_dns_zone.tooling_key_vault.id
+    storage_private_dns_zone_id   = local.tooling_storage_dns_zone_ids
   }
   vnet_subnet_ids          = module.synapse_network_failover.vnet_subnets
   vnet_subnet_ids_failover = module.synapse_network.vnet_subnets
