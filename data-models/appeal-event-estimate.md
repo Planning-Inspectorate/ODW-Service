@@ -27,11 +27,11 @@ classDiagram
     }
  
     namespace Curated {
-        class sb_appeal_event_estimate_cu {
+        class appeal_event_estimate_cu {
             Id: int
         }
     }
  
 appeal-event-estimate --> sb_appeal_event_estimate_std
 sb_appeal_event_estimate_std --> sb_appeal_event_estimate_hrm
-sb_appeal_event_estimate_hrm --> sb_appeal_event_estimate_cu
+sb_appeal_event_estimate_hrm --> appeal_event_estimate_cu
