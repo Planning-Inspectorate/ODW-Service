@@ -44,7 +44,7 @@ def validate_notebooks(notebooks_to_check: Dict[str, Any]):
     invalid_notebooks = {
         k: v
         for k, v in notebooks_to_check.items()
-        if is_notebook_execution_count_valid(v)
+        if not is_notebook_execution_count_valid(v)
     }
     for notebook_name in invalid_notebooks.keys():
         logging.info(f"The notebook '{notebook_name}' has a non-null execution count. Please clear this value")
