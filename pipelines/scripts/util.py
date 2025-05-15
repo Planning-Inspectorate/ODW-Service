@@ -42,7 +42,7 @@ class Util:
         return cls.get_current_subscription_details()["user"]["name"]
 
     @classmethod
-    def get_subsription_id(cls, subscription_name: str) -> str:
+    def get_subscription_id(cls, subscription_name: str) -> str:
         """
             Return the id of the current subscription
         """
