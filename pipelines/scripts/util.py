@@ -46,7 +46,7 @@ class Util:
         """
             Return the id of the current subscription
         """
-        subscriptions = json.loads(cls.run_az_cli_command(["az", "account", "subscription", "list"]))
+        subscriptions = json.loads(cls.run_az_cli_command(["az", "account", "subscription", "list", "--output", "json"]))
         for subscription in subscriptions:
             if subscription["displayName"] == subscription_name:
                 return subscription["id"].replace("/subscriptions/", "")
