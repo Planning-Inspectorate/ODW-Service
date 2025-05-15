@@ -4,7 +4,6 @@ from pipelines.scripts.private_endpoint.storage_private_endpoint_manager import 
 from pipelines.scripts.util import Util
 import argparse
 import logging
-import json
 
 
 logging.basicConfig(level=logging.INFO)
