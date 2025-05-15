@@ -9,6 +9,9 @@ class PrivateEndpointManager(ABC):
         self.management_client = self.get_client_class()(AzureCliCredential(), subscription_id)
 
     def get(self, private_endpoint_name: str, **kwargs: str) -> Dict[str, Any]:
+        """
+            Return the details of the given private endpoint
+        """
         return self.management_client.private_endpoint_connections.get(private_endpoint_connection_name=private_endpoint_name, **kwargs).as_dict()
 
     def approve(self, private_endpoint_name: str, **kwargs: str):
@@ -37,19 +40,34 @@ class PrivateEndpointManager(ABC):
         return
 
     def get_all(self, **kwargs: str) -> List[Dict[str, Any]]:
+        """
+            Return all private endpoints for the resource type class
+        """
         return [x.as_dict() for x in self.management_client.private_endpoint_connections.list(**kwargs)]
 
     def get_all_names(self, **kwargs: str) -> List[Dict[str, Any]]:
+        """
+            Return all private endpoint names for the resource type class
+        """
         return [x["name"] for x in self.get_all(**kwargs)]
 
     @abstractmethod
     def get_client_class(cls) -> Type:
+        """
+            Return the Azure client that will be used to interact with private endpoints
+        """
         pass
 
     @abstractmethod
     def get_required_kwargs(cls) -> List[str]:
+        """
+            Return the list of required kwarg names that are supplied to the get/approve/get_all/get_all_names functions
+        """
         pass
 
     @abstractmethod
     def get_optional_kwargs(cls) -> List[str]:
+        """
+            Return the list of optional kwarg names that are supplied to the get/approve/get_all/get_all_names functions
+        """
         pass
