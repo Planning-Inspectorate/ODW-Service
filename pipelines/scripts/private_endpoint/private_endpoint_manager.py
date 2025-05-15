@@ -4,6 +4,7 @@ from pipelines.scripts.util import Util
 import logging
 import json
 
+
 class PrivateEndpointManager(ABC):
 
     def get(self, private_endpoint_id: str) -> Dict[str, Any]:
