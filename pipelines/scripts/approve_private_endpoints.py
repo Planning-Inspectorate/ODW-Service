@@ -2,26 +2,28 @@ from pipelines.scripts.private_endpoint.synapse_private_endpoint_manager import 
 from pipelines.scripts.util import Util
 import argparse
 import logging
+import json
 
 
 logging.basicConfig(level=logging.INFO)
+
+
+ENDPOINTS_TO_EXCLUDE = {
+    "synapse-mpe-appeals-bo--odw-prod-uks",
+    "synapse-mpe-kv--odw-prod-uks "
+}
 
 
 def approve_private_endpoints(env: str):
     """
         Approve all ODW private endpoints
     """
-    synapse_private_endpoint_manager = SynapsePrivateEndpointManager(Util.get_subsription_id(f"pins-odw-data-{env}-sub"))
-    endpoints = synapse_private_endpoint_manager.get_all_names(
-        workspace_name=f"pins-synw-odw-{env}-uks",
-        resource_group_name=f"pins-rg-data-odw-{env}-uks"
+    synapse_private_endpoint_manager = SynapsePrivateEndpointManager()
+    synapse_private_endpoint_manager.approve_all(
+        f"pins-rg-data-odw-{env}-uks",
+        f"pins-synw-odw-{env}-uks",
+        ENDPOINTS_TO_EXCLUDE
     )
-    for endpoint in endpoints:
-        synapse_private_endpoint_manager.approve(
-            endpoint,
-            workspace_name=f"pins-synw-odw-{env}-uks",
-            resource_group_name=f"pins-rg-data-odw-{env}-uks"
-        )
 
 
 if __name__ == "__main__":

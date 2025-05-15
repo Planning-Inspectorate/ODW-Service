@@ -3,6 +3,6 @@ from azure.mgmt.synapse import SynapseManagementClient
 from typing import List, Type
 
 
-class SynapsePrivateEndpointManager(PrivateEndpointManager):
+class SSQLServerPrivateEndpointManager(PrivateEndpointManager):
     def get_resource_type(self):
-        return "Microsoft.Synapse/workspaces"
+        return "Microsoft.Sql/servers"
