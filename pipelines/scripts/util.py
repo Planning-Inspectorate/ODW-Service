@@ -2,6 +2,7 @@ import subprocess
 from typing import List, Dict, Any
 import json
 import os
+import logging
 
 
 class Util:
@@ -13,7 +14,7 @@ class Util:
         """
             Run an az cli command. Raises a `RuntimeException` if something goes wrong
         """
-        print(f"Running command: '{' '.join(args)}'")
+        logging.info(f"Running command {' '.join(args)}")
         try:
             return subprocess.check_output(args)
         except subprocess.CalledProcessError as e:
