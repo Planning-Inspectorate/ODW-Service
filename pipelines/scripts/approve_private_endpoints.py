@@ -1,4 +1,6 @@
 from pipelines.scripts.private_endpoint.synapse_private_endpoint_manager import SynapsePrivateEndpointManager
+from pipelines.scripts.private_endpoint.key_vault_private_endpoint_manager import KeyVaultPrivateEndpointManager
+from pipelines.scripts.private_endpoint.storage_private_endpoint_manager import StoragePrivateEndpointManager
 from pipelines.scripts.util import Util
 import argparse
 import logging
@@ -24,6 +26,20 @@ def approve_private_endpoints(env: str):
         f"pins-synw-odw-{env}-uks",
         ENDPOINTS_TO_EXCLUDE
     )
+    key_vault_private_endpoint_manager = KeyVaultPrivateEndpointManager()
+    key_vault_private_endpoint_manager.approve_all(
+        f"pins-rg-data-odw-{env}-uks",
+        f"pinskvsynwodw{env}uks",
+        ENDPOINTS_TO_EXCLUDE
+    )
+    storage_private_endpoint_manager = StoragePrivateEndpointManager()
+    odw_storage_accounts = Util.get_odw_storage_account_names(env)
+    for storage_account in odw_storage_accounts:
+        storage_private_endpoint_manager.approve_all(
+            f"pins-rg-data-odw-{env}-uks",
+            storage_account,
+            ENDPOINTS_TO_EXCLUDE
+        )
 
 
 if __name__ == "__main__":

@@ -51,3 +51,22 @@ class Util:
             if subscription["displayName"] == subscription_name:
                 return subscription["id"].replace("/subscriptions/", "")
         raise ValueError(f"Could not find a subscription with name '{subscription_name}'")
+
+    @classmethod
+    def get_odw_storage_accounts(cls, env: str) -> Dict[str, Any]:
+        """
+            Return the details of all ODW storage accounts
+        """
+        resource_group = f"pins-rg-data-odw-{env}-uks"
+        command = f"az storage account list -g {resource_group}"
+        return json.loads(cls.run_az_cli_command(command.split(" ")))
+
+    @classmethod
+    def get_odw_storage_account_names(cls, env: str) -> List[str]:
+        """
+            Return the names of all ODW storage accounts
+        """
+        return [
+            storage_account["name"]
+            for storage_account in cls.get_odw_storage_accounts(env)
+        ]
