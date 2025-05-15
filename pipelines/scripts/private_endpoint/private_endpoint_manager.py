@@ -17,7 +17,8 @@ class PrivateEndpointManager(ABC):
             "az network private-endpoint-connection show"
         )
         command_args = {
-            "--id": private_endpoint_id
+            "--id": private_endpoint_id,
+            "--output": "json"
         }
         return json.loads(
             Util.run_az_cli_command(
@@ -45,7 +46,8 @@ class PrivateEndpointManager(ABC):
         )
         command_args = {
             "--description": f"Auto-Approved by {Util.get_current_user()}",
-            "--id": private_endpoint_id
+            "--id": private_endpoint_id,
+            "--output": "json"
         }
         Util.run_az_cli_command(
             command_to_run.split(" ") + [
@@ -68,7 +70,8 @@ class PrivateEndpointManager(ABC):
         command_args = {
             "--name": resource_name,
             "--resource-group": resource_group_name,
-            "--type": self.get_resource_type()
+            "--type": self.get_resource_type(),
+            "--output": "json"
         }
         return json.loads(
             Util.run_az_cli_command(
