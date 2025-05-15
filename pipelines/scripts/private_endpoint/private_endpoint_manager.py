@@ -54,7 +54,6 @@ class PrivateEndpointManager(ABC):
                 for elem in kv_pair
             ]
         )
-        return
 
     def get_all(self, resource_group_name: str, resource_name: str) -> List[Dict[str, Any]]:
         """
