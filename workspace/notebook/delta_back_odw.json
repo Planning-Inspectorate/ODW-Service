@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8ab183b4-ec36-460b-ad4a-1271428aff52"
+				"spark.autotune.trackingId": "16ff634f-26a6-4104-a468-477d1e4bbb9d"
 			}
 		},
 		"metadata": {
@@ -57,40 +57,32 @@
 					"import re\n",
 					"from pyspark.sql.functions import col, explode"
 				],
-				"execution_count": 22
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_source')).group(1)\n",
-					"container = 'odw-standardised'\n",
-					"full_storage_path = f'abfss://{container}@{storage_account_path}'\n",
-					"full_storage_path"
+					"source_storage_account_path = re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_source')).group(1)\n",
+					"container            = 'odw-standardised'\n",
+					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 23
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"storage_account_backup_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
+					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"storage_account_backup_path"
-				],
-				"execution_count": 48
+				"execution_count": 39
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
-					"df  = spark.read.json(metadata_path, multiLine=True)"
+					"df_metadata  = spark.read.json(metadata_path, multiLine=True)"
 				],
-				"execution_count": 25
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -100,22 +92,22 @@
 					"    all_file_path_list.append(str(i).split(\"=\")[1].split(\",\")[0])\n",
 					"all_file_path_list = [ x for x in all_file_path_list if \"test\" not in x ]"
 				],
-				"execution_count": 26
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Explode each metadata category separately (as they are nested lists)\n",
-					"standardised_df = df.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
-					"harmonised_df = df.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
-					"curated_df = df.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
-					"logging_df = df.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
-					"config_df = df.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
+					"standardised_df = df_metadata.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
+					"harmonised_df   = df_metadata.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
+					"curated_df      = df_metadata.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
+					"logging_df      = df_metadata.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
+					"config_df       = df_metadata.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
 					"\n",
 					"# Select the relevant fields\n",
 					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")"
 				],
-				"execution_count": 27
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -123,10 +115,60 @@
 					"collapsed": false
 				},
 				"source": [
-					"ls_delta = df_exploded.filter(col(\"table_format\") == 'delta').filter(col(\"database_name\")==\"odw_standardised_db\").select(\"table_location\").collect()\n",
+					"ls_delta = df_exploded.filter(col(\"table_format\") == 'delta').filter(col(\"database_name\")==\"odw_standardised_db\").select(\"table_location\").collect()"
+				],
+				"execution_count": 43
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": true
+					}
+				},
+				"source": [
+					"# # identify _delta_log and process the files from source\n",
+					"\n",
+					"\n",
+					"# def list_all_paths(path):\n",
+					"#     \"\"\"Recursively list all paths under the given DBFS path.\"\"\"\n",
+					"#     try:\n",
+					"#         files = dbutils.fs.ls(path)\n",
+					"#     except Exception as e:\n",
+					"#         print(f\"Error accessing {path}: {e}\")\n",
+					"#         return []\n",
+					"\n",
+					"#     all_paths = []\n",
+					"#     for f in files:\n",
+					"#         if f.isDir():\n",
+					"#             all_paths.append(f.path)\n",
+					"#             all_paths.extend(list_all_paths(f.path))\n",
+					"#     return all_paths\n",
+					"\n",
+					"# def is_delta_table(path):\n",
+					"#     \"\"\"Check if the given path is a Delta table by looking for the _delta_log directory.\"\"\"\n",
+					"#     try:\n",
+					"#         delta_log_path = path.rstrip(\"/\") + \"/_delta_log\"\n",
+					"#         dbutils.fs.ls(delta_log_path)  # will throw if _delta_log doesn't exist\n",
+					"#         return True\n",
+					"#     except:\n",
+					"#         return False\n",
+					"\n",
+					"# # Replace with your container path\n",
+					"# container_path = \"abfss://dfs.core.windows.net/rnw/\"  # Example: \"dbfs:/mnt/datalake-container/\"\n",
+					"\n",
+					"# # List all directories\n",
+					"# all_dirs = list_all_paths(container_path)\n",
+					"\n",
+					"# # Filter for Delta tables\n",
+					"# delta_tables = [p for p in all_dirs if is_delta_table(p)]\n",
+					"\n",
+					"# # Display Delta table paths\n",
+					"# for table_path in delta_tables:\n",
+					"#     print(f\"Delta Table Found: {table_path}\")\n",
 					""
 				],
-				"execution_count": 31
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -135,56 +177,64 @@
 					"for i in ls_delta:\n",
 					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
 				],
-				"execution_count": 29
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"def list_all_files(base_path, relative_path=\"\"):\n",
 					"    files = []\n",
-					"    full_path = base_path + \"/\" + relative_path if relative_path else base_path\n",
-					"    items = mssparkutils.fs.ls(full_path)\n",
+					"    full_path = f\"{base_path}/{relative_path}\" if relative_path else base_path\n",
 					"    \n",
+					"    try:\n",
+					"        items = mssparkutils.fs.ls(full_path)\n",
+					"    except Exception as e:\n",
+					"        print(f\"Warning: Could not access path '{full_path}': {str(e)}\")\n",
+					"        return full_path  # Skip this path and continue\n",
+					"\n",
 					"    for item in items:\n",
 					"        item_path = f\"{relative_path}/{item.name}\".rstrip(\"/\")\n",
 					"        if item.isDir:\n",
 					"            files.extend(list_all_files(base_path, item_path))\n",
 					"        else:\n",
 					"            files.append(item_path)\n",
+					"\n",
 					"    return set(files)"
 				],
-				"execution_count": null
+				"execution_count": 46
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"len(delta_file_list)"
 				],
-				"execution_count": 79
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"for i in delta_file_list:\n",
-					"    container_name = i.split(\"@\")[0].split(\"//\")[1]\n",
-					"    base_path = i.split(\"'\")[1]\n",
-					"    base_path_lst = list_all_files(i.split(\"'\")[1])\n",
-					"    backup_path = base_path.replace(storage_account_path,storage_account_backup_path).replace(container_name,\"delta-backup-container\")\n",
-					"    mssparkutils.fs.mkdirs(i.split(\"'\")[1].replace(storage_account_path,storage_account_backup_path).replace(container_name,\"delta-backup-container\"))\n",
-					"    backup_path_lst = list_all_files(i.split(\"'\")[1].replace(storage_account_path,storage_account_backup_path).replace(container_name,\"delta-backup-container\"))\n",
-					"    delta_files = base_path_lst-backup_path_lst\n",
+					"type(base_path_lst)"
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"for file in delta_file_list:\n",
+					"    container_name = file.split(\"@\")[0].split(\"//\")[1]\n",
+					"    base_path = file.split(\"'\")[1]\n",
+					"    base_path_lst = list_all_files(file.split(\"'\")[1])\n",
+					"    backup_path = base_path.replace(source_storage_account_path,backup_storage_account_path).replace(container_name,\"delta-backup-container\")\n",
+					"    mssparkutils.fs.mkdirs(file.split(\"'\")[1].replace(source_storage_account_path,backup_storage_account_path).replace(container_name,\"delta-backup-container\"))\n",
+					"    backup_path_lst = list_all_files(file.split(\"'\")[1].replace(source_storage_account_path,backup_storage_account_path).replace(container_name,\"delta-backup-container\"))\n",
+					"    delta_files = set(base_path_lst)-backup_path_lst\n",
 					"    print(len(delta_files))\n",
 					"    for file in delta_files:\n",
-					"        mssparkutils.fs.cp(base_path+file,backup_path+file)"
+					"        total_tile = len(file)\n",
+					"        # print(base_path+file,backup_path+file)\n",
+					"        # mssparkutils.fs.cp(base_path+file,backup_path+file)"
 				],
-				"execution_count": 80
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"mssparkutils.fs.ls('abfss://delta-backup-container@pinsstodwdevukwdvzrjm.dfs.core.windows.net/Horizon/HorizonCases_s78')"
-				],
-				"execution_count": 69
+				"execution_count": 49
 			},
 			{
 				"cell_type": "code",
@@ -193,38 +243,46 @@
 					"for i in ls_delta:\n",
 					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
 				],
-				"execution_count": null
+				"execution_count": 50
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"non_delta_file_list = set(all_file_path_list)-set(delta_file_list)"
 				],
-				"execution_count": null
+				"execution_count": 51
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"non_delta_file_dict = {\n",
-					"    \"backup_storage_name\":storage_account_backup_path.split(\".\")[0],\n",
+					"    \"backup_storage_name\":backup_storage_account_path.split(\".\")[0],\n",
 					"    \"non_delta_file_list\":list(non_delta_file_list)\n",
 					"}"
 				],
-				"execution_count": null
+				"execution_count": 52
 			},
 			{
-				"cell_type": "code",
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
 				"source": [
-					"non_delta_file_dict = {'backup_storage_name': 'pinsstodwdevukwdvzrjm', 'non_delta_file_list': ['abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/listed_building_10_05_2025']}"
-				],
-				"execution_count": null
+					"std_total_size = 2000\n",
+					"std_delta_size = 20\n",
+					"std_diff % = 99%"
+				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": null
+				"execution_count": 53
 			},
 			{
 				"cell_type": "code",
