@@ -47,7 +47,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "back_office_private_dn
 }
 
 data "azurerm_resources" "odt_pe_backoffice_sb" {
-  count = var.external_resource_links_enabled ? 1 : 0
+  count               = var.external_resource_links_enabled ? 1 : 0
   resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
   name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
   type                = "Microsoft.ServiceBus/namespaces"
