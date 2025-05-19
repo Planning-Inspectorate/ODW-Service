@@ -47,6 +47,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "back_office_private_dn
 }
 
 data "azurerm_resources" "odt_pe_backoffice_sb" {
+  count = var.external_resource_links_enabled ? 1 : 0
   resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
   name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
   type                = "Microsoft.ServiceBus/namespaces"
@@ -58,7 +59,7 @@ data "azurerm_resources" "odt_pe_backoffice_sb" {
 }
 
 module "odt_backoffice_sb" {
-  count = var.odt_back_office_service_bus_enabled ? 1 : 0
+  count = var.odt_back_office_service_bus_enabled && var.external_resource_links_enabled ? 1 : 0
 
   source = "./modules/odt-backoffice-sb"
 
@@ -67,7 +68,7 @@ module "odt_backoffice_sb" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb.resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb[0].resources[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network.vnet_subnets
@@ -83,7 +84,7 @@ module "odt_backoffice_sb" {
 }
 
 module "odt_backoffice_sb_failover" {
-  count = var.odt_back_office_service_bus_enabled && var.failover_deployment ? 1 : 0
+  count = var.odt_back_office_service_bus_enabled && var.failover_deployment && var.external_resource_links_enabled ? 1 : 0
 
   source = "./modules/odt-backoffice-sb"
 
@@ -92,7 +93,7 @@ module "odt_backoffice_sb_failover" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb.resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb[0].resources[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network_failover.vnet_subnets
@@ -109,7 +110,7 @@ module "odt_backoffice_sb_failover" {
 
 
 module "odt_appeals_back_office_sb" {
-  count = var.odt_appeals_back_office.service_bus_enabled ? 1 : 0
+  count = var.odt_appeals_back_office.service_bus_enabled && var.external_resource_links_enabled ? 1 : 0
 
   source = "./modules/odt-backoffice-sb"
 
@@ -119,7 +120,7 @@ module "odt_appeals_back_office_sb" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_appeals_back_office_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb.resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_resources.odt_pe_backoffice_sb[0].resources[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network.vnet_subnets
