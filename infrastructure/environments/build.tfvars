@@ -238,10 +238,11 @@ synapse_role_assignments = [
     role_definition_name = "Synapse Administrator",
     principal_id         = "be52cb0c-858f-4698-8c40-3a5ec793a2e3"
   },
-  { # Azure DevOps Pipelines - ODW Build - Infrastructure
-    role_definition_name = "Synapse Administrator",
-    principal_id         = "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"
-  },
+  # This one seems to be automatically assigned when the Synapse workspace is created
+  #{ # Azure DevOps Pipelines - ODW Build - Infrastructure
+  #  role_definition_name = "Synapse Administrator",
+  #  principal_id         = "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"
+  #},
   { # pins-odw-data-preprod-syn-ws-contributors
     role_definition_name = "Synapse Contributor",
     principal_id         = "d59a3e85-58db-4b70-8f88-3f4a4a82ee27"
