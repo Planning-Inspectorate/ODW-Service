@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "254a84e9-52a6-4004-b163-036c556ec018"
+				"spark.autotune.trackingId": "d90b53ec-c413-420a-991c-85c2227ed019"
 			}
 		},
 		"metadata": {
@@ -67,11 +67,15 @@
 					"\n",
 					"This notebook allows controlled insertion of new entities into `main_pipeline_config` used by the ODW ingestion pipeline.\n",
 					"\n",
+					"⚠️ Do not run the notebook end to end ⚠️ Only run the cells that are needed to be run \n",
+					"\n",
 					"It provides a parameter-driven approach to:\n",
-					"- View current max `System_key`\n",
+					"- View current max `System_key` & next available key\n",
 					"- Insert new rows safely\n",
 					"- Confirm the row was added\n",
-					"- Enable the entity when ready\n",
+					"- Enable/Disable the entity\n",
+					"- List all the entities\n",
+					"- Delete an entity\n",
 					"\n",
 					"⚠️ Set `is_enabled = False` ⚠️ during first insert if the corresponding Function App endpoint does not exist yet.\n",
 					"\n",
@@ -115,7 +119,7 @@
 					"# is_enabled = False  # Set to True only after Function App is deployed\n",
 					"\n",
 					"\n",
-					"new_entity_key =   # Must be one greater than current MAX(System_key) Check next cell to get MAX\n",
+					"new_entity_key =   # Run next cell to get the next available key\n",
 					"system_name = \"\"\n",
 					"object_name = \"\"\n",
 					"entity_name = \"\"\n",
@@ -147,10 +151,12 @@
 					"    SELECT MAX(System_key) AS max_key\n",
 					"    FROM odw_config_db.main_pipeline_config\n",
 					"\"\"\")\n",
-					"max_key_df.show()\n",
 					"\n",
-					"max_key = max_key_df.collect()[0][\"max_key\"] or 0  # fallback if None\n",
+					"max_key = max_key_df.collect()[0][\"max_key\"] or 0\n",
+					"next_key = max_key + 1\n",
+					"\n",
 					"print(f\"Current max key: {max_key}\")\n",
+					"print(f\"Next available key: {next_key}\")\n",
 					""
 				],
 				"execution_count": null
@@ -182,8 +188,17 @@
 					"\"\"\").collect()[0][\"count\"]\n",
 					"\n",
 					"if exists:\n",
-					"    raise ValueError(f\"Entity '{entity_name}' already exists in main_pipeline_config.\")\n",
+					"    raise ValueError(f\"Entity '{entity_name}' already exists in main_pipeline_config\")\n",
 					"\n",
+					"# Check if System_key already exists\n",
+					"key_exists = spark.sql(f\"\"\"\n",
+					"    SELECT COUNT(*) AS count\n",
+					"    FROM odw_config_db.main_pipeline_config\n",
+					"    WHERE System_key = {new_entity_key}\n",
+					"\"\"\").collect()[0][\"count\"]\n",
+					"\n",
+					"if key_exists:\n",
+					"    raise ValueError(f\"System_key {new_entity_key} already exists\")\n",
 					"\n",
 					"# Insert new entity into main_pipeline_config using the parameters\n",
 					"insert_sql = f\"\"\"\n",
@@ -193,7 +208,7 @@
 					"\"\"\"\n",
 					"\n",
 					"spark.sql(insert_sql)\n",
-					"print(f\"Entity '{entity_name}' inserted successfully.\")\n",
+					"print(f\"Entity '{entity_name}' inserted successfully with System_key = {new_entity_key}\")\n",
 					""
 				],
 				"execution_count": null
@@ -237,7 +252,7 @@
 					}
 				},
 				"source": [
-					"### Toggle Enablement (Once Function App is deployed)"
+					"### ⚠️Toggle Enablement (Once Function App is deployed)"
 				]
 			},
 			{
@@ -316,7 +331,7 @@
 					}
 				},
 				"source": [
-					"### Delete an Entity from main_pipeline_config"
+					"### ⚠️Delete an Entity from main_pipeline_config"
 				]
 			},
 			{
