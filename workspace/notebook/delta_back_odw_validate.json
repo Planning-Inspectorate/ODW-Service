@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "db70d97e-d2d2-4209-825a-b14e51d1e9f4"
+				"spark.autotune.trackingId": "72278150-0d98-4da8-989f-ee42bc3351af"
 			}
 		},
 		"metadata": {
@@ -57,7 +57,7 @@
 					"import re\n",
 					"from pyspark.sql.functions import col, explode"
 				],
-				"execution_count": null
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
@@ -66,14 +66,14 @@
 					"container            = 'odw-standardised'\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": null
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": null
+				"execution_count": 56
 			},
 			{
 				"cell_type": "code",
@@ -82,109 +82,14 @@
 					"metadata_path: str = \"abfss://odw-config@\"+storage_account+\"existing-tables-metadata.json\"\n",
 					"df_metadata  = spark.read.json(metadata_path, multiLine=True)"
 				],
-				"execution_count": null
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"all_file_path_list = []\n",
-					"for i in mssparkutils.fs.ls(full_storage_path):\n",
-					"    all_file_path_list.append(str(i).split(\"=\")[1].split(\",\")[0])\n",
-					"all_file_path_list = [ x for x in all_file_path_list if \"test\" not in x ]"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"# Explode each metadata category separately (as they are nested lists)\n",
-					"standardised_df = df_metadata.select(explode(col(\"standardised_metadata\")).alias(\"metadata\"))\n",
-					"harmonised_df   = df_metadata.select(explode(col(\"harmonised_metadata\")).alias(\"metadata\"))\n",
-					"curated_df      = df_metadata.select(explode(col(\"curated_metadata\")).alias(\"metadata\"))\n",
-					"logging_df      = df_metadata.select(explode(col(\"logging_metadata\")).alias(\"metadata\"))\n",
-					"config_df       = df_metadata.select(explode(col(\"config_metadata\")).alias(\"metadata\"))\n",
-					"\n",
-					"# Select the relevant fields\n",
-					"df_exploded = standardised_df.union(harmonised_df).union(curated_df).union(logging_df).union(config_df).selectExpr(\"metadata.*\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"ls_delta = df_exploded.filter(col(\"table_format\") == 'delta').filter(col(\"database_name\")==\"odw_standardised_db\").select(\"table_location\").collect()"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": true
-					}
-				},
-				"source": [
-					"# # identify _delta_log and process the files from source\n",
-					"\n",
-					"\n",
-					"# def list_all_paths(path):\n",
-					"#     \"\"\"Recursively list all paths under the given DBFS path.\"\"\"\n",
-					"#     try:\n",
-					"#         files = dbutils.fs.ls(path)\n",
-					"#     except Exception as e:\n",
-					"#         print(f\"Error accessing {path}: {e}\")\n",
-					"#         return []\n",
-					"\n",
-					"#     all_paths = []\n",
-					"#     for f in files:\n",
-					"#         if f.isDir():\n",
-					"#             all_paths.append(f.path)\n",
-					"#             all_paths.extend(list_all_paths(f.path))\n",
-					"#     return all_paths\n",
-					"\n",
-					"# def is_delta_table(path):\n",
-					"#     \"\"\"Check if the given path is a Delta table by looking for the _delta_log directory.\"\"\"\n",
-					"#     try:\n",
-					"#         delta_log_path = path.rstrip(\"/\") + \"/_delta_log\"\n",
-					"#         dbutils.fs.ls(delta_log_path)  # will throw if _delta_log doesn't exist\n",
-					"#         return True\n",
-					"#     except:\n",
-					"#         return False\n",
-					"\n",
-					"# # Replace with your container path\n",
-					"# container_path = \"abfss://dfs.core.windows.net/rnw/\"  # Example: \"dbfs:/mnt/datalake-container/\"\n",
-					"\n",
-					"# # List all directories\n",
-					"# all_dirs = list_all_paths(container_path)\n",
-					"\n",
-					"# # Filter for Delta tables\n",
-					"# delta_tables = [p for p in all_dirs if is_delta_table(p)]\n",
-					"\n",
-					"# # Display Delta table paths\n",
-					"# for table_path in delta_tables:\n",
-					"#     print(f\"Delta Table Found: {table_path}\")\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"delta_file_list = []\n",
-					"for i in ls_delta:\n",
-					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"def list_all_files(base_path, relative_path=\"\"):\n",
+					"def list_all_delta_files(delta_table_path, relative_path=\"\"):\n",
 					"    files = []\n",
-					"    full_path = f\"{base_path}/{relative_path}\" if relative_path else base_path\n",
+					"    full_path = f\"{delta_table_path}/{relative_path}\" if relative_path else delta_table_path\n",
 					"    \n",
 					"    try:\n",
 					"        items = mssparkutils.fs.ls(full_path)\n",
@@ -195,115 +100,131 @@
 					"    for item in items:\n",
 					"        item_path = f\"{relative_path}/{item.name}\".rstrip(\"/\")\n",
 					"        if item.isDir:\n",
-					"            files.extend(list_all_files(base_path, item_path))\n",
+					"            files.extend(list_all_files(delta_table_path, item_path))\n",
 					"        else:\n",
 					"            files.append(item_path)\n",
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": null
+				"execution_count": 59
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false
+					}
+				},
 				"source": [
-					"len(delta_file_list)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"for file in delta_file_list:\n",
+					"# new process to identify DELTA files \n",
+					"\n",
+					"\n",
+					"def list_all_paths(path):\n",
+					"    \"\"\"Recursively list all paths under the given ABFS path.\"\"\"\n",
 					"    try:\n",
-					"        container_name = file.split(\"@\")[0].split(\"//\")[1]\n",
-					"        base_path = file.split(\"'\")[1]\n",
-					"        backup_path = base_path.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, \"delta-backup-container\")\n",
-					"\n",
-					"        # Try to list files in base path\n",
-					"        try:\n",
-					"            base_path_lst = list_all_files(base_path)\n",
-					"        except Exception as e:\n",
-					"            print(f\"Error listing files at base path '{base_path}': {e}\")\n",
-					"            continue\n",
-					"\n",
-					"        # Create the backup directory\n",
-					"        try:\n",
-					"            mssparkutils.fs.mkdirs(backup_path)\n",
-					"        except Exception as e:\n",
-					"            print(f\"Error creating directory at backup path '{backup_path}': {e}\")\n",
-					"            continue\n",
-					"\n",
-					"        # Try to list files in backup path\n",
-					"        try:\n",
-					"            backup_path_lst = list_all_files(backup_path)\n",
-					"        except Exception as e:\n",
-					"            print(f\"Error listing files at backup path '{backup_path}': {e}\")\n",
-					"            continue\n",
-					"\n",
-					"        # Identify delta files\n",
-					"        delta_files = set(base_path_lst) - set(backup_path_lst)\n",
-					"        print(f\"{len(delta_files)} new delta files found for backup.\")\n",
-					"\n",
-					"        # Copy each delta file\n",
-					"        for f in delta_files:\n",
-					"            try:\n",
-					"                mssparkutils.fs.cp(base_path + f, backup_path + f)\n",
-					"                print(f\"Copied file: {base_path + f} to {backup_path + f}\")\n",
-					"            except Exception as e:\n",
-					"                print(f\"Error copying file '{f}': {e}\")\n",
-					"\n",
+					"        files = mssparkutils.fs.ls(path)\n",
 					"    except Exception as e:\n",
-					"        print(f\"Unexpected error processing file '{file}': {e}\")\n",
+					"        print(f\"Error accessing {path}: {e}\")\n",
+					"        return []\n",
+					"\n",
+					"    all_paths = []\n",
+					"    for f in files:\n",
+					"        if f.isDir:\n",
+					"            all_paths.append(f.path)\n",
+					"            all_paths.extend(list_all_paths(f.path))\n",
+					"    return all_paths\n",
+					"\n",
+					"def is_delta_table(path):\n",
+					"    \"\"\"Check if the given path is a Delta table by looking for the _delta_log directory.\"\"\"\n",
+					"    try:\n",
+					"        delta_log_path = path.rstrip(\"/\") + \"/_delta_log\"\n",
+					"        mssparkutils.fs.ls(delta_log_path) \n",
+					"        return True\n",
+					"    except:\n",
+					"        return False\n",
+					"\n",
+					"# List all directories\n",
+					"all_dirs = list_all_paths(full_storage_path)\n",
+					"\n",
+					"# # Filter for Delta tables\n",
+					"delta_tables = [p for p in all_dirs if is_delta_table(p)]\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"delta_file_list = []\n",
-					"for i in ls_delta:\n",
-					"    delta_file_list.append(str(i).split(\"=\")[1].split(\")\")[0])"
+					"for delta_table in delta_tables:\n",
+					"    container_name = delta_table.split(\"@\")[0].split(\"//\")[1]\n",
+					"    backup_path = delta_table.replace(source_storage_account_path,backup_storage_account_path).replace(container_name, \"delta-backup-container\")\n",
+					"    source_file = list_all_delta_files(delta_table)\n",
+					"    backup_file = list_all_delta_files(backup_path)\n",
+					"    change_file = set(source_file)-set(backup_file)\n",
+					"    for file_name in change_file:\n",
+					"        mssparkutils.fs.cp(delta_table + file_name, backup_path + file_name)"
 				],
-				"execution_count": null
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"spark.read.format(\"delta\").load(\"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/Horizon/HorizonCases_s78\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"log_list = []\n",
+					"# new Non delta process \n",
+					"def list_non_delta_file_folders(base_path):\n",
+					"    file_folders = []\n",
 					"\n",
-					"for table_path in delta_file_list:\n",
-					"    source_table_path = table_path.split(\"'\")[1]\n",
-					"    container_name = table_path.split(\"@\")[0].split(\"//\")[1]\n",
-					"    backup_table_path = source_table_path.replace(container_name, \"delta-backup-container\") \\\n",
-					"                                         .replace(source_storage_account_path, backup_storage_account_path)\n",
+					"    def process_path(path):\n",
+					"        items = mssparkutils.fs.ls(path)\n",
+					"        has_delta_log = False\n",
+					"        has_files = False\n",
+					"        has_subfolders = False\n",
+					"        \n",
+					"        for item in items:\n",
+					"            name = item.name\n",
+					"            if item.isDir:\n",
+					"                if name.strip('/') == '_delta_log':\n",
+					"                    has_delta_log = True\n",
+					"                else:\n",
+					"                    has_subfolders = True\n",
+					"                    process_path(item.path)  # Recursive call for subfolders\n",
+					"            else:\n",
+					"                has_files = True\n",
+					"        \n",
+					"        # Folder has files directly, no subfolders, no delta log folder\n",
+					"        if has_files and not has_subfolders and not has_delta_log and \"_delta_log\" not in path:\n",
+					"            file_folders.append(path)\n",
 					"\n",
-					"    table_name = table_path.split(\"/\")[-1]\n",
-					"    log_entry = {'table_name': table_name, 'source_count': 0, 'backup_count': 0, 'error': None}\n",
+					"    process_path(base_path)\n",
+					"    return file_folders\n",
 					"\n",
-					"    try:\n",
-					"        log_entry['source_count'] = spark.read.format(\"delta\").load(source_table_path).count()\n",
-					"        log_entry['backup_count'] = spark.read.format(\"delta\").load(backup_table_path).count()\n",
-					"    except Exception as e:\n",
-					"        log_entry['error'] = str(e)\n",
-					"\n",
-					"    print(log_entry)\n",
-					"    log_list.append(log_entry)\n",
+					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 78
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"non_delta_file_list = set(all_file_path_list)-set(delta_file_list)"
+					"# log_list = []\n",
+					"\n",
+					"# for table_path in delta_file_list:\n",
+					"#     source_table_path = table_path.split(\"'\")[1]\n",
+					"#     container_name = table_path.split(\"@\")[0].split(\"//\")[1]\n",
+					"#     backup_table_path = source_table_path.replace(container_name, \"delta-backup-container\") \\\n",
+					"#                                          .replace(source_storage_account_path, backup_storage_account_path)\n",
+					"\n",
+					"#     table_name = table_path.split(\"/\")[-1]\n",
+					"#     log_entry = {'table_name': table_name, 'source_count': 0, 'backup_count': 0, 'error': None}\n",
+					"\n",
+					"#     try:\n",
+					"#         log_entry['source_count'] = spark.read.format(\"delta\").load(source_table_path).count()\n",
+					"#         log_entry['backup_count'] = spark.read.format(\"delta\").load(backup_table_path).count()\n",
+					"#     except Exception as e:\n",
+					"#         log_entry['error'] = str(e)\n",
+					"\n",
+					"#     print(log_entry)\n",
+					"#     log_list.append(log_entry)\n",
+					""
 				],
 				"execution_count": null
 			},
@@ -312,10 +233,10 @@
 				"source": [
 					"non_delta_file_dict = {\n",
 					"    \"backup_storage_name\":backup_storage_account_path.split(\".\")[0],\n",
-					"    \"non_delta_file_list\":list(non_delta_file_list)\n",
+					"    \"non_delta_file_list\":list(Non_delta_files_list)\n",
 					"}"
 				],
-				"execution_count": null
+				"execution_count": 81
 			},
 			{
 				"cell_type": "markdown",
@@ -334,10 +255,15 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": false
+					}
+				},
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": null
+				"execution_count": 82
 			}
 		]
 	}
