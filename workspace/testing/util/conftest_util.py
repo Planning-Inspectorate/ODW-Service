@@ -14,7 +14,7 @@ class ConftestUtil():
         return endpoint
 
     @classmethod
-    def get_synapse_endpoint() -> str:
+    def get_synapse_endpoint(cls) -> str:
         endpoint = os.getenv(constants.SYNAPSE_ENDPOINT_ENVIRONMENT_VARIABLE)
         if endpoint is None:
             endpoint = constants.SYNAPSE_ENDPOINT_DEFAULT
@@ -22,7 +22,7 @@ class ConftestUtil():
         return endpoint
 
     @classmethod
-    def get_azure_credential(client_id: str, client_secret: str, tenant_id: str):
+    def get_azure_credential(cls, client_id: str, client_secret: str, tenant_id: str):
         if client_id is None or client_secret is None or tenant_id is None:
             print(f"Credentials created from default")
             credentials = DefaultAzureCredential()
