@@ -1,6 +1,6 @@
 import pytest
-import pipelineutils
-import constants
+import workspace.testing.util.pipelineutils as pipelineutils
+import workspace.testing.util.constants as constants
 import warnings
 
 def test_function_gettimesheets(credential_name, azure_credential, synapse_endpoint: str):
