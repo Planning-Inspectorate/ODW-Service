@@ -61,7 +61,7 @@ def extract_datasets_from_pipeline_file(pipeline_file):
         try:
             data = json.load(f)
         except json.JSONDecodeError:
-            print(f"⚠️ Skipping invalid JSON: {pipeline_file}")
+            print(f" Skipping invalid JSON: {pipeline_file}")
             return set()
 
     datasets = set()
@@ -102,7 +102,7 @@ def main():
     master_pipeline_file = os.path.join(pipeline_dir, "pln_master.json")
 
     if not os.path.exists(master_pipeline_file):
-        print("❌ Master pipeline not found.")
+        print(" Master pipeline not found.")
         return
 
     used_pipelines = set(extract_used_pipelines(master_pipeline_file, pipeline_dir))
@@ -113,7 +113,7 @@ def main():
 
     unused_datasets = get_datasets_from_unused_pipelines(pipeline_dir, unused_pipelines)
 
-    print(f"\n📦 Datasets used only in unused pipelines ({len(unused_datasets)}):")
+    print(f"\n Datasets used only in unused pipelines ({len(unused_datasets)}):")
     for ds in sorted(unused_datasets):
         print(f"- {ds}")
 
