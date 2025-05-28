@@ -46,7 +46,7 @@ def main():
     all_pipelines = get_all_pipelines(pipeline_dir)
     unused_pipelines = all_pipelines - used_pipelines
 
-    print(f"\n🔍 Total pipelines found: {len(all_pipelines)}")
+    print(f"\n Total pipelines found: {len(all_pipelines)}")
     print(f" Used pipelines: {len(used_pipelines)}")
     print(f" Unused pipelines: {len(unused_pipelines)}")
 
