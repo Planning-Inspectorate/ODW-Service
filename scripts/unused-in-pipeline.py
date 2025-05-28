@@ -32,7 +32,7 @@ def extract_datasets_from_pipeline_file(pipeline_file):
         try:
             data = json.load(f)
         except json.JSONDecodeError:
-            print(f"⚠️ Skipping invalid JSON: {pipeline_file}")
+            print(f" Skipping invalid JSON: {pipeline_file}")
             return datasets
 
     activities = data.get("properties", {}).get("activities", [])
@@ -82,10 +82,10 @@ def main():
         print(" One or more required folders not found.")
         return
 
-    print("🔍 Collecting datasets used in pipelines...")
+    print(" Collecting datasets used in pipelines...")
     pipeline_datasets = get_pipeline_datasets(pipeline_dir)
 
-    print("📦 Collecting all datasets in workspace/dataset...")
+    print(" Collecting all datasets in workspace/dataset...")
     all_datasets = get_all_workspace_datasets(dataset_dir)
 
     used = all_datasets & pipeline_datasets
