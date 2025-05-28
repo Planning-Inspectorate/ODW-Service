@@ -39,7 +39,7 @@ def main():
     master_pipeline_file = os.path.join(pipeline_dir, "pln_master.json")
 
     if not os.path.exists(master_pipeline_file):
-        print("❌ Master pipeline not found.")
+        print(" Master pipeline not found.")
         return
 
     used_pipelines = set(extract_used_pipelines(master_pipeline_file, pipeline_dir))
@@ -47,15 +47,15 @@ def main():
     unused_pipelines = all_pipelines - used_pipelines
 
     print(f"\n🔍 Total pipelines found: {len(all_pipelines)}")
-    print(f"✅ Used pipelines: {len(used_pipelines)}")
-    print(f"❌ Unused pipelines: {len(unused_pipelines)}")
+    print(f" Used pipelines: {len(used_pipelines)}")
+    print(f" Unused pipelines: {len(unused_pipelines)}")
 
     if unused_pipelines:
-        print("\n🗃️ List of unused pipelines:")
+        print("\n List of unused pipelines:")
         for pipeline in sorted(unused_pipelines):
             print(f"  - {pipeline}")
     else:
-        print("\n🎉 All pipelines are in use!")
+        print("\n All pipelines are in use!")
 
 if __name__ == "__main__":
     main()
