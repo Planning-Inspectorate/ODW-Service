@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6e2801a3-a4be-4bd2-96b3-d8a038655f9a"
+				"spark.autotune.trackingId": "21e0da45-a84a-4c75-abd4-d45b8ae47cc3"
 			}
 		},
 		"metadata": {
@@ -85,7 +85,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -240,7 +240,40 @@
 					"    logInfo(\"Flushing logs\")\n",
 					"    flushLogging()"
 				],
-				"execution_count": null
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"try:\n",
+					"    # ... your existing INSERT code ...\n",
+					"    \n",
+					"    # Get final record count\n",
+					"    final_record_count = spark.sql(\"SELECT COUNT(*) as count FROM  odw_harmonised_db.live_dim_date\").collect()[0]['count']\n",
+					"    \n",
+					"    # Prepare result for pipeline\n",
+					"    import json\n",
+					"    total_count = final_record_count\n",
+					"    result_json = json.dumps(total_count)\n",
+					"    \n",
+					"    logInfo(f\"Returning count to pipeline: {total_count}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"    logError(f\"Error: {str(e)}\")\n",
+					"    # Return 0 for error case\n",
+					"    import json\n",
+					"    result_json = json.dumps(0)\n",
+					"    raise e\n",
+					"    \n",
+					"finally:\n",
+					"    logInfo(\"Flushing logs\")\n",
+					"    flushLogging()\n",
+					"    \n",
+					"    \n",
+					"    from notebookutils import mssparkutils\n",
+					"    mssparkutils.notebook.exit(result_json)"
+				],
+				"execution_count": 6
 			}
 		]
 	}
