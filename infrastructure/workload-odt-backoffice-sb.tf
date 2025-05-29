@@ -51,7 +51,7 @@ data "azurerm_servicebus_namespace" "odt_pe_backoffice_sb" {
   name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
   resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
 
-  #provider = azurerm.odt
+  provider = azurerm.odt
   depends_on = [
     module.synapse_ingestion
   ]
