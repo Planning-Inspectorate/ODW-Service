@@ -67,7 +67,7 @@ module "odt_backoffice_sb" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network.vnet_subnets
@@ -92,7 +92,7 @@ module "odt_backoffice_sb_failover" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_backoffice_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network_failover.vnet_subnets
@@ -119,7 +119,7 @@ module "odt_appeals_back_office_sb" {
   location                                     = module.azure_region.location_cli
   service_name                                 = local.service_name
   odt_backoffice_sb_topic_subscriptions        = var.odt_appeals_back_office_sb_topic_subscriptions
-  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].resources[0].id
+  odt_back_office_service_bus_id               = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].id
   odt_back_office_private_endpoint_dns_zone_id = (var.environment != "dev" ? azurerm_private_dns_zone.back_office_private_dns_zone[0].id : null)
   synapse_private_endpoint_subnet_name         = local.synapse_subnet_name
   synapse_private_endpoint_vnet_subnets        = module.synapse_network.vnet_subnets
