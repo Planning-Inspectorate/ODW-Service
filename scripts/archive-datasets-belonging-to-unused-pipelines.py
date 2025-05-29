@@ -109,7 +109,7 @@ def main():
     all_pipelines = get_all_pipelines(pipeline_dir)
     unused_pipelines = all_pipelines - used_pipelines
 
-    print(f"🔍 Found {len(unused_pipelines)} unused pipelines.")
+    print(f" Found {len(unused_pipelines)} unused pipelines.")
 
     unused_datasets = get_datasets_from_unused_pipelines(pipeline_dir, unused_pipelines)
 
