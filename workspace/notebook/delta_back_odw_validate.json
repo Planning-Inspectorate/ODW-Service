@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "88758528-0d23-4257-9eec-375c295d1859"
+				"spark.autotune.trackingId": "2e0df118-079a-4c82-a16e-425c5eb10887"
 			}
 		},
 		"metadata": {
@@ -48,6 +48,32 @@
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"###### <b> This notebook performs delta backup between UKS and UKW, exits with a dictionary of non-delta files to be processed by copy activity </b>. \n",
+					"###### Identifying Delta files\n",
+					"----------------------------\n",
+					" * Recursively checks the whole container,directories,sub-directories for _delta_log if true then it identifies as delta directory.\n",
+					" * Recursively processes each delta directory to fetch the delta files, compares source to target, the difference is a set of delta files, that are backed-up.\n",
+					" * This notebook handles both insert, deletes, updates of records as it also compares _delta_log files that contains versions between Source and target as well as the files within the directory. \n",
+					"###### Identifying Non-Delta files (ex: CSV, JSON, PARQUET, Excel etc)\n",
+					"---------------------------\n",
+					" * The function list_non_delta_file_folders recusively checks for directories and sub-directories for _delta_log and excludes directories that have _delta_log.\n",
+					" * All the non-delta files are listed for full backup meaning the destination directory is overwritten everytime.\n",
+					"###### Cost-Value benefit\n",
+					"-----\n",
+					"* Percentage savings based on number of files being backed-up daily is calculated in the end\n",
+					""
+				]
+			},
 			{
 				"cell_type": "code",
 				"source": [
@@ -264,13 +290,6 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"full_storage_path"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
 					"# new Non delta process \n",
 					"def list_non_delta_file_folders(base_path):\n",
 					"    file_folders = []\n",
@@ -312,8 +331,6 @@
 					"total_delta_files = grand_total_changes\n",
 					"total_container_files = cumulative_total\n",
 					"date_now = datetime.now().strftime(\"%Y-%m-%d\")\n",
-					"\n",
-					"# percentage_Savings = ((cumulative_total-grand_total_changes)/cumulative_total)*100\n",
 					"\n",
 					"percentage_Savings = ((total_container_files-total_delta_files)/total_container_files)*100\n",
 					"\n",
