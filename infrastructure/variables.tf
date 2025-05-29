@@ -562,3 +562,9 @@ variable "run_shir_setup_script" {
   description = "If the SHIR setup script should be triggered on start-up of the VM"
   type        = bool
 }
+
+variable "create_service_bus_resources" {
+  description = "If resources related to service buses should be created"
+  type        = bool
+  default     = true
+}
