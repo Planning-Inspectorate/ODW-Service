@@ -48,10 +48,10 @@ resource "azurerm_private_dns_zone_virtual_network_link" "back_office_private_dn
 
 data "azurerm_servicebus_namespace" "odt_pe_backoffice_sb" {
   count               = var.external_resource_links_enabled ? 1 : 0
-  name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
-  resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
+  name                = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_name_failover : var.odt_back_office_service_bus_name)
+  resource_group_name = (var.odt_back_office_service_bus_failover_enabled == true ? var.odt_back_office_service_bus_resource_group_name_failover : var.odt_back_office_service_bus_resource_group_name)
 
-  provider = azurerm.odt
+  #provider = azurerm.odt
   depends_on = [
     module.synapse_ingestion
   ]
