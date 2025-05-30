@@ -43,7 +43,7 @@ module "synapse_workspace_private" {
     synapse_dev_private_dns_zone_id = data.azurerm_private_dns_zone.tooling_synapse_dev.id
   }
 
-  create_service_bus_resources           = true
+  create_service_bus_resources           = var.create_service_bus_resources
   odt_appeals_back_office_service_bus_id = var.odt_appeals_back_office.service_bus_enabled && var.external_resource_links_enabled ? data.azurerm_servicebus_namespace.odt_appeals_backoffice_sb[0].id : null
 
   tags = local.tags
