@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "43f1fc87-3700-4f89-a543-4c26543fbd2c"
+				"spark.autotune.trackingId": "2119ce3c-e761-4942-a0f1-8e70bd53038e"
 			}
 		},
 		"metadata": {
@@ -465,6 +465,15 @@
 					"\r\n",
 					"    # Step 3: Process each matched file\r\n",
 					"    for definition in matched_definitions:\r\n",
+					"        \r\n",
+					"        # code added for making json dump\r\n",
+					"        result_entry = {\r\n",
+					"            \"delta_table_name\": definition['Standardised_Table_Name'],\r\n",
+					"            \"csv_file_name\": definition['matched_file'],\r\n",
+					"            \"record_count\": 0,\r\n",
+					"            \"table_result\": \"failed\"\r\n",
+					"        }\r\n",
+					"\r\n",
 					"        try:\r\n",
 					"            sparkDF = read_file(f\"{definition['latest_path']}{definition['matched_file']}\")\r\n",
 					"            if sparkDF is None:\r\n",
@@ -511,6 +520,10 @@
 					"                (col(\"expected_to\") == expected_to)\r\n",
 					"            ).count()\r\n",
 					"\r\n",
+					"            # Update json result entry with success data\r\n",
+					"            result_entry[\"record_count\"] = standardised_table_df.count()  # Total records in delta table\r\n",
+					"            result_entry[\"table_result\"] = \"success\"\r\n",
+					"\r\n",
 					"            if rows_raw <= rows_new:\r\n",
 					"                logInfo(f\"All rows successfully written to {definition['Standardised_Table_Name']} — Raw: {rows_raw}, Written: {rows_new}\")\r\n",
 					"                #logInfo(f\"All rows successfully written to {definition['Standardised_Table_Name']}\")\r\n",
@@ -522,6 +535,9 @@
 					"        except Exception as e:\r\n",
 					"            logError(f\"Failed processing for {definition['Standardised_Table_Name']} - {e}\")\r\n",
 					"            logError(\"Logging to tables_logs failed\")\r\n",
+					"        \r\n",
+					"        # Add result to the json dump\r\n",
+					"        processing_results.append(result_entry)\r\n",
 					""
 				],
 				"execution_count": null
