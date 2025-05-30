@@ -138,10 +138,10 @@ module "function_app_failover" {
 
 resource "azurerm_role_assignment" "odt_servicebus_namespace" {
   for_each = {
-    for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true
+    for function_app in var.function_app : function_app.name => function_app if var.function_app_enabled == true && var.external_resource_links_enabled
   }
 
-  scope                = module.synapse_ingestion.service_bus_namespace_id
+  scope                = data.azurerm_servicebus_namespace.odt_pe_backoffice_sb[0].id
   role_definition_name = "Azure Service Bus Data receiver"
   principal_id         = module.function_app[each.key].identity[0].principal_id
 }
