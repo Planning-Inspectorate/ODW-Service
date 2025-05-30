@@ -696,7 +696,7 @@
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data_copy1_copy1_copy1",
+				"name": "Record completed Sap HR Harmonised data1",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
@@ -1005,8 +1005,6 @@
 			{
 				"name": "py_saphr_inspector_address",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "py_live_dim_employee_hierarchy",
@@ -1040,8 +1038,6 @@
 			{
 				"name": "py_live_dim_inspector_address",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "py_Inspector_Specialisms",
@@ -1075,9 +1071,14 @@
 			{
 				"name": "py_live_dim_employee_hierarchy",
 				"type": "SynapseNotebook",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "py_live_dim_inspector_address",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -1796,7 +1797,7 @@
 				}
 			},
 			{
-				"name": "absence_record count_copy1_copy1_copy2",
+				"name": "inspector_adress_record",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1824,7 +1825,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "absence_record count_copy1_copy1_copy2",
+						"activity": "inspector_adress_record",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1885,7 +1886,305 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "absence_record count_copy1_copy1_copy2",
+						"activity": "inspector_adress_record",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completion",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"Inserts": {
+							"value": "@variables('recordCount')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "employee_hierarchy",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "py_live_dim_employee_hierarchy",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "recordCount",
+					"value": {
+						"value": "@activity('py_live_dim_employee_hierarchy').output.status.output.result.exitValue",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Sap HR Harmonised failed notebook",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "employee_hierarchy",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@pipeline().parameters.subscription_id",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@pipeline().parameters.resource_group",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@pipeline().parameters.webhook_url",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Sap HR Harmonised Layer data load failed",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@pipeline().parameters.failed_colour",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@pipeline().parameters.failed_image",
+							"type": "Expression"
+						},
+						"Message_title": "Sap HR Harmonised Master pipeline failed",
+						"Message_subtitle": "Sap HR Harmonised feed failed"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "employee_hierarchy",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completion",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"Inserts": {
+							"value": "@variables('recordCount')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "inspector_adress_record_counts",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "py_saphr_inspector_address",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "recordCount",
+					"value": {
+						"value": "@activity('py_live_dim_inspector_address').output.status.output.result.exitValue",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Sap HR Harmonised failed notebook logs",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "inspector_adress_record_counts",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@pipeline().parameters.subscription_id",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@pipeline().parameters.resource_group",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@pipeline().parameters.webhook_url",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Sap HR Harmonised Layer data load failed",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@pipeline().parameters.failed_colour",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@pipeline().parameters.failed_image",
+							"type": "Expression"
+						},
+						"Message_title": "Sap HR Harmonised Master pipeline failed",
+						"Message_subtitle": "Sap HR Harmonised feed failed"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "inspector_adress_record_counts",
 						"dependencyConditions": [
 							"Succeeded"
 						]
