@@ -1,13 +1,18 @@
 {
-	"name": "pln_saphr_standardised_monthly_main",
+	"name": "pln_saphr_standardised_monthly_main_old",
 	"properties": {
 		"activities": [
 			{
 				"name": "Saphr_Standardised_monthly",
 				"type": "ExecutePipeline",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Record loading Sap HR Harmonised data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureInput": false
 				},
@@ -29,7 +34,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "nb_odw_standardised_transformation",
+						"activity": "Saphr_Standardised_monthly",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -66,7 +71,7 @@
 							"value": "@pipeline().Pipeline",
 							"type": "Expression"
 						},
-						"activityMessage": "Sap HR Standardised Layer data load failed",
+						"activityMessage": "Sap HR Harmonised Layer data load failed",
 						"activityDuration": {
 							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
 							"type": "Expression"
@@ -147,7 +152,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "nb_odw_standardised_transformation",
+						"activity": "Saphr_Standardised_monthly",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -201,394 +206,6 @@
 						}
 					}
 				}
-			},
-			{
-				"name": "ForEachTable",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "set_json variable",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"items": {
-						"value": "@variables('json_dump')",
-						"type": "Expression"
-					},
-					"activities": [
-						{
-							"name": "Switch_table_status",
-							"type": "Switch",
-							"dependsOn": [
-								{
-									"activity": "Set_record_count",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								},
-								{
-									"activity": "Set_table_name",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								},
-								{
-									"activity": "Set_file_name",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"userProperties": [],
-							"typeProperties": {
-								"on": {
-									"value": "@item().table_result",
-									"type": "Expression"
-								},
-								"cases": [
-									{
-										"value": "success",
-										"activities": [
-											{
-												"name": "Record completed Sap HR Standardised data",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"policy": {
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "pln_log_to_appins",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"Stage": "Completion",
-														"PipelineName": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"PipelineRunID": {
-															"value": "@pipeline().RunId",
-															"type": "Expression"
-														},
-														"StartTime": {
-															"value": "@variables('start_time')",
-															"type": "Expression"
-														},
-														"EndTime": {
-															"value": "@utcNow()",
-															"type": "Expression"
-														},
-														"Inserts": {
-															"value": "@int(variables('table_record_count'))",
-															"type": "Expression"
-														},
-														"StatusMessage": "SAP HR Standardised Monthly data loaded",
-														"PipelineTriggerID": {
-															"value": "@pipeline().TriggerId",
-															"type": "Expression"
-														},
-														"PipelineTriggerName": {
-															"value": "@pipeline().TriggerName",
-															"type": "Expression"
-														},
-														"PipelineTriggerType": {
-															"value": "@pipeline().TriggerType",
-															"type": "Expression"
-														},
-														"PipelineTriggeredbyPipelineName": {
-															"value": "@pipeline()?.TriggeredByPipelineName",
-															"type": "Expression"
-														},
-														"PipelineTriggeredbyPipelineRunID": {
-															"value": "@pipeline()?.TriggeredByPipelineRunId",
-															"type": "Expression"
-														},
-														"ActivityType": "Pipeline",
-														"AppInsIKey": {
-															"value": "@pipeline().parameters.apps_insights_ikey",
-															"type": "Expression"
-														}
-													}
-												}
-											}
-										]
-									},
-									{
-										"value": "failed",
-										"activities": [
-											{
-												"name": "Record failed Sap HR Standardised data",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"policy": {
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "pln_log_to_appins",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"Stage": "Error",
-														"PipelineName": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"PipelineRunID": {
-															"value": "@pipeline().RunId",
-															"type": "Expression"
-														},
-														"StartTime": {
-															"value": "@variables('start_time')",
-															"type": "Expression"
-														},
-														"EndTime": {
-															"value": "@utcNow()",
-															"type": "Expression"
-														},
-														"Inserts": {
-															"value": "@int(variables('table_record_count'))",
-															"type": "Expression"
-														},
-														"StatusMessage": {
-															"value": "@concat('SAP HR Standardised Monthly data load failed while loading file : ',variables('csv_file_name'))",
-															"type": "Expression"
-														},
-														"PipelineTriggerID": {
-															"value": "@pipeline().TriggerId",
-															"type": "Expression"
-														},
-														"PipelineTriggerName": {
-															"value": "@pipeline().TriggerName",
-															"type": "Expression"
-														},
-														"PipelineTriggerType": {
-															"value": "@pipeline().TriggerType",
-															"type": "Expression"
-														},
-														"PipelineTriggeredbyPipelineName": {
-															"value": "@pipeline()?.TriggeredByPipelineName",
-															"type": "Expression"
-														},
-														"PipelineTriggeredbyPipelineRunID": {
-															"value": "@pipeline()?.TriggeredByPipelineRunId",
-															"type": "Expression"
-														},
-														"ActivityType": "Pipeline",
-														"AppInsIKey": {
-															"value": "@pipeline().parameters.apps_insights_ikey",
-															"type": "Expression"
-														}
-													}
-												}
-											}
-										]
-									}
-								],
-								"defaultActivities": [
-									{
-										"name": "Dummy",
-										"type": "Wait",
-										"dependsOn": [],
-										"userProperties": [],
-										"typeProperties": {
-											"waitTimeInSeconds": 1
-										}
-									}
-								]
-							}
-						},
-						{
-							"name": "Set_record_count",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "table_record_count",
-								"value": {
-									"value": "@item().record_count",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "Set_table_name",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "table_name",
-								"value": {
-									"value": "@item().delta_table_name",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "Set_file_name",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "csv_file_name",
-								"value": {
-									"value": "@item().csv_file_name",
-									"type": "Expression"
-								}
-							}
-						}
-					]
-				}
-			},
-			{
-				"name": "nb_saphr_odw_raw_odw_standardised",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "Set_start_time",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "Record loading Sap HR Harmonised data",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_utils_common_raw_standardised",
-						"type": "NotebookReference"
-					},
-					"parameters": {
-						"Param_File_Load_Type": {
-							"value": {
-								"value": "'MONTHLY'",
-								"type": "Expression"
-							},
-							"type": "string"
-						},
-						"Param_FileFolder_Path": {
-							"value": {
-								"value": "SapHr",
-								"type": "Expression"
-							},
-							"type": "string"
-						}
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "nb_odw_standardised_transformation",
-				"type": "SynapseNotebook",
-				"dependsOn": [
-					{
-						"activity": "ForEachTable",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"notebook": {
-						"referenceName": "py_saphr_standardised_transformation",
-						"type": "NotebookReference"
-					},
-					"snapshot": true,
-					"conf": {
-						"spark.dynamicAllocation.enabled": null,
-						"spark.dynamicAllocation.minExecutors": null,
-						"spark.dynamicAllocation.maxExecutors": null
-					},
-					"numExecutors": null
-				}
-			},
-			{
-				"name": "set_json variable",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "nb_saphr_odw_raw_odw_standardised",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "json_dump",
-					"value": {
-						"value": "@json(activity('nb_saphr_odw_raw_odw_standardised').output.status.output.result.exitValue).table_details",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "Set_start_time",
-				"type": "SetVariable",
-				"dependsOn": [],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "start_time",
-					"value": {
-						"value": "@utcNow()",
-						"type": "Expression"
-					}
-				}
 			}
 		],
 		"parameters": {
@@ -632,9 +249,6 @@
 				"type": "array"
 			},
 			"apps_insights_ikey": {
-				"type": "string"
-			},
-			"json_data": {
 				"type": "string"
 			}
 		},
@@ -682,21 +296,6 @@
 			"wait8": {
 				"type": "Integer",
 				"defaultValue": 8
-			},
-			"json_dump": {
-				"type": "String"
-			},
-			"table_record_count": {
-				"type": "String"
-			},
-			"table_name": {
-				"type": "String"
-			},
-			"csv_file_name": {
-				"type": "String"
-			},
-			"start_time": {
-				"type": "String"
 			}
 		},
 		"folder": {
