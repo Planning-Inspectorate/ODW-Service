@@ -1,16 +1,9 @@
 resource "azurerm_storage_account_network_rules" "synapse" {
-  count              = var.external_resource_links_enabled ? 1 : 0
-  storage_account_id = azurerm_storage_account.synapse.id
-  default_action     = "Deny"
-  bypass             = ["AzureServices", "Metrics", "Logging"]
-  ip_rules           = var.firewall_allowed_ip_addresses
-  virtual_network_subnet_ids = [
-    var.vnet_subnet_ids[var.devops_agent_subnet_name],
-    var.vnet_subnet_ids_failover[var.devops_agent_subnet_name],
-    var.vnet_subnet_ids[var.function_app_subnet_name],
-    var.vnet_subnet_ids_failover[var.function_app_subnet_name],
-    data.azurerm_subnet.horizon_database[0].id
-  ]
+  storage_account_id         = azurerm_storage_account.synapse.id
+  default_action             = "Deny"
+  bypass                     = ["AzureServices", "Metrics", "Logging"]
+  ip_rules                   = var.firewall_allowed_ip_addresses
+  virtual_network_subnet_ids = local.azurerm_synapse_vnet_subnet_ids
 }
 
 # read Horizon Subnet Ids
