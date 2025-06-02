@@ -91,7 +91,7 @@ key_vault_role_assignments = {
   ]
 }
 
-message_storage_account = "https://pinsstodwtestukswic3ai.blob.core.windows.net" # TODO THIS NEEDS TO BE UPDATED TO THE BUILD ENV ONE AFTER
+message_storage_account = "https://pinsstodwbuildukslu4d8k.blob.core.windows.net"
 
 message_storage_container = "odw-raw/ServiceBus"
 
