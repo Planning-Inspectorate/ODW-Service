@@ -132,13 +132,13 @@ module "odt_appeals_back_office_sb" {
 #}
 
 # For the test environment
-moved {
-  from = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["/subscriptions/76cf28c6-6fda-42f1-bcd9-6d7dbed704ef/resourceGroups/pins-rg-appeals-bo-test/providers/Microsoft.ServiceBus/namespaces/pins-sb-appeals-bo-test/topics/listed-building"]
-  to   = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["0"]
-}
-
-# For the prod environment
 #moved {
-#  from = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["/subscriptions/d1d6c393-2fe3-40af-ac27-f5b6bad36735/resourceGroups/pins-rg-appeals-bo-prod/providers/Microsoft.ServiceBus/namespaces/pins-sb-appeals-bo-prod/topics/listed-building"]
+#  from = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["/subscriptions/76cf28c6-6fda-42f1-bcd9-6d7dbed704ef/resourceGroups/pins-rg-appeals-bo-test/providers/Microsoft.ServiceBus/namespaces/pins-sb-appeals-bo-test/topics/listed-building"]
 #  to   = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["0"]
 #}
+
+# For the prod environment
+moved {
+  from = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["/subscriptions/d1d6c393-2fe3-40af-ac27-f5b6bad36735/resourceGroups/pins-rg-appeals-bo-prod/providers/Microsoft.ServiceBus/namespaces/pins-sb-appeals-bo-prod/topics/listed-building"]
+  to   = module.odt_appeals_back_office_sb[0].azurerm_role_assignment.topics_to_send["0"]
+}
