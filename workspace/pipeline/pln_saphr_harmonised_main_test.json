@@ -121,7 +121,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "record count",
+						"activity": "error message",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -185,7 +185,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "record count",
+						"activity": "error message",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -238,6 +238,94 @@
 						},
 						"Message_title": "Sap HR Harmonised Master pipeline failed",
 						"Message_subtitle": "Sap HR Harmonised feed failed"
+					}
+				}
+			},
+			{
+				"name": "error message",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('py_live_dim_date').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completion",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
 					}
 				}
 			}
@@ -332,6 +420,9 @@
 				"defaultValue": 8
 			},
 			"recordCount": {
+				"type": "String"
+			},
+			"error_message": {
 				"type": "String"
 			}
 		},
