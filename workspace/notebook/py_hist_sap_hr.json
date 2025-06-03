@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9ef4773a-a930-4c21-9e98-88eb5abd991f"
+				"spark.autotune.trackingId": "152084d9-9e2e-4ca1-9a9c-03a0bd4631a0"
 			}
 		},
 		"metadata": {
@@ -103,7 +103,7 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -123,7 +123,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -131,6 +131,14 @@
 					"collapsed": false
 				},
 				"source": [
+					"import json\n",
+					"\n",
+					"# Initialize result dictionary\n",
+					"result = {\n",
+					"    \"status\": \"success\",\n",
+					"    \"record_count\": 0,\n",
+					"    \"error_message\": None\n",
+					"}\n",
 					"\n",
 					"try:\n",
 					"    logInfo(\"Starting historical SAP HR data processing\")\n",
@@ -400,32 +408,36 @@
 					"    SELECT COUNT(*) as count FROM odw_harmonised_db.hist_SAP_HR\n",
 					"    WHERE PDAC_ETL_Date = CURRENT_DATE()\n",
 					"    \"\"\").collect()[0]['count']\n",
+					"    result[\"record_count\"] = inserted_count\n",
 					"    logInfo(f\"Successfully inserted {inserted_count} records into hist_SAP_HR\")\n",
 					"    \n",
 					"    logInfo(\"Historical SAP HR data processing completed successfully\")\n",
 					"\n",
 					"except Exception as e:\n",
-					"    # Log the exception in detail\n",
-					"    logError(f\"Error in historical SAP HR data processing: {str(e)}\")\n",
+					"    # Capture error information and limit to 300 characters\n",
+					"    error_msg = f\"Error in historical SAP HR data processing: {str(e)}\"\n",
+					"    logError(error_msg)\n",
 					"    logException(e)\n",
+					"    \n",
+					"    # Truncate error message if it exceeds 300 characters\n",
+					"    truncated_error = (error_msg[:297] + '...') if len(error_msg) > 300 else error_msg\n",
+					"    \n",
+					"    result[\"status\"] = \"failed\"\n",
+					"    result[\"error_message\"] = truncated_error\n",
+					"    result[\"record_count\"] = -1  # Indicate failure with -1 count\n",
 					"    \n",
 					"    # Re-raise the exception to ensure the notebook fails properly\n",
 					"    raise e\n",
+					"\n",
 					"finally:\n",
 					"    # Always flush logs regardless of success or failure\n",
 					"    logInfo(\"Flushing logs\")\n",
-					"    flushLogging()"
+					"    flushLogging()\n",
+					"    \n",
+					"    # Output the result as JSON for ADF to capture\n",
+					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"loaded_count = spark.sql(\"SELECT *  FROM odw_harmonised_db.hist_SAP_HR\")\n",
-					"count_str=loaded_count.count()\n",
-					"mssparkutils.notebook.exit(count_str)"
-				],
-				"execution_count": 1
+				"execution_count": 3
 			}
 		]
 	}
