@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "90daaaa8-b3bb-4727-8eca-b2bbd7d1fb98"
+				"spark.autotune.trackingId": "58ffb0e2-1012-42b4-a189-e7e75491fc17"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -117,7 +117,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -137,7 +137,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -163,7 +163,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -219,7 +219,7 @@
 					"max_depth = level\n",
 					"#print(f\"Max hierarchy depth = {max_depth}\")"
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -472,19 +472,49 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# Write data to target Delta Table\n",
+					"import json\n",
+					"\n",
+					"# Initialize result dictionary\n",
+					"result = {\n",
+					"    \"status\": \"success\",\n",
+					"    \"record_count\": 0,\n",
+					"    \"error_message\": None\n",
+					"}\n",
+					"\n",
 					"try:\n",
+					"    # Write the DataFrame to Delta format\n",
 					"    df_final_dim_hierarchy.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
 					"\n",
 					"    # Ensure the table exists\n",
 					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
 					"\n",
-					"    logInfo(f\" Data successfully written to {target_delta_table}\")\n",
+					"    # Get the record count after successful write\n",
+					"    record_count = spark.sql(f\"SELECT COUNT(*) FROM {target_delta_table}\").collect()[0][0]\n",
+					"    result[\"record_count\"] = record_count\n",
+					"    \n",
+					"    logInfo(f\"Data successfully written to {target_delta_table}\")\n",
+					"    logInfo(f\"Record count: {record_count}\")\n",
 					"\n",
 					"except Exception as e:\n",
-					"    logError(f\" Error writing to {target_delta_table}: {str(e)}\")\n",
-					"    raise\n",
-					""
+					"    # Capture error information and limit to 300 characters\n",
+					"    error_msg = f\"Error writing to {target_delta_table}: {str(e)}\"\n",
+					"    logError(error_msg)\n",
+					"    \n",
+					"    # Update result for error case\n",
+					"    result[\"status\"] = \"failed\"\n",
+					"    result[\"error_message\"] = error_msg[:300]  # Truncate to 300 characters\n",
+					"    result[\"record_count\"] = -1\n",
+					"    \n",
+					"    # Re-raise the exception to ensure the notebook fails properly\n",
+					"    raise e\n",
+					"\n",
+					"finally:\n",
+					"    # Always flush logs regardless of success or failure\n",
+					"    logInfo(\"Flushing logs\")\n",
+					"    flushLogging()\n",
+					"    \n",
+					"    # Output the result as JSON for ADF to capture\n",
+					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
 				"execution_count": null
 			},
@@ -498,16 +528,6 @@
 					"\n",
 					"# Read source data from Delta Tables\n",
 					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"\n",
-					"loaded_count = spark.sql(\"SELECT *  FROM odw_harmonised_db.live_dim_emp_hierarchy\")\n",
-					"count_str=loaded_count.count()\n",
-					"mssparkutils.notebook.exit(count_str)"
 				],
 				"execution_count": null
 			}
