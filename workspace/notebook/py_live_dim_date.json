@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7f3ad0a3-8726-47ea-a367-fd13c6b38ca8"
+				"spark.autotune.trackingId": "daa34f19-d052-46be-855f-03c4afb7058b"
 			}
 		},
 		"metadata": {
@@ -85,13 +85,22 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 43
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"import json\n",
+					"\n",
 					"try:\n",
 					"    spark.sql(\"\"\"SET spark.sql.legacy.timeParserPolicy = LEGACY;\"\"\")\n",
+					"    \n",
+					"    # Initialize result dictionary with only required fields\n",
+					"    result = {\n",
+					"        \"status\": \"success\",\n",
+					"        \"record_count\": 0,\n",
+					"        \"error_message\": None\n",
+					"    }\n",
 					"    \n",
 					"    # Calculate expected date range\n",
 					"    logInfo(\"Calculating date range for dimension table\")\n",
@@ -109,6 +118,7 @@
 					"        ) as end_date\n",
 					"    \"\"\").collect()[0]\n",
 					"    \n",
+					"    expected_days = (date_range['end_date'] - date_range['start_date']).days\n",
 					"    logInfo(f\"Date range will be from {date_range['start_date']} to {date_range['end_date']}\")\n",
 					"    \n",
 					"    # Truncate target table\n",
@@ -216,42 +226,43 @@
 					"    \n",
 					"    # Verify the load was successful\n",
 					"    loaded_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_harmonised_db.live_dim_date\").collect()[0]['count']\n",
-					"    expected_days = (date_range['end_date'] - date_range['start_date']).days\n",
+					"    result[\"record_count\"] = loaded_count\n",
 					"    \n",
 					"    logInfo(f\"Successfully loaded {loaded_count} date records\")\n",
 					"    logInfo(f\"Expected approximately {expected_days} days in date range\")\n",
 					"    \n",
-					"    if loaded_count < expected_days * 0.9 or loaded_count > expected_days * 1.1:\n",
-					"        logWarning(f\"Potential data issue: Loaded {loaded_count} records when expecting ~{expected_days}\")\n",
-					"    else:\n",
-					"        logInfo(\"Record count within expected range\")\n",
+					"\n",
 					"    \n",
 					"    logInfo(\"Date dimension refresh completed successfully\")\n",
 					"\n",
 					"except Exception as e:\n",
-					"    # Log the exception in detail\n",
-					"    logError(f\"Error during date dimension refresh: {str(e)}\")\n",
+					"    # Capture error information\n",
+					"    error_msg = f\"Error during date dimension refresh: {str(e)}\"\n",
+					"    logError(error_msg)\n",
 					"    logException(e)\n",
+					"    \n",
+					"    result[\"status\"] = \"failed\"\n",
+					"    result[\"error_message\"] = error_msg\n",
+					"    result[\"record_count\"] = -1  # Indicate failure with -1 count\n",
 					"    \n",
 					"    # Re-raise the exception to ensure the notebook fails properly\n",
 					"    raise e\n",
 					"finally:\n",
 					"    # Always flush logs regardless of success or failure\n",
 					"    logInfo(\"Flushing logs\")\n",
-					"    flushLogging()"
+					"    flushLogging()\n",
+					"    \n",
+					"    # Output the simplified result as JSON for ADF to capture\n",
+					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
-				"execution_count": 44
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"\n",
-					"loaded_count = spark.sql(\"SELECT *  FROM odw_harmonised_db.live_dim_date\")\n",
-					"count_str=loaded_count.count()\n",
-					"mssparkutils.notebook.exit(count_str)\n",
 					""
 				],
-				"execution_count": 45
+				"execution_count": null
 			}
 		]
 	}
