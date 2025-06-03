@@ -1,6 +1,6 @@
 alert_group_platform_enabled             = true
 alert_group_synapse_enabled              = true
-alert_scope_service_health               = "/subscriptions/6b18ba9d-2399-48b5-a834-e0f267be122d"
+alert_scope_service_health               = "/subscriptions/12806449-ae7c-4754-b104-65bcdc7b28c8"
 alert_threshold_data_lake_capacity_bytes = 10995116277760 # 10TiB
 
 apim_enabled         = false
@@ -25,7 +25,7 @@ data_lake_role_assignments = {
   "Storage Blob Data Contributor" = [
     "8274feca-09ef-41b1-9b4e-5eedc3384df4", # pins-odw-preprod-administrators
     "7c906e1b-ffbb-44d3-89a1-6772b9c9c148", # pins-odw-preprod-dataengineers
-    "9d4c68d1-c43d-4502-b35f-74f31c497757"  # Azure DevOps Pipelines - ODW Test - Infrastructure
+    "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"  # Azure DevOps Pipelines - ODW Build - Infrastructure
   ]
 }
 data_lake_storage_containers = [
@@ -34,13 +34,16 @@ data_lake_storage_containers = [
   "odw-raw",
   "odw-standardised",
   "odw-harmonised",
-  "odw-config"
+  "odw-config",
+  "odw-curated-migration", # This container seems to be manually created in the other envs. This should be reviewed
+  "odw-config-db"          # This container seems to be manually created in the other envs. This should be reviewed
 ]
 
-devops_agent_pool_resource_group_name          = "pins-rg-devops-odw-test-uks"
-devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-test-ukw"
+devops_agent_pool_resource_group_name          = "pins-rg-devops-odw-build-uks"
+devops_agent_pool_resource_group_name_failover = "pins-rg-devops-odw-build-ukw"
+devops_agent_failover_enabled                  = false
 
-environment = "test"
+environment = "build"
 
 function_app_enabled = true
 function_app = [
@@ -50,12 +53,12 @@ function_app = [
       {
         name  = "SqlConnectionString",
         type  = "SQLAzure",
-        value = "Server=tcp:pins-synw-odw-test-uks-ondemand.sql.azuresynapse.net,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;"
+        value = "Server=tcp:pins-synw-odw-build-uks-ondemand.sql.azuresynapse.net,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_curated_db;Authentication=Active Directory Managed Identity;"
       },
       {
         name  = "SqlConnectionString2",
         type  = "SQLAzure",
-        value = "Server=tcp:pins-synw-odw-test-uks-ondemand.sql.azuresynapse.net,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_harmonised_db;Authentication=Active Directory Managed Identity;"
+        value = "Server=tcp:pins-synw-odw-build-uks-ondemand.sql.azuresynapse.net,1433;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Database=odw_harmonised_db;Authentication=Active Directory Managed Identity;"
       }
 
     ]
@@ -88,7 +91,7 @@ key_vault_role_assignments = {
   ]
 }
 
-message_storage_account = "https://pinsstodwtestukswic3ai.blob.core.windows.net"
+message_storage_account = "https://pinsstodwbuildukslu4d8k.blob.core.windows.net"
 
 message_storage_container = "odw-raw/ServiceBus"
 
@@ -96,10 +99,10 @@ network_watcher_enabled = false
 
 odt_back_office_service_bus_enabled                      = true
 odt_back_office_service_bus_failover_enabled             = false
-odt_back_office_service_bus_name                         = "pins-sb-back-office-test-ukw-001"
-odt_back_office_service_bus_name_failover                = "pins-sb-back-office-test-uks-001"
-odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-test-ukw-001"
-odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-test-uks-001"
+odt_back_office_service_bus_name                         = "pins-sb-back-office-build-ukw-001"
+odt_back_office_service_bus_name_failover                = "pins-sb-back-office-build-uks-001"
+odt_back_office_service_bus_resource_group_name          = "pins-rg-back-office-build-ukw-001"
+odt_back_office_service_bus_resource_group_name_failover = "pins-rg-back-office-build-uks-001"
 odt_backoffice_sb_topic_subscriptions = [
   {
     subscription_name = "service-user"
@@ -141,15 +144,15 @@ odt_backoffice_sb_topic_subscriptions = [
 
 ## Appeals Back Office
 odt_appeals_back_office = {
-  resource_group_name = "pins-rg-appeals-bo-test"
+  resource_group_name = "pins-rg-appeals-bo-build"
   service_bus_enabled = true
-  service_bus_name    = "pins-sb-appeals-bo-test"
+  service_bus_name    = "pins-sb-appeals-bo-build"
 }
 
 service_bus_failover_enabled = false
 service_bus_role_assignments = {
   "Azure Service Bus Data Owner" = {
-    groups = ["pins-odw-preprod-administrators"]
+    groups = [] # "pins-odw-preprod-administrators"
   }
 }
 
@@ -237,10 +240,11 @@ synapse_role_assignments = [
     role_definition_name = "Synapse Administrator",
     principal_id         = "be52cb0c-858f-4698-8c40-3a5ec793a2e3"
   },
-  { # Azure DevOps Pipelines - ODW Test - Infrastructure
-    role_definition_name = "Synapse Administrator",
-    principal_id         = "9d4c68d1-c43d-4502-b35f-74f31c497757"
-  },
+  # This one seems to be automatically assigned when the Synapse workspace is created
+  #{ # Azure DevOps Pipelines - ODW Build - Infrastructure
+  #  role_definition_name = "Synapse Administrator",
+  #  principal_id         = "9d7c0f07-9839-4928-8927-bfc19f9f6bd2"
+  #},
   { # pins-odw-data-preprod-syn-ws-contributors
     role_definition_name = "Synapse Contributor",
     principal_id         = "d59a3e85-58db-4b70-8f88-3f4a4a82ee27"
@@ -255,8 +259,8 @@ tags = {}
 
 tenant_id = "5878df98-6f88-48ab-9322-998ce557088d"
 
-vnet_base_cidr_block          = "10.80.0.0/24"
-vnet_base_cidr_block_failover = "10.80.1.0/24"
+vnet_base_cidr_block          = "10.100.0.0/24"
+vnet_base_cidr_block_failover = "10.100.1.0/24"
 vnet_subnets = [
   {
     "name" : "AzureBastionSubnet",
@@ -295,8 +299,10 @@ vnet_subnets = [
   },
 ]
 
-external_resource_links_enabled = true
+external_resource_links_enabled = false
 
-create_purview_account = true
+create_purview_account = false
 
-run_shir_setup_script = false
+run_shir_setup_script = true
+
+create_service_bus_resources = false
