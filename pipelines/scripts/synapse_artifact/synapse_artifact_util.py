@@ -1,13 +1,84 @@
 from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
 import requests
 from abc import ABC, abstractmethod
-from typing import Union, List, Dict, Any, Set, Tuple
+from typing import Union, List, Dict, Any, Set
+from dataclasses import dataclass
 import re
 import logging
 import json
 import os
 
 logging.basicConfig(level=logging.INFO)
+
+
+@dataclass
+class SynapseArtifactsPropertyIteratorResult():
+    parent_collection: Union[Dict[str, Any], List[Any]]
+    attribute: str
+    value: Union[Dict[str, Any], List[Any], Any]
+    remaining_attribute: str
+
+
+class SynapseArtifactsPropertyIterator():
+    """
+        Class to iterate through the properties of a json object through dot notation
+    """
+    def __init__(self, dictionary: Dict[str, Any], attribute: str):
+        self.attribute_collection: Union[Dict[str, Any], List[Any]] = dictionary
+        self.attribute_split = attribute.split(".")
+        if not self.attribute_split:
+            raise ValueError(f"There is no attribute to evaluate")
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """
+            :return: The most recently-accessed collection
+            :return: The most recently-accessed property
+            :return: The value associated with the most recent property in the most recent collection
+            :return: The remaining attribute string
+
+        """
+        if not self.attribute_split:
+            raise StopIteration
+        next_attribute = self.attribute_split.pop(0)
+        if isinstance(self.attribute_collection, list):
+            try:
+                next_attribute = int(next_attribute)
+            except ValueError:
+                pass
+            if not isinstance(next_attribute, int):
+                raise ValueError(f"Trying to access an index of a list collection, but was passed using property '{next_attribute}'")
+            if next_attribute > len(self.attribute_collection):
+                raise IndexError(f"Attribute index '{next_attribute}' out of range for list {self.attribute_collection}")
+            old_collection = self.attribute_collection
+            self.attribute_collection = self.attribute_collection[next_attribute]
+            return SynapseArtifactsPropertyIteratorResult(old_collection, next_attribute, self.attribute_collection, ".".join(self.attribute_split))
+        elif isinstance(self.attribute_collection, dict):
+            if next_attribute in self.attribute_collection:
+                old_collection = self.attribute_collection
+                self.attribute_collection = self.attribute_collection[next_attribute]
+                return SynapseArtifactsPropertyIteratorResult(old_collection, next_attribute, self.attribute_collection, ".".join(self.attribute_split))
+            while self.attribute_split:
+                next_attribute = f"{next_attribute}.{self.attribute_split.pop(0)}"
+                if next_attribute in self.attribute_collection:
+                    old_collection = self.attribute_collection
+                    self.attribute_collection = self.attribute_collection[next_attribute]
+                    return SynapseArtifactsPropertyIteratorResult(
+                        old_collection,
+                        next_attribute,
+                        self.attribute_collection[next_attribute],
+                        ".".join(self.attribute_split)
+                    )
+            raise ValueError(f"Couldn't find attribute '{next_attribute}' in the dictionary")
+        else:
+            raise ValueError(
+                (
+                    f"Trying to access a property '{next_attribute}' of a literal value '{self.attribute_collection}' "
+                    f"with type {type(self.attribute_collection)} rather than a collection"
+                )
+            )
 
 
 class SynapseArtifactUtil(ABC):
@@ -296,38 +367,6 @@ class SynapseArtifactUtil(ABC):
                 )
             )
         }
-    
-    @classmethod
-    def _resolve_attribute_in_dictionary(cls, attribute_collection: Union[Dict[str, Any], List[Any]], attribute: str) -> Tuple[
-        Union[Dict[str, Any], List[Any]], str
-    ]:
-        if not attribute:
-            raise ValueError("There is no attribute to resolve")
-        attribute_split = attribute.split(".")
-        if attribute_split:
-            next_attribute = attribute_split[0]
-        else:
-            next_attribute = attribute
-        if isinstance(attribute_collection, list):
-            next_attribute = None
-            try:
-                next_attribute = int(next_attribute)
-            except ValueError:
-                pass
-            if not isinstance(next_attribute, int):
-                raise ValueError(f"Trying to access an index of a list collection, but was passed using property '{next_attribute}'")
-            return attribute_collection[attribute_collection], ".".join(attribute_split[1:]) if len(attribute_split) > 1 else None
-        if isinstance(attribute_collection, dict):
-            if next_attribute in attribute_collection:
-                return attribute_collection[next_attribute], ".".join(attribute_split[1:]) if len(attribute_split) > 1 else None
-            if len(attribute_split) > 1:
-                remaining_subattributes = attribute_split[1:]
-                while remaining_subattributes:
-                    next_attribute = f"{next_attribute}.{remaining_subattributes.pop()}"
-                    if next_attribute in attribute_collection:
-                        return attribute_collection[next_attribute], ".".join(remaining_subattributes)
-            raise ValueError(f"Couldn't find attribute '{next_attribute}' in the dictionary")
-        raise ValueError(f"Trying to access a property '{next_attribute}' of a literal rather than a collection")
 
     @classmethod
     def _extract_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str) -> Any:
@@ -340,44 +379,14 @@ class SynapseArtifactUtil(ABC):
             :return: The attribute value
             :raises: An exception is raised if the given inputs are invalid
         """
-        attribute_split = attribute.split(".")
-        attribute_value = dictionary
-        for i, subattribute in enumerate(attribute_split):
-            remaining_subattributes = ".".join(attribute_split[i:])
-            if remaining_subattributes in attribute_value:
-                # This is for cases like spark variables which may be stored in the json
-                return attribute_value[remaining_subattributes]
-            if isinstance(attribute_value, dict):
-                if subattribute not in attribute_value:
-                    raise ValueError(
-                        f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'"
-                    )
-                attribute_value = attribute_value[subattribute]
-            elif isinstance(attribute_value, list):
-                if int(subattribute) >= len(attribute_value):
-                    raise ValueError(
-                        f"Unable to extract subattribute '{subattribute}' from {attribute_value}. Full attribute name is '{attribute}'"
-                    )
-                attribute_value = attribute_value[int(subattribute)]
-            else:
-                if i != len(attribute_split) - 1:
-                    # Only allow returning leaf values if they are the last name to be resolved
-                    raise ValueError(f"Could not access attribute {attribute_value} by key '{subattribute}' - the value is not a collection")
-        return attribute_value
+        property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
+        return property_details.pop().value
 
     @classmethod
     def _set_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str, new_value: Any):
-        remaining_substring_to_search = attribute
-        attribute_collection = dictionary
-        evaluate_loop = True
-        while evaluate_loop:
-            new_attribute_collection, substring = cls._resolve_attribute_in_dictionary(attribute_collection, remaining_substring_to_search)
-            if (isinstance(new_attribute_collection, dict) or isinstance(new_attribute_collection, list)) and substring:
-                attribute_collection = new_attribute_collection
-                remaining_substring_to_search = substring
-            else:
-                evaluate_loop = False
-        attribute_collection[remaining_substring_to_search] = new_value
+        property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
+        last_entry = property_details.pop()
+        last_entry.parent_collection[last_entry.attribute] = new_value
         return dictionary
 
     def _compare_dictionaries_by_attributes(self, attributes: Set[str], dict_a: Dict[str, Any], dict_b: Dict[str, Any]) -> Dict[str, bool]:
