@@ -11,6 +11,10 @@ import os
 logging.basicConfig(level=logging.INFO)
 
 
+class AttributeNotFoundException(Exception):
+    pass
+
+
 @dataclass
 class SynapseArtifactsPropertyIteratorResult():
     parent_collection: Union[Dict[str, Any], List[Any]]
@@ -68,10 +72,10 @@ class SynapseArtifactsPropertyIterator():
                     return SynapseArtifactsPropertyIteratorResult(
                         old_collection,
                         next_attribute,
-                        self.attribute_collection[next_attribute],
+                        self.attribute_collection,
                         ".".join(self.attribute_split)
                     )
-            raise ValueError(f"Couldn't find attribute '{next_attribute}' in the dictionary")
+            raise AttributeNotFoundException(f"Couldn't find attribute '{next_attribute}' in the dictionary '{self.attribute_collection}'")
         else:
             raise ValueError(
                 (
@@ -421,17 +425,22 @@ class SynapseArtifactUtil(ABC):
 
     def _replace_env_strings(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
         for property_to_replace in self.get_env_attributes_to_replace():
-            property_value = self._extract_dictionary_value_by_attribute(artifact, property_to_replace)
-            cleaned_property_value = None
-            if isinstance(str, property_value):
-                cleaned_property_value = property_value
-            elif isinstance(list, property_value):
-                cleaned_property_value = [
-                    x.replace("", "") if isinstance(str, x) else x
-                    for x in property_value
-                ]
-            if cleaned_property_value:
-                self._set_dictionary_value_by_attribute(artifact, property_to_replace, cleaned_property_value)
+            property_value = None
+            try:
+                property_value = self._extract_dictionary_value_by_attribute(artifact, property_to_replace)
+            except AttributeNotFoundException:
+                logging.info(f"Couldn't find property by dot-notation string '{property_to_replace}'")
+            if property_value:
+                cleaned_property_value = None
+                if isinstance(property_value, str):
+                    cleaned_property_value = property_value
+                elif isinstance(property_value, list):
+                    cleaned_property_value = [
+                        x.replace("", "") if isinstance(x, str) else x
+                        for x in property_value
+                    ]
+                if cleaned_property_value:
+                    self._set_dictionary_value_by_attribute(artifact, property_to_replace, cleaned_property_value)
         return artifact
 
     @classmethod
