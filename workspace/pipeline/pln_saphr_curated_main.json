@@ -1,5 +1,5 @@
 {
-	"name": "pln_saphr_curated_main",
+	"name": "pln_saphr_curated_main_error",
 	"properties": {
 		"activities": [
 			{
@@ -65,6 +65,12 @@
 				"dependsOn": [
 					{
 						"activity": "Record loading relevant reps data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "setharmonisedstarttime",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -456,7 +462,7 @@
 				}
 			},
 			{
-				"name": "Personal Area record count",
+				"name": "record count",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -474,7 +480,7 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_Personnel_Area').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
@@ -484,7 +490,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Personal Area record count",
+						"activity": "error message",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -508,6 +514,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -548,7 +562,7 @@
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Personal Area record count",
+						"activity": "error message",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -605,7 +619,124 @@
 				}
 			},
 			{
-				"name": "personalSubare record count",
+				"name": "error message",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_pa",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "setharmonisedstarttime",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "harmonisedstarttime",
+					"value": {
+						"value": "@utcNow()",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "record count_psa",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -623,17 +754,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_Personal_SubArea').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data1",
+				"name": "Record completed Sap HR Harmonised data_copy2",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "personalSubare record count",
+						"activity": "error message_psa",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -657,6 +788,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -693,11 +832,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed1",
+				"name": "Send Sap HR Harmonised failed_copy1",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "personalSubare record count",
+						"activity": "error message_psa",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -754,7 +893,107 @@
 				}
 			},
 			{
-				"name": "Gender record count",
+				"name": "error message_psa",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_psa",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_psa",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_psa",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_gender",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -772,17 +1011,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_hr_gender').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data2",
+				"name": "Record completed Sap HR Harmonised data_copy2_copy1",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Gender record count",
+						"activity": "error message_gender",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -806,6 +1045,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -842,11 +1089,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed2",
+				"name": "Send Sap HR Harmonised failed_copy1_copy1",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "Gender record count",
+						"activity": "error message_gender",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -903,11 +1150,11 @@
 				}
 			},
 			{
-				"name": "cost centre record count",
+				"name": "error message_gender",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "PBI_hr_cost_centre",
+						"activity": "record count_gender",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -919,21 +1166,21 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"variableName": "recordCount",
+					"variableName": "error_message",
 					"value": {
-						"value": "@activity('PBI_hr_cost_centre').output.status.output.result.exitValue",
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data4",
+				"name": "Record completed Sap HR Harmonised data_gender",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "cost centre record count",
+						"activity": "error message_gender",
 						"dependencyConditions": [
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
@@ -948,7 +1195,10 @@
 					},
 					"waitOnCompletion": true,
 					"parameters": {
-						"Stage": "Completion",
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
 						"PipelineName": {
 							"value": "@pipeline().Pipeline",
 							"type": "Expression"
@@ -957,8 +1207,16 @@
 							"value": "@pipeline().RunId",
 							"type": "Expression"
 						},
-						"Inserts": {
-							"value": "@variables('recordCount')",
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
 							"type": "Expression"
 						},
 						"StatusMessage": "Sap HR Harrmonised Layer loaded",
@@ -983,6 +1241,7 @@
 							"type": "Expression"
 						},
 						"ActivityType": "Pipeline",
+						"StatusCode": "400",
 						"AppInsIKey": {
 							"value": "@pipeline().parameters.apps_insights_ikey",
 							"type": "Expression"
@@ -991,68 +1250,7 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed4",
-				"type": "ExecutePipeline",
-				"dependsOn": [
-					{
-						"activity": "cost centre record count",
-						"dependencyConditions": [
-							"Failed"
-						]
-					}
-				],
-				"policy": {
-					"secureInput": true
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"pipeline": {
-						"referenceName": "pln_utl_Send_Teams_Message",
-						"type": "PipelineReference"
-					},
-					"waitOnCompletion": true,
-					"parameters": {
-						"dataFactorySubscription": {
-							"value": "@pipeline().parameters.subscription_id",
-							"type": "Expression"
-						},
-						"dataFactoryResourceGroup": {
-							"value": "@pipeline().parameters.resource_group",
-							"type": "Expression"
-						},
-						"pipelineRunId": {
-							"value": "@pipeline().RunId",
-							"type": "Expression"
-						},
-						"teamsWebhookUrl": {
-							"value": "@pipeline().parameters.webhook_url",
-							"type": "Expression"
-						},
-						"activityName": {
-							"value": "@pipeline().Pipeline",
-							"type": "Expression"
-						},
-						"activityMessage": "Sap HR Harmonised Layer data load failed",
-						"activityDuration": {
-							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
-							"type": "Expression"
-						},
-						"activityStatus": "Failed",
-						"Colour": {
-							"value": "@pipeline().parameters.failed_colour",
-							"type": "Expression"
-						},
-						"Image": {
-							"value": "@pipeline().parameters.failed_image",
-							"type": "Expression"
-						},
-						"Message_title": "Sap HR Harmonised Master pipeline failed",
-						"Message_subtitle": "Sap HR Harmonised feed failed"
-					}
-				}
-			},
-			{
-				"name": "grade record count",
+				"name": "record count_gender_copy1",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1070,17 +1268,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_hr_grade').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data3",
+				"name": "Record completed Sap HR Harmonised data_gen",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "grade record count",
+						"activity": "error message_gender_copy1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1104,6 +1302,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1140,11 +1346,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed3",
+				"name": "Send Sap HR Harmonised failed_copy1_copy1_copy1",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "grade record count",
+						"activity": "error message_gender_copy1",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1201,7 +1407,364 @@
 				}
 			},
 			{
-				"name": "work contract record count",
+				"name": "error message_gender_copy1",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_gender_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_gender_copy1",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_gender_copy1",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_cost_centre",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "PBI_hr_cost_centre",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "recordCount",
+					"value": {
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data__cost_centre",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_gender_cost_centre",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completion",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"Inserts": {
+							"value": "@variables('recordCount')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "Send Sap HR Harmonised failed__cost_centre",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_gender_cost_centre",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": true
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_utl_Send_Teams_Message",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"dataFactorySubscription": {
+							"value": "@pipeline().parameters.subscription_id",
+							"type": "Expression"
+						},
+						"dataFactoryResourceGroup": {
+							"value": "@pipeline().parameters.resource_group",
+							"type": "Expression"
+						},
+						"pipelineRunId": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"teamsWebhookUrl": {
+							"value": "@pipeline().parameters.webhook_url",
+							"type": "Expression"
+						},
+						"activityName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"activityMessage": "Sap HR Harmonised Layer data load failed",
+						"activityDuration": {
+							"value": "@concat(string(div(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'H:', \nstring(mod(div(sub(ticks(formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:sss')),ticks(formatDateTime(pipeline().parameters.start_time,'yyyy-MM-dd HH:mm:sss'))),600000000),60)),'M:00s')",
+							"type": "Expression"
+						},
+						"activityStatus": "Failed",
+						"Colour": {
+							"value": "@pipeline().parameters.failed_colour",
+							"type": "Expression"
+						},
+						"Image": {
+							"value": "@pipeline().parameters.failed_image",
+							"type": "Expression"
+						},
+						"Message_title": "Sap HR Harmonised Master pipeline failed",
+						"Message_subtitle": "Sap HR Harmonised feed failed"
+					}
+				}
+			},
+			{
+				"name": "error message_gender_cost_centre",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_cost_centre",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_gender__cost",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_gender_cost_centre",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_wc",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1219,17 +1782,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_HR_Work_Contract').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data5",
+				"name": "Record completed Sap HR Harmonised wc",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "work contract record count",
+						"activity": "error message_wc",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1253,6 +1816,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1289,11 +1860,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed5",
+				"name": "Send Sap HR Harmonised failed_wc",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "work contract record count",
+						"activity": "error message_wc",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1350,7 +1921,107 @@
 				}
 			},
 			{
-				"name": "organisation record count",
+				"name": "error message_wc",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_wc",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_wc",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_wc",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_ou",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1368,17 +2039,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_Organisation_unit').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data6",
+				"name": "Record completed Sap HR Harmonised _ou",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "organisation record count",
+						"activity": "error message_ou",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1402,6 +2073,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1438,11 +2117,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed6",
+				"name": "Send Sap HR Harmonised failed_ou",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "organisation record count",
+						"activity": "error message_ou",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1499,7 +2178,107 @@
 				}
 			},
 			{
-				"name": "payroll record count",
+				"name": "error message_ou",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_ou",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_ou",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_ou",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_pa",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1517,17 +2296,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_payroll_area').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data7",
+				"name": "Record completed Sap HR Harmonised _pa",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "payroll record count",
+						"activity": "error message_pa",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1551,6 +2330,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1587,11 +2374,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed7",
+				"name": "Send Sap HR Harmonised failed_pa",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "payroll record count",
+						"activity": "error message_pa",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1648,7 +2435,107 @@
 				}
 			},
 			{
-				"name": "fact absence record count",
+				"name": "error message_pa",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_pa",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_pay",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_pa",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_fba",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1666,17 +2553,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_fact_absence_all').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data8",
+				"name": "Record completed Sap HR Harmonised _fba",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "fact absence record count",
+						"activity": "error message_fba",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1700,6 +2587,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1736,11 +2631,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed8",
+				"name": "Send Sap HR Harmonised failed_fba",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "fact absence record count",
+						"activity": "error message_fba",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1797,7 +2692,107 @@
 				}
 			},
 			{
-				"name": "protected data record count",
+				"name": "error message_fba",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_fba",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_fba",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_fba",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_pd",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1815,17 +2810,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_hr_protected_data').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data9",
+				"name": "Record completed Sap HR Harmonised _pd",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "protected data record count",
+						"activity": "error message_pd",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1849,6 +2844,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -1885,11 +2888,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed9",
+				"name": "Send Sap HR Harmonised failed_pd",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "protected data record count",
+						"activity": "error message_pd",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -1946,7 +2949,107 @@
 				}
 			},
 			{
-				"name": "employee record count",
+				"name": "error message_pd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_pd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_pd",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_pd",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_emp",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -1964,17 +3067,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_employee_details').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data11",
+				"name": "Record completed Sap HR Harmonised _emp",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "employee record count",
+						"activity": "error message_emp",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1998,6 +3101,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -2034,11 +3145,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed11",
+				"name": "Send Sap HR Harmonised failed_emp",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "employee record count",
+						"activity": "error message_emp",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -2095,7 +3206,107 @@
 				}
 			},
 			{
-				"name": "hr_measures record count",
+				"name": "error message_emp",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_emp",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_emp",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_emp",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "record count_hr",
 				"type": "SetVariable",
 				"dependsOn": [
 					{
@@ -2113,17 +3324,17 @@
 				"typeProperties": {
 					"variableName": "recordCount",
 					"value": {
-						"value": "@activity('PBI_hr_Measures').output.status.output.result.exitValue",
+						"value": "@string(json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).record_count)",
 						"type": "Expression"
 					}
 				}
 			},
 			{
-				"name": "Record completed Sap HR Harmonised data12",
+				"name": "Record completed Sap HR Harmonised _hr",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "hr_measures record count",
+						"activity": "error message_hr",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -2147,6 +3358,14 @@
 						},
 						"PipelineRunID": {
 							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
 							"type": "Expression"
 						},
 						"Inserts": {
@@ -2183,11 +3402,11 @@
 				}
 			},
 			{
-				"name": "Send Sap HR Harmonised failed12",
+				"name": "Send Sap HR Harmonised failed_hr",
 				"type": "ExecutePipeline",
 				"dependsOn": [
 					{
-						"activity": "hr_measures record count",
+						"activity": "error message_hr",
 						"dependencyConditions": [
 							"Failed"
 						]
@@ -2240,6 +3459,106 @@
 						},
 						"Message_title": "Sap HR Harmonised Master pipeline failed",
 						"Message_subtitle": "Sap HR Harmonised feed failed"
+					}
+				}
+			},
+			{
+				"name": "error message_hr",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "record count_hr",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "error_message",
+					"value": {
+						"value": "@json(activity('PBI_Personnel_Area').output.status.output.result.exitValue).error_message",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Record completed Sap HR Harmonised data_hr",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "error message_hr",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": {
+							"value": "Fail",
+							"type": "Expression"
+						},
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StartTime": {
+							"value": "@variables('harmonisedstarttime')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
+						"ErrorMessage": {
+							"value": "@variables('error_message')",
+							"type": "Expression"
+						},
+						"StatusMessage": "Sap HR Harrmonised Layer loaded",
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"StatusCode": "400",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
 					}
 				}
 			}
@@ -2334,6 +3653,12 @@
 				"defaultValue": 8
 			},
 			"recordCount": {
+				"type": "String"
+			},
+			"error_message": {
+				"type": "String"
+			},
+			"harmonisedstarttime": {
 				"type": "String"
 			}
 		},
