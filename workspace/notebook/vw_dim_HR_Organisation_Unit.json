@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c2f004f1-8678-41f6-bf0b-bb4ec1fe51d3"
+				"spark.autotune.trackingId": "19b8cbcc-227e-4da6-a166-bcef9230f13d"
 			}
 		},
 		"metadata": {
@@ -89,18 +89,27 @@
 					"import pandas as pd\n",
 					"import numpy as np"
 				],
-				"execution_count": 2
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 3
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"import json\n",
+					"\n",
+					"# Initialize result dictionary\n",
+					"result = {\n",
+					"    \"status\": \"success\",\n",
+					"    \"record_count\": 0,\n",
+					"    \"error_message\": None\n",
+					"}\n",
+					"\n",
 					"try:\n",
 					"    logInfo(\"Starting HR Organization Unit dimension setup\")\n",
 					"    \n",
@@ -141,7 +150,9 @@
 					"    \"\"\")\n",
 					"    logInfo(\"Successfully created view odw_curated_db.vw_dim_HR_Organisation_Unit\")\n",
 					"    \n",
-					"\n",
+					"    # Count records in view\n",
+					"    organisation_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.vw_dim_HR_Organisation_Unit\").collect()[0]['count']\n",
+					"    logInfo(f\"View contains {organisation_count} distinct organisation unit records\")\n",
 					"    \n",
 					"    # Drop the table if it exists\n",
 					"    logInfo(\"Dropping table odw_curated_db.pbi_dim_HR_Organisation_Unit if it exists\")\n",
@@ -159,26 +170,42 @@
 					"    AS SELECT * FROM odw_curated_db.vw_dim_HR_Organisation_Unit\n",
 					"    \"\"\")\n",
 					"    \n",
-					"\n",
+					"    # Count records in table - this is our final record count\n",
+					"    table_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.pbi_dim_HR_Organisation_Unit\").collect()[0]['count']\n",
+					"    result[\"record_count\"] = table_count\n",
+					"    logInfo(f\"Created table with {table_count} records at location: {delta_table_path}\")\n",
+					"    \n",
+					"    logInfo(\"HR Organization Unit dimension setup completed successfully\")\n",
 					"\n",
 					"except Exception as e:\n",
-					"    logError(f\"Error in HR Organization Unit dimension setup: {str(e)}\")\n",
+					"    # Capture error information\n",
+					"    error_msg = f\"Error in HR Organization Unit dimension setup: {str(e)}\"\n",
+					"    logError(error_msg)\n",
 					"    logException(e)\n",
+					"    \n",
+					"    # Try to get current record count even in case of error\n",
+					"    try:\n",
+					"        error_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_curated_db.pbi_dim_HR_Organisation_Unit\").collect()[0]['count']\n",
+					"        result[\"record_count\"] = error_count\n",
+					"    except:\n",
+					"        result[\"record_count\"] = 0\n",
+					"    \n",
+					"    # Update result for error case\n",
+					"    result[\"status\"] = \"failed\"\n",
+					"    result[\"error_message\"] = error_msg[:300]  # Truncate to 300 characters\n",
+					"    \n",
+					"    # Re-raise the exception to ensure the notebook fails properly\n",
 					"    raise e\n",
+					"\n",
 					"finally:\n",
+					"    # Always flush logs regardless of success or failure\n",
 					"    logInfo(\"Flushing logs\")\n",
-					"    flushLogging()"
+					"    flushLogging()\n",
+					"    \n",
+					"    # Output the result as JSON for ADF to capture\n",
+					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
-				"execution_count": 4
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"loaded_count = spark.sql(\"SELECT *  FROM odw_curated_db.pbi_dim_HR_Organisation_Unit\")\n",
-					"count_str=loaded_count.count()\n",
-					"mssparkutils.notebook.exit(count_str)"
-				],
-				"execution_count": 5
+				"execution_count": 3
 			}
 		]
 	}
