@@ -38,5 +38,5 @@ class SynapseLinkedServiceUtil(SynapseArtifactUtil):
 
     def get_env_attributes_to_replace(self) -> List[str]:
         return [
-            r"^properties.typeProperties.url$"
+            "properties.typeProperties.url"
         ]

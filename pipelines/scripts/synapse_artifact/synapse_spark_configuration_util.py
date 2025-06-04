@@ -26,6 +26,6 @@ class SynapseSparkConfigurationUtil(SynapseArtifactUtil):
 
     def get_env_attributes_to_replace(self) -> List[str]:
         return [
-            r"^properties.configs.park.executorEnv.dataLakeAccountName$",
-            r"^properties.configs.spark.executorEnv.keyVaultName$"
+            "properties.configs.park.executorEnv.dataLakeAccountName",
+            "properties.configs.spark.executorEnv.keyVaultName"
         ]

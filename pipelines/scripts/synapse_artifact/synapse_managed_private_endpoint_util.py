@@ -74,6 +74,6 @@ class SynapseManagedPrivateEndpointUtil(SynapseArtifactUtil):
 
     def get_env_attributes_to_replace(self) -> List[str]:
         return [
-            r"^properties.privateLinkResourceId$",
-            r"^properties.fqdns$"
+            "properties.privateLinkResourceId",
+            "properties.fqdns"
         ]

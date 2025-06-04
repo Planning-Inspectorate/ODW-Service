@@ -165,7 +165,7 @@ class SynapseArtifactUtil(ABC):
     @abstractmethod
     def get_env_attributes_to_replace(self) -> List[str]:
         """
-            :return: Regex patterns of attributes for specific environments that should be replaced
+            :return: Attributes for specific environments that should be replaced
         """
         pass
 
