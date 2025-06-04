@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ddacb77c-cbef-4287-9ef2-34efc58241c1"
+				"spark.autotune.trackingId": "7a69f8b3-1871-4dd7-8631-7c4921045ed3"
 			}
 		},
 		"metadata": {
@@ -184,7 +184,7 @@
 					"    \"successful_overwrites\": 0,\n",
 					"    \"failed_overwrites\": 0\n",
 					"    },\n",
-					"    \"table_details\": []\n",
+					"    \"update_table_details\": []\n",
 					"}\n",
 					"\n",
 					"def add_table_result(delta_table_name, update_count=0, table_result=\"success\", error_message=\"\"):\n",
@@ -195,7 +195,7 @@
 					"        \"table_result\": table_result,\n",
 					"        \"error_message\": error_message\n",
 					"    }\n",
-					"    processing_results[\"table_details\"].append(table_detail)\n",
+					"    processing_results[\"update_table_details\"].append(table_detail)\n",
 					"    processing_results[\"processing_summary\"][\"total_tables_processed\"] += 1\n",
 					"    \n",
 					"    if table_result == \"success\":\n",
@@ -222,9 +222,13 @@
 					"        #Process the Delta table to find and modify the specified columns\n",
 					"        delta_table_path = f\"{delta_table_base_path}{table_name}\"\n",
 					"\n",
+					"        update_count = 0\n",
+					"\n",
 					"        if DeltaTable.isDeltaTable(spark, delta_table_path):\n",
 					"            logInfo(f\"Processing Delta Table: {table_name}\")\n",
 					"            df = spark.read.format(\"delta\").load(delta_table_path)\n",
+					"            \n",
+					"            update_count = df.count()\n",
 					"\n",
 					"            # Identify columns that need modification\n",
 					"            target_columns = [col_name for col_name in [\"PersNo\",\"PersNo1\", \"StaffNumber\"] if col_name in df.columns]\n",
@@ -258,7 +262,7 @@
 					"    # Create the final result structure\n",
 					"    exit_value = {\n",
 					"        \"processing_summary\": processing_results[\"processing_summary\"],\n",
-					"        \"table_details\": processing_results[\"table_details\"]\n",
+					"        \"update_table_details\": processing_results[\"update_table_details\"]\n",
 					"    }\n",
 					"    \n",
 					"    # Convert to JSON string for display\n",
@@ -274,14 +278,14 @@
 					"    print(f\"ExitValue: {json_output}\")\n",
 					"    \n",
 					"    # Log any failures for quick reference\n",
-					"    failed_tables = [table for table in exit_value['table_details'] if table['table_result'] == 'failed']\n",
+					"    failed_tables = [table for table in exit_value['update_table_details'] if table['table_result'] == 'failed']\n",
 					"    if failed_tables:\n",
 					"        for table in failed_tables:\n",
 					"            logError(f\"Table: {table['delta_table_name']} - Error: {table['error_message']}\")\n",
 					"    \n",
 					"    return exit_value"
 				],
-				"execution_count": 7
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -309,7 +313,7 @@
 					"logInfo(\"Delta table updates completed successfully.\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -364,14 +368,14 @@
 					"            csv_filename = get_csv_filename_from_table(table_name)\n",
 					"            error_msg = f\"Failed processing for {table_name} - {str(table_error)}\"\n",
 					"            logError(error_msg)\n",
-					"            add_table_result(table_name, csv_filename, 0, \"failed\", error_msg)\n",
+					"            add_table_result(table_name, 0, \"failed\", error_msg)\n",
 					"\n",
 					"except Exception as e:\n",
 					"            logError(f\"Failed processing for {target_table} - {e}\")\n",
 					"            logError(\"Delta table updates failed\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -379,7 +383,7 @@
 					"# Generate and display the final results\n",
 					"final_results = generate_processing_results()"
 				],
-				"execution_count": null
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
