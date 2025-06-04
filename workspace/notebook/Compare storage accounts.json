@@ -1,0 +1,178 @@
+{
+	"name": "Compare storage accounts",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "dee83ab8-2653-41a5-a1ec-c4eaccbbf92b"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"import re\n",
+					"from datetime import datetime"
+				],
+				"execution_count": 18
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"directory = 'AIEDocumentData'"
+				],
+				"execution_count": 19
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"source_storage_account_path = re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_source')).group(1)\n",
+					"container            = 'odw-standardised'\n",
+					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
+				],
+				"execution_count": 20
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
+				],
+				"execution_count": 21
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"src_storage_full_path = f'abfss://{container}@{source_storage_account_path}{directory}'\n",
+					"tgt_storage_full_path = f'abfss://{container}@{backup_storage_account_path}{directory}'\n",
+					"\n",
+					"print(src_storage_full_path, '\\n',tgt_storage_full_path)"
+				],
+				"execution_count": 22
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"\n",
+					"def compare_storage_directories(\n",
+					"    src_storage_full_path: str,\n",
+					"    src_container: str,\n",
+					"    directory: str,\n",
+					"    tgt_storage_full_path: str,\n",
+					"    tgt_container: str,\n",
+					"):\n",
+					"    \n",
+					"    # Construct full paths\n",
+					"    src_storage_full_path = f'abfss://{src_container}@{source_storage_account_path}{directory}'\n",
+					"    tgt_storage_full_path = f'abfss://{tgt_container}@{backup_storage_account_path}{directory}'\n",
+					"\n",
+					"    def list_files(path):\n",
+					"        try:\n",
+					"            return [f.path for f in mssparkutils.fs.ls(path) if not f.name.startswith('_delta_log')]\n",
+					"        except Exception as e:\n",
+					"            print(f\"Error accessing {path}: {e}\")\n",
+					"            return []\n",
+					"\n",
+					"    # List files\n",
+					"    files_dir1 = list_files(src_storage_full_path)\n",
+					"    files_dir2 = list_files(tgt_storage_full_path)\n",
+					"\n",
+					"    # Get counts\n",
+					"    count_dir1 = len(files_dir1)\n",
+					"    count_dir2 = len(files_dir2)\n",
+					"\n",
+					"    # Print counts\n",
+					"    print(f\"Directory 1 ({src_storage_full_path}) file count: {count_dir1}\")\n",
+					"    print(f\"Directory 2 ({tgt_storage_full_path}) file count: {count_dir2}\")\n",
+					"\n",
+					"    # Compare counts\n",
+					"    if count_dir1 != count_dir2:\n",
+					"        print(f\"Record count mismatch! Difference: {abs(count_dir1 - count_dir2)}\")\n",
+					"    else:\n",
+					"        print(\"Record counts match.\")\n",
+					"\n",
+					"    # Compare files\n",
+					"    set_dir1 = set([f.replace(src_storage_full_path, '') for f in files_dir1])\n",
+					"    set_dir2 = set([f.replace(tgt_storage_full_path, '') for f in files_dir2])\n",
+					"\n",
+					"    diff1 = set_dir1 - set_dir2\n",
+					"    diff2 = set_dir2 - set_dir1\n",
+					"\n",
+					"    if diff1 or diff2:\n",
+					"        print(\"⚠️ Differences found in file names between the directories.\")\n",
+					"        if diff1:\n",
+					"            print(f\"Files in Dir1 but not in Dir2: {diff1}\")\n",
+					"        if diff2:\n",
+					"            print(f\"Files in Dir2 but not in Dir1: {diff2}\")\n",
+					"    else:\n",
+					"        print(\"✅ Files match in both directories.\")\n",
+					""
+				],
+				"execution_count": 23
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"tgt_container = 'delta-backup-container'\n",
+					"src_container = 'odw-standardised'"
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"compare_storage_directories(\n",
+					"    src_storage_full_path,\n",
+					"    src_container,\n",
+					"    directory,\n",
+					"    tgt_storage_full_path,\n",
+					"    tgt_container\n",
+					")"
+				],
+				"execution_count": 25
+			}
+		]
+	}
+}
