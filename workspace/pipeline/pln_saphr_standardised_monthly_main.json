@@ -151,6 +151,14 @@
 							"value": "@pipeline().RunId",
 							"type": "Expression"
 						},
+						"StartTime": {
+							"value": "@variables('standardised_start_time')",
+							"type": "Expression"
+						},
+						"EndTime": {
+							"value": "@utcNow()",
+							"type": "Expression"
+						},
 						"StatusMessage": "SAP HR Standardised Monthly data loaded",
 						"PipelineTriggerID": {
 							"value": "@pipeline().TriggerId",
@@ -173,6 +181,11 @@
 							"type": "Expression"
 						},
 						"ActivityType": "Pipeline",
+						"DurationSeconds": {
+							"value": "@concat(\n  formatDateTime(\n    addToTime('1900-01-01T00:00:00.000Z', \n    div(sub(ticks(utcNow()), ticks(variables('standardised_start_time'))), 10000000), \n    'Second'), \n    'HH:mm:ss'\n  ),\n  '.',\n  string(div(mod(sub(ticks(utcNow()), ticks(variables('standardised_start_time'))), 10000000), 10000))\n)",
+							"type": "Expression"
+						},
+						"StatusCode": "200",
 						"AppInsIKey": {
 							"value": "@pipeline().parameters.apps_insights_ikey",
 							"type": "Expression"
@@ -680,6 +693,11 @@
 															"type": "Expression"
 														},
 														"ActivityType": "Pipeline",
+														"DurationSeconds": {
+															"value": "@concat(\n  formatDateTime(\n    addToTime('1900-01-01T00:00:00.000Z', \n    div(sub(ticks(utcNow()), ticks(variables('standardised_start_time'))), 10000000), \n    'Second'), \n    'HH:mm:ss'\n  ),\n  '.',\n  string(div(mod(sub(ticks(utcNow()), ticks(variables('standardised_start_time'))), 10000000), 10000))\n)",
+															"type": "Expression"
+														},
+														"StatusCode": "200",
 														"AppInsIKey": {
 															"value": "@pipeline().parameters.apps_insights_ikey",
 															"type": "Expression"
@@ -693,7 +711,7 @@
 										"value": "failed",
 										"activities": [
 											{
-												"name": "Record failed Sap HR Standardised data_copy1",
+												"name": "Record failed Sap HR transformation data",
 												"type": "ExecutePipeline",
 												"dependsOn": [],
 												"policy": {
@@ -724,16 +742,12 @@
 															"value": "@utcNow()",
 															"type": "Expression"
 														},
-														"Inserts": {
-															"value": "@item().record_count",
-															"type": "Expression"
-														},
 														"ErrorMessage": {
-															"value": "@concat(item().error_message,' for loading file : ',item().csv_file_name)",
+															"value": "@concat(item().error_message,' for updating table : ',item().delta_table_name)",
 															"type": "Expression"
 														},
 														"StatusMessage": {
-															"value": "@concat('raw to standardised failed:',item().csv_file_name)",
+															"value": "@concat('Post standardised transformation failed:',item().delta_table_name)",
 															"type": "Expression"
 														},
 														"PipelineTriggerID": {
@@ -770,11 +784,11 @@
 												}
 											},
 											{
-												"name": "Set Error Flag_copy1",
+												"name": "Set Error Update Flag",
 												"type": "SetVariable",
 												"dependsOn": [
 													{
-														"activity": "Record failed Sap HR Standardised data_copy1",
+														"activity": "Record failed Sap HR transformation data",
 														"dependencyConditions": [
 															"Succeeded"
 														]
@@ -842,7 +856,7 @@
 					],
 					"ifTrueActivities": [
 						{
-							"name": "FailSapHr_Load_copy1",
+							"name": "FailSapHr_Transformation_Load",
 							"type": "Fail",
 							"dependsOn": [],
 							"userProperties": [],
