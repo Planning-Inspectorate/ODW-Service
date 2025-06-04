@@ -384,6 +384,14 @@ class SynapseArtifactUtil(ABC):
 
     @classmethod
     def _set_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str, new_value: Any):
+        """
+            Set a json attribute by a dot-notation string.
+            e.g `set_dictionary_value_by_attribute({"a": {"b": 2}}, "a.b", 5) -> {"a": {"b": 5}}
+
+            :param dictionary: The json artifact to extract the attribute from
+            :param attribute: The attribute to extract, in dot-notation
+            :return: The same dictionary with the updated value
+        """
         property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
         last_entry = property_details.pop()
         last_entry.parent_collection[last_entry.attribute] = new_value
