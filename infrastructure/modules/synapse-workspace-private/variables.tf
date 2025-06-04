@@ -60,16 +60,6 @@ variable "network_resource_group_name" {
   type        = string
 }
 
-variable "purview_ids" {
-  default     = null
-  description = "The config of the Purview account to link with the Synapse Workspace"
-  type = object({
-    id           = string
-    storage_id   = string
-    event_hub_id = string
-  })
-}
-
 variable "resource_group_name" {
   description = "The name of the resource group into which resources will be deployed"
   type        = string
