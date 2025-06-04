@@ -207,7 +207,7 @@ resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_purview_account
 }
 
 resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_purview_storage_blob" {
-  count = var.create_service_bus_resources ? 1 : 0
+  count = var.create_service_bus_resources && var.purview_ids != null ? 1 : 0
 
   name                 = "synapse-mpe-purview-storage-blob--${local.resource_suffix}"
   synapse_workspace_id = azurerm_synapse_workspace.synapse.id
