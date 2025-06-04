@@ -91,6 +91,13 @@ class SynapseArtifactUtil(ABC):
         """
         pass
 
+    @abstractmethod
+    def get_env_attributes_to_replace(self) -> List[str]:
+        """
+            :return: Regex patterns of attributes for specific environments that should be replaced
+        """
+        pass
+
     def compare(self, artifact_a: Dict[str, Any], artifact_b: Dict[str, Any]) -> bool:
         """
             Compare two artifacts.

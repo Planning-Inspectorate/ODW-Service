@@ -23,3 +23,9 @@ class SynapseSparkConfigurationUtil(SynapseArtifactUtil):
 
     def get_nullable_attributes(self) -> List[str]:
         return []
+
+    def get_env_attributes_to_replace(self) -> List[str]:
+        return [
+            r"^properties.configs.park.executorEnv.dataLakeAccountName$",
+            r"^properties.configs.spark.executorEnv.keyVaultName$"
+        ]

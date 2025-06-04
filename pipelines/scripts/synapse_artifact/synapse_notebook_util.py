@@ -53,3 +53,9 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"properties.bigDataPool",
             r"properties.metadata.a365ComputeOptions"
         ]
+
+    def get_env_attributes_to_replace(self) -> List[str]:
+        return [
+            r"^properties.metadata.a365ComputeOptions.id$",
+            r"^properties.metadata.a365ComputeOptions.endpoint$"
+        ]
