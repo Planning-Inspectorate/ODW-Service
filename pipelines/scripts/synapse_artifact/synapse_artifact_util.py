@@ -7,6 +7,7 @@ import re
 import logging
 import json
 import os
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -423,7 +424,8 @@ class SynapseArtifactUtil(ABC):
                 return False
         return True
 
-    def _replace_env_strings(self, artifact: Dict[str, Any]) -> Dict[str, Any]:
+    def _replace_env_strings(self, artifact: Dict[str, Any], base_env: str, new_env: str) -> Dict[str, Any]:
+        regex_pattern = f"{base_env}(?!\.)"
         for property_to_replace in self.get_env_attributes_to_replace():
             property_value = None
             try:
@@ -433,10 +435,10 @@ class SynapseArtifactUtil(ABC):
             if property_value:
                 cleaned_property_value = None
                 if isinstance(property_value, str):
-                    cleaned_property_value = property_value
+                    cleaned_property_value = re.sub(regex_pattern, new_env, property_value)
                 elif isinstance(property_value, list):
                     cleaned_property_value = [
-                        x.replace("", "") if isinstance(x, str) else x
+                        re.sub(regex_pattern, new_env, x) if isinstance(x, str) else x
                         for x in property_value
                     ]
                 if cleaned_property_value:
