@@ -25,7 +25,7 @@ class Util():
         self.target_env = target_env
     
     def remove_unmodified_files(self):
-        SynapseWorkspaceUtil().download_workspace(synapse_workspace, self.local_workspace)
+        SynapseWorkspaceUtil().download_workspace(self.workspace_name, self.local_workspace)
         modified_files = self._get_modified_files(self.local_workspace)
         dependencies = self._get_dependencies_for_files(modified_files)
         files_to_keep = modified_files.union(dependencies)
@@ -34,8 +34,8 @@ class Util():
         logging.info(f"Total dependencies: {len(dependencies)}")
         logging.info(f"Total files to keep: {len(files_to_keep)}")
         logging.info(f"Total files to remove: {len(files_to_remove)}")
-        #self._delete_files(files_to_remove)
-        #shutil.rmtree(self.local_workspace)
+        self._delete_files(files_to_remove)
+        shutil.rmtree(self.local_workspace)
 
     def _get_dependencies_for_files(self, files_to_analyse: Set[str]) -> Set[str]:
         """
@@ -76,6 +76,7 @@ class Util():
             os.path.join(path, name).replace(f"{folder}/", "", 1)
             for path, subdirs, files in os.walk(folder)
             for name in files
+            if ".DS_Store" not in name
         }
 
     def _compare_live_and_local_artifacts(self, artifact_name: str):
