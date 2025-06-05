@@ -367,17 +367,17 @@ class SynapseArtifactUtil(ABC):
                     (not any(re.match(pattern, attribute) for pattern in nullable_attributes)) or
                     (
                         any(re.match(pattern, attribute) for pattern in nullable_attributes) and
-                        not self.is_attribute_value_empty(self._extract_dictionary_value_by_attribute(artifact_json, attribute))
+                        not self.is_attribute_value_empty(self.get_by_attribute(artifact_json, attribute))
                     )
                 )
             )
         }
 
     @classmethod
-    def _extract_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str) -> Any:
+    def get_by_attribute(cls, dictionary: Dict[str, Any], attribute: str) -> Any:
         """
             Access json attributes by a dot-notation string.
-            e.g `extract_value_from_attribute({"a": {"b": 2}}, "a.b") -> 2`
+            e.g `get_by_attribute({"a": {"b": 2}}, "a.b") -> 2`
 
             :param dictionary: The json artifact to extract the attribute from
             :param attribute: The attribute to extract, in dot-notation
@@ -388,10 +388,10 @@ class SynapseArtifactUtil(ABC):
         return property_details.pop().value
 
     @classmethod
-    def _set_dictionary_value_by_attribute(cls, dictionary: Dict[str, Any], attribute: str, new_value: Any):
+    def set_by_attribute(cls, dictionary: Dict[str, Any], attribute: str, new_value: Any):
         """
             Set a json attribute by a dot-notation string.
-            e.g `set_dictionary_value_by_attribute({"a": {"b": 2}}, "a.b", 5) -> {"a": {"b": 5}}
+            e.g `set_by_attribute({"a": {"b": 2}}, "a.b", 5) -> {"a": {"b": 5}}
 
             :param dictionary: The json artifact to extract the attribute from
             :param attribute: The attribute to extract, in dot-notation
@@ -412,8 +412,8 @@ class SynapseArtifactUtil(ABC):
             :return: True if the dictionaries match, False otherwise.
         """
         for attribute in attributes:
-            val_a = self._extract_dictionary_value_by_attribute(dict_a, attribute)
-            val_b = self._extract_dictionary_value_by_attribute(dict_b, attribute)
+            val_a = self.get_by_attribute(dict_a, attribute)
+            val_b = self.get_by_attribute(dict_b, attribute)
             if val_a != val_b:
                 logging.info(
                     (
@@ -429,7 +429,7 @@ class SynapseArtifactUtil(ABC):
         for property_to_replace in self.get_env_attributes_to_replace():
             property_value = None
             try:
-                property_value = self._extract_dictionary_value_by_attribute(artifact, property_to_replace)
+                property_value = self.get_by_attribute(artifact, property_to_replace)
             except AttributeNotFoundException:
                 logging.info(f"Couldn't find property by dot-notation string '{property_to_replace}'")
             if property_value:
@@ -442,7 +442,7 @@ class SynapseArtifactUtil(ABC):
                         for x in property_value
                     ]
                 if cleaned_property_value:
-                    self._set_dictionary_value_by_attribute(artifact, property_to_replace, cleaned_property_value)
+                    self.set_by_attribute(artifact, property_to_replace, cleaned_property_value)
         return artifact
 
     @classmethod
@@ -475,14 +475,14 @@ class SynapseArtifactUtil(ABC):
         reference_type_attributes = {
             k: v
             for k, v in reference_type_attributes.items()
-            if not isinstance(cls._extract_dictionary_value_by_attribute(artifact, k), dict)
+            if not isinstance(cls.get_by_attribute(artifact, k), dict)
         }
         reference_values = {
-            k: cls._extract_dictionary_value_by_attribute(artifact, k)
+            k: cls.get_by_attribute(artifact, k)
             for k in reference_type_attributes.keys()
         }
         reference_type_values = {
-            v: cls._extract_dictionary_value_by_attribute(artifact, v)
+            v: cls.get_by_attribute(artifact, v)
             for v in reference_type_attributes.values()
         }
         return {

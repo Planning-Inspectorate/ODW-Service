@@ -17,7 +17,7 @@ from copy import deepcopy
         ("g.i.j", 8)
     ]
 )
-def test_synapse_artifact_util__extract_dictionary_value_by_attribute(test_case):
+def test_synapse_artifact_util__get_by_attribute(test_case):
     artifact = {
         "a": 1,
         "b": 2,
@@ -44,7 +44,7 @@ def test_synapse_artifact_util__extract_dictionary_value_by_attribute(test_case)
     }
     attribute_string = test_case[0]
     expected_value = test_case[1]
-    assert SynapseArtifactUtil._extract_dictionary_value_by_attribute(artifact, attribute_string) == expected_value
+    assert SynapseArtifactUtil.get_by_attribute(artifact, attribute_string) == expected_value
 
 
 @pytest.mark.parametrize(
@@ -61,7 +61,7 @@ def test_synapse_artifact_util__extract_dictionary_value_by_attribute(test_case)
         ("g.i.j", None, {"g": {"h": 7, "i": {"j": None}}})
     ]
 )
-def test_synapse_artifact_util__set_dictionary_value_by_attribute(test_case):
+def test_synapse_artifact_util__set_by_attribute(test_case):
     artifact = {
         "a": 1,
         "b": 2,
@@ -91,4 +91,6 @@ def test_synapse_artifact_util__set_dictionary_value_by_attribute(test_case):
     new_artifact_properties = test_case[2]
     expected_artifact = {**artifact, **new_artifact_properties}
     artifact_copy = deepcopy(artifact)
-    assert SynapseArtifactUtil._set_dictionary_value_by_attribute(artifact_copy, attribute_string, new_value) == expected_artifact
+    assert SynapseArtifactUtil.set_by_attribute(artifact_copy, attribute_string, new_value) == expected_artifact
+
+
