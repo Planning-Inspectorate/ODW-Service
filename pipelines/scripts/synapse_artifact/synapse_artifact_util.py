@@ -425,7 +425,7 @@ class SynapseArtifactUtil(ABC):
         return True
 
     def replace_env_strings(self, artifact: Dict[str, Any], base_env: str, new_env: str) -> Dict[str, Any]:
-        regex_pattern = f"{base_env}(?!\.)"
+        regex_pattern = fr"{base_env}(?!\.)"
         for property_to_replace in self.get_env_attributes_to_replace():
             property_value = None
             try:
