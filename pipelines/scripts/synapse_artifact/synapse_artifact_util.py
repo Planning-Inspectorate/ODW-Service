@@ -235,7 +235,8 @@ class SynapseArtifactUtil(ABC):
             return True
         return not bool(attribute_value)
 
-    def get_all_attributes(self, artifact_json: Dict[str, Any]) -> Set[str]:
+    @classmethod
+    def get_all_attributes(cls, artifact_json: Dict[str, Any]) -> Set[str]:
         """
             Return all attributes from the given json in dot notation
 
@@ -267,7 +268,7 @@ class SynapseArtifactUtil(ABC):
             }
             ```
         """
-        set(self._extract_dict_attributes(artifact_json, current_level="").keys())
+        set(cls._extract_dict_attributes(artifact_json, current_level="").keys())
 
     @classmethod
     def _extract_list_attributes(cls, target_list: List[Any], current_level: str) -> Dict[str, None]:
