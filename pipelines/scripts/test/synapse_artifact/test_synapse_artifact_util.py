@@ -114,3 +114,102 @@ def test_synapse_artifact_util__get_all_attributes():
         "dict_type.c"
     }
     assert SynapseArtifactUtil.get_all_attributes(sample_json) == expected_attributes
+
+
+def test__synapse_artifact_util__dependent_artifacts():
+    # This is not a real artifact, it's an amalgamation of all possible references that could exist across all artifact types
+    artifact = {
+        "name": "test_pipeline",
+        "properties": {
+            "linkedServiceName": {
+                "referenceName": "test_linked_service",
+                "type": "LinkedServiceReference"
+            },
+            "activities": [
+                {
+                    "type": "SynapseNotebook",
+                    "typeProperties": {
+                        "notebook": {
+                            "referenceName": "test_notebook_a",
+                            "type": "NotebookReference"
+                        }
+                    }
+                },
+                {
+                    "type": "SynapseNotebook",
+                    "userProperties": [],
+                    "typeProperties": {
+                        "notebook": {
+                            "referenceName": "test_notebook_b",
+                            "type": "NotebookReference"
+                        }
+                    }
+                },
+                {
+                    "type": "Copy",
+                    "userProperties": [],
+                    "typeProperties": {
+                        "source": {
+                            "type": "AzureSqlSource",
+                            "queryTimeout": "02:00:00",
+                            "partitionOption": "None"
+                        },
+                        "sink": {
+                            "type": "AzureSqlSink",
+                            "preCopyScript": "",
+                            "writeBehavior": "insert",
+                            "sqlWriterUseTableLock": False,
+                            "tableOption": "autoCreate",
+                            "disableMetricsCollection": False
+                        },
+                        "enableStaging": False,
+                        "translator": {
+                            "type": "TabularTranslator",
+                            "typeConversion": True,
+                            "typeConversionSettings": {
+                                "allowDataTruncation": True,
+                                "treatBooleanAsNumber": False
+                            }
+                        }
+                    },
+                    "inputs": [
+                        {
+                            "referenceName": "test_dataset",
+                            "type": "DatasetReference"
+                        }
+                    ],
+                    "outputs": []
+                },
+            ],
+            "pipelines": [
+                {
+                    "pipelineReference": {
+                        "referenceName": "test_pipeline_a",
+                        "type": "PipelineReference"
+                    }
+                },
+                {
+                    "pipelineReference": {
+                        "referenceName": "test_pipeline_b",
+                        "type": "PipelineReference"
+                    }
+                },
+                {
+                    "pipelineReference": {
+                        "referenceName": "test_pipeline_c",
+                        "type": "PipelineReference"
+                    }
+                }
+            ]
+        }
+    }
+    expected_dependent_artifacts = {
+        "linkedService/test_linked_service.json",
+        "notebook/test_notebook_a.json",
+        "notebook/test_notebook_b.json",
+        "dataset/test_dataset.json",
+        "pipeline/test_pipeline_a.json",
+        "pipeline/test_pipeline_b.json",
+        "pipeline/test_pipeline_c.json"
+    }
+    assert SynapseArtifactUtil.dependent_artifacts(artifact) == expected_dependent_artifacts
