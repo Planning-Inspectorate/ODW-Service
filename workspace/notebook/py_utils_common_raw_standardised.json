@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8e80e4f1-3eb9-4d5b-ab35-bd08ee7781ec"
+				"spark.autotune.trackingId": "e4cd862f-a834-4725-b1a5-dc4d998c81c9"
 			}
 		},
 		"metadata": {
@@ -94,11 +94,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"Param_File_Load_Type = 'WEEKLY'\r\n",
 					"Param_FileFolder_Path = 'SapHr'\r\n",
 					"Param_Json_SchemaFolder_Name = ''"
 				],
-				"execution_count": 4
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -122,6 +122,7 @@
 					"#import all libraries and initialise Spark Session\r\n",
 					"import json\r\n",
 					"import calendar\r\n",
+					"import time\r\n",
 					"from datetime import datetime, timedelta, date\r\n",
 					"import requests\r\n",
 					"import pyspark.sql.functions as F \r\n",
@@ -174,7 +175,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": 6
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -194,7 +195,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 7
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -244,7 +245,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
@@ -254,7 +255,7 @@
 					"df_orch = spark.read.option(\"multiline\", \"true\").json(json_schema_file_path)\r\n",
 					"definitions = json.loads(df_orch.toJSON().first())[\"definitions\"]"
 				],
-				"execution_count": 9
+				"execution_count": 24
 			},
 			{
 				"cell_type": "markdown",
@@ -278,7 +279,7 @@
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\r\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": 10
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -390,7 +391,7 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
 					"\r\n",
-					"\r\n",
+					"@logging_to_appins\r\n",
 					"def truncate_error_message(error_message, max_length=200):\r\n",
 					"    #Truncate error message to max_length, ending at last full stop\r\n",
 					"    if not error_message or len(error_message) <= max_length:\r\n",
@@ -401,17 +402,24 @@
 					"    \r\n",
 					"    return error_message[:last_dot_pos + 1] if last_dot_pos != -1 else truncated\r\n",
 					"\r\n",
-					"# Test the function\r\n",
-					"test_message = \"This is a long error message. It contains multiple sentences. The error occurred during data processing. Additional context follows with more details...\"\r\n",
-					"result = truncate_error_message(test_message)\r\n",
-					"print(f\"Original length: {len(test_message)}\")\r\n",
-					"print(f\"Truncated length: {len(result)}\")\r\n",
-					"print(f\"Result: {result}\")\r\n",
+					"@logging_to_appins\r\n",
+					"def time_diff_seconds(start, end):\r\n",
+					"    try:\r\n",
+					"        if not start or not end:\r\n",
+					"            return None\r\n",
+					"        if not isinstance(start, datetime):\r\n",
+					"            start = datetime.strptime(str(start), \"%Y-%m-%d %H:%M:%S\")\r\n",
+					"        if not isinstance(end, datetime):\r\n",
+					"            end = datetime.strptime(str(end), \"%Y-%m-%d %H:%M:%S\")\r\n",
+					"        return int((end - start).total_seconds())\r\n",
+					"    except Exception as e:\r\n",
+					"        # You can log the error if needed\r\n",
+					"        return None\r\n",
 					"\r\n",
 					"\r\n",
 					""
 				],
-				"execution_count": 34
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -665,6 +673,34 @@
 					""
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def time_diff_seconds(start, end):\r\n",
+					"    try:\r\n",
+					"        if not start or not end:\r\n",
+					"            return None\r\n",
+					"        if not isinstance(start, datetime):\r\n",
+					"            start = datetime.strptime(str(start), \"%Y-%m-%d %H:%M:%S\")\r\n",
+					"        if not isinstance(end, datetime):\r\n",
+					"            end = datetime.strptime(str(end), \"%Y-%m-%d %H:%M:%S\")\r\n",
+					"        return int((end - start).total_seconds())\r\n",
+					"    except Exception as e:\r\n",
+					"        # You can log the error if needed\r\n",
+					"        return None\r\n",
+					"\r\n",
+					"start_exec_time = datetime.now()\r\n",
+					"\r\n",
+					"time.sleep(20)\r\n",
+					"\r\n",
+					"end_exec_time = datetime.now()\r\n",
+					"\r\n",
+					"execution_time = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
+					"\r\n",
+					"print(execution_time)"
+				],
+				"execution_count": 15
 			}
 		]
 	}
