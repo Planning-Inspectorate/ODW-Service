@@ -19,9 +19,10 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Util():
-    def __init__(self, workspace_name: str):
+    def __init__(self, workspace_name: str, target_env: str):
         self.workspace_name = workspace_name
         self.local_workspace = "my_local_workspace"
+        self.target_env = target_env
     
     def remove_unmodified_files(self):
         SynapseWorkspaceUtil().download_workspace(synapse_workspace, self.local_workspace)
@@ -33,8 +34,8 @@ class Util():
         logging.info(f"Total dependencies: {len(dependencies)}")
         logging.info(f"Total files to keep: {len(files_to_keep)}")
         logging.info(f"Total files to remove: {len(files_to_remove)}")
-        self._delete_files(files_to_remove)
-        shutil.rmtree(self.local_workspace)
+        #self._delete_files(files_to_remove)
+        #shutil.rmtree(self.local_workspace)
 
     def _get_dependencies_for_files(self, files_to_analyse: Set[str]) -> Set[str]:
         """
@@ -94,7 +95,7 @@ class Util():
         live_workspace_file = json.load(open(live_artifact_name, "r"))
         artifact_type = artifact_name.replace("workspace/", "").split("/")[0]
         artifact_util = SynapseArtifactUtilFactory.get(artifact_type)(self.workspace_name)
-        local_workspace_file = artifact_util._replace_env_strings(local_workspace_file)
+        local_workspace_file = artifact_util._replace_env_strings(local_workspace_file, "dev", self.target_env)
         return artifact_util.compare(local_workspace_file, live_workspace_file)
 
     def _get_modified_files(self, live_workspace_local_download_folder: str) -> Set[str]:
@@ -145,4 +146,5 @@ if __name__ == "__main__":
     parser.add_argument("-sw", "--synapse_workspace", help="The synapse workspace to check against")
     args = parser.parse_args()
     synapse_workspace = args.synapse_workspace
-    Util(synapse_workspace).remove_unmodified_files()
+    env = synapse_workspace.split("-")[3]  # The third element of the odw synapse name is the environment
+    Util(synapse_workspace, env).remove_unmodified_files()
