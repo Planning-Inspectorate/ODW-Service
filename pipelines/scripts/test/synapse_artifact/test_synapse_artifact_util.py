@@ -94,3 +94,23 @@ def test_synapse_artifact_util__set_by_attribute(test_case):
     assert SynapseArtifactUtil.set_by_attribute(artifact_copy, attribute_string, new_value) == expected_artifact
 
 
+def test_synapse_artifact_util__get_all_attributes():
+    sample_json = {
+        "some": 1,
+        "attributes": 2,
+        "list_type": [
+            "a"
+        ],
+        "dict_type": {
+            "b": 3,
+            "c": 4
+        }
+    }
+    expected_attributes = {
+        "some",
+        "attributes",
+        "list_type.0",
+        "dict_type.b",
+        "dict_type.c"
+    }
+    assert SynapseArtifactUtil.get_all_attributes(sample_json) == expected_attributes

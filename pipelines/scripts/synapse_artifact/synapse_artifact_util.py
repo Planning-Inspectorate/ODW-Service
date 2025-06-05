@@ -268,7 +268,7 @@ class SynapseArtifactUtil(ABC):
             }
             ```
         """
-        set(cls._extract_dict_attributes(artifact_json, current_level="").keys())
+        return set(cls._extract_dict_attributes(artifact_json, current_level="").keys())
 
     @classmethod
     def _extract_list_attributes(cls, target_list: List[Any], current_level: str) -> Dict[str, None]:
