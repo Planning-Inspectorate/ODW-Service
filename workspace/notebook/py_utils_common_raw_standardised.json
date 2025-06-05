@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8ac9b614-7a49-4ec1-b119-c1d030e3d7d9"
+				"spark.autotune.trackingId": "bc4aa015-17c8-4cb0-9904-581e8f19ce9d"
 			}
 		},
 		"metadata": {
@@ -416,10 +416,14 @@
 					"        # You can log the error if needed\r\n",
 					"        return None\r\n",
 					"\r\n",
-					"\r\n",
+					"#This funtion handles datetime object and covert into string\r\n",
+					"def datetime_handler(obj):\r\n",
+					"    if isinstance(obj, datetime):\r\n",
+					"        return obj.isoformat()\r\n",
+					"    raise TypeError(f\"Object of type {obj.__class__.__name__} is not JSON serializable\")\r\n",
 					""
 				],
-				"execution_count": 27
+				"execution_count": 41
 			},
 			{
 				"cell_type": "markdown",
@@ -527,6 +531,8 @@
 					"            full_table_name = f\"{database_name}.{definition['Standardised_Table_Name']}\"\r\n",
 					"            schema_path = f\"abfss://odw-config@{storage_account}{definition['Standardised_Table_Definition']}\"\r\n",
 					"\r\n",
+					"            start_exec_time = str(datetime.now())\r\n",
+					"\r\n",
 					"            # Schema validation to catch missing columns\r\n",
 					"            expected_schema_fields = [f['name'] for f in json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))['fields']]\r\n",
 					"            actual_fields = sparkTableDF.columns\r\n",
@@ -549,10 +555,15 @@
 					"                (col(\"expected_from\") == expected_from) & \r\n",
 					"                (col(\"expected_to\") == expected_to)\r\n",
 					"            ).count()\r\n",
+					"            \r\n",
+					"            end_exec_time = str(datetime.now())\r\n",
 					"\r\n",
 					"            # Update json result entry with success data\r\n",
 					"            result_entry[\"record_count\"] = standardised_table_df.count()  # Total records in delta table\r\n",
 					"            result_entry[\"table_result\"] = \"success\"\r\n",
+					"            result_entry[\"start_exec_time\"] = start_exec_time\r\n",
+					"            result_entry[\"end_exec_time\"] = end_exec_time\r\n",
+					"            result_entry[\"total_exec_time\"] = str(time_diff_seconds(start_exec_time, end_exec_time))\r\n",
 					"\r\n",
 					"            if rows_raw <= rows_new:\r\n",
 					"                logInfo(f\"All rows successfully written to {definition['Standardised_Table_Name']} — Raw: {rows_raw}, Written: {rows_new}\")\r\n",
@@ -569,12 +580,13 @@
 					"            error_str = truncate_error_message(str(e))\r\n",
 					"\r\n",
 					"            result_entry[\"error_message\"] = f\"Failed processing for {definition['Standardised_Table_Name']} - {error_str} \"\r\n",
-					"        \r\n",
+					"            result_entry[\"end_exec_time\"] = str(datetime.now())\r\n",
+					"            result_entry[\"total_exec_time\"] = str(time_diff_seconds(result_entry[\"start_exec_time\"], datetime.now()))\r\n",
 					"        # Add result to the json dump\r\n",
 					"        processing_results.append(result_entry)\r\n",
 					""
 				],
-				"execution_count": 28
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -595,7 +607,7 @@
 					"# --- Run the main process ---\r\n",
 					"process_definitions(Param_File_Load_Type)"
 				],
-				"execution_count": 38
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -611,9 +623,12 @@
 					"}\r\n",
 					"\r\n",
 					"# Convert to JSON string and exit with the result\r\n",
-					"result_json = json.dumps(json_result, indent=2)\r\n",
+					"#result_json = json.dumps(json_result, indent=2)\r\n",
+					"\r\n",
+					"result_json_alt = json.dumps(json_result, indent=2, default=datetime_handler)\r\n",
+					"\r\n",
 					"#print(\"Processing Results:\")\r\n",
-					"#print(result_json)\r\n",
+					"print(result_json_alt)\r\n",
 					""
 				],
 				"execution_count": 39
