@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "198cbcae-e139-4e50-b7fc-10de0ec59b61"
+				"spark.autotune.trackingId": "8aff3b4d-0ca3-4189-afab-de79c746be9e"
 			}
 		},
 		"metadata": {
@@ -82,9 +82,11 @@
 					"import json\n",
 					"import re\n",
 					"from datetime import datetime\n",
+					"from pyspark.sql import Row\n",
+					"from datetime import datetime\n",
 					""
 				],
-				"execution_count": 13
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -93,21 +95,21 @@
 					"container            = 'odw-standardised'\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 14
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 15
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 16
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -131,7 +133,7 @@
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": 17
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
@@ -201,7 +203,77 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 39
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"full_storage_path"
+				],
+				"execution_count": 40
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"delta_tables = [\"AIEDocumentData/aie_document_data\",\"Horizon/horizon_event\",\"entraid\"]\n",
+					"\n",
+					"run_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')\n",
+					"# Count files and compute cumulative total\n",
+					"cumulative_total = 0\n",
+					"delta_table_counts = {}\n",
+					"\n",
+					"for table_path in delta_tables:\n",
+					"    container_name = full_storage_path.split(\"@\")[0].split(\"//\")[1]\n",
+					"    source_table_path = full_storage_path +table_path\n",
+					"    backup_table_path = source_table_path.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, \"delta-backup-container\")\n",
+					"\n",
+					"    #get the source and delta counts \n",
+					"    source_file_count = count_files_in_path(source_table_path)\n",
+					"    delta_table_counts[source_table_path] = source_file_count\n",
+					"    cumulative_total += source_file_count\n",
+					"\n",
+					"    backup_file_count = count_files_in_path(backup_table_path)\n",
+					"    delta_table_counts[backup_table_path] = backup_file_count\n",
+					"    cumulative_total += backup_file_count\n",
+					"    print(source_file_count,backup_file_count)\n",
+					"\n",
+					"    source_df_count = spark.read.format(\"delta\").load(source_table_path).count()\n",
+					"    backup_df_count = spark.read.format(\"delta\").load(backup_table_path).count()\n",
+					"\n",
+					"    print(table_path, source_df_count,backup_df_count)\n",
+					"\n",
+					"    file_diff = source_file_count - backup_file_count\n",
+					"    data_diff = source_df_count - backup_df_count\n",
+					"\n",
+					"\n",
+					"    data = [Row(\n",
+					"        Date_Run=run_date,\n",
+					"        pipeline_name= \"pln_delta_backup_odw\",\n",
+					"        source_file_counts=source_file_count,\n",
+					"        backup_file_counts=backup_file_count,\n",
+					"        source_DF_counts=source_df_count,\n",
+					"        backup_DF_counts=backup_df_count,\n",
+					"        File_diff=file_diff,\n",
+					"        Data_diff=data_diff,\n",
+					"        Error=\"na\"\n",
+					"    )]\n",
+					"\n",
+					"    df = spark.createDataFrame(data)\n",
+					"\n",
+					"\n",
+					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")"
+				],
+				"execution_count": 41
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"display(df)"
+				],
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
