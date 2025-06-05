@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0e6eb392-4aaa-489e-9f44-85cd7875603c"
+				"spark.autotune.trackingId": "b9cd58b4-be5c-4dae-b74c-25974433a3f5"
 			}
 		},
 		"metadata": {
@@ -76,6 +76,7 @@
 				"source": [
 					"#import all libraries and initialise Spark Session\n",
 					"import json\n",
+					"import traceback\n",
 					"from datetime import datetime, timedelta, date\n",
 					"import pyspark.sql.functions as F \n",
 					"import os\n",
@@ -91,7 +92,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -113,7 +114,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 16
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -133,7 +134,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 17
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -159,7 +160,7 @@
 					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}saphr/\"\n",
 					""
 				],
-				"execution_count": 18
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -332,7 +333,7 @@
 					"    \n",
 					"    return exit_value"
 				],
-				"execution_count": 19
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -360,7 +361,7 @@
 					"logInfo(\"Delta table updates completed successfully.\")\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -384,7 +385,7 @@
 					"    source_table = \"odw_standardised_db.sap_hr_previous_employee_numbers\"\n",
 					"    target_tables = [\n",
 					"        \"odw_standardised_db.sap_hr_weekly\",\n",
-					"        \"odw_standardised_db.sap_hr_history_monthly\",\n",
+					"        \"odw_standardised_db.sap_hr_history_mon1thly\",\n",
 					"        \"odw_standardised_db.sap_hr_leavers_monthly\"\n",
 					"    ]\n",
 					"\n",
@@ -419,8 +420,23 @@
 					"            logInfo(\"Delta table updates completed.\")\n",
 					"\n",
 					"        except Exception as table_error:\n",
+					"            full_trace = traceback.format_exc()\n",
+					"            \n",
+					"            table_error_msg = str(table_error)\n",
+					"\n",
+					"            complete_msg = table_error_msg + \"\\n\" + full_trace\n",
+					"            error_text = complete_msg[:300]           \n",
+					"            \n",
+					"            # Find the position of the last full stop before 300 characters\n",
+					"            last_period_index = error_text.rfind('.')\n",
+					"\n",
+					"            # Use up to the last full stop, if found; else fall back to 300 chars\n",
+					"            if last_period_index != -1:\n",
+					"                error_message = error_text[:last_period_index + 1] \n",
+					"            else:\n",
+					"                error_message = error_text\n",
+					"\n",
 					"            table_name = target_table.split(\".\")[-1]\n",
-					"            csv_filename = get_csv_filename_from_table(table_name)\n",
 					"            error_msg = f\"Failed processing for {table_name} - {str(table_error)}\"\n",
 					"            logError(error_msg)\n",
 					"            \n",
@@ -430,14 +446,14 @@
 					"            time_diff = time_diff_seconds(start_exec_time, end_exec_time)\n",
 					"            \n",
 					"            add_table_result(table_name, update_count, \"failed\",start_exec_time, end_exec_time,\n",
-					"                 time_diff,error_msg)\n",
+					"                 time_diff,error_message)\n",
 					"\n",
 					"except Exception as e:\n",
 					"            logError(f\"Failed processing for {target_table} - {e}\")\n",
 					"            logError(\"Delta table updates failed\")\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -449,7 +465,7 @@
 					"result_json_str = json.dumps(final_results, indent=2, default=datetime_handler)\n",
 					""
 				],
-				"execution_count": 22
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
