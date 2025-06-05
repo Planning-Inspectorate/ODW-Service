@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a9bfb5d8-03d3-43a7-afc8-f4f4441376a2"
+				"spark.autotune.trackingId": "addefef4-94cc-49a1-81df-0ce2083d850f"
 			}
 		},
 		"metadata": {
@@ -94,11 +94,11 @@
 				},
 				"source": [
 					"#Define Input Parameters to get values from the pipleline\r\n",
-					"Param_File_Load_Type = ''\r\n",
-					"Param_FileFolder_Path = ''\r\n",
+					"Param_File_Load_Type = 'MONTHLY'\r\n",
+					"Param_FileFolder_Path = 'SapHr'\r\n",
 					"Param_Json_SchemaFolder_Name = ''"
 				],
-				"execution_count": 77
+				"execution_count": 90
 			},
 			{
 				"cell_type": "markdown",
@@ -142,7 +142,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": 78
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -391,16 +391,16 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error creating table {table_name}: {e}\")\r\n",
 					"\r\n",
-					"@logging_to_appins\r\n",
-					"def truncate_error_message(error_message, max_length=200):\r\n",
-					"    #Truncate error message to max_length, ending at last full stop\r\n",
-					"    if not error_message or len(error_message) <= max_length:\r\n",
-					"        return error_message\r\n",
+					"#@logging_to_appins\r\n",
+					"#def truncate_error_message(error_message, max_length=200):\r\n",
+					"#    #Truncate error message to max_length, ending at last full stop\r\n",
+					"#    if not error_message or len(error_message) <= max_length:\r\n",
+					"#        return error_message\r\n",
 					"    \r\n",
-					"    truncated = error_message[:max_length]\r\n",
-					"    last_dot_pos = truncated.rfind('.')\r\n",
-					"    \r\n",
-					"    return error_message[:last_dot_pos + 1] if last_dot_pos != -1 else truncated\r\n",
+					"#    truncated = error_message[:max_length]\r\n",
+					"#    last_dot_pos = truncated.rfind('.')\r\n",
+					"#    \r\n",
+					"#    return error_message[:last_dot_pos + 1] if last_dot_pos != -1 else truncated\r\n",
 					"\r\n",
 					"@logging_to_appins\r\n",
 					"def time_diff_seconds(start, end):\r\n",
@@ -578,12 +578,30 @@
 					"            #write_ingestion_log(sparkDF, rows_raw, rows_new, definition)\r\n",
 					"        \r\n",
 					"        except Exception as e:\r\n",
+					"            \r\n",
+					"            #Code added to capture meaningful error message\r\n",
+					"            full_trace = traceback.format_exc()\r\n",
+					"            \r\n",
+					"            table_error_msg = str(e)\r\n",
+					"\r\n",
+					"            complete_msg = table_error_msg + \"\\n\" + full_trace\r\n",
+					"            error_text = complete_msg[:300]           \r\n",
+					"            \r\n",
+					"            # Find the position of the last full stop before 300 characters\r\n",
+					"            last_period_index = error_text.rfind('.')\r\n",
+					"\r\n",
+					"            # Use up to the last full stop, if found; else fall back to 300 chars\r\n",
+					"            if last_period_index != -1:\r\n",
+					"                error_message = error_text[:last_period_index + 1] \r\n",
+					"            else:\r\n",
+					"                error_message = error_text\r\n",
+					"\r\n",
 					"            logError(f\"Failed processing for {definition['Standardised_Table_Name']} - {e}\")\r\n",
 					"            #logError(\"Logging to tables_logs failed\")\r\n",
 					"\r\n",
-					"            error_str = truncate_error_message(str(e))\r\n",
+					"            #error_str = truncate_error_message(str(e))\r\n",
 					"\r\n",
-					"            result_entry[\"error_message\"] = f\"Failed processing for {definition['Standardised_Table_Name']} - {error_str} \"\r\n",
+					"            result_entry[\"error_message\"] = f\"Failed processing for {definition['Standardised_Table_Name']} - {error_message} \"\r\n",
 					"            result_entry[\"end_exec_time\"] = str(datetime.now())\r\n",
 					"            result_entry[\"total_exec_time\"] = str(time_diff_seconds(result_entry[\"start_exec_time\"], datetime.now()))\r\n",
 					"        # Add result to the json dump\r\n",
