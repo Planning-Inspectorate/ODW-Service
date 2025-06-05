@@ -426,6 +426,15 @@ class SynapseArtifactUtil(ABC):
         return True
 
     def replace_env_strings(self, artifact: Dict[str, Any], base_env: str, new_env: str) -> Dict[str, Any]:
+        """
+            Immutably replace any hardcoded environment strings that get replaced during Synapse deployment.
+            These strings all point to the `dev` environment by default
+
+            :param artifact: The artifact to clean
+            :param base_env: The default environment the artifacts are developed in (i.e. dev)
+            :param new_env: The environment being deployed to (to replace the base_env with)
+            :return: The cleaned artifact
+        """
         regex_pattern = fr"{base_env}(?!\.)"
         for property_to_replace in self.get_env_attributes_to_replace():
             property_value = None
