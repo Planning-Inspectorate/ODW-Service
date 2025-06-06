@@ -54,6 +54,16 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"properties.metadata.a365ComputeOptions"
         ]
 
+    def get_attributes_that_can_be_missing(self) -> Dict[str, Any]:
+        return {
+            # This property is not guaranteed to exist
+            "properties.metadata.a365ComputeOptions": {
+                "automaticScaleJobs": True
+            },
+            # It seems that by default this is dropped from the REST API call
+            "properties.metadata.a365ComputeOptions.automaticScaleJobs": True
+        }
+
     def get_env_attributes_to_replace(self) -> List[str]:
         return [
             "properties.metadata.a365ComputeOptions.id",

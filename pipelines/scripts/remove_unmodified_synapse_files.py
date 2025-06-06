@@ -97,6 +97,7 @@ class Util():
         artifact_type = artifact_name.replace("workspace/", "").split("/")[0]
         artifact_util = SynapseArtifactUtilFactory.get(artifact_type)(self.workspace_name)
         local_workspace_file = artifact_util.replace_env_strings(local_workspace_file, "dev", self.target_env)
+        logging.info(f"Analysing artifact '{artifact_name}'")
         return artifact_util.compare(local_workspace_file, live_workspace_file)
 
     def _get_modified_files(self, live_workspace_local_download_folder: str) -> Set[str]:

@@ -38,5 +38,8 @@ class SynapseCredentialUtil(SynapseArtifactUtil):
             r"^properties.typeProperties$"
         ]
     
+    def get_attributes_that_can_be_missing(self) -> Dict[str, Any]:
+        return dict()
+    
     def get_env_attributes_to_replace(self) -> List[str]:
         return []
