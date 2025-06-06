@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1d6f9424-9792-4c32-baa3-052606a28b9c"
+				"spark.autotune.trackingId": "1a924268-9682-4fd7-90f2-970160164346"
 			}
 		},
 		"metadata": {
@@ -45,8 +45,8 @@
 				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 28,
-				"automaticScaleJobs": false
+				"memory": 32,
+				"automaticScaleJobs": true
 			},
 			"sessionKeepAliveTimeout": 1000
 		},
@@ -76,12 +76,12 @@
 					}
 				},
 				"source": [
-					"entity_name = \"s51-advice\"\r\n",
+					"entity_name = \"nsip-representation\"\r\n",
 					"std_db_name = \"odw_standardised_db\"\r\n",
 					"hrm_db_name = \"odw_harmonised_db\"\r\n",
-					"table_name = \"nsip_representation_tem\"\r\n",
-					"raw_table_name = \"odw_standardised_db.nsip_representation_tem\"\r\n",
-					"raw_table = \"nsip_representation_tmp\"\r\n",
+					"table_name = \"sb_nsip_representation\"\r\n",
+					"raw_table_name = \"odw_standardised_db.sb_nsip_representation_tmp\"\r\n",
+					"raw_table = \"sb_nsip_representation_tmp\"\r\n",
 					"std_table_name_full = f\"{std_db_name}.{table_name}\"\r\n",
 					"hrm_table_name_full = f\"{hrm_db_name}.{table_name}\"\r\n",
 					""
@@ -747,7 +747,7 @@
 					}
 				},
 				"source": [
-					"# spark.sql(f\"DROP TABLE IF EXISTS  {hrm_table_name_full}\")"
+					"spark.sql(f\"DROP TABLE IF EXISTS  {hrm_table_name_full}\")"
 				],
 				"execution_count": null
 			},
@@ -766,7 +766,7 @@
 				},
 				"source": [
 					"##Go create our harmonised table\r\n",
-					"# mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": f\"{entity_name}\"})"
+					"mssparkutils.notebook.run(\"create_table_from_schema\", 6100, {\"db_name\": hrm_db_name, \"entity_name\": f\"{entity_name}\"})"
 				],
 				"execution_count": null
 			},
@@ -784,7 +784,7 @@
 					}
 				},
 				"source": [
-					"# spark.table(f\"{hrm_table_name_full}\").printSchema()"
+					"spark.table(f\"{hrm_table_name_full}\").printSchema()"
 				],
 				"execution_count": null
 			},
@@ -802,7 +802,7 @@
 					}
 				},
 				"source": [
-					"# spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")"
+					"spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")"
 				],
 				"execution_count": null
 			},
@@ -821,66 +821,66 @@
 					"collapsed": false
 				},
 				"source": [
-					"# base = spark.sql(f\"\"\"\r\n",
-					"#                 SELECT DISTINCT\r\n",
-					"#                    CAST(ingested_datetime AS Date)\r\n",
-					"#                 FROM\r\n",
-					"#                     {raw_table_name}\r\n",
-					"#                 WHERE\r\n",
-					"#                     ingested_datetime IS NOT NULL\r\n",
-					"#                     AND message_type IS NOT NULL\r\n",
-					"#                 ORDER BY \r\n",
-					"#                     1 ASC\r\n",
-					"#                 \"\"\")\r\n",
+					"base = spark.sql(f\"\"\"\r\n",
+					"                SELECT DISTINCT\r\n",
+					"                   CAST(ingested_datetime AS Date)\r\n",
+					"                FROM\r\n",
+					"                    {raw_table_name}\r\n",
+					"                WHERE\r\n",
+					"                    ingested_datetime IS NOT NULL\r\n",
+					"                    AND message_type IS NOT NULL\r\n",
+					"                ORDER BY \r\n",
+					"                    1 ASC\r\n",
+					"                \"\"\")\r\n",
 					"\r\n",
-					"# for rows in base.collect():\r\n",
-					"#     processing = rows[\"ingested_datetime\"]\r\n",
+					"for rows in base.collect():\r\n",
+					"    processing = rows[\"ingested_datetime\"]\r\n",
 					"    \r\n",
-					"#     print(f\"Processing {processing}\")\r\n",
+					"    print(f\"Processing {processing}\")\r\n",
 					"\r\n",
-					"#     #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
-					"#     std = spark.sql(f\"\"\"SELECT \r\n",
-					"#                             * \r\n",
-					"#                         FROM \r\n",
-					"#                             {std_table_name_full}\r\n",
-					"#                         WHERE \r\n",
-					"#                              CAST(ingested_datetime AS Date) = '{processing}'\r\n",
-					"#                         \"\"\")\r\n",
+					"    #Get associated data from standardised as we need to test if we've already inserted this data for processing\r\n",
+					"    std = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {std_table_name_full}\r\n",
+					"                        WHERE \r\n",
+					"                             CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
 					"    \r\n",
-					"#     if std.count() == 0:\r\n",
-					"#         print(f\"Inserting into {std_table_name_full}\")\r\n",
-					"#         ##Add the data into standardised for processing if we haven't processed it\r\n",
-					"#         rw = spark.sql(f\"\"\"SELECT \r\n",
-					"#                             * \r\n",
-					"#                         FROM \r\n",
-					"#                             {raw_table_name}\r\n",
-					"#                         WHERE \r\n",
-					"#                             CAST(ingested_datetime AS Date) = '{processing}'\r\n",
-					"#                         \"\"\")\r\n",
+					"    if std.count() == 0:\r\n",
+					"        print(f\"Inserting into {std_table_name_full}\")\r\n",
+					"        ##Add the data into standardised for processing if we haven't processed it\r\n",
+					"        rw = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {raw_table_name}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(ingested_datetime AS Date) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
 					"        \r\n",
-					"#         rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
-					"#         spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
+					"        rw.write.mode(\"append\").format(\"delta\").option(\"mergeSchema\", \"true\").saveAsTable(std_table_name_full)\r\n",
+					"        spark.sql(f\"REFRESH TABLE {std_table_name_full}\")\r\n",
 					"\r\n",
-					"#     #Check if we've already processed the data or not\r\n",
-					"#     hrm = spark.sql(f\"\"\"SELECT \r\n",
-					"#                             * \r\n",
-					"#                         FROM \r\n",
-					"#                             {hrm_table_name_full}\r\n",
-					"#                         WHERE \r\n",
-					"#                             CAST(IngestionDate AS Date) = '{processing}'\r\n",
-					"#                         \"\"\")\r\n",
+					"    #Check if we've already processed the data or not\r\n",
+					"    hrm = spark.sql(f\"\"\"SELECT \r\n",
+					"                            * \r\n",
+					"                        FROM \r\n",
+					"                            {hrm_table_name_full}\r\n",
+					"                        WHERE \r\n",
+					"                            CAST(IngestionDate AS Date) = '{processing}'\r\n",
+					"                        \"\"\")\r\n",
 					"\r\n",
 					"    \r\n",
 					"    \r\n",
-					"#     if hrm.count() == 0:\r\n",
-					"#         print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
-					"#         ## Run the standard process if we haven't already\r\n",
-					"#         try:\r\n",
-					"#             mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
-					"#         except Exception as error:\r\n",
-					"#             mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
+					"    if hrm.count() == 0:\r\n",
+					"        print(f\"Running py_sb_std_to_hrm to load data into {hrm_table_name_full}\")\r\n",
+					"        ## Run the standard process if we haven't already\r\n",
+					"        try:\r\n",
+					"            mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
+					"        except Exception as error:\r\n",
+					"            mssparkutils.notebook.run(\"/py_sb_std_to_hrm\", timeout_seconds=610000, arguments={\"entity_name\": entity_name})\r\n",
 					"      \r\n",
-					"#         spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
+					"        spark.sql(f\"REFRESH TABLE {hrm_table_name_full}\")\r\n",
 					"        "
 				],
 				"execution_count": null
