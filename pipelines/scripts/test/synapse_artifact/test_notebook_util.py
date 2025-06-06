@@ -1,12 +1,11 @@
 from pipelines.scripts.synapse_artifact.synapse_notebook_util import SynapseNotebookUtil
-import pytest
 from copy import deepcopy
 
 
 def test__synapse_notebook_util__replace_env_strings():
     source_env = "dev"
     target_env = "test"
-    notebook = {
+    artifact = {
         "name": "test_notebook",
         "properties": {
             "metadata": {
@@ -30,7 +29,7 @@ def test__synapse_notebook_util__replace_env_strings():
             "cells": []
         }
     }
-    expected_cleaned_notebook = {
+    expected_cleaned_artifact = {
         "name": "test_notebook",
         "properties": {
             "metadata": {
@@ -54,12 +53,12 @@ def test__synapse_notebook_util__replace_env_strings():
             "cells": []
         }
     }
-    cleaned_notebook = SynapseNotebookUtil("some_workspace").replace_env_strings(deepcopy(notebook), source_env, target_env)
-    assert cleaned_notebook == expected_cleaned_notebook
+    cleaned_artifact = SynapseNotebookUtil("some_workspace").replace_env_strings(deepcopy(artifact), source_env, target_env)
+    assert cleaned_artifact == expected_cleaned_artifact
 
 
 def test__synapse_notebook_util__compare__match():
-    notebook = {
+    artifact = {
         "name": "test_notebook",
         "properties": {
             "nbformat": 4,
@@ -123,12 +122,14 @@ def test__synapse_notebook_util__compare__match():
             ]
         }
     }
-    notebook_copy = deepcopy(notebook)
-    assert SynapseNotebookUtil("some_workspace").compare(notebook, notebook_copy)
+    # Delete an optional property, which should not affect the comparison if not present
+    del artifact["properties"]["metadata"]["a365ComputeOptions"]["automaticScaleJobs"]
+    artifact_copy = deepcopy(artifact)
+    assert SynapseNotebookUtil("some_workspace").compare(artifact, artifact_copy)
 
 
 def test__synapse_notebook_util__compare__mismatch():
-    notebook = {
+    artifact = {
         "name": "test_notebook",
         "properties": {
             "nbformat": 4,
@@ -194,6 +195,7 @@ def test__synapse_notebook_util__compare__mismatch():
     }
     different_attributes = {
         "properties": {
+            "metadata": dict(),
             "cells": {
                 "cell_type": "code",
                     "source": [],  # Deleted the code in that cell
@@ -201,5 +203,5 @@ def test__synapse_notebook_util__compare__mismatch():
             }
         }
     }
-    notebook_copy = {**notebook, **different_attributes}
-    assert not SynapseNotebookUtil("some_workspace").compare(notebook, notebook_copy)
+    artifact_copy = {**artifact, **different_attributes}
+    assert not SynapseNotebookUtil("some_workspace").compare(artifact, artifact_copy)

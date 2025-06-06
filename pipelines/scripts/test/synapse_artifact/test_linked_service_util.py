@@ -1,5 +1,4 @@
 from pipelines.scripts.synapse_artifact.synapse_linked_service_util import SynapseLinkedServiceUtil
-import pytest
 from copy import deepcopy
 
 

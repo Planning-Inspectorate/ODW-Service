@@ -1,5 +1,4 @@
 from pipelines.scripts.synapse_artifact.synapse_managed_private_endpoint_util import SynapseManagedPrivateEndpointUtil
-import pytest
 from copy import deepcopy
 
 

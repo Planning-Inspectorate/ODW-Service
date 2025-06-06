@@ -3,18 +3,18 @@ from copy import deepcopy
 
 
 def test__synapse_credential_util__compare__match():
-    credential = {
+    artifact = {
         "name": "WorkspaceSystemIdentity",
         "properties": {
             "type": "ManagedIdentity"
         }
     }
-    credential_copy = deepcopy(credential)
-    assert SynapseCredentialUtil("some_workspace").compare(credential, credential_copy)
+    artifact_copy = deepcopy(artifact)
+    assert SynapseCredentialUtil("some_workspace").compare(artifact, artifact_copy)
 
 
 def test__synapse_credential_util__compare__mismatch():
-    credential = {
+    artifact = {
         "name": "WorkspaceSystemIdentity",
         "properties": {
             "type": "ManagedIdentity"
@@ -25,5 +25,5 @@ def test__synapse_credential_util__compare__mismatch():
             "description": "some description"
         }
     }
-    credential_copy = {**credential, **different_attributes}
-    assert not SynapseCredentialUtil("some_workspace").compare(credential, credential_copy)
+    artifact_copy = {**artifact, **different_attributes}
+    assert not SynapseCredentialUtil("some_workspace").compare(artifact, artifact_copy)
