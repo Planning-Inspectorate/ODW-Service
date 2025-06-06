@@ -23,9 +23,6 @@ class SynapseSparkConfigurationUtil(SynapseArtifactUtil):
 
     def get_nullable_attributes(self) -> List[str]:
         return []
-    
-    def get_attributes_that_can_be_missing(self) -> Dict[str, Any]:
-        return dict()
 
     def get_env_attributes_to_replace(self) -> List[str]:
         return [

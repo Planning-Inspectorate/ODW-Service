@@ -53,16 +53,22 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"properties.bigDataPool",
             r"properties.metadata.a365ComputeOptions"
         ]
-
-    def get_attributes_that_can_be_missing(self) -> Dict[str, Any]:
-        return {
-            # This property is not guaranteed to exist
-            "properties.metadata.a365ComputeOptions": {
-                "automaticScaleJobs": True
-            },
-            # It seems that by default this is dropped from the REST API call
-            "properties.metadata.a365ComputeOptions.automaticScaleJobs": True
-        }
+    
+    def compare(self, artifact_a, artifact_b):
+        def _add_missing_attributes(artifact: Dict[str, Any]) -> Dict[str, Any]:
+            properties = artifact["properties"]
+            metadata = properties["metadata"]
+            if "a365ComputeOptions" not in metadata or metadata["a365ComputeOptions"] is None:
+                metadata["a365ComputeOptions"] = {
+                    "automaticScaleJobs": True
+                }
+            compute_options = metadata["a365ComputeOptions"]
+            if "automaticScaleJobs" not in compute_options:
+                compute_options["automaticScaleJobs"] = True
+            return artifact
+        artifact_a = _add_missing_attributes(artifact_a)
+        artifact_b = _add_missing_attributes(artifact_b)
+        return super().compare(artifact_a, artifact_b)
 
     def get_env_attributes_to_replace(self) -> List[str]:
         return [

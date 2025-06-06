@@ -168,13 +168,6 @@ class SynapseArtifactUtil(ABC):
         pass
 
     @abstractmethod
-    def get_attributes_that_can_be_missing(self) -> Dict[str, Any]:
-        """
-            :return: A map of attributes that should be added to he artifact if missing, alongside their default value
-        """
-        pass
-
-    @abstractmethod
     def get_env_attributes_to_replace(self) -> List[str]:
         """
             :return: Attributes for specific environments that should be replaced
@@ -189,8 +182,6 @@ class SynapseArtifactUtil(ABC):
             :param artifact_b: The json for the second artifact to compare
             :return: True if the artifacts match, False otherwise
         """
-        artifact_a = self._add_missing_attributes_to_artifact(artifact_a)
-        artifact_b = self._add_missing_attributes_to_artifact(artifact_b)
         uncomparable_attributes = self.get_uncomparable_attributes()
         nullable_attributes = self.get_nullable_attributes()
         artifact_a_attributes = self._extract_dict_attributes(artifact_a)
@@ -220,9 +211,9 @@ class SynapseArtifactUtil(ABC):
             '''
             extra_in_left = artifact_a_attributes_cleaned - artifact_b_attributes_cleaned
             extra_in_right = artifact_b_attributes_cleaned - artifact_a_attributes_cleaned
-            logging.info("Left arfifact had the following extra attributes")
+            logging.info("Left arfifact had the following extra mandatory/filled nullable attributes")
             logging.info(json.dumps(list(extra_in_left), indent=4))
-            logging.info("Right artifact had the following extra attributes")
+            logging.info("Right artifact had the following extra mandatory/filled nullable attributes")
             logging.info(json.dumps(list(extra_in_right), indent=4))
             return False
         return self._compare_dictionaries_by_attributes(artifact_a_attributes_cleaned, artifact_a, artifact_b)
@@ -413,25 +404,6 @@ class SynapseArtifactUtil(ABC):
             :param attribute: The attribute to extract, in dot-notation
             :return: The same dictionary with the updated value
         """
-        property_details: List[SynapseArtifactsPropertyIteratorResult] = []
-        synapse_artifact_iterator = SynapseArtifactsPropertyIterator(dictionary, attribute)
-        iterating = True
-        while iterating:
-            try:
-                res = next(synapse_artifact_iterator)
-                property_details.append(res)
-            except AttributeNotFoundException:
-                # If the last-evaluated element of the attribute was missing, then add it in
-                evaluated_attributes = ".".join(x.attribute for x in property_details)
-                if attribute.startswith(evaluated_attributes):
-                    last_entry = property_details.pop()
-                    final_property = attribute.replace(f"{evaluated_attributes}.", "", 1)
-                    last_entry.parent_collection[final_property] = new_value
-                    return dictionary
-                else:
-                    raise
-            except StopIteration:
-                iterating = False
         property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
         last_entry = property_details.pop()
         last_entry.parent_collection[last_entry.attribute] = new_value
@@ -458,11 +430,6 @@ class SynapseArtifactUtil(ABC):
                 )
                 return False
         return True
-    
-    def _add_missing_attributes_to_artifact(self, artifact: Dict[str, Any]):
-        for attribute, value in self.get_attributes_that_can_be_missing().items():
-            self.set_by_attribute(artifact, attribute, value)
-        return artifact
 
     def replace_env_strings(self, artifact: Dict[str, Any], base_env: str, new_env: str) -> Dict[str, Any]:
         """
