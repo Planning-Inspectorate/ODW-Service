@@ -56,6 +56,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
     
     def compare(self, artifact_a, artifact_b):
         def _add_missing_attributes(artifact: Dict[str, Any]) -> Dict[str, Any]:
+            # Set default values for optional properties. This is the only artifact where this is required
             properties = artifact["properties"]
             metadata = properties["metadata"]
             if "a365ComputeOptions" not in metadata or metadata["a365ComputeOptions"] is None:
