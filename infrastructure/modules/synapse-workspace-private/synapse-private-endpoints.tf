@@ -190,6 +190,27 @@ resource "azurerm_private_endpoint" "synapse_workspace_tooling" {
   tags = local.tags
 }
 
+resource "azurerm_private_endpoint" "tooling_serverless_sql_pool" {
+  name                = "pins-pe-syn-ssql-tooling-${local.resource_suffix}"
+  resource_group_name = var.network_resource_group_name
+  location            = var.location
+  subnet_id           = var.synapse_private_endpoint_vnet_subnets[var.synapse_private_endpoint_subnet_name]
+
+  private_dns_zone_group {
+    name                 = "synapsePrivateDnsZone"
+    private_dns_zone_ids = [var.tooling_config.synapse_private_dns_zone_id]
+  }
+
+  private_service_connection {
+    name                           = "synapseServerlessSql"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_synapse_workspace.synapse.id
+    subresource_names              = ["SqlOnDemand"]
+  }
+
+  tags = local.tags
+}
+
 # private endpoints for Purview
 
 resource "azurerm_synapse_managed_private_endpoint" "synapse_mpe_purview_account" {
