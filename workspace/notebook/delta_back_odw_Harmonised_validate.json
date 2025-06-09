@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5c713808-db9d-4717-b768-79305de8e0c7"
+				"spark.autotune.trackingId": "18257db6-cae4-4467-9a7d-06c9aebdff40"
 			}
 		},
 		"metadata": {
@@ -77,6 +77,15 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"\"pipeline parameter override at runtime based on input container\"\n",
+					"\n",
+					"container = 'odw-harmonised'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"import pprint\n",
 					"from pyspark.sql.types import *\n",
 					"import json\n",
@@ -92,30 +101,30 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"source_storage_account_path = re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_source')).group(1)\n",
-					"container            = 'odw-harmonised'\n",
+					"\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 3
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 4
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 5
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -139,13 +148,13 @@
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": 6
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
-						"outputs_hidden": false
+						"outputs_hidden": true
 					}
 				},
 				"source": [
@@ -209,7 +218,7 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -272,7 +281,7 @@
 					"            try:\n",
 					"                source_path = delta_table + file_name\n",
 					"                dest_path = backup_path + file_name\n",
-					"                print(f\"Copying 'UKS' {source_path} to '\\n' 'UKW' {dest_path}\")\n",
+					"                print(f\"Copying 'UKS' {source_path} to '===> UKW' {dest_path}\")\n",
 					"                # Copy changed files from source to target\n",
 					"                mssparkutils.fs.cp(source_path, dest_path)\n",
 					"            except Exception as e:\n",
@@ -286,7 +295,7 @@
 					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -324,7 +333,7 @@
 					"full_storage_path\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -338,13 +347,13 @@
 					"print(f\"The total storage files on {date_now} are: {total_container_files} and total delta file are:{total_delta_files}\")\n",
 					"print(f\"The percentage_Savings are: {percentage_Savings}\")"
 				],
-				"execution_count": 10
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"# Test tables for the file_count, data_count between odw and backup\n",
-					"delta_tables = [\"AIEDocumentData/aie_document_data\",\"Horizon/horizon_event\",\"entraid\", \"sb_appeal_s78\"]\n",
+					"# data check tables for the file_count, data_count between odw and backup\n",
+					"delta_tables = [\"aie_document_data\",\"entraid\", \"sb_appeal_s78\"]\n",
 					"\n",
 					"run_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')\n",
 					"# Count files and compute cumulative total\n",
@@ -355,7 +364,7 @@
 					"for table_path in delta_tables:\n",
 					"    container_name = full_storage_path.split(\"@\")[0].split(\"//\")[1]\n",
 					"    source_table_path = full_storage_path +table_path\n",
-					"    backup_table_path = source_table_path.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, \"delta-backup-container\")\n",
+					"    backup_table_path = source_table_path.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, \"delta-backup-harmonised\")\n",
 					"\n",
 					"    #get the source and delta counts \n",
 					"    source_file_count = count_files_in_path(source_table_path)\n",
@@ -393,7 +402,14 @@
 					"\n",
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")"
 				],
-				"execution_count": 11
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"mssparkutils.fs.ls(\"abfss://delta-backup-container@pinsstodwdevukwdvzrjm.dfs.core.windows.net/aie_document_data\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
