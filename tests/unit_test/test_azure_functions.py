@@ -40,7 +40,7 @@ class TestAzureFunctions(TestCase):
         try:
             function_url = f"{self.KEY_VAULT_CLIENT.get_secret(function_secret_name).value}{url_parameters}"
         except ResourceNotFoundError:
-            assert False, f"There is no secret associated with the function being tested"
+            pytest.fail("There is no secret associated with the function being tested")
         response = requests.get(function_url)
         assert response.status_code == 200, f"Expected the status code to be 200 for function url '{function_url}', but was '{response.status_code}'"
         parsed_json = json.loads(response.text)
