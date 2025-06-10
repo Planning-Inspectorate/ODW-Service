@@ -16,7 +16,7 @@ class PipelineWaitException(Exception):
 class PipelineRunTestCase(SynapseTestCase):
     def _trigger_pipeline(self, pipeline_name: str, pipeline_parameters: Dict[str, Any]) -> str:
         """
-            Trigger a synapse pipeline run
+            GenericTrigger a synapse pipeline run
         """
         logging.info(f"RUNNING pipeline {pipeline_name}...\n")
         run_pipeline_url = f'{self.SYNAPSE_ENDPOINT}/pipelines/{pipeline_name}/createRun?api-version=2020-12-01'

@@ -16,7 +16,7 @@ class NotebookWaitException(Exception):
 
 class NotebookRunTestCase(SynapseTestCase):
     """
-        Test Case to handle running tests defined in Azure Synapse
+        Generic Test Case to handle running tests defined in Azure Synapse
     """
     def _trigger_notebook(self, notebook_name: str, notebook_parameters: Dict[str, Any]) -> str:
         """
