@@ -34,7 +34,7 @@ class TestAzureFunctions(TestCase):
             ("serviceuser", "")
         ]
     )
-    def test_azure_function_calls(self, function_name: str, url_parameters: str):
+    def test_azure_function_return_value(self, function_name: str, url_parameters: str):
         function_secret_name = f"function-url-{function_name.replace('-', '')}"
         function_url = f"{self.KEY_VAULT_CLIENT.get_secret(function_secret_name).value}{url_parameters}"
         response = requests.get(function_url)
