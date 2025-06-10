@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b3811149-f293-4d87-9cca-50676d9a8dc5"
+				"spark.autotune.trackingId": "722d6037-3a04-4ea3-9aa8-0b7683be7b51"
 			}
 		},
 		"metadata": {
@@ -77,11 +77,11 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"\"pipeline parameter override at runtime based on input container\"\n",
+					"# pipeline parameter override at runtime based on input container\n",
 					"\n",
-					"container = ''"
+					"container = 'odw-harmonised'"
 				],
-				"execution_count": 2
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -94,7 +94,7 @@
 					"from pyspark.sql import Row\n",
 					""
 				],
-				"execution_count": 1
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -129,6 +129,7 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"# list all the directory files including files within sub-directories and delta logs\n",
 					"def list_all_delta_files(delta_table_path, relative_path=\"\"):\n",
 					"    files = []\n",
 					"    full_path = f\"{delta_table_path}/{relative_path}\" if relative_path else delta_table_path\n",
@@ -154,11 +155,12 @@
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
-						"outputs_hidden": true
+						"outputs_hidden": false
 					}
 				},
 				"source": [
-					"# new process to identify DELTA files \n",
+					"# new process to identify DELTA files -- Get list of all delta file paths \n",
+					"# This function recursively lists all the 'folders' within a parent directory if not empty list \n",
 					"def list_all_paths(path):\n",
 					"    \"\"\"Recursively list all paths under the given ABFS path.\"\"\"\n",
 					"    try:\n",
@@ -174,6 +176,7 @@
 					"            all_paths.extend(list_all_paths(f.path))\n",
 					"    return all_paths\n",
 					"\n",
+					"# function returns the True if the directory contains _delta_log\n",
 					"def is_delta_table(path):\n",
 					"    \"\"\"Check if the given path is a Delta table by looking for the _delta_log directory.\"\"\"\n",
 					"    try:\n",
@@ -183,6 +186,7 @@
 					"    except:\n",
 					"        return False\n",
 					"\n",
+					"# count no of files in a directory(path) including all files within sub-directories'\n",
 					"def count_files_in_path(path):\n",
 					"    \"\"\"Recursively count all files (excluding directories) under the given path.\"\"\"\n",
 					"    try:\n",
@@ -205,6 +209,7 @@
 					"# Filter for Delta tables\n",
 					"delta_tables = [p for p in all_dirs if is_delta_table(p)]\n",
 					"\n",
+					"\n",
 					"# Count files and compute cumulative total\n",
 					"cumulative_total = 0\n",
 					"delta_table_counts = {}\n",
@@ -213,7 +218,7 @@
 					"    count = count_files_in_path(table_path)\n",
 					"    delta_table_counts[table_path] = count\n",
 					"    cumulative_total += count\n",
-					"    print(f\"{table_path}: {count} files\")\n",
+					"    # print(f\"{table_path}: {count} files,\")\n",
 					"\n",
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
@@ -250,7 +255,7 @@
 					"            else:\n",
 					"                print(f\"Source path does not exist: {delta_table}\")\n",
 					"                continue\n",
-					"        except Exception as e:\n",
+					"        except FileNotFoundError as e:\n",
 					"            print(f\"Error listing files in source {delta_table}: {e}\")\n",
 					"            continue\n",
 					"        \n",
@@ -273,7 +278,7 @@
 					"            grand_total_changes += change_count\n",
 					"            print(f\"{change_count} new/changed files in {delta_table}\")\n",
 					"        except Exception as e:\n",
-					"            print(f\"Error comparing files for {delta_table}: {e}\")\n",
+					"            print(f\"Error comparing changed files for {delta_table}: {e}\")\n",
 					"            continue\n",
 					"        \n",
 					"        # Copy changed files\n",
@@ -281,7 +286,7 @@
 					"            try:\n",
 					"                source_path = delta_table + file_name\n",
 					"                dest_path = backup_path + file_name\n",
-					"                print(f\"Copying 'UKS' {source_path} to '===> UKW' {dest_path}\")\n",
+					"                # print(f\"Copying delta files from 'UKS' {source_path} to '===> UKW' {dest_path}\")\n",
 					"                # Copy changed files from source to target\n",
 					"                mssparkutils.fs.cp(source_path, dest_path)\n",
 					"            except Exception as e:\n",
@@ -300,46 +305,50 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# new Non delta process \n",
+					"# This function traverses each directory untill it find a non-delta folder and lists them\n",
+					"# new Non delta process - modified 10Jun25 \"\n",
+					"\n",
 					"def list_non_delta_file_folders(base_path):\n",
-					"    file_folders = []\n",
+					"    non_delta_folders = []\n",
 					"\n",
 					"    def process_path(path):\n",
-					"        items = mssparkutils.fs.ls(path)\n",
-					"        has_delta_log = False\n",
-					"        has_files = False\n",
-					"        has_subfolders = False\n",
-					"        \n",
+					"        try:\n",
+					"            items = mssparkutils.fs.ls(path)\n",
+					"        except Exception as e:\n",
+					"            print(f\"Failed to access path: {path}, error: {e}\")\n",
+					"            return\n",
+					"\n",
+					"        # Check if current directory contains _delta_log → it's a Delta table root\n",
+					"        contains_delta_log = any(item.isDir and item.name.strip('/') == \"_delta_log\" for item in items)\n",
+					"\n",
+					"        if contains_delta_log:\n",
+					"            # This is a Delta table root folder, skip it and its children\n",
+					"            print(f\"Delta table found at: {path}\")\n",
+					"            return\n",
+					"\n",
+					"        has_files = any(not item.isDir for item in items)\n",
+					"        if has_files:\n",
+					"            print(f\"Non-Delta folder with files: {path}\")\n",
+					"            non_delta_folders.append(path)\n",
+					"\n",
+					"        # Recurse into subfolders (only if not a Delta root)\n",
 					"        for item in items:\n",
-					"            name = item.name\n",
 					"            if item.isDir:\n",
-					"                if name.strip('/') == '_delta_log':\n",
-					"                    has_delta_log = True\n",
-					"                else:\n",
-					"                    has_subfolders = True\n",
-					"                    process_path(item.path)  # Recursive call for subfolders\n",
-					"            else:\n",
-					"                has_files = True\n",
-					"        \n",
-					"        # Folder has files directly, no subfolders, no delta log folder\n",
-					"        if has_files and not has_subfolders and not has_delta_log and \"_delta_log\" not in path:\n",
-					"            print(path)\n",
-					"            file_folders.append(path)\n",
+					"                process_path(item.path)\n",
 					"\n",
 					"    process_path(base_path)\n",
-					"    return file_folders\n",
+					"    return non_delta_folders\n",
 					"\n",
-					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)\n",
 					"\n",
-					"Existing_Non_delta_files_list = []\n",
-					"\n",
-					"for path in Non_delta_files_list:\n",
-					"    if mssparkutils.fs.exists(path):\n",
-					"        print(\"Path exists appending to Existing_Non_delta_files_list...\")\n",
-					"        Existing_Non_delta_files_list.append(path)\n",
-					"    else:\n",
-					"        raise ValueError(f\"Path does not exist: {path}:\")\n",
-					"    "
+					"# Example usage\n",
+					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"print(Non_delta_files_list)"
 				],
 				"execution_count": null
 			},
@@ -360,7 +369,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# data check tables for the file_count, data_count between odw and backup\n",
+					"# data check tables for few delta tables derives the file_count, data_count between source and target\n",
 					"delta_tables = [\"aie_document_data\",\"entraid\", \"sb_appeal_s78\"]\n",
 					"\n",
 					"run_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')\n",
@@ -387,7 +396,7 @@
 					"    source_df_count = spark.read.format(\"delta\").load(source_table_path).count()\n",
 					"    backup_df_count = spark.read.format(\"delta\").load(backup_table_path).count()\n",
 					"\n",
-					"    print(table_path, source_df_count,backup_df_count)\n",
+					"    # print(table_path, source_df_count,backup_df_count)\n",
 					"\n",
 					"    file_diff = source_file_count - backup_file_count\n",
 					"    data_diff = source_df_count - backup_df_count\n",
@@ -403,7 +412,7 @@
 					"        backup_DF_counts= backup_df_count,\n",
 					"        File_diff= file_diff,\n",
 					"        Data_diff= data_diff,\n",
-					"        Error='na'))\n",
+					"        Error= 'na'))\n",
 					"\n",
 					"    df = spark.createDataFrame(rows)\n",
 					"\n",
@@ -415,7 +424,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"df.write.format(\"delta\").mode(\"append\").saveAsTable(\"logging.delta_backup_logs\")"
+					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_logs\")"
 				],
 				"execution_count": null
 			},
