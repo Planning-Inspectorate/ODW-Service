@@ -3,6 +3,7 @@ from typing import Dict, Any
 import requests
 import json
 import time
+import logging
 
 
 class PipelineRunException(Exception):
@@ -17,7 +18,7 @@ class PipelineRunTestCase(SynapseTestCase):
         """
             Trigger a synapse pipeline run
         """
-        print(f"RUNNING pipeline {pipeline_name}...\n")
+        logging.info(f"RUNNING pipeline {pipeline_name}...\n")
         run_pipeline_url = f'{self.SYNAPSE_ENDPOINT}/pipelines/{pipeline_name}/createRun?api-version=2020-12-01'
         headers = {"Authorization": f"Bearer {self.SYNAPSE_ACCESS_TOKEN}", "Content-Type": "application/json"}
         response = requests.post(run_pipeline_url, headers=headers,data=json.dumps(pipeline_parameters))
@@ -34,7 +35,7 @@ class PipelineRunTestCase(SynapseTestCase):
         pipeline_run_end_states = {"Succeeded", "TimedOut", "Failed", "Cancelled"}
         run_pipeline_url = f"{self.SYNAPSE_ENDPOINT}/pipelineruns/{pipeline_run_id}?api-version=2020-12-01"
         while current_wait_time < max_wait_time_seconds:
-            print(f"Waiting for the pipeline run id '{pipeline_run_id}' exist state to be one of {pipeline_run_end_states}")
+            logging.info(f"Waiting for the pipeline run id '{pipeline_run_id}' exist state to be one of {pipeline_run_end_states}")
             headers = {"Authorization": f"Bearer {self.SYNAPSE_ACCESS_TOKEN}", "Content-Type": "application/json"}
             response = requests.get(run_pipeline_url, headers=headers)
             if response.status_code >= 200 and response.status_code < 400: 

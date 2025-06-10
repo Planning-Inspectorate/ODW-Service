@@ -1,9 +1,10 @@
 from tests.util.synapse_test_case import SynapseTestCase
-from typing import Dict, Any, Set
+from typing import Dict, Any
 import uuid
 import requests
 import json
 import time
+import logging
 
 
 class NotebookRunException(Exception):
@@ -21,7 +22,7 @@ class NotebookRunTestCase(SynapseTestCase):
         """
             Trigger a synapse notebook run
         """
-        print(f"RUNNING notebook {notebook_name}...\n")
+        logging.info(f"RUNNING notebook {notebook_name}...\n")
         notebook_run_id = str(uuid.uuid4())
         run_notebook_url = f'{self.SYNAPSE_ENDPOINT}/notebooks/runs/{notebook_run_id}?api-version=2022-03-01-preview'
         headers = {"Authorization": f"Bearer {self.SYNAPSE_ACCESS_TOKEN}", "Content-Type": "application/json"}
@@ -39,7 +40,7 @@ class NotebookRunTestCase(SynapseTestCase):
         notebook_run_end_states = {"Succeeded", "TimedOut", "Failed", "Cancelled"}
         run_notebook_url = f"{self.SYNAPSE_ENDPOINT}/notebooks/runs/{notebook_run_id}?api-version=2022-03-01-preview"
         while current_wait_time < max_wait_time_seconds:
-            print(f"Waiting for the notebook run id '{notebook_run_id}' exist state to be one of {notebook_run_end_states}")
+            logging.info(f"Waiting for the notebook run id '{notebook_run_id}' exist state to be one of {notebook_run_end_states}")
             headers = {"Authorization": f"Bearer {self.SYNAPSE_ACCESS_TOKEN}", "Content-Type": "application/json"}
             response = requests.get(run_notebook_url, headers=headers)
             if response.status_code >= 200 and response.status_code < 400: 
