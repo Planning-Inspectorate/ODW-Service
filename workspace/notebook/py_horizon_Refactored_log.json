@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "75ba0728-4ecb-44b1-b866-73069d0a2798"
+				"spark.autotune.trackingId": "e5ee03c6-8cfc-4702-b489-9bd155f53863"
 			}
 		},
 		"metadata": {
@@ -56,7 +56,7 @@
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 42
+				"execution_count": 58
 			},
 			{
 				"cell_type": "markdown",
@@ -90,7 +90,7 @@
 					"from pyspark.sql.types import StringType, DateType, TimestampType, IntegerType, FloatType, StructType, StructField\n",
 					"from delta import DeltaTable"
 				],
-				"execution_count": null
+				"execution_count": 59
 			},
 			{
 				"cell_type": "markdown",
@@ -125,9 +125,9 @@
 					"date_folder=''\n",
 					"source_folder='Horizon' #need change\n",
 					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
-					"Load_data_source='master'"
+					"Load_data_source='Master'"
 				],
-				"execution_count": null
+				"execution_count": 60
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +146,7 @@
 					"print(ingestion_log_schema_loc)\n",
 					"print(ingestion_log_table_location)"
 				],
-				"execution_count": null
+				"execution_count": 61
 			},
 			{
 				"cell_type": "markdown",
@@ -192,7 +192,7 @@
 					"# print(\"Delta table 'Horizon_Refactored_log' created successfully using schema from JSON.\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -212,7 +212,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": null
+				"execution_count": 63
 			},
 			{
 				"cell_type": "markdown",
@@ -236,11 +236,17 @@
 					"horizon_files\n",
 					" # comment this during the full execution"
 				],
-				"execution_count": null
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"import nest_asyncio\n",
+					"import json\n",
+					"from datetime import datetime\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.functions import to_date, col, lit, max as spark_max\n",
+					"\n",
 					"nest_asyncio.apply()\n",
 					"\n",
 					"async def refactored_log(date_folder: str, file: str):\n",
@@ -282,9 +288,7 @@
 					"\n",
 					"        # Match definition for the specific file\n",
 					"        definition = next(\n",
-					"            (d for d in filtered_definitions \n",
-					"             if (specific_file == '' or d.get('Source_Filename_Start') == specific_file) \n",
-					"             and file.startswith(d.get('Source_Filename_Start', ''))), \n",
+					"            (d for d in filtered_definitions if file.startswith(d.get('Source_Filename_Start', ''))),\n",
 					"            None\n",
 					"        )\n",
 					"\n",
@@ -340,7 +344,7 @@
 					"        # Create log DataFrame\n",
 					"        orchestration_df = spark.createDataFrame([definition])\n",
 					"        refactored_log_df = orchestration_df.select(\n",
-					"            lit(input_file_name()).alias(\"raw_input_file_name\"),\n",
+					"            lit(file).alias(\"raw_input_file_name\"),\n",
 					"            lit(file_info.lastModified).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
 					"            lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
 					"            col(\"Standardised_Table_Name\").alias(\"standardized_table_name\"),\n",
@@ -359,7 +363,7 @@
 					"        print(f\"Failed to process {file}: {e}\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 65
 			},
 			{
 				"cell_type": "code",
