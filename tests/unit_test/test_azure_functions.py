@@ -1,6 +1,7 @@
 from tests.util.config import TEST_CONFIG
 from azure.identity import AzureCliCredential
 from azure.keyvault.secrets import SecretClient
+from azure.core.exceptions import ResourceNotFoundError
 from tests.util.test_case import TestCase
 import requests
 import pytest
@@ -36,7 +37,10 @@ class TestAzureFunctions(TestCase):
     )
     def test_azure_function_return_value(self, function_name: str, url_parameters: str):
         function_secret_name = f"function-url-{function_name.replace('-', '')}"
-        function_url = f"{self.KEY_VAULT_CLIENT.get_secret(function_secret_name).value}{url_parameters}"
+        try:
+            function_url = f"{self.KEY_VAULT_CLIENT.get_secret(function_secret_name).value}{url_parameters}"
+        except ResourceNotFoundError:
+            assert False, f"There is no secret associated with the function being tested"
         response = requests.get(function_url)
         assert response.status_code == 200, f"Expected the status code to be 200 for function url '{function_url}', but was '{response.status_code}'"
         parsed_json = json.loads(response.text)
