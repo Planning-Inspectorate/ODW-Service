@@ -43,5 +43,8 @@ class TestAzureFunctions(TestCase):
             pytest.fail("There is no secret associated with the function being tested")
         response = requests.get(function_url)
         assert response.status_code == 200, f"Expected the status code to be 200 for function url '{function_url}', but was '{response.status_code}'"
-        parsed_json = json.loads(response.text)
+        try:
+            parsed_json = json.loads(response.text)
+        except json.JSONDecodeError:
+            pytest.fail("The response text from the Azure Function is not JSON serialisable")
         assert len(parsed_json) > 0, f"Expected the JSON response to have some content for function url '{function_url}', but it was empty"
