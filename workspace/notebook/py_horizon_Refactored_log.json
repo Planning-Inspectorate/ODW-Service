@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "e5ee03c6-8cfc-4702-b489-9bd155f53863"
+				"spark.autotune.trackingId": "1a317938-4ec3-4fd2-ba05-4f0e493a8fb4"
 			}
 		},
 		"metadata": {
@@ -56,7 +56,7 @@
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 58
+				"execution_count": 83
 			},
 			{
 				"cell_type": "markdown",
@@ -90,7 +90,7 @@
 					"from pyspark.sql.types import StringType, DateType, TimestampType, IntegerType, FloatType, StructType, StructField\n",
 					"from delta import DeltaTable"
 				],
-				"execution_count": 59
+				"execution_count": 84
 			},
 			{
 				"cell_type": "markdown",
@@ -127,7 +127,7 @@
 					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
 					"Load_data_source='Master'"
 				],
-				"execution_count": 60
+				"execution_count": 85
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +146,7 @@
 					"print(ingestion_log_schema_loc)\n",
 					"print(ingestion_log_table_location)"
 				],
-				"execution_count": 61
+				"execution_count": 86
 			},
 			{
 				"cell_type": "markdown",
@@ -164,35 +164,35 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# from pyspark.sql.types import StructType\n",
+					"from pyspark.sql.types import StructType\n",
 					"\n",
-					"# # Load schema from JSON file\n",
-					"# schema_json_df = spark.read.option(\"multiline\", \"true\").json(ingestion_log_schema_loc)\n",
-					"# fields = schema_json_df.select(\"fields\").collect()[0][\"fields\"]\n",
+					"# Load schema from JSON file\n",
+					"schema_json_df = spark.read.option(\"multiline\", \"true\").json(ingestion_log_schema_loc)\n",
+					"fields = schema_json_df.select(\"fields\").collect()[0][\"fields\"]\n",
 					"\n",
-					"# # Convert Row objects to dictionaries and add 'metadata'\n",
-					"# fields = [dict(field.asDict(), metadata={}) for field in fields]\n",
+					"# Convert Row objects to dictionaries and add 'metadata'\n",
+					"fields = [dict(field.asDict(), metadata={}) for field in fields]\n",
 					"\n",
-					"# # Convert JSON schema to StructType\n",
-					"# schema = StructType.fromJson({\"type\": \"struct\", \"fields\": fields})\n",
+					"# Convert JSON schema to StructType\n",
+					"schema = StructType.fromJson({\"type\": \"struct\", \"fields\": fields})\n",
 					"\n",
-					"# # Create an empty DataFrame with the loaded schema\n",
-					"# empty_df = spark.createDataFrame([], schema)\n",
+					"# Create an empty DataFrame with the loaded schema\n",
+					"empty_df = spark.createDataFrame([], schema)\n",
 					"\n",
-					"# # Write the empty DataFrame as a Delta table\n",
-					"# empty_df.write.format(\"delta\").mode(\"overwrite\").save(ingestion_log_table_location)\n",
+					"# Write the empty DataFrame as a Delta table\n",
+					"empty_df.write.format(\"delta\").mode(\"overwrite\").save(ingestion_log_table_location)\n",
 					"\n",
-					"# # Optionally register it as a table in the metastore\n",
-					"# spark.sql(f\"\"\"\n",
-					"#     CREATE TABLE IF NOT EXISTS Horizon_Refactored_log\n",
-					"#     USING DELTA\n",
-					"#     LOCATION '{ingestion_log_table_location}'\n",
-					"# \"\"\")\n",
+					"# Optionally register it as a table in the metastore\n",
+					"spark.sql(f\"\"\"\n",
+					"    CREATE TABLE IF NOT EXISTS Horizon_Refactored_log\n",
+					"    USING DELTA\n",
+					"    LOCATION '{ingestion_log_table_location}'\n",
+					"\"\"\")\n",
 					"\n",
-					"# print(\"Delta table 'Horizon_Refactored_log' created successfully using schema from JSON.\")\n",
+					"print(\"Delta table 'Horizon_Refactored_log' created successfully using schema from JSON.\")\n",
 					""
 				],
-				"execution_count": 62
+				"execution_count": 87
 			},
 			{
 				"cell_type": "code",
@@ -212,7 +212,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 63
+				"execution_count": 88
 			},
 			{
 				"cell_type": "markdown",
@@ -232,11 +232,11 @@
 				"source": [
 					"files = mssparkutils.fs.ls(source_path)\n",
 					"horizon_files = [file.name for file in files]\n",
-					"# horizon_files= horizon_files[:1]\n",
-					"horizon_files\n",
+					"horizon_files= horizon_files[:3]\n",
+					"# horizon_files\n",
 					" # comment this during the full execution"
 				],
-				"execution_count": 64
+				"execution_count": 89
 			},
 			{
 				"cell_type": "code",
@@ -265,32 +265,8 @@
 					"        df = spark.read.option(\"multiline\", \"true\").json(path_to_orchestration_file)\n",
 					"        definitions = json.loads(df.toJSON().first())['definitions']\n",
 					"\n",
-					"        # Filter definitions with non-empty Harmonised_NoteBook\n",
-					"        filtered_definitions = [d for d in definitions if d.get(\"Harmonised_NoteBook\")]\n",
-					"\n",
-					"        # Get row counts for harmonised tables\n",
-					"        harmonised_table_counts = []\n",
-					"        for d in filtered_definitions:\n",
-					"            harmonised_table_name = d.get(\"Harmonised_Table_Name\", \"\").strip()\n",
-					"            if harmonised_table_name:\n",
-					"                try:\n",
-					"                    df = spark.read.parquet(harmonised_container + harmonised_table_name)\n",
-					"                    row_count = df.count()\n",
-					"                except Exception:\n",
-					"                    row_count = 0\n",
-					"            else:\n",
-					"                row_count = 0\n",
-					"\n",
-					"            harmonised_table_counts.append({\n",
-					"                \"Harmonised_Table_Name\": harmonised_table_name,\n",
-					"                \"Row_Count\": row_count\n",
-					"            })\n",
-					"\n",
 					"        # Match definition for the specific file\n",
-					"        definition = next(\n",
-					"            (d for d in filtered_definitions if file.startswith(d.get('Source_Filename_Start', ''))),\n",
-					"            None\n",
-					"        )\n",
+					"        definition = next((d for d in definitions if file.startswith(d.get('Source_Filename_Start', ''))), None)\n",
 					"\n",
 					"        if not definition:\n",
 					"            print(f\"No matching definition found for file: {file}\")\n",
@@ -299,7 +275,13 @@
 					"        # Clean up paths and names\n",
 					"        standardised_path = definition.get('Standardised_Path', '').strip('/') + '/'\n",
 					"        standardised_table_name = definition.get('Standardised_Table_Name', '').strip()\n",
-					"        harmonised_table_name = definition.get('Harmonised_Table_Name', '').strip()\n",
+					"        harmonised_table_name = definition.get(\"Harmonised_Table_Name\", \"\").strip()\n",
+					"\n",
+					"        # Construct table locations (must be before usage)\n",
+					"        standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
+					"        harmonised_table_location = harmonised_container + harmonised_table_name\n",
+					"        print(standardised_table_location)\n",
+					"        print(harmonised_table_location)\n",
 					"\n",
 					"        # Build full file path\n",
 					"        full_file_path = f\"{source_path}/{file}\"\n",
@@ -310,12 +292,6 @@
 					"        file_info = next((f for f in files if f.name.endswith(file)), None)\n",
 					"        if not file_info:\n",
 					"            raise FileNotFoundError(f\"File {file} not found in {source_path}\")\n",
-					"\n",
-					"        # Construct table locations\n",
-					"        standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
-					"        harmonised_table_location = harmonised_container + harmonised_table_name\n",
-					"        print(standardised_table_location)\n",
-					"        print(harmonised_table_location)\n",
 					"\n",
 					"        # Read input file and count rows\n",
 					"        input_df = spark.read.csv(full_file_path, header=True)\n",
@@ -333,19 +309,23 @@
 					"            to_date(col(\"ingested_datetime\")) == lit(max_ingested_date)\n",
 					"        ).count()\n",
 					"\n",
-					"        # Read harmonised table and count rows (default to 0 if not found)\n",
+					"        # Read harmonised table and count rows\n",
 					"        harmonised_table_row_count = 0\n",
-					"        try:\n",
-					"            harmonised_table_df = spark.read.parquet(harmonised_table_location)\n",
-					"            harmonised_table_row_count = harmonised_table_df.count()\n",
-					"        except Exception:\n",
-					"            print(f\"Harmonised table not found or empty at {harmonised_table_location}. Inserting row count as 0.\")\n",
+					"        \n",
+					"        for item in definition:\n",
+					"            if item.get(\"Harmonised_NoteBook\"):\n",
+					"                try:\n",
+					"                    print(item['Harmonised_Table_Name'])\n",
+					"                    harmonised_table_df = spark.read.table(harmonised_table_location)\n",
+					"                    harmonised_table_row_count = harmonised_table_df.count()\n",
+					"                except Exception:\n",
+					"                    print(f\"Harmonised table not found or empty at {harmonised_table_location}. Inserting row count as 0.\")\n",
 					"\n",
 					"        # Create log DataFrame\n",
 					"        orchestration_df = spark.createDataFrame([definition])\n",
 					"        refactored_log_df = orchestration_df.select(\n",
 					"            lit(file).alias(\"raw_input_file_name\"),\n",
-					"            lit(file_info.lastModified).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
+					"            lit(file_info.modificationTime).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
 					"            lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
 					"            col(\"Standardised_Table_Name\").alias(\"standardized_table_name\"),\n",
 					"            lit(rows_new_count).cast(\"int\").alias(\"standardized_table_row_count\"),\n",
@@ -363,7 +343,39 @@
 					"        print(f\"Failed to process {file}: {e}\")\n",
 					""
 				],
-				"execution_count": 65
+				"execution_count": 134
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"from datetime import datetime\n",
+					"\n",
+					"# Define the ABFSS directory path\n",
+					"directory_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Horizon/2025-06-10/\"\n",
+					"\n",
+					"# Access Hadoop FileSystem\n",
+					"fs = spark._jvm.org.apache.hadoop.fs.FileSystem.get(spark._jsc.hadoopConfiguration())\n",
+					"path = spark._jvm.org.apache.hadoop.fs.Path(directory_path)\n",
+					"\n",
+					"# List all files in the directory\n",
+					"files = fs.listStatus(path)\n",
+					"\n",
+					"# Print file names and their last modified times\n",
+					"for file in files:\n",
+					"     file_path = file.getPath().toString()\n",
+					"\n",
+					"\n",
+					""
+				],
+				"execution_count": 143
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"path"
+				],
+				"execution_count": 140
 			},
 			{
 				"cell_type": "code",
@@ -378,7 +390,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": null
+				"execution_count": 135
 			},
 			{
 				"cell_type": "markdown",
