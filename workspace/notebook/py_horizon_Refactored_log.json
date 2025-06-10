@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8c92fcbc-331e-4fe6-853e-7c2b93740e64"
+				"spark.autotune.trackingId": "b33d62ea-6159-440f-91cb-cf23ab36c1ad"
 			}
 		},
 		"metadata": {
@@ -56,7 +56,7 @@
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 1
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -90,7 +90,7 @@
 					"from pyspark.sql.types import StringType, DateType, TimestampType, IntegerType, FloatType, StructType, StructField\n",
 					"from delta import DeltaTable"
 				],
-				"execution_count": 2
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -127,7 +127,7 @@
 					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
 					"Load_data_source='master'"
 				],
-				"execution_count": 3
+				"execution_count": 16
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +146,7 @@
 					"print(ingestion_log_schema_loc)\n",
 					"print(ingestion_log_table_location)"
 				],
-				"execution_count": 4
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -192,7 +192,7 @@
 					"# print(\"Delta table 'Horizon_Refactored_log' created successfully using schema from JSON.\")\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 18
 			},
 			{
 				"cell_type": "code",
@@ -212,7 +212,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 6
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -236,7 +236,7 @@
 					"horizon_files\n",
 					" # comment this during the full execution"
 				],
-				"execution_count": 7
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -334,7 +334,7 @@
 					"#         print(f\"Failed to process {file}: {e}\")\n",
 					""
 				],
-				"execution_count": 8
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -369,18 +369,22 @@
 					"        # List harmonised tables with row counts\n",
 					"        valid_tables = []\n",
 					"        for d in filtered_definitions:\n",
-					"            harmonised_table_name = d[\"Harmonised_Table_Name\"].strip()\n",
+					"            harmonised_table_name = d.get(\"Harmonised_Table_Name\", \"\").strip()\n",
 					"            harmonised_table_location = harmonised_container + harmonised_table_name\n",
 					"            try:\n",
 					"                harmonised_table_df = spark.read.parquet(harmonised_table_location)\n",
 					"                row_count = harmonised_table_df.count()\n",
 					"                valid_tables.append({\n",
 					"                    \"Harmonised_Table_Name\": harmonised_table_name,\n",
-					"                    \"Harmonised_NoteBook\": d[\"Harmonised_NoteBook\"],\n",
+					"                    \"Harmonised_NoteBook\": d.get(\"Harmonised_NoteBook\"),\n",
 					"                    \"Row_Count\": row_count\n",
 					"                })\n",
-					"            except Exception as e:\n",
-					"                print(f\"Could not read harmonised table at {harmonised_table_location}: {e}\")\n",
+					"            except Exception:\n",
+					"                valid_tables.append({\n",
+					"                    \"Harmonised_Table_Name\": harmonised_table_name,\n",
+					"                    \"Harmonised_NoteBook\": d.get(\"Harmonised_NoteBook\"),\n",
+					"                    \"Row_Count\": 0\n",
+					"                })\n",
 					"\n",
 					"        print(\"Valid Harmonised Tables:\")\n",
 					"        for table in valid_tables:\n",
@@ -389,85 +393,83 @@
 					"        # Match definition for the specific file\n",
 					"        definition = next(\n",
 					"            (d for d in filtered_definitions \n",
-					"             if (specific_file == '' or d['Source_Filename_Start'] == specific_file) \n",
-					"             and file.startswith(d['Source_Filename_Start'])), \n",
+					"             if (specific_file == '' or d.get('Source_Filename_Start') == specific_file) \n",
+					"             and file.startswith(d.get('Source_Filename_Start', ''))), \n",
 					"            None\n",
 					"        )\n",
 					"\n",
-					"        if definition:\n",
-					"            # Clean up paths and names\n",
-					"            standardised_path = definition['Standardised_Path'].strip('/') + '/'\n",
-					"            standardised_table_name = definition['Standardised_Table_Name'].strip()\n",
-					"            harmonised_table_name = definition['Harmonised_Table_Name'].strip()\n",
+					"        if not definition:\n",
+					"            print(f\"No matching definition found for file: {file}\")\n",
+					"            return\n",
 					"\n",
-					"            # Build full file path\n",
-					"            full_file_path = f\"{source_path}/{file}\"\n",
-					"            print(full_file_path)\n",
+					"        # Clean up paths and names\n",
+					"        standardised_path = definition.get('Standardised_Path', '').strip('/') + '/'\n",
+					"        standardised_table_name = definition.get('Standardised_Table_Name', '').strip()\n",
+					"        harmonised_table_name = definition.get('Harmonised_Table_Name', '').strip()\n",
 					"\n",
-					"            # Get file metadata\n",
-					"            files = mssparkutils.fs.ls(source_path)\n",
-					"            file_info = next((f for f in files if f.name.endswith(file)), None)\n",
-					"            if not file_info:\n",
-					"                raise FileNotFoundError(f\"File {file} not found in {source_path}\")\n",
+					"        # Build full file path\n",
+					"        full_file_path = f\"{source_path}/{file}\"\n",
+					"        print(full_file_path)\n",
 					"\n",
-					"            # Construct table locations\n",
-					"            standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
-					"            harmonised_table_location = harmonised_container + harmonised_table_name\n",
-					"            print(standardised_table_location)\n",
-					"            print(harmonised_table_location)\n",
+					"        # Get file metadata\n",
+					"        files = mssparkutils.fs.ls(source_path)\n",
+					"        file_info = next((f for f in files if f.name.endswith(file)), None)\n",
+					"        if not file_info:\n",
+					"            raise FileNotFoundError(f\"File {file} not found in {source_path}\")\n",
 					"\n",
-					"            # Read input file and count rows\n",
-					"            input_df = spark.read.csv(full_file_path, header=True)\n",
-					"            input_file_row_count = input_df.count()\n",
-					"            print(input_file_row_count)\n",
+					"        # Construct table locations\n",
+					"        standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
+					"        harmonised_table_location = harmonised_container + harmonised_table_name\n",
+					"        print(standardised_table_location)\n",
+					"        print(harmonised_table_location)\n",
 					"\n",
-					"            # Read standardised table and get max ingested date\n",
-					"            standardised_table_df = spark.read.parquet(standardised_table_location)\n",
-					"            max_ingested_date = standardised_table_df.select(\n",
-					"                spark_max(to_date(\"ingested_datetime\"))\n",
-					"            ).collect()[0][0]\n",
+					"        # Read input file and count rows\n",
+					"        input_df = spark.read.csv(full_file_path, header=True)\n",
+					"        input_file_row_count = input_df.count()\n",
+					"        print(input_file_row_count)\n",
 					"\n",
-					"            # Filter rows with that date\n",
-					"            rows_new_count = standardised_table_df.filter(\n",
-					"                to_date(col(\"ingested_datetime\")) == lit(max_ingested_date)\n",
-					"            ).count()\n",
+					"        # Read standardised table and get max ingested date\n",
+					"        standardised_table_df = spark.read.parquet(standardised_table_location)\n",
+					"        max_ingested_date = standardised_table_df.select(\n",
+					"            spark_max(to_date(\"ingested_datetime\"))\n",
+					"        ).collect()[0][0]\n",
 					"\n",
-					"            # Read harmonised table and count rows\n",
-					"            harmonised_table_row_count = None\n",
-					"            try:\n",
-					"                harmonised_table_df = spark.read.parquet(harmonised_table_location)\n",
-					"                harmonised_table_row_count = harmonised_table_df.count()\n",
-					"            except:\n",
-					"                print(f\"Could not read harmonised table at {harmonised_table_location}\")\n",
+					"        # Filter rows with that date\n",
+					"        rows_new_count = standardised_table_df.filter(\n",
+					"            to_date(col(\"ingested_datetime\")) == lit(max_ingested_date)\n",
+					"        ).count()\n",
 					"\n",
-					"            # Create log DataFrame\n",
-					"            orchestration_df = spark.createDataFrame([definition])\n",
-					"            refactored_log_df = orchestration_df.select(\n",
-					"                lit(input_file_name()).alias(\"raw_input_file_name\"),\n",
-					"                lit(file_info.modificationTime).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
-					"                lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
-					"                col(\"Standardised_Table_Name\").alias(\"standardized_table_name\"),\n",
-					"                lit(rows_new_count).cast(\"int\").alias(\"standardized_table_row_count\"),\n",
-					"                col(\"Harmonised_Table_Name\").alias(\"harmonized_table_name\"),\n",
-					"                lit(harmonised_table_row_count).cast(\"int\").alias(\"harmonized_table_row_count\"),\n",
-					"                col(\"Load_data_source\").alias(\"load_data_source\")\n",
-					"            )\n",
+					"        # Read harmonised table and count rows (default to 0 if not found)\n",
+					"        harmonised_table_row_count = 0\n",
+					"        try:\n",
+					"            harmonised_table_df = spark.read.parquet(harmonised_table_location)\n",
+					"            harmonised_table_row_count = harmonised_table_df.count()\n",
+					"        except Exception:\n",
+					"            print(f\"Harmonised table not found or empty at {harmonised_table_location}. Inserting row count as 0.\")\n",
 					"\n",
-					"            # Append to target table\n",
-					"            refactored_log_df.write.mode(\"append\").saveAsTable(\"horizon_refactored_log\")\n",
+					"        # Create log DataFrame\n",
+					"        orchestration_df = spark.createDataFrame([definition])\n",
+					"        refactored_log_df = orchestration_df.select(\n",
+					"            lit(input_file_name()).alias(\"raw_input_file_name\"),\n",
+					"            lit(file_info.modificationTime).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
+					"            lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
+					"            col(\"Standardised_Table_Name\").alias(\"standardized_table_name\"),\n",
+					"            lit(rows_new_count).cast(\"int\").alias(\"standardized_table_row_count\"),\n",
+					"            col(\"Harmonised_Table_Name\").alias(\"harmonized_table_name\"),\n",
+					"            lit(harmonised_table_row_count).cast(\"int\").alias(\"harmonized_table_row_count\"),\n",
+					"            col(\"Load_data_source\").alias(\"load_data_source\")\n",
+					"        )\n",
 					"\n",
-					"            print(f\"Ingestion completed successfully for {file}\")\n",
-					"        else:\n",
-					"            if specific_file != '':\n",
-					"                raise ValueError(f\"No definition found for {file}\")\n",
-					"            else:\n",
-					"                print(f\"Condition not satisfied for loading {file}\")\n",
+					"        # Append to target table\n",
+					"        refactored_log_df.write.mode(\"append\").saveAsTable(\"horizon_refactored_log\")\n",
+					"\n",
+					"        print(f\"Ingestion completed successfully for {file}\")\n",
 					"\n",
 					"    except Exception as e:\n",
 					"        print(f\"Failed to process {file}: {e}\")\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -482,7 +484,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 10
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -644,7 +646,7 @@
 					"    \n",
 					"#     return ingestion_failure, rows_raw"
 				],
-				"execution_count": 11
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -695,7 +697,7 @@
 					"#     except Exception as e:\n",
 					"#         print(f\"Failed to process {file}: {e}\")"
 				],
-				"execution_count": 12
+				"execution_count": 25
 			},
 			{
 				"cell_type": "code",
@@ -710,7 +712,7 @@
 					"# loop = asyncio.get_event_loop()\n",
 					"# loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 13
+				"execution_count": 26
 			}
 		]
 	}
