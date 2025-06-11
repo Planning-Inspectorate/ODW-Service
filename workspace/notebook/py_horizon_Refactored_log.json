@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "4d9f5e7c-16b8-4ce3-b46c-331874dae2a8"
+				"spark.autotune.trackingId": "a3ed81b0-66fd-4994-8e2c-0781ba060ae3"
 			}
 		},
 		"metadata": {
@@ -140,11 +140,11 @@
 					"path_to_orchestration_file = f\"abfss://odw-config@{storage_account}/orchestration/orchestration.json\"\n",
 					"ingestion_log_schema_loc = f\"abfss://odw-config@{storage_account}horizon_refactored_log_schema.json\"\n",
 					"ingestion_log_table_location = f\"abfss://logging@{storage_account}horizon_refactored_log.json\"\n",
-					"print(source_path)\n",
-					"print(standardised_container)\n",
-					"print(path_to_orchestration_file)\n",
-					"print(ingestion_log_schema_loc)\n",
-					"print(ingestion_log_table_location)"
+					"# print(source_path)\n",
+					"# print(standardised_container)\n",
+					"# print(path_to_orchestration_file)\n",
+					"# print(ingestion_log_schema_loc)\n",
+					"# print(ingestion_log_table_location)"
 				],
 				"execution_count": 90
 			},
@@ -272,11 +272,6 @@
 					"\n",
 					"nest_asyncio.apply()\n",
 					"\n",
-					"# Define paths (replace with your actual paths)\n",
-					"path_to_orchestration_file = \"abfss://.../orchestration_definitions.json\"\n",
-					"source_path = \"abfss://odw-raw@pinsstodwdevuks9h80mb.dfs.core.windows.net/Horizon/2025-06-11\"\n",
-					"standardised_container = \"abfss://odw-standardised@pinsstodwdevuks9h80mb.dfs.core.windows.net/\"\n",
-					"\n",
 					"async def refactored_log(date_folder: str, file: str):\n",
 					"    try:\n",
 					"        spark = SparkSession.builder.getOrCreate()\n",
@@ -334,14 +329,13 @@
 					"        ).count()\n",
 					"\n",
 					"        # Read harmonised table and count rows\n",
-					"        harmonised_table_row_count = 0\n",
 					"        if \"Harmonised_NoteBook\" in definition and definition[\"Harmonised_NoteBook\"]:\n",
-					"            harmonised_table_name = definition[\"harmonised_table_name\"]\n",
+					"            harmonised_table_name = definition[\"Harmonised_Table_Name\"]\n",
 					"            harmonised_table_df = spark.read.table(f\"odw_harmonised_db.{harmonised_table_name}\")\n",
 					"            harmonised_table_row_count = harmonised_table_df.count()\n",
-					"            print(f\"Row count for {harmonised_table_name}: {harmonised_table_row_count}\")\n",
 					"        else:\n",
-					"            print(\"Skipping count: 'Harmonised_NoteBook' field is missing or empty in definition.\")\n",
+					"            harmonised_table_name = \"not available\"\n",
+					"            harmonised_table_row_count = 0\n",
 					"\n",
 					"        # Create log DataFrame\n",
 					"        load_data_source = \"refactored_log_script\"\n",
@@ -352,7 +346,7 @@
 					"            lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
 					"            col(\"Standardised_Table_Name\").alias(\"standardised_table_name\"),\n",
 					"            lit(rows_new_count).cast(\"int\").alias(\"standardised_table_row_count\"),\n",
-					"            col(\"Harmonised_Table_Name\").alias(\"Harmonised_table_name\"),\n",
+					"            lit(harmonised_table_name).alias(\"Harmonised_table_name\"),\n",
 					"            lit(harmonised_table_row_count).cast(\"int\").alias(\"Harmonised_table_row_count\"),\n",
 					"            lit(load_data_source).alias(\"load_data_source\"),\n",
 					"            current_timestamp().alias(\"ingested_datetime\")\n",
@@ -364,9 +358,10 @@
 					"        print(f\"Ingestion completed successfully for {file}\")\n",
 					"\n",
 					"    except Exception as e:\n",
-					"        print(f\"Failed to process {file}: {e}\")"
+					"        print(f\"Failed to process {file}: {e}\")\n",
+					""
 				],
-				"execution_count": 96
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -381,7 +376,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 97
+				"execution_count": 100
 			},
 			{
 				"cell_type": "code",
