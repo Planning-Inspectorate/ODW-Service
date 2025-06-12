@@ -1,16 +1,8 @@
-resource "azurerm_purview_account" "management" {
+data "azurerm_purview_account" "management" {
   count = var.deploy_purview ? 1 : 0
 
-  name                        = "pins-pview-${local.resource_suffix}"
-  resource_group_name         = var.resource_group_name
-  location                    = var.location
-  managed_resource_group_name = "${var.resource_group_name}-purview-managed"
-
-  identity {
-    type = "SystemAssigned"
-  }
-
-  tags = local.tags
+  name                        = "pins-pview-"
+  resource_group_name         = "pins-rg-datamgmt"
 }
 
 resource "azurerm_role_assignment" "purview_storage" {
@@ -18,5 +10,5 @@ resource "azurerm_role_assignment" "purview_storage" {
 
   scope                = var.data_lake_account_id
   role_definition_name = "Storage Blob Data Owner"
-  principal_id         = azurerm_purview_account.management[0].identity[0].principal_id
+  principal_id         = data.azurerm_purview_account.management[0].identity[0].principal_id
 }
