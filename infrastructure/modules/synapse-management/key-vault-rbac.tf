@@ -15,7 +15,7 @@ resource "azurerm_role_assignment" "key_vault_terraform" {
 }
 
 resource "azurerm_role_assignment" "purview_msi_key_vault" {
-  count = var.deploy_purview ? 1 : 0
+  count = var.link_purview ? 1 : 0
 
   scope                = azurerm_key_vault.management.id
   role_definition_name = "Key Vault Secrets User"
