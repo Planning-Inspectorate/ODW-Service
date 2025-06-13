@@ -35,7 +35,6 @@ class TestAppealsEvent(NotebookRunTestCase):
                 "value": "appeal_event",
             }
         }
-        notebook_parameters.update(constants.SPARK_POOL_CONFIG)
 
         notebook_run_result = self.run_notebook(notebook_name, notebook_parameters)
         assert notebook_run_result["result"]["exitValue"] == constants.NOTEBOOK_EXIT_CODE_SUCCESS
