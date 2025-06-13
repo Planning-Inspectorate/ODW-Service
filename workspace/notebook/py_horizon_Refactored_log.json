@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6afd0124-51a8-41a7-be40-e933f3ff868e"
+				"spark.autotune.trackingId": "0bc13528-f948-49a2-b9d9-ed7fb3f22b3b"
 			}
 		},
 		"metadata": {
@@ -56,7 +56,7 @@
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 109
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -86,11 +86,12 @@
 					"import pandas as pd\n",
 					"import os\n",
 					"import re\n",
-					"from pyspark.sql.functions import col, lit, input_file_name, current_timestamp, sha2, concat,max as spark_max\n",
+					"from pyspark.sql.functions import col, lit, input_file_name, current_timestamp, sha2, concat,max as spark_max,date_format\n",
 					"from pyspark.sql.types import StringType, DateType, TimestampType, IntegerType, FloatType, StructType, StructField\n",
-					"from delta import DeltaTable"
+					"from delta import DeltaTable\n",
+					""
 				],
-				"execution_count": 110
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -125,9 +126,9 @@
 					"date_folder=''\n",
 					"source_folder='Horizon' #need change\n",
 					"specific_file='' # if not provided, it will ingest all files in the date_folder\n",
-					"Load_data_source=''"
+					"Load_data_source='pln_master'"
 				],
-				"execution_count": 111
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -146,7 +147,7 @@
 					"# print(ingestion_log_schema_loc)\n",
 					"# print(ingestion_log_table_location)"
 				],
-				"execution_count": 112
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -169,7 +170,7 @@
 				"source": [
 					"#  df = spark.sql(\"Drop Table logging.horizon_refactored_log\")"
 				],
-				"execution_count": 113
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
@@ -215,7 +216,7 @@
 					"# print(f\"Delta table '{database_name}.{table_name}' created and registered successfully.\")\n",
 					""
 				],
-				"execution_count": 114
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -235,7 +236,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 115
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
@@ -259,17 +260,11 @@
 					"horizon_files\n",
 					" # comment this during the full execution"
 				],
-				"execution_count": 116
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"import nest_asyncio\n",
-					"import json\n",
-					"from datetime import datetime\n",
-					"from pyspark.sql import SparkSession\n",
-					"from pyspark.sql.functions import to_date, col, lit, max as spark_max, current_timestamp\n",
-					"\n",
 					"nest_asyncio.apply()\n",
 					"\n",
 					"async def refactored_log(date_folder: str, file: str):\n",
@@ -299,6 +294,7 @@
 					"        standardised_path = definition.get('Standardised_Path', '').strip('/') + '/'\n",
 					"        standardised_table_name = definition.get('Standardised_Table_Name', '').strip()\n",
 					"        harmonised_table_name = definition.get(\"Harmonised_Table_Name\", \"\").strip()\n",
+					"        Load_data_source = definition.get(\"Load_data_source\", \"\").strip()\n",
 					"\n",
 					"        # Construct table locations\n",
 					"        standardised_table_location = standardised_container + standardised_path + standardised_table_name\n",
@@ -319,18 +315,31 @@
 					"        input_df = spark.read.csv(full_file_path, header=True)\n",
 					"        input_file_row_count = input_df.count()\n",
 					"\n",
-					"        # Read standardised table and get max ingested date\n",
+					"        # Read standardised table\n",
 					"        standardised_table_df = spark.read.parquet(standardised_table_location)\n",
-					"        max_ingested_date = standardised_table_df.select(spark_max(\"ingested_datetime\")).collect()[0][0]\n",
 					"\n",
-					"        # Filter rows with that date\n",
-					"        rows_new_count = standardised_table_df.filter(\n",
-					"            col(\"ingested_datetime\") == lit(max_ingested_date)\n",
-					"        ).count()\n",
+					"        # Determine rows_new_count based on Load_data_source\n",
+					"        if Load_data_source == 'pln_master':\n",
+					"            max_ingested_date = standardised_table_df.select(\n",
+					"                spark_max(to_date(\"ingested_datetime\"))\n",
+					"            ).collect()[0][0]\n",
+					"\n",
+					"            standardised_new_count = standardised_table_df.filter(\n",
+					"                to_date(col(\"ingested_datetime\")) == lit(max_ingested_date)\n",
+					"            ).count()\n",
+					"\n",
+					"        elif Load_data_source == 'pln_master_Refactored_Horizon':\n",
+					"            today_str = datetime.today().strftime('%Y-%m-%d')\n",
+					"            datetime_after_6pm = f\"{today_str} 18:00:00\"\n",
+					"\n",
+					"            standardised_new_count = standardised_table_df.filter(\n",
+					"                col(\"ingested_datetime\") > lit(datetime_after_6pm)\n",
+					"            ).count()\n",
+					"        else:\n",
+					"            standardised_new_count = 0\n",
 					"\n",
 					"        # Read harmonised table and count rows\n",
 					"        if \"Harmonised_NoteBook\" in definition and definition[\"Harmonised_NoteBook\"]:\n",
-					"            harmonised_table_name = definition[\"Harmonised_Table_Name\"]\n",
 					"            harmonised_table_df = spark.read.table(f\"odw_harmonised_db.{harmonised_table_name}\")\n",
 					"            harmonised_table_row_count = harmonised_table_df.count()\n",
 					"        else:\n",
@@ -338,14 +347,13 @@
 					"            harmonised_table_row_count = 0\n",
 					"\n",
 					"        # Create log DataFrame\n",
-					"        # load_data_source = \"refactored_log_script\"\n",
 					"        orchestration_df = spark.createDataFrame([definition])\n",
 					"        refactored_log_df = orchestration_df.select(\n",
 					"            lit(full_file_path).alias(\"raw_input_file_name\"),\n",
 					"            lit(modification_time).cast(\"timestamp\").alias(\"input_file_updated_timestamp\"),\n",
 					"            lit(input_file_row_count).alias(\"input_file_row_count\"),\n",
 					"            col(\"Standardised_Table_Name\").alias(\"standardised_table_name\"),\n",
-					"            lit(rows_new_count).cast(\"int\").alias(\"standardised_table_row_count\"),\n",
+					"            lit(standardised_new_count).cast(\"int\").alias(\"standardised_table_row_count\"),\n",
 					"            lit(harmonised_table_name).alias(\"Harmonised_table_name\"),\n",
 					"            lit(harmonised_table_row_count).cast(\"int\").alias(\"Harmonised_table_row_count\"),\n",
 					"            lit(Load_data_source).alias(\"load_data_source\"),\n",
@@ -361,7 +369,7 @@
 					"        print(f\"Failed to process {file}: {e}\")\n",
 					""
 				],
-				"execution_count": 117
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -376,7 +384,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 118
+				"execution_count": 10
 			}
 		]
 	}
