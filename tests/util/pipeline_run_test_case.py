@@ -54,6 +54,6 @@ class PipelineRunTestCase(SynapseTestCase):
     """
     def run_pipeline(self, pipeline_name: str, pipeline_parameters: Dict[str, Any], max_wait_time_minutes: int = 10):
         pipeline_run_id = self._trigger_pipeline(pipeline_name, pipeline_parameters)
-        pipeline_run_result = self._wait_for_pipeline_run(pipeline_run_id, max_wait_time_minutes)
+        pipeline_run_result = self._wait_for_pipeline_run(pipeline_run_id, max_wait_time_minutes=max_wait_time_minutes)
         assert pipeline_run_result["status"] == "Succeeded"
         return pipeline_run_result
