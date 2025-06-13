@@ -45,9 +45,10 @@ sudo apt install -y --no-install-recommends \
   git-ftp
 
 # Python
-sudo apt install -y --no-install-recommends \
-  python3.7 \
-  python3.7-distutils \
+# Python(Ubuntu 22 uses 3.10 by default)
+sudo apt-get install -y --no-install-recommends \
+  python3 \
+  python3-distutils \
   python3-pip
 
 # Terraform
@@ -56,8 +57,8 @@ sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(l
 sudo apt-get install -y terraform=1.12.2-1
 
 # Checkov
-python3.7 -m pip install --force-reinstall packaging==21
-python3.7 -m pip install -U checkov==2.2.94
+python3 -m pip install --force-reinstall packaging==21
+python3 -m pip install -U checkov==3.2.405
 
 # TFLint
 curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
