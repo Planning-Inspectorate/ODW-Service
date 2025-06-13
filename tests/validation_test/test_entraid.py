@@ -7,8 +7,8 @@ class TestEntraId(SynapseRunRunTestCase):
         pipeline_name = "rel_1262_entra_id"
         pipeline_parameters = constants.SPARK_POOL_CONFIG
 
-        pipeline_run_result = self.run_notebook(pipeline_name, pipeline_parameters)
-        assert pipeline_run_result == constants.PIPELINE_SUCCESS_STATUS
+        pipeline_run_result = self.run_pipeline(pipeline_name, pipeline_parameters)
+        assert pipeline_run_result["status"] == constants.PIPELINE_SUCCESS_STATUS
 
     def test_entraid_notebook(self):
         notebook_name = "py_unit_tests_has_appeals"
