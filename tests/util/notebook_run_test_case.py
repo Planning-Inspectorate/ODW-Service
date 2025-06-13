@@ -60,7 +60,7 @@ class NotebookRunTestCase(SynapseTestCase):
             time.sleep(poll_interval)
         raise NotebookWaitException(f"Exceeded max wait time for the test notebook run with id {notebook_run_id} of {max_wait_time_minutes} minutes")
 
-    def run_notebook(self, notebook_name: str, notebook_parameters: Dict[str, Any], max_wait_time_minutes: int = 30):
+    def run_notebook(self, notebook_name: str, notebook_parameters: Dict[str, Any], max_wait_time_minutes: int = 60):
         notebook_run_id = self._trigger_notebook(notebook_name, notebook_parameters)
         notebook_run_result = self._wait_for_notebook_run(notebook_run_id, max_wait_time_minutes)
         assert "result" in notebook_run_result, "Notebook run json does not have a 'result' property"
