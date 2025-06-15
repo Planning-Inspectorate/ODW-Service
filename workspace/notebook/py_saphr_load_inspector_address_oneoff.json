@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "3ab67ce1-8ec5-4f29-bcea-ef61783cab96"
+				"spark.autotune.trackingId": "736fb1a4-eaa5-4004-a052-54d65b377f7d"
 			}
 		},
 		"metadata": {
@@ -180,7 +180,7 @@
 				"cell_type": "code",
 				"source": [
 					"# Define delta table names, database name and table paths\n",
-					"source_csv_file_name = \"odw_standardised_db\"\n",
+					"source_csv_file_name = \"load_saphr_inspector_address_oneoff.csv\"\n",
 					"source_csv_file_path = f\"abfss://odw-raw@{storage_account}statictables/\"\n",
 					"\n",
 					"target_delta_table = f\"{target_database_name}.sap_hr_inspector_address\"\n",
@@ -212,15 +212,47 @@
 					}
 				},
 				"source": [
-					"##### Process all steps to transform into load_sap_hr_weekly"
+					"##### Process all steps to transform into sap_hr_inspector_address one off load"
 				]
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"# Step 1: get One Off Historical Load latest folder path\n",
 					"\n",
-					"# Step 1: Read source Delta Table\n",
-					"df_source_sap_weekly = spark.read.format(\"delta\").option(\"inferSchema\", \"false\").table(source_delta_table)\n",
+					"source_csv_file_folder_path =  get_latest_folder(source_csv_file_path)\n",
+					"\n",
+					"print(source_csv_file_folder_path)\n",
+					"\n",
+					"source_csv_saphr_inspector_file_path = f\"{source_csv_file_folder_path}/{source_csv_file_name}\"\n",
+					"\n",
+					"# Step 2: Truncate Delta Table for One Off Historical Load\n",
+					"#spark.sql(f\"truncate table {target_delta_table}\")\n",
+					"\n",
+					"# Step 3: Read csv file\n",
+					"df_source_csv_saphr_inspector = spark.read.format(\"csv\").option(\"inferSchema\", \"false\").load(source_csv_saphr_inspector_file_path)\n",
+					"\n",
+					"display(df_source_csv_saphr_inspector)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"\n",
+					"# Step 1: get One Off Historical Load latest folder path\n",
+					"\n",
+					"source_csv_file_folder_path =  get_latest_folder(source_csv_file_path)\n",
+					"\n",
+					"print(source_csv_file_folder_path)\n",
+					"\n",
+					"source_csv_saphr_inspector_file_path = f\"{source_csv_file_folder_path}/{source_csv_file_name}\"\n",
+					"\n",
+					"# Step 2: Truncate Delta Table for One Off Historical Load\n",
+					"#spark.sql(f\"truncate table {target_delta_table}\")\n",
+					"\n",
+					"# Step 3: Read csv file\n",
+					"df_source_csv_saphr_inspector = spark.read.format(\"csv\").option(\"inferSchema\", \"false\").table(source_delta_table)\n",
 					"\n",
 					"# Remove records where 'PersNo' is NULL\n",
 					"df_source_sap_weekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
