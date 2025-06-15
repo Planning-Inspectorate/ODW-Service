@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "092afe51-fcca-4a26-b5e4-c4e7dadace7f"
+				"spark.autotune.trackingId": "879e137c-cb57-4f9e-be1c-bdd119fcd998"
 			}
 		},
 		"metadata": {
@@ -107,7 +107,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 2
 			},
 			{
 				"cell_type": "markdown",
@@ -129,7 +129,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 12
+				"execution_count": 3
 			},
 			{
 				"cell_type": "markdown",
@@ -149,7 +149,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 13
+				"execution_count": 4
 			},
 			{
 				"cell_type": "markdown",
@@ -175,7 +175,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/sap_hr_inspector_address\"\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -285,11 +285,26 @@
 					"\n",
 					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_update_records_inspector_address).dropDuplicates()\n",
 					"\n",
+					"#Reorder columns to match final dataframe with delta table schema\n",
+					"df_tgt_col_reorder = df_tgt_inspector_address.select(df_merged_records_inspector_address.columns)\n",
+					"\n",
+					"df_final_records_inspector_address = df_merged_records_inspector_address.union(df_tgt_col_reorder)\n",
+					"\n",
+					"# Removing duplicate records using row_number\n",
+					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'dd/MM/yyyy').desc())\n",
+					"df_final_records_inspector_address = df_final_records_inspector_address.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn == 1\").drop(\"rn\")\n",
+					"\n",
+					"\n",
 					"print(f\"df_merged_records_inspector_address: {df_merged_records_inspector_address.count()}\")\n",
+					"\n",
+					"print(f\"df_final_records_inspector_address: {df_final_records_inspector_address.count()}\")\n",
+					"\n",
+					"\n",
+					"display(df_final_records_inspector_address)\n",
 					"\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -320,7 +335,7 @@
 					"    raise\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": 7
 			},
 			{
 				"cell_type": "markdown",
