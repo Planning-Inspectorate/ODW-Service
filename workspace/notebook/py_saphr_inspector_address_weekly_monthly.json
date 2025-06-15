@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "22a7ffbc-0367-4075-a349-2347823ac71a"
+				"spark.autotune.trackingId": "092afe51-fcca-4a26-b5e4-c4e7dadace7f"
 			}
 		},
 		"metadata": {
@@ -107,7 +107,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 9
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -129,7 +129,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -149,7 +149,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 3
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -175,7 +175,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/sap_hr_inspector_address\"\n",
 					""
 				],
-				"execution_count": 4
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -264,8 +264,14 @@
 					"\n",
 					"df_tgt_inspector_address = spark.table(f\"{target_delta_table}\")\n",
 					"\n",
+					"print(f\"df_tgt_inspector_address: {df_tgt_inspector_address.count()}\")\n",
+					"\n",
+					"print(target_delta_table)\n",
+					"\n",
 					"# Update the existing records\n",
 					"df_update_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"inner\").select(\"src.*\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
+					"\n",
+					"print(f\"df_update_records_inspector_address: {df_update_records_inspector_address.count()}\")\n",
 					"\n",
 					"#Add new records\n",
 					"df_new_records_inspector_address = df_transform_inspector_address.join(\n",
@@ -274,12 +280,16 @@
 					"    how=\"left_anti\"\n",
 					").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
 					"\n",
+					"print(f\"df_new_records_inspector_address: {df_new_records_inspector_address.count()}\")\n",
 					"\n",
-					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_new_records_inspector_address).dropDuplicates()\n",
+					"\n",
+					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_update_records_inspector_address).dropDuplicates()\n",
+					"\n",
+					"print(f\"df_merged_records_inspector_address: {df_merged_records_inspector_address.count()}\")\n",
 					"\n",
 					""
 				],
-				"execution_count": 5
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -310,7 +320,7 @@
 					"    raise\n",
 					""
 				],
-				"execution_count": 6
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -449,7 +459,7 @@
 					"    # Output the result as JSON for ADF to capture\n",
 					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
-				"execution_count": 8
+				"execution_count": 17
 			},
 			{
 				"cell_type": "code",
@@ -462,7 +472,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": null
 			}
 		]
 	}
