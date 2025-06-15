@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cf74434c-eda9-40a7-8945-552e6e3f6e2e"
+				"spark.autotune.trackingId": "ced57eeb-8359-4711-837c-59b146a3ea17"
 			}
 		},
 		"metadata": {
@@ -106,9 +106,10 @@
 					"import re\n",
 					"from operator import add\n",
 					"from notebookutils import mssparkutils\n",
-					"from pyspark.sql.functions import lit, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce\n",
+					"from pyspark.sql.functions import lit,length,lpad,row_number, current_timestamp, to_date ,expr, md5, col, date_format,when, to_date,current_date,concat,cast,regexp_replace,coalesce\n",
 					"from pprint import pprint as pp\n",
 					"from pyspark.sql.types import *\n",
+					"from pyspark.sql.window import Window\n",
 					"from pyspark.sql import SparkSession\n",
 					"spark = SparkSession.builder.getOrCreate()\n",
 					"from delta.tables import DeltaTable\n",
@@ -117,7 +118,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 7
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -139,7 +140,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 8
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -159,7 +160,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 9
+				"execution_count": 20
 			},
 			{
 				"cell_type": "markdown",
@@ -187,7 +188,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 10
+				"execution_count": 21
 			},
 			{
 				"cell_type": "code",
@@ -198,7 +199,7 @@
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": 11
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -253,9 +254,13 @@
 					"    \"StaffNumber\",\n",
 					"    when(length(\"StaffNumber\") < 8, lpad(\"StaffNumber\", 8, \"0\")).otherwise(col(\"StaffNumber\"))\n",
 					")\n",
+					"\n",
+					"# Removing duplicate records using row_number\n",
+					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'yyyy-MM-dd').desc())\n",
+					"df_source_csv_saphr_inspector = df_source_csv_saphr_inspector.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn == 1\").drop(\"rn\")\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -287,7 +292,7 @@
 					"    raise\n",
 					""
 				],
-				"execution_count": 15
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
