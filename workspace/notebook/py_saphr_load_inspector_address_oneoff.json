@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d5e94ee2-9b2c-414f-8c83-780b08e4eddd"
+				"spark.autotune.trackingId": "8ef3bd6e-04c1-4320-b37c-5e95faf5fe86"
 			}
 		},
 		"metadata": {
@@ -255,57 +255,6 @@
 				"execution_count": 26
 			},
 			{
-				"cell_type": "code",
-				"source": [
-					"\n",
-					"# Step 1: get One Off Historical Load latest folder path\n",
-					"\n",
-					"source_csv_file_folder_path =  get_latest_folder(source_csv_file_path)\n",
-					"\n",
-					"print(source_csv_file_folder_path)\n",
-					"\n",
-					"source_csv_saphr_inspector_file_path = f\"{source_csv_file_folder_path}/{source_csv_file_name}\"\n",
-					"\n",
-					"# Step 2: Truncate Delta Table for One Off Historical Load\n",
-					"#spark.sql(f\"truncate table {target_delta_table}\")\n",
-					"\n",
-					"# Step 3: Read csv file\n",
-					"df_source_csv_saphr_inspector = spark.read.format(\"csv\").option(\"inferSchema\", \"false\").table(source_delta_table)\n",
-					"\n",
-					"# Remove records where 'PersNo' is NULL\n",
-					"df_source_sap_weekly = df_source_sap_weekly.filter(col(\"PersNo\").isNotNull())\n",
-					"\n",
-					"# Exclude \"ingested_datetime\", \"expected_from\", \"expected_to\" from rowid_columns\n",
-					"excluded_columns = {\"ingested_datetime\", \"expected_from\", \"expected_to\"} \n",
-					"\n",
-					"rowid_columns = [c for c in df_source_sap_weekly.columns if c not in excluded_columns]\n",
-					"\n",
-					"# Select required columns and ensure correct data types present in the target dataframe\n",
-					"target_sap_hr_weekly_df = df_source_sap_weekly.select(\n",
-					"    *[col(c).cast(\"string\") for c in df_source_sap_weekly.columns if c not in [\"FTE2\", \"FTE\", \"Wkhrs\", \"CivilServiceStart\",\"DatetoCurrentJob\",\"SeniorityDate\", \"DatetoSubstGrade\", \"OrgStartDate\",\"Birthdate\",\"ingested_datetime\", \"expected_from\", \"expected_to\"]], # Convert other columns to STRING\n",
-					"    col(\"FTE2\").cast(\"double\").alias(\"FTE2\"),\n",
-					"    col(\"FTE\").cast(\"double\").alias(\"FTE\"),\n",
-					"    col(\"Wkhrs\").cast(\"double\").alias(\"Wkhrs\"),\n",
-					"    to_date(col(\"CivilServiceStart\"), \"d/M/yyyy\").alias(\"CivilServiceStart\"),\n",
-					"    to_date(col(\"DatetoCurrentJob\"), \"d/M/yyyy\").cast(\"string\").alias(\"DatetoCurrentJob\"),\n",
-					"    to_date(col(\"SeniorityDate\"), \"d/M/yyyy\").cast(\"string\").alias(\"SeniorityDate\"),    \n",
-					"    to_date(col(\"DatetoSubstGrade\"), \"d/M/yyyy\").alias(\"DatetoSubstGrade\"),\n",
-					"    to_date(col(\"OrgStartDate\"), \"d/M/yyyy\").alias(\"OrgStartDate\"),\n",
-					"    to_date(col(\"Birthdate\"), \"d/M/yyyy\").cast(\"string\").alias(\"Birthdate\"),\n",
-					"    # Add additional metadata fields\n",
-					"    current_date().cast(\"date\").alias(\"Report_MonthEnd_Date\"),\n",
-					"    current_date().alias(\"PDAC_ETL_Date\"),\n",
-					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
-					"    current_timestamp().alias(\"IngestionDate\"),\n",
-					"    current_date().cast(\"timestamp\").alias(\"ValidTo\"),\n",
-					"    md5(concat(*[coalesce(col(c).cast(\"string\"), lit(\"\")) for c in rowid_columns])).alias(\"RowID\"),\n",
-					"    lit(\"Y\").alias(\"IsActive\")\n",
-					")\n",
-					""
-				],
-				"execution_count": null
-			},
-			{
 				"cell_type": "markdown",
 				"metadata": {
 					"nteract": {
@@ -315,7 +264,7 @@
 					}
 				},
 				"source": [
-					"##### Overwrite delta table load_sap_hr_weekly"
+					"##### Overwrite delta table to load one off sap_hr_inspector_address"
 				]
 			},
 			{
@@ -323,7 +272,7 @@
 				"source": [
 					"# Write data to target Delta Table\n",
 					"try:\n",
-					"    target_sap_hr_weekly_df.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
+					"    df_source_csv_saphr_inspector.write.format(\"delta\").mode(\"overwrite\").save(delta_table_path)\n",
 					"\n",
 					"    # Ensure the table exists\n",
 					"    spark.sql(f\"CREATE TABLE IF NOT EXISTS {target_delta_table} USING DELTA LOCATION '{delta_table_path}'\")\n",
