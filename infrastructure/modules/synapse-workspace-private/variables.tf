@@ -44,14 +44,13 @@ variable "key_vault_name" {
   type        = string
 }
 
-variable "odt_appeals_back_office_service_bus_name" {
-  description = "The name of the Appeals BO Service Bus namespace"
-  type        = string
-  default     = null
+variable "create_service_bus_resources" {
+  description = "If we should create extra resources related to the service bus"
+  type        = bool
+  default     = false
 }
-
-variable "odt_appeals_back_office_service_bus_resource_group_name" {
-  description = "The name of the resource group for the Appeals BO Service Bus"
+variable "odt_appeals_back_office_service_bus_id" {
+  description = "The id of the Appeals BO Service Bus namespace"
   type        = string
   default     = null
 }
@@ -61,14 +60,19 @@ variable "network_resource_group_name" {
   type        = string
 }
 
-variable "purview_ids" {
-  default     = null
-  description = "The config of the Purview account to link with the Synapse Workspace"
-  type = object({
-    id           = string
-    storage_id   = string
-    event_hub_id = string
-  })
+variable "purview_id" {
+  description = "The id of the Purview account"
+  type        = string
+}
+
+variable "purview_storage_id" {
+  description = "The id of Purview's managed storage account"
+  type        = string
+}
+
+variable "purview_event_hub_id" {
+  description = "The id of Purview's managed event hub"
+  type        = string
 }
 
 variable "resource_group_name" {

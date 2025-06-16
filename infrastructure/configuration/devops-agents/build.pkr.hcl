@@ -11,8 +11,8 @@ source "azure-arm" "azure-agents" {
   azure_tags = {
     Project          = "tooling"
     CreatedBy        = "packer"
-    TerraformVersion = "1.11.3"
-    pythonVersion    = "3.13"
+    TerraformVersion = "1.11.4"
+    pythonVersion    = "3.7"
   }
 
   client_id       = var.client_id
@@ -34,7 +34,7 @@ build {
     image_sku       = "20_04-lts"
 
     location        = "UK South"
-    vm_size         = "Standard_DS2_v2"
+    vm_size         = "Standard_F2s_v2"
   }
 
   provisioner "shell" {

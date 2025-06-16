@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "1adb5c0e-9d98-47be-9989-ada6e47ee6c8"
+				"spark.autotune.trackingId": "58366f45-d682-4127-a326-ea090267e86e"
 			}
 		},
 		"metadata": {
@@ -45,8 +45,8 @@
 				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 32,
-				"automaticScaleJobs": true
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
@@ -72,7 +72,7 @@
 					"from pyspark.sql import Row\r\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 43
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -97,7 +97,7 @@
 					"primary_key = 'caseReference'\r\n",
 					"incremental_key = 'AppealS78ID'"
 				],
-				"execution_count": 53
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -250,6 +250,8 @@
 					"                        ,siteViewableFromRoad\r\n",
 					"                        ,siteWithinSSSI\r\n",
 					"                        ,typeOfPlanningApplication\r\n",
+					"                        ,preserveGrantLoan\r\n",
+					"                        ,consultHistoricEngland\r\n",
 					"\r\n",
 					"               \r\n",
 					"                        ,Migrated\r\n",
@@ -265,7 +267,7 @@
 					"\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 54
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -296,7 +298,7 @@
 				"source": [
 					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)"
 				],
-				"execution_count": 55
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -340,7 +342,7 @@
 				"source": [
 					"results = service_bus_data"
 				],
-				"execution_count": 56
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -358,7 +360,7 @@
 				"source": [
 					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 57
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -410,7 +412,7 @@
 					"    \"\"\")\r\n",
 					""
 				],
-				"execution_count": 58
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -449,7 +451,7 @@
 					"                            ORDER BY currentRow.ReverseOrderProcessed\r\n",
 					"                    \"\"\")"
 				],
-				"execution_count": 59
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -467,7 +469,7 @@
 				"source": [
 					"df_calcs = df_calcs.withColumnRenamed(primary_key, f\"temp_{primary_key}\").withColumnRenamed(\"IngestionDate\", \"temp_IngestionDate\")"
 				],
-				"execution_count": 61
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -620,6 +622,8 @@
 					"                        ,siteViewableFromRoad\r\n",
 					"                        ,siteWithinSSSI\r\n",
 					"                        ,typeOfPlanningApplication\r\n",
+					"                        ,preserveGrantLoan\r\n",
+					"                        ,consultHistoricEngland\r\n",
 					"                        ,Migrated\r\n",
 					"                        ,ODTSourceSystem\r\n",
 					"                        ,IngestionDate\r\n",
@@ -758,6 +762,8 @@
 					"                            ,IFNULL(CAST(siteViewableFromRoad as String), '.')\r\n",
 					"                            ,IFNULL(CAST(siteWithinSSSI as String), '.')\r\n",
 					"                            ,IFNULL(CAST(typeOfPlanningApplication as String), '.')\r\n",
+					"                            ,IFNULL(CAST(preserveGrantLoan as String), '.')\r\n",
+					"                            ,IFNULL(CAST(consultHistoricEngland as String), '.')\r\n",
 					"                            ,IFNULL(CAST(Migrated as String), '.')\r\n",
 					"                            ,IFNULL(CAST(ODTSourceSystem as String), '.')\r\n",
 					"                            ,IFNULL(CAST(IngestionDate as String), '.')\r\n",
@@ -770,7 +776,7 @@
 					"                \"\"\")\r\n",
 					"    "
 				],
-				"execution_count": 63
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -790,7 +796,7 @@
 					"\r\n",
 					"results = results.drop(\"AppealS78ID\", \"ValidTo\", \"Migrated\", \"IsActive\")"
 				],
-				"execution_count": 64
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -809,7 +815,7 @@
 					"final_df = results.join(df_calcs, (df_calcs[f\"temp_{primary_key}\"] == results[primary_key]) & (df_calcs[\"temp_IngestionDate\"] == results[\"IngestionDate\"])).select(columns).distinct()\r\n",
 					"final_df = final_df.drop(primary_key).drop_duplicates()"
 				],
-				"execution_count": 66
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -827,7 +833,7 @@
 				"source": [
 					"final_df.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
 				],
-				"execution_count": 67
+				"execution_count": null
 			}
 		]
 	}

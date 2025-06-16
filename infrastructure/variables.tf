@@ -108,6 +108,12 @@ variable "devops_agent_pool_resource_group_name_failover" {
   type        = string
 }
 
+variable "devops_agent_failover_enabled" {
+  description = "If failover devops agents should be created or not"
+  type        = bool
+  default     = true
+}
+
 variable "devops_agent_vm_sku" {
   default     = "Standard_F2s_v2"
   description = "The size of the devops agent VMs to be deployed"
@@ -539,4 +545,50 @@ variable "vnet_subnets" {
     }))
     private_endpoint_network_policies = optional(string)
   }))
+}
+
+
+variable "external_resource_links_enabled" {
+  description = "If connections and links to resources outside of the ODW should be made"
+  type        = bool
+}
+
+variable "link_purview_account" {
+  description = "If the PINS purview account should be linked"
+  type        = bool
+}
+
+variable "run_shir_setup_script" {
+  description = "If the SHIR setup script should be triggered on start-up of the VM"
+  type        = bool
+}
+
+variable "create_service_bus_resources" {
+  description = "If resources related to service buses should be created"
+  type        = bool
+  default     = true
+}
+
+variable "purview_msi_id" {
+  description = "The id of the Purview MSI"
+  type        = string
+  default     = null
+}
+
+variable "purview_id" {
+  description = "The id of the Purview account"
+  type        = string
+  default     = null
+}
+
+variable "purview_storage_id" {
+  description = "The id of Purview's managed storage account"
+  type        = string
+  default     = null
+}
+
+variable "purview_event_hub_id" {
+  description = "The id of Purview's managed event hub"
+  type        = string
+  default     = null
 }
