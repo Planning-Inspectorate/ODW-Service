@@ -1,8 +1,8 @@
-from tests.util.synapse_run_test_case import SynapseRunRunTestCase
+from tests.util.synapse_run_test_case import SynapseRunTestCase
 import tests.util.constants as constants
 
 
-class TestEntraId(SynapseRunRunTestCase):
+class TestEntraId(SynapseRunTestCase):
     def test_entraid_pipeline(self):
         pipeline_name = "rel_1262_entra_id"
         pipeline_parameters = constants.SPARK_POOL_CONFIG
