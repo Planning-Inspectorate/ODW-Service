@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "cb475618-8bad-47dd-b2eb-cb66f8800cd4"
+				"spark.autotune.trackingId": "142df98b-7dfb-4d68-a24e-8fc3e09a5c9f"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"container = 'odw-curated'\n",
 					"target_container= 'delta-backup-curated'"
 				],
-				"execution_count": 1
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -95,14 +95,14 @@
 					"from pyspark.sql import Row\n",
 					"import traceback"
 				],
-				"execution_count": 4
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 5
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -111,21 +111,21 @@
 					"\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 7
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": null
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": null
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +151,7 @@
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": null
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -227,7 +227,7 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -304,7 +304,7 @@
 					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -349,7 +349,7 @@
 					"\n",
 					"Non_delta_files_list_filtered = [path for path in Non_delta_files_list if \".net\" not in path]"
 				],
-				"execution_count": null
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -363,7 +363,7 @@
 					"print(f\"The total storage files on {date_now} are: {total_container_files} and total delta file are:{total_delta_files}\")\n",
 					"print(f\"The percentage_Savings are: {percentage_Savings}\")"
 				],
-				"execution_count": null
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -385,7 +385,7 @@
 					"                    ,'aie_document_data'\n",
 					"                    ,'horizon_appeals_event']\n",
 					"\n",
-					"delta_tables_cur = ['s51_advice',\n",
+					"delta_tables_cur = ['s51_advice'\n",
 					"                    ,'nsip_representation'\n",
 					"                    ,'listed_building'\n",
 					"                    ,'appeal_service_user_curated_mipins'\n",
@@ -413,86 +413,87 @@
 					"}\n",
 					"\n",
 					"# Loop through each container\n",
-					"for container_name, delta_tables in container_table_map.items():\n",
-					"    for table_name in delta_tables:\n",
-					"        error_message = \"\"\n",
-					"        source_file_count = 0\n",
-					"        backup_file_count = 0\n",
-					"        source_df_count = 0\n",
-					"        backup_df_count = 0\n",
-					"\n",
-					"        try:\n",
-					"            source_table_path = f\"abfss://{container_name}@{storage_account}.dfs.core.windows.net/{table_name}\"\n",
-					"            \n",
-					"            # Skip paths that contain `.net/` in table_name\n",
-					"            if \".net/\" in source_table_path:\n",
-					"                print(f\"Skipping table due to .net/ pattern: {source_table_path}\")\n",
-					"                continue\n",
-					"\n",
-					"            backup_table_path = source_table_path.replace(\n",
-					"                source_storage_account_path,\n",
-					"                backup_storage_account_path\n",
-					"            ).replace(container_name, target_container)\n",
-					"\n",
-					"            # Count files\n",
-					"            try:\n",
-					"                source_file_count = count_files_in_path(source_table_path)\n",
-					"            except Exception as e:\n",
-					"                error_message += f\"[SourceFileCountError] {str(e)}; \"\n",
+					"for container_name, delta_tables_list in container_table_map.items():\n",
+					"    if container_name == container:\n",
+					"        for table_name in delta_tables_list:\n",
+					"            error_message = \"\"\n",
+					"            source_file_count = 0\n",
+					"            backup_file_count = 0\n",
+					"            source_df_count = 0\n",
+					"            backup_df_count = 0\n",
 					"\n",
 					"            try:\n",
-					"                backup_file_count = count_files_in_path(backup_table_path)\n",
+					"                source_table_path = f\"abfss://{container_name}@{storage_account}{table_name}\"\n",
+					"                \n",
+					"                # Skip paths that contain `.net/` in table_name\n",
+					"                if \".net/\" in table_name:\n",
+					"                    print(f\"Skipping table due to .net/ pattern: {source_table_path}\")\n",
+					"                    continue\n",
+					"\n",
+					"                    backup_table_path = source_table_path.replace(\n",
+					"                    source_storage_account_path,\n",
+					"                    backup_storage_account_path\n",
+					"                ).replace(container_name, target_container)\n",
+					"\n",
+					"                # Count files\n",
+					"                try:\n",
+					"                    source_file_count = count_files_in_path(source_table_path)\n",
+					"                except Exception as e:\n",
+					"                    error_message += f\"[SourceFileCountError] {str(e)}; \"\n",
+					"\n",
+					"                try:\n",
+					"                    backup_file_count = count_files_in_path(backup_table_path)\n",
+					"                except Exception as e:\n",
+					"                    error_message += f\"[BackupFileCountError] {str(e)}; \"\n",
+					"\n",
+					"                delta_table_counts[source_table_path] = source_file_count\n",
+					"                delta_table_counts[backup_table_path] = backup_file_count\n",
+					"                cumulative_total += source_file_count + backup_file_count\n",
+					"\n",
+					"                print(source_file_count, backup_file_count)\n",
+					"\n",
+					"                # Row counts\n",
+					"                try:\n",
+					"                    source_df_count = spark.read.format(\"delta\").load(source_table_path).count()\n",
+					"                except Exception as e:\n",
+					"                    error_message += f\"[SourceDFCountError] {str(e)}; \"\n",
+					"\n",
+					"                try:\n",
+					"                    backup_df_count = spark.read.format(\"delta\").load(backup_table_path).count()\n",
+					"                except Exception as e:\n",
+					"                    error_message += f\"[BackupDFCountError] {str(e)}; \"\n",
+					"\n",
 					"            except Exception as e:\n",
-					"                error_message += f\"[BackupFileCountError] {str(e)}; \"\n",
+					"                error_message += f\"[GeneralError] {str(e)}; \"\n",
 					"\n",
-					"            delta_table_counts[source_table_path] = source_file_count\n",
-					"            delta_table_counts[backup_table_path] = backup_file_count\n",
-					"            cumulative_total += source_file_count + backup_file_count\n",
-					"\n",
-					"            print(source_file_count, backup_file_count)\n",
-					"\n",
-					"            # Row counts\n",
-					"            try:\n",
-					"                source_df_count = spark.read.format(\"delta\").load(source_table_path).count()\n",
-					"            except Exception as e:\n",
-					"                error_message += f\"[SourceDFCountError] {str(e)}; \"\n",
-					"\n",
-					"            try:\n",
-					"                backup_df_count = spark.read.format(\"delta\").load(backup_table_path).count()\n",
-					"            except Exception as e:\n",
-					"                error_message += f\"[BackupDFCountError] {str(e)}; \"\n",
-					"\n",
-					"        except Exception as e:\n",
-					"            error_message += f\"[GeneralError] {str(e)}; \"\n",
-					"\n",
-					"        rows.append(Row(\n",
-					"            Date_Run=run_date,\n",
-					"            table_name=table_name,\n",
-					"            container_name=container_name,\n",
-					"            pipeline_name='pln_delta_backup_odw',\n",
-					"            source_file_name = source_table_path,\n",
-					"            source_file_counts=source_file_count,\n",
-					"            backup_file_counts=backup_file_count,\n",
-					"            source_DF_counts=source_df_count,\n",
-					"            backup_DF_counts=backup_df_count,\n",
-					"            File_diff=source_file_count - backup_file_count,\n",
-					"            Data_diff=source_df_count - backup_df_count,\n",
-					"            Error=error_message if error_message else 'na'\n",
-					"        ))\n",
+					"            rows.append(Row(\n",
+					"                Date_Run=run_date,\n",
+					"                table_name=table_name,\n",
+					"                container_name=container_name,\n",
+					"                pipeline_name='pln_delta_backup_odw',\n",
+					"                source_file_name = source_table_path,\n",
+					"                source_file_counts=source_file_count,\n",
+					"                backup_file_counts=backup_file_count,\n",
+					"                source_DF_counts=source_df_count,\n",
+					"                backup_DF_counts=backup_df_count,\n",
+					"                File_diff=source_file_count - backup_file_count,\n",
+					"                Data_diff=source_df_count - backup_df_count,\n",
+					"                Error=error_message if error_message else 'na'\n",
+					"            ))\n",
 					"\n",
 					"# Create and display final DataFrame\n",
 					"df = spark.createDataFrame(rows)\n",
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_logs\")"
 				],
-				"execution_count": null
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -502,7 +503,7 @@
 					"    \"non_delta_file_list\":list(Non_delta_files_list_filtered)\n",
 					"}"
 				],
-				"execution_count": null
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -514,7 +515,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": null
+				"execution_count": 43
 			}
 		]
 	}
