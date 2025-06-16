@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f10307ae-7a87-4fd1-b0a8-4858b290023e"
+				"spark.autotune.trackingId": "48d5b351-b179-4c65-985b-8796dc855c9d"
 			}
 		},
 		"metadata": {
@@ -264,14 +264,8 @@
 					"\n",
 					"df_tgt_inspector_address = spark.table(f\"{target_delta_table}\")\n",
 					"\n",
-					"print(f\"df_tgt_inspector_address: {df_tgt_inspector_address.count()}\")\n",
-					"\n",
-					"print(target_delta_table)\n",
-					"\n",
 					"# Update the existing records\n",
 					"df_update_records_inspector_address = df_transform_inspector_address.alias(\"src\").join(df_tgt_inspector_address.alias(\"tgt\"), on=\"StaffNumber\", how=\"inner\").select(\"src.*\").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
-					"\n",
-					"print(f\"df_update_records_inspector_address: {df_update_records_inspector_address.count()}\")\n",
 					"\n",
 					"#Add new records\n",
 					"df_new_records_inspector_address = df_transform_inspector_address.join(\n",
@@ -279,8 +273,6 @@
 					"    df_transform_inspector_address[\"StaffNumber\"] == col(\"existing_StaffNumber\"),\n",
 					"    how=\"left_anti\"\n",
 					").withColumn(\"SourceSystemID\", lit(\"SapHr\")).withColumn(\"IngestionDate\", current_timestamp()).withColumn(\"ValidFrom\", col(\"StartDate\")).withColumn(\"ValidTo\", to_timestamp(col(\"EndDate\"),\"yyyy-MM-dd HH:mm:ss.SSS\")).withColumn(\"IsActive\", lit('Y'))\n",
-					"\n",
-					"print(f\"df_new_records_inspector_address: {df_new_records_inspector_address.count()}\")\n",
 					"\n",
 					"\n",
 					"df_merged_records_inspector_address = df_new_records_inspector_address.union(df_update_records_inspector_address).dropDuplicates()\n",
@@ -293,15 +285,6 @@
 					"# Removing duplicate records using row_number\n",
 					"dedup_spec = Window.partitionBy(\"StaffNumber\").orderBy(to_date(col(\"Chngdon\"),'dd/MM/yyyy').desc())\n",
 					"df_final_records_inspector_address = df_final_records_inspector_address.withColumn(\"rn\", row_number().over(dedup_spec)).filter(\"rn == 1\").drop(\"rn\")\n",
-					"\n",
-					"\n",
-					"print(f\"df_merged_records_inspector_address: {df_merged_records_inspector_address.count()}\")\n",
-					"\n",
-					"print(f\"df_final_records_inspector_address: {df_final_records_inspector_address.count()}\")\n",
-					"\n",
-					"\n",
-					"display(df_final_records_inspector_address)\n",
-					"\n",
 					""
 				],
 				"execution_count": 26
