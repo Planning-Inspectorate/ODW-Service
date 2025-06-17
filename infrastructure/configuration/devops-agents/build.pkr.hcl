@@ -37,6 +37,12 @@ build {
     vm_size         = "Standard_F2s_v2"
   }
 
+  provisioner "file" {
+    source = "${path.cwd}/../../../tests/requirements.txt"
+    destination = "tests/requirements.txt"
+  }
+
+
   provisioner "shell" {
     execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash -e '{{ .Path }}'"
     script          = "${path.cwd}/tools.sh"
