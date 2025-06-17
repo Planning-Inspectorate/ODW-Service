@@ -53,9 +53,7 @@ sudo apt-get install -y --no-install-recommends \
 
 # Python dependencies
 ## Requirements for the tests
-echo "$PWD"
-ls
-sudo python3 -m pip install -r tests/requirements.txt
+sudo python3 -m pip install -r ../../tests/requirements.txt
 
 # Terraform
 curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
