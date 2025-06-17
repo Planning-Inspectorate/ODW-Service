@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d2f0a1ba-983f-4be7-aa22-59f895ac85c9"
+				"spark.autotune.trackingId": "8ae5c998-090a-4257-8add-42137cebb0eb"
 			}
 		},
 		"metadata": {
@@ -98,7 +98,7 @@
 					"Param_FileFolder_Path = 'StaticTables'\r\n",
 					"Param_Json_SchemaFolder_Name = ''"
 				],
-				"execution_count": 1
+				"execution_count": 58
 			},
 			{
 				"cell_type": "markdown",
@@ -143,7 +143,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 59
 			},
 			{
 				"cell_type": "markdown",
@@ -176,7 +176,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\r\n",
 					"#print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 60
 			},
 			{
 				"cell_type": "markdown",
@@ -196,7 +196,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 61
 			},
 			{
 				"cell_type": "markdown",
@@ -246,7 +246,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 62
 			},
 			{
 				"cell_type": "code",
@@ -256,7 +256,7 @@
 					"df_orch = spark.read.option(\"multiline\", \"true\").json(json_schema_file_path)\r\n",
 					"definitions = json.loads(df_orch.toJSON().first())[\"definitions\"]"
 				],
-				"execution_count": null
+				"execution_count": 63
 			},
 			{
 				"cell_type": "markdown",
@@ -280,7 +280,7 @@
 					"    folders = sorted([f for f in folders if re.match(r\"\\d{4}-\\d{2}-\\d{2}\", f)], reverse=True)\r\n",
 					"    return folders[0] if folders else None"
 				],
-				"execution_count": null
+				"execution_count": 64
 			},
 			{
 				"cell_type": "markdown",
@@ -326,7 +326,7 @@
 					"#        logInfo(\" Appended new entry to logging table.\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 65
 			},
 			{
 				"cell_type": "markdown",
@@ -385,15 +385,22 @@
 					"def reorder_columns(df, date_columns=None):\r\n",
 					"    \"\"\"Reorders the columns so that metadata columns come first.\"\"\"\r\n",
 					"    try:\r\n",
-					"        # Optionally validate date columns are still strings\r\n",
+					"        metadata_cols = [\"ingested_datetime\", \"expected_from\", \"expected_to\"]\r\n",
+					"        remaining_cols = [col for col in df.columns if col not in metadata_cols]\r\n",
+					"        \r\n",
+					"        # Auto-detect date columns if not provided (excluding metadata columns)\r\n",
+					"        if date_columns is None:\r\n",
+					"            date_columns = [col_name for col_name, dtype in df.dtypes\r\n",
+					"                          if ('date' in dtype.lower() or 'timestamp' in dtype.lower())\r\n",
+					"                          and col_name not in metadata_cols]\r\n",
+					"       \r\n",
+					"        # Only convert non-metadata date columns to string\r\n",
 					"        if date_columns:\r\n",
 					"            for col_name in date_columns:\r\n",
 					"                if col_name in df.columns:\r\n",
 					"                    # Ensure it's treated as string in all operations\r\n",
 					"                    df = df.withColumn(col_name, col(col_name).cast(\"string\"))\r\n",
-					"        \r\n",
-					"        metadata_cols = [\"ingested_datetime\", \"expected_from\", \"expected_to\"]\r\n",
-					"        remaining_cols = [col for col in df.columns if col not in metadata_cols]\r\n",
+					"       \r\n",
 					"        return df.select(metadata_cols + remaining_cols)\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error reordering columns: {e}\")\r\n",
@@ -445,7 +452,7 @@
 					"    raise TypeError(f\"Object of type {obj.__class__.__name__} is not JSON serializable\")\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 66
 			},
 			{
 				"cell_type": "markdown",
@@ -626,7 +633,7 @@
 					"        processing_results.append(result_entry)\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 67
 			},
 			{
 				"cell_type": "markdown",
@@ -647,7 +654,7 @@
 					"# --- Run the main process ---\r\n",
 					"process_definitions(Param_File_Load_Type)"
 				],
-				"execution_count": null
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -667,7 +674,7 @@
 					"\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 69
 			},
 			{
 				"cell_type": "code",
@@ -675,7 +682,7 @@
 					"# Exit with the JSON result for pipeline consumption\r\n",
 					"mssparkutils.notebook.exit(result_json_str)"
 				],
-				"execution_count": null
+				"execution_count": 70
 			},
 			{
 				"cell_type": "markdown",
