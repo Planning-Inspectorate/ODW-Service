@@ -45,7 +45,7 @@ def approve_private_endpoints(env: str):
     # Approve pending Synapse MPEs pointing to the Appeals Back Office service bus
     # Switch to the appeals bo subscription
     exception = None
-    Util.set_subscription(os.environ.get("ODT_SUBSCRIPTION_ID", None))
+    Util.set_subscription(os.environ.get("ODT_SUBSCRIPTION_ID"))
     try:
         service_bus_private_endpoint_manager = ServiceBusPrivateEndpointManager()
         appeals_bo_resource_group = f"pins-rg-appeals-bo-{env}"

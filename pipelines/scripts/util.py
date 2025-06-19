@@ -40,6 +40,7 @@ class Util:
 
     @classmethod
     def set_subscription(cls, subscription_name: str):
+        logging.info(f"Switching subscription to '{subscription_name}'")
         cmd = f'az account set --subscription "{subscription_name}"'
         os.popen(cmd)
 
