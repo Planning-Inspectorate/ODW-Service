@@ -44,25 +44,26 @@ def approve_private_endpoints(env: str):
         )
     # Approve pending Synapse MPEs pointing to the Appeals Back Office service bus
     # Switch to the appeals bo subscription
-    exception = None
-    Util.set_subscription(os.environ.get("ODT_SUBSCRIPTION_ID"))
-    try:
-        service_bus_private_endpoint_manager = ServiceBusPrivateEndpointManager()
-        appeals_bo_resource_group = f"pins-rg-appeals-bo-{env}"
-        appeals_bo_service_bus_name = f"pins-sb-appeals-bo-{env}"
-        all_private_endpoints = service_bus_private_endpoint_manager.get_all(
-            appeals_bo_resource_group,
-            appeals_bo_service_bus_name
-        )
-        synapse_mpes = [x for x in all_private_endpoints if f"synapse-mpe-appeals-bo--odw-{env}-uks" in x["properties"]["privateEndpoint"]["id"]]
-        for synapse_mpe in synapse_mpes:
-            service_bus_private_endpoint_manager.approve(synapse_mpe["id"])
-    except Exception as e:
-        exception = e
-    finally:
-        Util.set_subscription(initial_subscription)
-    if exception:
-        raise exception
+    if env != "build":
+        exception = None
+        Util.set_subscription(os.environ.get("ODT_SUBSCRIPTION_ID"))
+        try:
+            service_bus_private_endpoint_manager = ServiceBusPrivateEndpointManager()
+            appeals_bo_resource_group = f"pins-rg-appeals-bo-{env}"
+            appeals_bo_service_bus_name = f"pins-sb-appeals-bo-{env}"
+            all_private_endpoints = service_bus_private_endpoint_manager.get_all(
+                appeals_bo_resource_group,
+                appeals_bo_service_bus_name
+            )
+            synapse_mpes = [x for x in all_private_endpoints if f"synapse-mpe-appeals-bo--odw-{env}-uks" in x["properties"]["privateEndpoint"]["id"]]
+            for synapse_mpe in synapse_mpes:
+                service_bus_private_endpoint_manager.approve(synapse_mpe["id"])
+        except Exception as e:
+            exception = e
+        finally:
+            Util.set_subscription(initial_subscription)
+        if exception:
+            raise exception
 
 
 if __name__ == "__main__":
