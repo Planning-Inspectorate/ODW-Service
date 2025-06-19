@@ -43,6 +43,7 @@ class Util:
         logging.info(f"Switching subscription to '{subscription_name}'")
         cmd = f'az account set --subscription "{subscription_name}"'
         os.popen(cmd)
+        logging.info(f"Current subscription is '{cls.get_subscription()}'")
 
     @classmethod
     def get_current_user(cls) -> str:
