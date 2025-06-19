@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "315035f9-feb5-47bb-9d03-4c893bda27af"
+				"spark.autotune.trackingId": "b38db0e6-fefa-4d39-84a1-485454fda574"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"container = 'odw-harmonised'\n",
 					"target_container= 'delta-backup-harmonised'"
 				],
-				"execution_count": 145
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -96,14 +96,14 @@
 					"import traceback\n",
 					"from pyspark.sql.types import StructType, StructField, StringType, FloatType"
 				],
-				"execution_count": 146
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 124
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -112,21 +112,21 @@
 					"\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 125
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 126
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 127
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -152,7 +152,7 @@
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": 128
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -229,7 +229,7 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 129
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -326,7 +326,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 130
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -375,7 +375,7 @@
 					"\n",
 					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)"
 				],
-				"execution_count": 131
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -391,7 +391,7 @@
 					"    return total_bytes\n",
 					""
 				],
-				"execution_count": 132
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -403,13 +403,46 @@
 					"    total_bytes += folder_size\n",
 					"\n",
 					"total_size_non_delta_in_mb = total_bytes / (1024 * 1024)\n",
-					"total_size_non_delta_in_gb = total_mb / 1024\n",
+					"total_size_non_delta_in_gb = total_size_non_delta_in_mb / 1024\n",
 					"\n",
 					"print(f\"\\n Grand Total Size across all non-delta folders:\")\n",
 					"print(f\" The total non-delta backup size in MB for {container} is {total_size_non_delta_in_mb:.2f} MB\")\n",
 					"print(f\" The total non-delta backup size in GB for {container} is {total_size_non_delta_in_gb:.2f} GB\")"
 				],
-				"execution_count": 133
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Recursive function to count all files\n",
+					"def count_files(path):\n",
+					"    total = 0\n",
+					"    try:\n",
+					"        items = mssparkutils.fs.ls(path)\n",
+					"        for item in items:\n",
+					"            if item.isDir:\n",
+					"                total += count_files(item.path)\n",
+					"            else:\n",
+					"                total += 1\n",
+					"    except Exception as e:\n",
+					"        print(f\"Could not access path {path}: {str(e)}\")\n",
+					"    return total"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"total_non_delta_files = 0\n",
+					"\n",
+					"for path in Non_delta_files_list:\n",
+					"    count = count_files(path)\n",
+					"    print(f\"{path} --> {count} files\")\n",
+					"    total_non_delta_files += count\n",
+					"\n",
+					"print(f\"\\n Total non-delta files across all paths: {total_non_delta_files}\")"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -426,7 +459,7 @@
 					"\n",
 					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")"
 				],
-				"execution_count": 134
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -541,14 +574,14 @@
 					"print(f\"Total number of files across all Delta tables in Test are: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 135
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw\")"
 				],
-				"execution_count": 136
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -556,18 +589,20 @@
 					"\n",
 					"\n",
 					"# Summary backup fields\n",
-					"date_run = datetime.today().strftime('%Y-%m-%d')\n",
-					"container_name = container\n",
-					"target_container_name = target_container\n",
-					"total_delta_in_MB = total_delta_in_MB\n",
-					"total_delta_in_GB = total_delta_in_GB \n",
-					"total_non_delta_in_MB = total_size_non_delta_in_mb\n",
-					"total_non_delta_in_GB = total_size_non_delta_in_gb\n",
-					"Total_Backup_size_in_MB = total_delta_in_MB+total_non_delta_in_MB\n",
-					"Total_Backup_size_in_GB = total_delta_in_GB+total_non_delta_in_GB\n",
-					"Total_container_files = total_container_files\n",
-					"Total_delta_files = total_delta_files\n",
-					"percentage_Savings = percentage_Savings\n",
+					"date_run                            = datetime.today().strftime('%Y-%m-%d')\n",
+					"container_name                      = container\n",
+					"target_container_name               = target_container\n",
+					"Total_Delta_backup_size_in_MB       = total_delta_in_MB\n",
+					"Total_Delta_backup_size_in_GB       = total_delta_in_GB \n",
+					"Total_Non_Delta_backup_size_in_MB   = total_size_non_delta_in_mb\n",
+					"Total_Non_Delta_backup_size_in_GB   = total_size_non_delta_in_gb\n",
+					"Total_Backup_size_in_MB             = total_delta_in_MB+total_non_delta_in_MB\n",
+					"Total_Backup_size_in_GB             = total_delta_in_GB+total_non_delta_in_GB\n",
+					"Total_container_files               = total_container_files\n",
+					"Total_Delta_files                   = total_delta_files\n",
+					"Total_Non_Delta_files               = total_non_delta_files\n",
+					"percentage_Savings                  = percentage_Savings\n",
+					"\n",
 					"\n",
 					"\n",
 					"# Define schema\n",
@@ -579,34 +614,61 @@
 					"    StructField(\"Total_Delta_backup_size_in_GB\", FloatType(), True),\n",
 					"    StructField(\"Total_Non_Delta_backup_size_in_MB\", FloatType(), True),\n",
 					"    StructField(\"Total_Non_Delta_backup_size_in_GB\", FloatType(), True),\n",
-					"    StructField(\"Total_Backup_size_in_MB\", FloatType(),True),\n",
-					"    StructField(\"Total_Backup_size_in_GB\", FloatType(),True),\n",
-					"    StructField(\"Total_container_files\"),FloatType(),True),\n",
-					"    StructField(\"Total_delta_files\"),IntegerType(),True),\n",
-					"    StructField(\"percentage_Savings\", FloatType(),True)\n",
-					"\n",
+					"    StructField(\"Total_Backup_size_in_MB\", FloatType(), True),\n",
+					"    StructField(\"Total_Backup_size_in_GB\", FloatType(), True),\n",
+					"    StructField(\"Total_container_files\", IntegerType(), True),        \n",
+					"    StructField(\"Total_Delta_files\", IntegerType(), True),\n",
+					"    StructField(\"Total_Non_Delta_files\", IntegerType(), True),  \n",
+					"    StructField(\"percentage_Savings\", FloatType(), True)\n",
 					"])\n",
-					"\n",
 					"# Create data row\n",
-					"data = [(date_run, container_name, target_container_name,\n",
-					"         total_delta_in_MB, total_delta_in_GB,\n",
-					"         total_non_delta_in_MB, total_non_delta_in_GB,Total_Backup_size_in_MB,Total_Backup_size_in_GB\n",
-					"         ,Total_container_files \n",
-					"         ,Total_delta_files \n",
-					"         ,percentage_Savings \n",
+					"data = [ (date_run\n",
+					"        , container_name\n",
+					"        , target_container_name\n",
+					"        , Total_Delta_backup_size_in_MB\n",
+					"        , Total_Delta_backup_size_in_GB\n",
+					"        , Total_Non_Delta_backup_size_in_MB\n",
+					"        , Total_Non_Delta_backup_size_in_GB\n",
+					"        , Total_Backup_size_in_MB\n",
+					"        , Total_Backup_size_in_GB\n",
+					"        , Total_container_files \n",
+					"        , Total_Delta_files \n",
+					"        , Total_Non_Delta_files\n",
+					"        , percentage_Savings \n",
 					"         )]\n",
 					"\n",
 					"# Create DataFrame\n",
-					"df = spark.createDataFrame(data, schema=schema)\n",
-					"\n",
-					"# Show the DataFrame\n",
-					"df.show(truncate=False)\n",
+					"df_summary = spark.createDataFrame(data, schema=schema)\n",
 					"\n",
 					"# Write to Delta Table (adjust path or table name as needed)\n",
-					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw_summary\")\n",
+					"df_summary.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw_summary\")\n",
 					""
 				],
-				"execution_count": 147
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# %%pyspark\n",
+					"# df = spark.sql(\"SELECT * FROM `logging`.`delta_backup_odw_summary` \")\n",
+					"# display(df)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# %%pyspark\n",
+					"# df = spark.sql(\"SELECT * FROM `logging`.`delta_backup_odw`  order by Date_Run desc\")\n",
+					"# display(df)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -616,7 +678,7 @@
 					"    \"non_delta_file_list\":list(Non_delta_files_list)\n",
 					"}"
 				],
-				"execution_count": 137
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -628,7 +690,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": 138
+				"execution_count": null
 			}
 		]
 	}
