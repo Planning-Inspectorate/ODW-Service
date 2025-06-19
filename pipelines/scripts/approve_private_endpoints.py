@@ -54,9 +54,9 @@ def approve_private_endpoints(env: str):
             appeals_bo_resource_group,
             appeals_bo_service_bus_name
         )
-        pe_names = [x["name"] for x in all_private_endpoints]
-        for p in pe_names:
-            print("pe: ", p)
+        import json
+        for p in all_private_endpoints:
+            print("pe: ", json.dumps(p, indent=4))
         synapse_mpes = [x for x in all_private_endpoints if f"synapse-mpe-appeals-bo--odw-{env}-uks" in x["name"]]
         for synapse_mpe in synapse_mpes:
             service_bus_private_endpoint_manager.approve(synapse_mpe["id"])
