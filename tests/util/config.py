@@ -14,6 +14,8 @@ TEST_CONFIG = {
         "ENV",
         "DATA_LAKE_STORAGE",
         "SUBSCRIPTION_ID",
-        "PURVIEW_ID"
+        "PURVIEW_ID",
+        "CASE_REFERENCE",
+        "APPLICATION_REFERENCE",
     ]
 }
