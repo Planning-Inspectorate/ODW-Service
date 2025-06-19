@@ -80,3 +80,8 @@ class NotebookRunTestCase(SynapseTestCase):
         assert "runStatus" in notebook_run_result["result"], "Notebook run json property 'result' does not have a 'runStatus' property"
         assert notebook_run_result["result"]["runStatus"] == "Succeeded"
         return notebook_run_result
+        notebook_run_result = self._wait_for_notebook_run(notebook_run_id, max_wait_time_minutes)
+        assert "result" in notebook_run_result, "Notebook run json does not have a 'result' property"
+        assert "runStatus" in notebook_run_result["result"], "Notebook run json property 'result' does not have a 'runStatus' property"
+        assert notebook_run_result["result"]["runStatus"] == "Succeeded"
+        return notebook_run_result
