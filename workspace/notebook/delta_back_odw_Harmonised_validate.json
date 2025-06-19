@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "142df98b-7dfb-4d68-a24e-8fc3e09a5c9f"
+				"spark.autotune.trackingId": "0f6716fb-959a-4928-a37d-20d914596849"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"container = 'odw-curated'\n",
 					"target_container= 'delta-backup-curated'"
 				],
-				"execution_count": 27
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -95,14 +95,14 @@
 					"from pyspark.sql import Row\n",
 					"import traceback"
 				],
-				"execution_count": 28
+				"execution_count": 73
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 29
+				"execution_count": 74
 			},
 			{
 				"cell_type": "code",
@@ -111,21 +111,21 @@
 					"\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 30
+				"execution_count": 75
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 31
+				"execution_count": 76
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 32
+				"execution_count": 77
 			},
 			{
 				"cell_type": "code",
@@ -151,7 +151,7 @@
 					"\n",
 					"    return set(files)"
 				],
-				"execution_count": 33
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -212,6 +212,7 @@
 					"\n",
 					"# Filter for Delta tables\n",
 					"delta_tables = [p for p in all_dirs if is_delta_table(p)]\n",
+					"    \n",
 					"\n",
 					"\n",
 					"# Count files and compute cumulative total\n",
@@ -227,7 +228,7 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 34
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -242,118 +243,170 @@
 					"grand_total_changes = 0\n",
 					"error = []\n",
 					"\n",
+					"\n",
 					"for delta_table in delta_tables:\n",
 					"\n",
-					"    try:\n",
-					"        # Extract container name\n",
-					"        container_name = delta_table.split(\"@\")[0].split(\"//\")[1]\n",
+					"    if len(delta_table.split(\"/.dfs\")) == 1:\n",
 					"\n",
-					"        # Construct backup path\n",
-					"        backup_path = delta_table.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, target_container)\n",
-					"        \n",
-					"        \n",
-					"        # List source files\n",
+					"        print(f\"The delta_table is have invalid path :: {delta_table}\")\n",
+					"\n",
 					"        try:\n",
-					"            if mssparkutils.fs.exists(delta_table):\n",
-					"                source_file = list_all_delta_files(delta_table)\n",
-					"            else:\n",
-					"                logInfo(f\"Source path does not exist: {delta_table}\")\n",
-					"                continue\n",
-					"        except FileNotFoundError as e:\n",
-					"            logError(f\"Error listing files in source {delta_table}: {e}\")\n",
-					"            continue\n",
-					"        \n",
-					"        # List backup files, handle if backup_path doesn't exist\n",
-					"        try:\n",
-					"            if mssparkutils.fs.exists(backup_path):\n",
-					"                backup_file = list_all_delta_files(backup_path)\n",
-					"            else:\n",
-					"                print(f\"Backup path does not exist (assuming no backup yet): {backup_path}\")\n",
-					"                mssparkutils.fs.mkdirs(backup_path)\n",
-					"                backup_file = list_all_delta_files(backup_path) # Assume no backup files yet\n",
-					"        except Exception as e:\n",
-					"            logError(f\"Error listing files in backup {backup_path}: {e}\")\n",
-					"            backup_file = []  # Treat as empty\n",
-					"        \n",
-					"        # Determine changed files\n",
-					"        try:\n",
-					"            change_file = set(source_file) - set(backup_file)\n",
-					"            change_count = len(change_file)\n",
-					"            grand_total_changes += change_count\n",
-					"            print(f\"{change_count} new/changed files in {delta_table}\")\n",
-					"        except Exception as e:\n",
-					"            logError(f\"Error comparing changed files for {delta_table}: {e}\")\n",
-					"            continue\n",
-					"        \n",
-					"        # Copy changed files\n",
-					"        for file_name in change_file:\n",
+					"            # Extract container name\n",
+					"            container_name = delta_table.split(\"@\")[0].split(\"//\")[1]\n",
+					"\n",
+					"            # Construct backup path\n",
+					"            backup_path = delta_table.replace(source_storage_account_path, backup_storage_account_path).replace(container_name, target_container)\n",
+					"            \n",
+					"            \n",
+					"            # List source files\n",
 					"            try:\n",
-					"                source_path = delta_table + file_name\n",
-					"                dest_path = backup_path + file_name\n",
-					"                # print(f\"Copying delta files from 'UKS' {source_path} to '===> UKW' {dest_path}\")\n",
-					"                # Copy changed files from source to target\n",
-					"                mssparkutils.fs.cp(source_path, dest_path)\n",
-					"            except Exception as e:\n",
-					"                logError(f\"Error copying files from source {source_path} to '\\n' target {dest_path}: {e}\")\n",
+					"                if mssparkutils.fs.exists(delta_table):\n",
+					"                    source_file = list_all_delta_files(delta_table)\n",
+					"                else:\n",
+					"                    logInfo(f\"Source path does not exist: {delta_table}\")\n",
+					"                    continue\n",
+					"            except FileNotFoundError as e:\n",
+					"                logError(f\"Error listing files in source {delta_table}: {e}\")\n",
 					"                continue\n",
-					"    \n",
-					"    except Exception as e:\n",
-					"        print(f\"Unexpected error processing {delta_table}: {e}\")\n",
-					"        continue\n",
+					"            \n",
+					"            # List backup files, handle if backup_path doesn't exist\n",
+					"            try:\n",
+					"                if mssparkutils.fs.exists(backup_path):\n",
+					"                    backup_file = list_all_delta_files(backup_path)\n",
+					"                else:\n",
+					"                    print(f\"Backup path does not exist (assuming no backup yet): {backup_path}\")\n",
+					"                    mssparkutils.fs.mkdirs(backup_path)\n",
+					"                    backup_file = list_all_delta_files(backup_path) # Assume no backup files yet\n",
+					"            except Exception as e:\n",
+					"                logError(f\"Error listing files in backup {backup_path}: {e}\")\n",
+					"                backup_file = []  # Treat as empty\n",
+					"            \n",
+					"            # Determine changed files\n",
+					"            try:\n",
+					"                change_file = set(source_file) - set(backup_file)\n",
+					"                change_count = len(change_file)\n",
+					"                grand_total_changes += change_count\n",
+					"                print(f\"{change_count} new/changed files in {delta_table}\")\n",
+					"            except Exception as e:\n",
+					"                logError(f\"Error comparing changed files for {delta_table}: {e}\")\n",
+					"                continue\n",
+					"            \n",
+					"            # Copy changed files\n",
+					"            size_bytes = 0\n",
+					"            for file_name in change_file:\n",
+					"                try:\n",
+					"                    \n",
+					"                    items = mssparkutils.fs.ls(delta_table + file_name)\n",
+					"                    size_bytes += sum(item.size for item in items if not item.isDir)\n",
+					"\n",
+					"\n",
+					"                    source_path = delta_table + file_name\n",
+					"                    dest_path = backup_path + file_name\n",
+					"\n",
+					"                    # print(f\"Copying delta files from 'UKS' {source_path} to '===> UKW' {dest_path}\")\n",
+					"                    # Copy changed files from source to target\n",
+					"                    mssparkutils.fs.cp(source_path, dest_path)\n",
+					"                except Exception as e:\n",
+					"                    logError(f\"Error copying files from source {source_path} to '\\n' target {dest_path}: {e}\")\n",
+					"                    continue\n",
+					"        \n",
+					"        except Exception as e:\n",
+					"            print(f\"Unexpected error processing {delta_table}: {e}\")\n",
+					"            continue\n",
 					"\n",
 					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
+					"print(f\"total_delta_files_size_in_bytes : {size_bytes}\")\n",
 					""
 				],
-				"execution_count": 35
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# This function traverses each directory untill it find a non-delta folder and lists them\n",
-					"# new Non delta process - modified 10Jun25 \"\n",
+					"# new Non delta process - updated 18-June-2025 \n",
+					"# additional condition added to exclude root path from the list with is_base = True checks\n",
 					"@logging_to_appins\n",
 					"def list_non_delta_file_folders(base_path):\n",
 					"    non_delta_folders = []\n",
 					"\n",
-					"    def process_path(path):\n",
+					"    def process_path(path, is_base=False):\n",
 					"        try:\n",
 					"            items = mssparkutils.fs.ls(path)\n",
 					"        except Exception as e:\n",
 					"            logError(f\"Failed to access path: {path}, error: {e}\")\n",
 					"            return\n",
 					"\n",
-					"        # Check if current directory contains _delta_log → it's a Delta table root\n",
-					"        contains_delta_log = any(item.isDir and item.name.strip('/') == \"_delta_log\" for item in items)\n",
+					"        # check for table for malformed table_names \n",
+					"        domain_marker = \".dfs.core.windows.net/\"\n",
+					"        if domain_marker in path:\n",
+					"            path_after_domain = path.split(domain_marker, 1)[-1]\n",
+					"            if \".dfs.core.windows.net\" in path_after_domain:\n",
+					"                logInfo(\"Skipping malformed folder path (nested domain found): {path}\")\n",
+					"                return\n",
 					"\n",
-					"        if contains_delta_log:\n",
-					"            # This is a Delta table root folder, skip it and its children\n",
-					"            logInfo(f\"Delta table found at: {path}\")\n",
-					"            return\n",
+					"        # Skip adding the base path itself to the results\n",
+					"        if not is_base:\n",
+					"            contains_delta_log = any(item.isDir and item.name.strip('/') == \"_delta_log\" for item in items)\n",
+					"            if contains_delta_log:\n",
+					"                logInfo(f\"Delta table found at: {path}\")\n",
+					"                return\n",
 					"\n",
-					"        has_files = any(not item.isDir for item in items)\n",
-					"        if has_files:\n",
-					"            logInfo(f\"Non-Delta folder with files: {path}\")\n",
-					"            non_delta_folders.append(path)\n",
+					"            has_files = any(not item.isDir for item in items)\n",
+					"            if has_files:\n",
+					"                logInfo(f\"Non-Delta folder with files: {path}\")\n",
+					"                non_delta_folders.append(path)\n",
 					"\n",
-					"        # Recurse into subfolders (only if not a Delta root)\n",
+					"        # Recurse into subfolders\n",
 					"        for item in items:\n",
 					"            if item.isDir:\n",
 					"                process_path(item.path)\n",
 					"\n",
-					"    process_path(base_path)\n",
+					"    process_path(base_path, is_base=True)\n",
 					"    return non_delta_folders\n",
 					"\n",
-					"\n",
-					"\n",
-					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)\n",
-					"\n",
-					"Non_delta_files_list_filtered = [path for path in Non_delta_files_list if \".net\" not in path]"
+					"Non_delta_files_list = list_non_delta_file_folders(full_storage_path)"
 				],
-				"execution_count": 36
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"# returns the folder size in bytes\n",
+					"def get_folder_size(path):\n",
+					"    total_bytes = 0\n",
+					"    for item in mssparkutils.fs.ls(path):\n",
+					"        if item.isDir:\n",
+					"            total_bytes += get_folder_size(item.path)\n",
+					"        else:\n",
+					"            total_bytes += item.size\n",
+					"    return total_bytes\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"total_bytes = 0\n",
+					"for path in Non_delta_files_list:\n",
+					"    folder_size = get_folder_size(path)\n",
+					"    # print(f\"the total_non_delta_size for folder {path} is : {folder_size / 2014 * 2014:.2f} MB\")\n",
+					"    total_bytes += folder_size\n",
+					"\n",
+					"total_mb = total_bytes / (1024 * 1024)\n",
+					"total_gb = total_mb / 1024\n",
+					"\n",
+					"print(f\"\\n Grand Total Size across all non-delta folders:\")\n",
+					"print(f\" The total non-delta backup size in MB for {container} is {total_mb:.2f} MB\")\n",
+					"print(f\" The total non-delta backup size in GB for {container} is {total_gb:.2f} GB\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# delta tables grand_total_size for change files\n",
 					"total_delta_files = grand_total_changes\n",
 					"total_container_files = cumulative_total\n",
 					"date_now = datetime.now().strftime(\"%Y-%m-%d\")\n",
@@ -361,9 +414,12 @@
 					"percentage_Savings = ((total_container_files-total_delta_files)/total_container_files)*100\n",
 					"\n",
 					"print(f\"The total storage files on {date_now} are: {total_container_files} and total delta file are:{total_delta_files}\")\n",
-					"print(f\"The percentage_Savings are: {percentage_Savings}\")"
+					"print(f\"The percentage_Savings are: {percentage_Savings}\")\n",
+					"\n",
+					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
+					"print(f\"total_delta_files_size_in_bytes : {size_bytes}\")"
 				],
-				"execution_count": 37
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -456,7 +512,7 @@
 					"                try:\n",
 					"                    source_df_count = spark.read.format(\"delta\").load(source_table_path).count()\n",
 					"                except Exception as e:\n",
-					"                    error_message += f\"[SourceDFCountError] {str(e)}; \"\n",
+					"                    error_message += f\"[SourceDFCountError] {str(e)};\"\n",
 					"\n",
 					"                try:\n",
 					"                    backup_df_count = spark.read.format(\"delta\").load(backup_table_path).count()\n",
@@ -486,14 +542,14 @@
 					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
 					""
 				],
-				"execution_count": 40
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_logs\")"
+					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw\")"
 				],
-				"execution_count": 41
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -503,7 +559,7 @@
 					"    \"non_delta_file_list\":list(Non_delta_files_list_filtered)\n",
 					"}"
 				],
-				"execution_count": 42
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -515,7 +571,7 @@
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
 				],
-				"execution_count": 43
+				"execution_count": null
 			}
 		]
 	}
