@@ -1,0 +1,79 @@
+{
+	"name": "ref_appeal_attribute_matrix",
+	"properties": {
+		"folder": {
+			"name": "odw-standardised"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "0604c8b5-ebd7-4bb8-808d-056457f0cd3d"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"import re\n",
+					"\n",
+					"file_path = \"abfss://datalab@pinsstodwdevuks.dfs.core.windows.net/ODW/Casework/Appeals/appeals-attribute-matrix.csv\"\n",
+					"\n",
+					"df = spark.read.option(\"header\", True).option(\"inferSchema\", True).csv(file_path)\n",
+					"\n",
+					"display(df)\n",
+					"\n",
+					"def to_camel_case(colname: str) -> str:\n",
+					"    parts = re.split(r'\\s+', colname.strip())\n",
+					"    return parts[0].lower() + ''.join(p.capitalize() for p in parts[1:])\n",
+					"\n",
+					"for colname in df.columns:\n",
+					"    new_name = to_camel_case(colname)\n",
+					"    df = df.withColumnRenamed(colname, new_name)\n",
+					"\n",
+					"df.write.mode(\"overwrite\").format(\"delta\").saveAsTable(\"odw_standardised_db.ref_appeal_attribute_matrix\")"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
