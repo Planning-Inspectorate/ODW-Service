@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "0f6716fb-959a-4928-a37d-20d914596849"
+				"spark.autotune.trackingId": "8f987217-4d64-4dd7-b49c-f9c313323095"
 			}
 		},
 		"metadata": {
@@ -82,7 +82,7 @@
 					"container = 'odw-curated'\n",
 					"target_container= 'delta-backup-curated'"
 				],
-				"execution_count": 72
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -95,14 +95,14 @@
 					"from pyspark.sql import Row\n",
 					"import traceback"
 				],
-				"execution_count": 73
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 74
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -111,21 +111,21 @@
 					"\n",
 					"full_storage_path    = f'abfss://{container}@{source_storage_account_path}'"
 				],
-				"execution_count": 75
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"backup_storage_account_path=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_backup_destination')).group(1)"
 				],
-				"execution_count": 76
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account: str = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 77
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -242,6 +242,7 @@
 					"# Initialize grand total counter\n",
 					"grand_total_changes = 0\n",
 					"error = []\n",
+					"delta_size_in_bytes = 0\n",
 					"\n",
 					"\n",
 					"for delta_table in delta_tables:\n",
@@ -292,12 +293,12 @@
 					"                continue\n",
 					"            \n",
 					"            # Copy changed files\n",
-					"            size_bytes = 0\n",
+					"            \n",
 					"            for file_name in change_file:\n",
 					"                try:\n",
 					"                    \n",
 					"                    items = mssparkutils.fs.ls(delta_table + file_name)\n",
-					"                    size_bytes += sum(item.size for item in items if not item.isDir)\n",
+					"                    delta_size_in_bytes += sum(item.size for item in items if not item.isDir)\n",
 					"\n",
 					"\n",
 					"                    source_path = delta_table + file_name\n",
@@ -314,8 +315,14 @@
 					"            print(f\"Unexpected error processing {delta_table}: {e}\")\n",
 					"            continue\n",
 					"\n",
+					"total_delta_in_MB = delta_size_in_bytes / (1024 * 1024)\n",
+					"\n",
+					"total_delta_in_GB = total_delta_in_MB / 1024\n",
+					"\n",
+					"print(f\" The total non-delta backup size in MB for {container} is {total_delta_in_MB:.2f} MB\")\n",
+					"print(f\" The total non-delta backup size in GB for {container} is {total_delta_in_GB:.2f} GB\")\n",
 					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
-					"print(f\"total_delta_files_size_in_bytes : {size_bytes}\")\n",
+					"\n",
 					""
 				],
 				"execution_count": null
@@ -416,42 +423,35 @@
 					"print(f\"The total storage files on {date_now} are: {total_container_files} and total delta file are:{total_delta_files}\")\n",
 					"print(f\"The percentage_Savings are: {percentage_Savings}\")\n",
 					"\n",
-					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")\n",
-					"print(f\"total_delta_files_size_in_bytes : {size_bytes}\")"
+					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")"
 				],
 				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"# Define categorised delta table lists for testing each layer \n",
+					"# Define categorised ONLY delta table lists for testing each layer \n",
 					"delta_tables_std = [\"AIEDocumentData/aie_document_data\"\n",
 					"                    ,\"entraid\"\n",
-					"                    ,\"listed_building\"\n",
-					"                    ,\"horizon_appeal_s78_final\"\n",
 					"                    ,\"Horizon/document_meta_data\"\n",
 					"                    ,\"sb_appeal_has\"\n",
 					"                    ,\"sb_service_user\"]\n",
 					"\n",
-					"delta_tables_hrm = ['nsip_document'\n",
-					"                    ,'appeal_s78 '\n",
-					"                    ,'appeal_document'\n",
-					"                    ,'nsip_s51_advice'\n",
-					"                    ,'nsip_project'\n",
-					"                    ,'aie_document_data'\n",
-					"                    ,'horizon_appeals_event']\n",
+					"delta_tables_hrm = ['nsip_document' #paritioned delta\n",
+					"                    ,'appeal_s78 ' #paritioned delta\n",
+					"                    ,'appeal_document' #partitioned delta\n",
+					"                    ,'nsip_s51_advice' #partitioned delta+folders\n",
+					"                    ,'nsip_project' #paritioned delta\n",
+					"                    ,'aie_document_data' #paritioned delta\n",
+					"                    ,'horizon_appeals_event'] #delta default\n",
 					"\n",
-					"delta_tables_cur = ['s51_advice'\n",
-					"                    ,'nsip_representation'\n",
-					"                    ,'listed_building'\n",
-					"                    ,'appeal_service_user_curated_mipins'\n",
-					"                    ,'appeal_event_estimate'\n",
-					"                    ,'appeals_has_curated_mipins'\n",
-					"                    ,'appeals_s78_curated_mipins']\n",
+					"delta_tables_cur = [\n",
+					"                    'listed_building' #delta default+folder\n",
+					"                    ,'appeal_service_user_curated_mipins' #delta default\n",
+					"                    ]\n",
 					"\n",
-					"delta_tables_config = [\"main_pipeline_config\"\n",
-					"                       ,\"orchestration\"\n",
-					"                       ,\"standardised_table_definitions\"]\n",
+					"delta_tables_config = [\"main_pipeline_config\" #delta \n",
+					"                       ]\n",
 					"                       \n",
 					"delta_tables_all = delta_tables_hrm + delta_tables_cur + delta_tables_std + delta_tables_config\n",
 					"\n",
@@ -480,16 +480,14 @@
 					"\n",
 					"            try:\n",
 					"                source_table_path = f\"abfss://{container_name}@{storage_account}{table_name}\"\n",
+					"                backup_table_path = source_table_path.replace(source_storage_account_path,backup_storage_account_path).replace(container, target_container)\n",
 					"                \n",
 					"                # Skip paths that contain `.net/` in table_name\n",
 					"                if \".net/\" in table_name:\n",
 					"                    print(f\"Skipping table due to .net/ pattern: {source_table_path}\")\n",
 					"                    continue\n",
 					"\n",
-					"                    backup_table_path = source_table_path.replace(\n",
-					"                    source_storage_account_path,\n",
-					"                    backup_storage_account_path\n",
-					"                ).replace(container_name, target_container)\n",
+					"                   \n",
 					"\n",
 					"                # Count files\n",
 					"                try:\n",
@@ -547,6 +545,13 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"backup_table_path"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"df.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw\")"
 				],
 				"execution_count": null
@@ -556,7 +561,7 @@
 				"source": [
 					"non_delta_file_dict = {\n",
 					"    \"backup_storage_name\":backup_storage_account_path.split(\".\")[0],\n",
-					"    \"non_delta_file_list\":list(Non_delta_files_list_filtered)\n",
+					"    \"non_delta_file_list\":list(Non_delta_files_list)\n",
 					"}"
 				],
 				"execution_count": null
@@ -570,6 +575,19 @@
 				},
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# total MB/GB of delta+non_delta Vs current_bk_container\n",
+					"# total_bytes_delta\n",
+					"\n",
+					"# delta = 1Gb\n",
+					"# curr = 5GB\n",
+					"# 5GB  30 * 12 = 2000\n",
+					"# 1GB  30 * 12 = 200"
 				],
 				"execution_count": null
 			}
