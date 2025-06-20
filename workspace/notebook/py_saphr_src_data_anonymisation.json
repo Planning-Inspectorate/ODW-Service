@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "21b54c12-3b4f-48c3-bf8e-dd4db145a03b"
+				"spark.autotune.trackingId": "d9ca01ef-994a-4ef7-b03c-3944b58ae069"
 			}
 		},
 		"metadata": {
@@ -72,6 +72,149 @@
 					"##### The input parameters are:\n",
 					"###### Env_Type => This is a mandatory parameter which refers to the environment where the data needs anonymisation."
 				]
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Input parameters"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Define Input Parameters to get values from the pipleline\n",
+					"Param_File_Load_Type = ''\n",
+					"Param_FileFolder_Path = ''\n",
+					"Param_Json_SchemaFolder_Name = ''"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Import all required Python Libraries"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#import all libraries and initialise Spark Session\n",
+					"import json\n",
+					"import traceback\n",
+					"import calendar\n",
+					"import time\n",
+					"from datetime import datetime, timedelta, date\n",
+					"import requests\n",
+					"import pyspark.sql.functions as F \n",
+					"import os\n",
+					"import re\n",
+					"from itertools import chain\n",
+					"from collections.abc import Mapping\n",
+					"from operator import add\n",
+					"from notebookutils import mssparkutils\n",
+					"from pyspark.sql.functions import regexp_replace,lit, current_timestamp, to_date ,expr, md5, col, date_format, when, length, lpad,input_file_name,sha2,concat\n",
+					"from pyspark.sql.types import *\n",
+					"from pyspark.sql import SparkSession\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"from delta.tables import DeltaTable\n",
+					"#ignore FutureWarning messages \n",
+					"import warnings\n",
+					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Get Storage account"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Get Storage account name\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"#print(storage_account)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Enable message logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Define all required folder paths"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Define all Folder paths used in the notebook\n",
+					"\n",
+					"Param_Json_SchemaFolder_Name = Param_FileFolder_Path.lower()\n",
+					"\n",
+					"odw_raw_base_folder_path = f\"abfss://odw-raw@{storage_account}{Param_FileFolder_Path}/\"\n",
+					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}{Param_Json_SchemaFolder_Name}\"\n",
+					"#schema_file_path = f\"abfss://odw-config@{storage_account}/schema_creation/{Param_Json_SchemaFolder_Name}/create_schema.json\"\n",
+					"json_schema_file_path = f\"abfss://odw-config@{storage_account}/orchestration/orchestration_saphr.json\"\n",
+					"\n",
+					"database_name = \"odw_standardised_db\"\n",
+					"process_name = 'py_raw_to_std'\n",
+					"\n",
+					"logging_container = f\"abfss://logging@{storage_account}\"\n",
+					"logging_table_name = 'tables_logs'\n",
+					"ingestion_log_table_location = logging_container + logging_table_name\n",
+					"\n",
+					"# json result result dump list\n",
+					"processing_results = []"
+				],
+				"execution_count": null
 			}
 		]
 	}
