@@ -17,7 +17,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "b38db0e6-fefa-4d39-84a1-485454fda574"
+				"spark.autotune.trackingId": "7583543d-beed-462e-a487-95db28508f98"
 			}
 		},
 		"metadata": {
@@ -216,17 +216,19 @@
 					"    \n",
 					"\n",
 					"\n",
-					"# Count files and compute cumulative total\n",
-					"cumulative_total = 0\n",
+					"# compute cumulative total delta files \n",
+					"cumulative_total_delta_files = 0\n",
 					"delta_table_counts = {}\n",
 					"\n",
 					"for table_path in delta_tables:\n",
 					"    count = count_files_in_path(table_path)\n",
 					"    delta_table_counts[table_path] = count\n",
-					"    cumulative_total += count\n",
+					"    cumulative_total_delta_files += count\n",
 					"\n",
 					"\n",
-					"print(f\"Total number of files across all Delta tables: {cumulative_total}\")\n",
+					"total_container_files = count_files_in_path(full_storage_path)\n",
+					"\n",
+					"print(f\"Total number of files across all Delta tables: {cumulative_total_delta_files}\")\n",
 					""
 				],
 				"execution_count": null
@@ -316,7 +318,7 @@
 					"            print(f\"Unexpected error processing {delta_table}: {e}\")\n",
 					"            continue\n",
 					"\n",
-					"total_delta_in_MB = delta_size_in_bytes / (1024 * 1024)\n",
+					"total_delta_in_MB= delta_size_in_bytes / (1024 * 1024)\n",
 					"\n",
 					"total_delta_in_GB = total_delta_in_MB / 1024\n",
 					"\n",
@@ -396,6 +398,17 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"total_container_size_in_bytes= get_folder_size(full_storage_path)\n",
+					"total_container_size_in_mb = total_container_size_in_bytes / (1024 * 1024)\n",
+					"total_container_size_in_gb = total_container_size_in_mb / 1024\n",
+					"\n",
+					"print(f\" The total container size in GB for {container} is {total_container_size_in_gb/ (1024 * 1024)} GB\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"total_bytes = 0\n",
 					"for path in Non_delta_files_list:\n",
 					"    folder_size = get_folder_size(path)\n",
@@ -447,23 +460,6 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# delta tables grand_total_size for change files\n",
-					"total_delta_files = grand_total_changes\n",
-					"total_container_files = cumulative_total\n",
-					"date_now = datetime.now().strftime(\"%Y-%m-%d\")\n",
-					"\n",
-					"percentage_Savings = ((total_container_files-total_delta_files)/total_container_files)*100\n",
-					"\n",
-					"print(f\"The total storage files on {date_now} are: {total_container_files} and total delta file are:{total_delta_files}\")\n",
-					"print(f\"The percentage_Savings are: {percentage_Savings}\")\n",
-					"\n",
-					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"source": [
 					"# Define categorised ONLY delta table lists for testing each layer \n",
 					"delta_tables_std = [\"AIEDocumentData/aie_document_data\"\n",
 					"                    ,\"entraid\"\n",
@@ -490,7 +486,7 @@
 					"delta_tables_all = delta_tables_hrm + delta_tables_cur + delta_tables_std + delta_tables_config\n",
 					"\n",
 					"run_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')\n",
-					"cumulative_total = 0\n",
+					"cumulative_total_delta_test = 0\n",
 					"delta_table_counts = {}\n",
 					"rows = []\n",
 					"\n",
@@ -536,7 +532,7 @@
 					"\n",
 					"                delta_table_counts[source_table_path] = source_file_count\n",
 					"                delta_table_counts[backup_table_path] = backup_file_count\n",
-					"                cumulative_total += source_file_count + backup_file_count\n",
+					"                cumulative_total_delta_test += source_file_count + backup_file_count\n",
 					"\n",
 					"                print(source_file_count, backup_file_count)\n",
 					"\n",
@@ -571,7 +567,7 @@
 					"\n",
 					"# Create and display final DataFrame\n",
 					"df = spark.createDataFrame(rows)\n",
-					"print(f\"Total number of files across all Delta tables in Test are: {cumulative_total}\")\n",
+					"print(f\"Total number of files across all Delta tables in Test are: {cumulative_total_delta_test}\")\n",
 					""
 				],
 				"execution_count": null
@@ -586,22 +582,43 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"# delta tables grand_total_size for change files\n",
+					"total_delta_files = grand_total_changes\n",
+					"total_container_files = total_container_files\n",
+					"date_now = datetime.now().strftime(\"%Y-%m-%d\")\n",
+					"\n",
+					"percentage_Savings = ((total_container_files-(total_delta_files+total_non_delta_files))/total_container_files)*100\n",
+					"\n",
+					"print(f\"The total storage files on {date_now} are: {total_container_files} and total_delta_files are:{total_delta_files} and total_non_delta_files are: {total_non_delta_files}\")\n",
+					"print(f\"The percentage_Savings are: {percentage_Savings}\")\n",
+					"\n",
+					"print(f\"Grand total of new/changed files across all Delta tables: {grand_total_changes}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"\n",
 					"\n",
-					"# Summary backup fields\n",
-					"date_run                            = datetime.today().strftime('%Y-%m-%d')\n",
-					"container_name                      = container\n",
-					"target_container_name               = target_container\n",
-					"Total_Delta_backup_size_in_MB       = total_delta_in_MB\n",
-					"Total_Delta_backup_size_in_GB       = total_delta_in_GB \n",
-					"Total_Non_Delta_backup_size_in_MB   = total_size_non_delta_in_mb\n",
-					"Total_Non_Delta_backup_size_in_GB   = total_size_non_delta_in_gb\n",
-					"Total_Backup_size_in_MB             = total_delta_in_MB+total_non_delta_in_MB\n",
-					"Total_Backup_size_in_GB             = total_delta_in_GB+total_non_delta_in_GB\n",
-					"Total_container_files               = total_container_files\n",
-					"Total_Delta_files                   = total_delta_files\n",
-					"Total_Non_Delta_files               = total_non_delta_files\n",
-					"percentage_Savings                  = percentage_Savings\n",
+					"# Summary of delta backup \n",
+					"date_run                             = datetime.today().strftime('%Y-%m-%d %H:%M:%S')\n",
+					"container_name                       = container\n",
+					"target_container_name                = target_container\n",
+					"Total_Delta_changes_size_in_MB       = total_delta_in_MB \n",
+					"Total_Delta_changes_size_in_GB       = total_delta_in_GB \n",
+					"Total_Non_Delta_changes_size_in_MB   = total_size_non_delta_in_mb\n",
+					"Total_Non_Delta_changes_size_in_GB   = total_size_non_delta_in_gb\n",
+					"Total_changes_size_in_MB             = Total_Delta_changes_size_in_MB+Total_Non_Delta_changes_size_in_MB\n",
+					"Total_changes_size_in_GB             = Total_Delta_changes_size_in_GB+Total_Non_Delta_changes_size_in_GB\n",
+					"Total_container_files                = total_container_files\n",
+					"Total_Delta_files                    = total_delta_files\n",
+					"Total_Non_Delta_files                = total_non_delta_files\n",
+					"Total_changes_files                  = Total_Delta_files+Total_Non_Delta_files\n",
+					"Total_container_size_in_GB           = total_container_size_in_gb\n",
+					"percentage_file_savings              = percentage_Savings\n",
+					"percentage_data_transfer_savings     = ((total_container_size_in_gb - Total_changes_size_in_GB) / total_container_size_in_gb) * 100\n",
+					"\n",
 					"\n",
 					"\n",
 					"\n",
@@ -610,63 +627,45 @@
 					"    StructField(\"date_run\", StringType(), True),\n",
 					"    StructField(\"container_name\", StringType(), True),\n",
 					"    StructField(\"target_container_name\", StringType(), True),\n",
-					"    StructField(\"Total_Delta_backup_size_in_MB\", FloatType(), True),\n",
-					"    StructField(\"Total_Delta_backup_size_in_GB\", FloatType(), True),\n",
-					"    StructField(\"Total_Non_Delta_backup_size_in_MB\", FloatType(), True),\n",
-					"    StructField(\"Total_Non_Delta_backup_size_in_GB\", FloatType(), True),\n",
-					"    StructField(\"Total_Backup_size_in_MB\", FloatType(), True),\n",
-					"    StructField(\"Total_Backup_size_in_GB\", FloatType(), True),\n",
+					"    StructField(\"Total_Delta_changes_size_in_MB\", FloatType(), True),\n",
+					"    StructField(\"Total_Delta_changes_size_in_GB\", FloatType(), True),\n",
+					"    StructField(\"Total_Non_Delta_changes_size_in_MB\", FloatType(), True),\n",
+					"    StructField(\"Total_Non_Delta_changes_size_in_GB\", FloatType(), True),\n",
+					"    StructField(\"Total_changes_size_in_MB\", FloatType(), True),\n",
+					"    StructField(\"Total_changes_size_in_GB\", FloatType(), True),\n",
 					"    StructField(\"Total_container_files\", IntegerType(), True),        \n",
 					"    StructField(\"Total_Delta_files\", IntegerType(), True),\n",
-					"    StructField(\"Total_Non_Delta_files\", IntegerType(), True),  \n",
-					"    StructField(\"percentage_Savings\", FloatType(), True)\n",
+					"    StructField(\"Total_Non_Delta_files\", IntegerType(), True), \n",
+					"    StructField(\"Total_changes_files\", IntegerType(), True), \n",
+					"    StructField(\"total_container_size_in_gb\", FloatType(), True),\n",
+					"    StructField(\"percentage_file_savings\", FloatType(), True),\n",
+					"    StructField(\"percentage_data_transfer_savings\", FloatType(),True)\n",
 					"])\n",
-					"# Create data row\n",
+					"# Create data row for summary of delta backup\n",
 					"data = [ (date_run\n",
 					"        , container_name\n",
 					"        , target_container_name\n",
-					"        , Total_Delta_backup_size_in_MB\n",
-					"        , Total_Delta_backup_size_in_GB\n",
-					"        , Total_Non_Delta_backup_size_in_MB\n",
-					"        , Total_Non_Delta_backup_size_in_GB\n",
-					"        , Total_Backup_size_in_MB\n",
-					"        , Total_Backup_size_in_GB\n",
+					"        , Total_Delta_changes_size_in_MB\n",
+					"        , Total_Delta_changes_size_in_GB\n",
+					"        , Total_Non_Delta_changes_size_in_MB\n",
+					"        , Total_Non_Delta_changes_size_in_GB\n",
+					"        , Total_changes_size_in_MB\n",
+					"        , Total_changes_size_in_GB\n",
 					"        , Total_container_files \n",
 					"        , Total_Delta_files \n",
 					"        , Total_Non_Delta_files\n",
-					"        , percentage_Savings \n",
+					"        , Total_changes_files\n",
+					"        , total_container_size_in_gb\n",
+					"        , percentage_file_savings \n",
+					"        , percentage_data_transfer_savings\n",
 					"         )]\n",
 					"\n",
 					"# Create DataFrame\n",
 					"df_summary = spark.createDataFrame(data, schema=schema)\n",
 					"\n",
 					"# Write to Delta Table (adjust path or table name as needed)\n",
-					"df_summary.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw_summary\")\n",
+					"df_summary.write.format(\"delta\").mode(\"append\").option(\"mergeSchema\", \"true\").saveAsTable(\"logging.delta_backup_odw_log_summary\")\n",
 					""
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"# %%pyspark\n",
-					"# df = spark.sql(\"SELECT * FROM `logging`.`delta_backup_odw_summary` \")\n",
-					"# display(df)"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"# %%pyspark\n",
-					"# df = spark.sql(\"SELECT * FROM `logging`.`delta_backup_odw`  order by Date_Run desc\")\n",
-					"# display(df)"
 				],
 				"execution_count": null
 			},
@@ -689,6 +688,18 @@
 				},
 				"source": [
 					"mssparkutils.notebook.exit(non_delta_file_dict)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"# %%pyspark\n",
+					"# df = spark.sql(\"SELECT * FROM `logging`.`delta_backup_odw_log_summary` \")\n",
+					"# display(df)"
 				],
 				"execution_count": null
 			}
