@@ -9,7 +9,7 @@ import json
 
 
 class TestAzureFunctions(TestCase):
-    KEY_VAULT_CLIENT = SecretClient(vault_url=f"https://pinskvsynwodw{TEST_CONFIG['ENV'].lower()}uks.vault.azure.net", credential=AzureCliCredential())
+    KEY_VAULT_CLIENT = SecretClient(vault_url=f"https://pinskvsynwodwdevuks.vault.azure.net", credential=AzureCliCredential())
 
     @pytest.mark.parametrize(
         "function_name,url_parameters",
@@ -27,7 +27,7 @@ class TestAzureFunctions(TestCase):
             ("appealhas", ""),
             ("appealevent", ""),
             ("appealserviceuser", ""),
-            ("getDaRT", "&caseReference=&applicationReference="),
+            ("getDaRT", f"&caseReference={TEST_CONFIG['CASE_REFERENCE']}&applicationReference={TEST_CONFIG['APPLICATION_REFERENCE']}"),
             ("appeals78", ""),
             ("appealrepresentation", ""),
             ("gettimesheets", "&searchCriteria="),
