@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "99a7a921-03bf-4658-abc7-78c285bd0d62"
+				"spark.autotune.trackingId": "d928de65-34ff-4ce9-be30-329c9b338278"
 			}
 		},
 		"metadata": {
@@ -92,7 +92,7 @@
 					"#Define Input Parameters to get values from the pipleline\n",
 					"Param_Env_Type = 'dev'"
 				],
-				"execution_count": 6
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -115,10 +115,12 @@
 					"import traceback\n",
 					"import calendar\n",
 					"import time\n",
+					"import csv\n",
 					"import requests\n",
 					"import pyspark.sql.functions as F \n",
 					"import os\n",
 					"import re\n",
+					"from io import StringIO\n",
 					"from datetime import datetime, timedelta, date\n",
 					"from azure.storage.fileshare import ShareDirectoryClient,ShareFileClient\n",
 					"from operator import add\n",
@@ -132,7 +134,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 8
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -253,6 +255,9 @@
 					"            share_name=share_name,\n",
 					"            file_path=f\"{directory_path}{item['name']}\"\n",
 					"        )\n",
+					"        download_stream = file_client.download_file()\n",
+					"        df = pd.read_csv(download_stream)\n",
+					"        print(df.count())\n",
 					"        props = file_client.get_file_properties()\n",
 					"        last_modified_date = props['last_modified'].date()  # truncate time\n",
 					"        file_metadata.append((item['name'], last_modified_date))\n",
@@ -268,7 +273,57 @@
 					"else:\n",
 					"    print(\"No CSV files found.\")"
 				],
-				"execution_count": 9
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"secret_name = \"datalab-connectionstring\"\n",
+					"kv_linked_service = \"ls_kv\"\n",
+					"share_name = \"datalab\"\n",
+					"directory_path = f\"ODW/HR/SAPHR_SharepointData/{Param_Env_Type}/MONTHLY/\"\n",
+					"akv_name = spark.sparkContext.environment.get('keyVaultName', 'get')\n",
+					"\n",
+					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"parent_dir = ShareDirectoryClient.from_connection_string(\n",
+					"    conn_str=creds,\n",
+					"    share_name=share_name,\n",
+					"    directory_path=directory_path\n",
+					")\n",
+					"\n",
+					"files_and_dirs = list(parent_dir.list_directories_and_files())\n",
+					"file_metadata = []\n",
+					"\n",
+					"for item in files_and_dirs:\n",
+					"    if not item['is_directory'] and item['name'].endswith('.csv'):\n",
+					"        file_client = ShareFileClient.from_connection_string(\n",
+					"            conn_str=creds,\n",
+					"            share_name=share_name,\n",
+					"            file_path=f\"{directory_path}{item['name']}\"\n",
+					"        )\n",
+					"        \n",
+					"        download_stream = file_client.download_file()\n",
+					"        \n",
+					"        # Read CSV without pandas\n",
+					"        content = download_stream.readall().decode('utf-8')\n",
+					"        csv_reader = csv.reader(StringIO(content))\n",
+					"        data = list(csv_reader)\n",
+					"        \n",
+					"        print(f\"File: {item['name']}\")\n",
+					"        print(f\"Rows: {len(data)}\")\n",
+					"        print(f\"Columns: {len(data[0]) if data else 0}\")\n",
+					"        \n",
+					"        props = file_client.get_file_properties()\n",
+					"        last_modified_date = props['last_modified'].date()\n",
+					"        file_metadata.append((item['name'], last_modified_date))\n",
+					"\n",
+					"if file_metadata:\n",
+					"    most_recent_date = max(date for name, date in file_metadata)\n",
+					"    print(f\"\\nMost Recent File Date: {most_recent_date}\")\n",
+					"else:\n",
+					"    print(\"No CSV files found.\")"
+				],
+				"execution_count": 8
 			}
 		]
 	}
