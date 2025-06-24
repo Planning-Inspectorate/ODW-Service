@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "db3698d9-8b25-4cfa-b180-933b15e6f243"
+				"spark.autotune.trackingId": "e8a4cede-19c6-41d9-a51a-fa11f5e3e482"
 			}
 		},
 		"metadata": {
@@ -234,14 +234,15 @@
 					"    Email masking with PersNo/StaffNumber:\n",
 					"    - Regular email: [PersNo]@PINS.com\n",
 					"    - LM E-mail: [PersNo]_LM@PINS.com\n",
-					"    - Use consistent mapping for same email\n",
+					"    - Use consistent mapping for same email+personnel combination\n",
 					"    \"\"\"\n",
 					"    global email_mapping\n",
 					"    \n",
-					"    # Create unique key for mapping (includes LM flag)\n",
-					"    mapping_key = f\"{email}|{is_lm_email}\"\n",
+					"    # Create unique key for mapping (includes LM flag AND personnel number)\n",
+					"    # This ensures same email with different personnel numbers gets different masks\n",
+					"    mapping_key = f\"{email}|{pers_no}|{is_lm_email}\"\n",
 					"    \n",
-					"    # Return consistent mapping if email already processed\n",
+					"    # Return consistent mapping if this exact combination already processed\n",
 					"    if mapping_key in email_mapping:\n",
 					"        return email_mapping[mapping_key]\n",
 					"    \n",
@@ -255,6 +256,11 @@
 					"                pers_no_cleaned = str(pers_no).strip()\n",
 					"                if pers_no_cleaned and pers_no_cleaned.lower() not in ['', 'none', 'null', 'n/a', 'nan']:\n",
 					"                    base_identifier = pers_no_cleaned\n",
+					"                    print(f\"    DEBUG: Using PersNo '{base_identifier}' for email '{email}'\")\n",
+					"                else:\n",
+					"                    print(f\"    DEBUG: PersNo '{pers_no}' considered invalid/empty\")\n",
+					"            else:\n",
+					"                print(f\"    DEBUG: No PersNo provided for email '{email}'\")\n",
 					"            \n",
 					"            # Add _LM suffix for LM emails\n",
 					"            if is_lm_email:\n",
@@ -263,6 +269,7 @@
 					"                masked = f\"{base_identifier}@PINS.com\"\n",
 					"    \n",
 					"    except Exception as e:\n",
+					"        print(f\"    DEBUG: Exception in email masking: {str(e)}\")\n",
 					"        # If any error occurs, return masked version\n",
 					"        if is_lm_email:\n",
 					"            masked = 'UNKNOWN_LM@PINS.com'\n",
@@ -604,7 +611,7 @@
 					"\n",
 					"print(\"\\nAnonymization process completed!\")"
 				],
-				"execution_count": 21
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
