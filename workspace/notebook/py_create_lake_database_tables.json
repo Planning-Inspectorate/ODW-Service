@@ -1,0 +1,473 @@
+{
+	"name": "py_create_lake_database_tables",
+	"properties": {
+		"description": "Create all tables in the lake databases",
+		"folder": {
+			"name": "infrastructure"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "7d5e3c23-ce66-43cc-b158-6aaebc3fe487"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"# Entities not ingested via the service bus\n",
+					"NON_SERVICE_BUS_ENTITIES = {\n",
+					"    \"pins-inspector\",\n",
+					"    \"entraid\"\n",
+					"}"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Standardised tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"STANDARDISED_TABLES = {\n",
+					"    \"absence_data_historic\",\n",
+					"    \"aie_document_data\",\n",
+					"    \"bis_inspector_group\",\n",
+					"    \"calendar\",\n",
+					"    \"casedocumentdatesdates\",\n",
+					"    \"cases_specialisms\",\n",
+					"    \"casesitestrings\",\n",
+					"    \"customer\",\n",
+					"    \"document_meta_data\",\n",
+					"    \"employee\",\n",
+					"    \"entraid\",\n",
+					"    \"folder\",\n",
+					"    \"hist_iss_job\",\n",
+					"    \"hist_mwr_status\",\n",
+					"    \"hist_rohit_customer\",\n",
+					"    \"horizon_appeal_s78_final\",\n",
+					"    \"horizon_appeals_document_metadata\",\n",
+					"    \"horizon_appeals_event\",\n",
+					"    \"horizon_appeals_folder\",\n",
+					"    \"horizon_case_involvement\",\n",
+					"    \"horizon_examination_timetable\",\n",
+					"    \"horizon_folder\",\n",
+					"    \"horizon_nsip_advice\",\n",
+					"    \"horizon_nsip_data\",\n",
+					"    \"horizon_nsip_relevant_representation\",\n",
+					"    \"horizon_s62a_view_case_basic_data\",\n",
+					"    \"horizon_s62a_view_case_dates\",\n",
+					"    \"horizon_s62a_view_case_extended_data\",\n",
+					"    \"horizon_s62a_view_case_officers\",\n",
+					"    \"horizon_s62a_view_cases\",\n",
+					"    \"horizon_typeofreasonforcase\",\n",
+					"    \"horizoncases_s78\",\n",
+					"    \"hr_absence_monthly\",\n",
+					"    \"hr_saphr\",\n",
+					"    \"ims_attribute_new\",\n",
+					"    \"ims_dataflow_new\",\n",
+					"    \"ims_dpia_new\",\n",
+					"    \"ims_dsa_new\",\n",
+					"    \"ims_entity_new\",\n",
+					"    \"ims_informationasset_new\",\n",
+					"    \"ims_intergration_new\",\n",
+					"    \"ims_masterdatamap_new\",\n",
+					"    \"ims_ropa_new\",\n",
+					"    \"inspector_addresses\",\n",
+					"    \"inspector_addresses_weekly\",\n",
+					"    \"inspector_specialism_mig\",\n",
+					"    \"inspector_specialisms_monthly\",\n",
+					"    \"inspector_specialisms_weekly\",\n",
+					"    \"leave_entitlement\",\n",
+					"    \"listed_building\",\n",
+					"    \"listed_building_outline\",\n",
+					"    \"live_holidays\",\n",
+					"    \"live_report_config\",\n",
+					"    \"load_inspector_raw\",\n",
+					"    \"load_iss_deployment\",\n",
+					"    \"load_iss_job\",\n",
+					"    \"load_sap_hr_weekly\",\n",
+					"    \"load_sap_pins_email_weekly\",\n",
+					"    \"load_sappreferredname\",\n",
+					"    \"load_sp_list_inspector_map\",\n",
+					"    \"loop_test_casedocumentdatesdates\",\n",
+					"    \"loop_test_cases_specialisms\",\n",
+					"    \"loop_test_casesitestrings\",\n",
+					"    \"loop_test_document_meta_data\",\n",
+					"    \"loop_test_horizon_appeals_document_metadata\",\n",
+					"    \"loop_test_horizon_appeals_event\",\n",
+					"    \"loop_test_horizon_appeals_folder\",\n",
+					"    \"loop_test_horizon_case_involvement\",\n",
+					"    \"loop_test_horizon_examination_timetable\",\n",
+					"    \"loop_test_horizon_folder\",\n",
+					"    \"loop_test_horizon_nsip_advice\",\n",
+					"    \"loop_test_horizon_nsip_data\",\n",
+					"    \"loop_test_horizon_nsip_relevant_representation\",\n",
+					"    \"loop_test_horizon_s62a_view_case_basic_data\",\n",
+					"    \"loop_test_horizon_s62a_view_case_dates\",\n",
+					"    \"loop_test_horizon_s62a_view_case_extended_data\",\n",
+					"    \"loop_test_horizon_s62a_view_case_officers\",\n",
+					"    \"loop_test_horizon_s62a_view_cases\",\n",
+					"    \"loop_test_horizon_typeofreasonforcase\",\n",
+					"    \"loop_test_horizoncases_s78\",\n",
+					"    \"loop_test_typeofprocedure\",\n",
+					"    \"loop_test_vw_addadditionaldata\",\n",
+					"    \"loop_test_vw_additionalfields\",\n",
+					"    \"loop_test_vw_case_dates\",\n",
+					"    \"mwr_inspector_dim\",\n",
+					"    \"mwr_lines\",\n",
+					"    \"mwr_status\",\n",
+					"    \"mwr_submisison_date\",\n",
+					"    \"mwrtodcategorymapping\",\n",
+					"    \"nsip_document\",\n",
+					"    \"pension_ernic_rates\",\n",
+					"    \"pins_inspector\",\n",
+					"    \"pins_lpa\",\n",
+					"    \"protectedcharacteristicstargets\",\n",
+					"    \"ref_appeal_attribute_matrix\",\n",
+					"    \"sap_email_monthly\",\n",
+					"    \"sap_email_weekly\",\n",
+					"    \"sap_finance_dim_costcentre\",\n",
+					"    \"sap_hr_customer\",\n",
+					"    \"sap_hr_equality_dummy_data\",\n",
+					"    \"sap_hr_hist_mig\",\n",
+					"    \"sap_hr_history_monthly\",\n",
+					"    \"sap_hr_leavers_monthly\",\n",
+					"    \"sap_hr_previous_employee_numbers\",\n",
+					"    \"sap_hr_protected_data_hist\",\n",
+					"    \"sap_hr_weekly\",\n",
+					"    \"sap_protected_monthly\",\n",
+					"    \"sb_appeal_document\",\n",
+					"    \"sb_appeal_event\",\n",
+					"    \"sb_appeal_event_estimate\",\n",
+					"    \"sb_appeal_has\",\n",
+					"    \"sb_appeal_representation\",\n",
+					"    \"sb_appeal_s78\",\n",
+					"    \"sb_folder\",\n",
+					"    \"sb_nsip_document\",\n",
+					"    \"sb_nsip_exam_timetable\",\n",
+					"    \"sb_nsip_project\",\n",
+					"    \"sb_nsip_project_tmp\",\n",
+					"    \"sb_nsip_project_update\",\n",
+					"    \"sb_nsip_representation\",\n",
+					"    \"sb_nsip_subscription\",\n",
+					"    \"sb_s51_advice\",\n",
+					"    \"sb_service_user\",\n",
+					"    \"segment_type_reference\",\n",
+					"    \"typeofprocedure\",\n",
+					"    \"vw_addadditionaldata\",\n",
+					"    \"vw_additionalfields\",\n",
+					"    \"vw_case_dates\",\n",
+					"    \"work_schedules\",\n",
+					"    \"work_segment_file\",\n",
+					"    \"work_segment_lock\",\n",
+					"    \"zendesk_system_extract\",\n",
+					"    \"zendesk_updated_tickets\"\n",
+					"}"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Harmonised tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"HARMONISED_TABLES = {\n",
+					"    \"absence_all\",\n",
+					"    \"aie_document_data\",\n",
+					"    \"appeal_document\",\n",
+					"    \"appeal_event\",\n",
+					"    \"appeal_s78\",\n",
+					"    \"appeals_folder\",\n",
+					"    \"casework_case_involvement_dim\",\n",
+					"    \"casework_nsip_advice_dim\",\n",
+					"    \"casework_nsip_examination_timetable_dim\",\n",
+					"    \"curated_service_user\",\n",
+					"    \"document_meta_data\",\n",
+					"    \"document_metadata\",\n",
+					"    \"entraid\",\n",
+					"    \"fact_absence_all\",\n",
+					"    \"fact_absence_all_temp\",\n",
+					"    \"folder\",\n",
+					"    \"hist_rohit_customer\",\n",
+					"    \"hist_sap_hr\",\n",
+					"    \"horizon_appeals_event\",\n",
+					"    \"horizon_appeals_folder\",\n",
+					"    \"horizon_folder\",\n",
+					"    \"ims\",\n",
+					"    \"inspector_specialisms\",\n",
+					"    \"listed_building\",\n",
+					"    \"live_dim_date\",\n",
+					"    \"live_dim_emp_hierarchy\",\n",
+					"    \"live_dim_inspector\",\n",
+					"    \"load_horizon_appeals_inspectors_kludge\",\n",
+					"    \"load_sap_hr_leavers\",\n",
+					"    \"load_sap_hr_monthly\",\n",
+					"    \"load_sap_hr_weekly\",\n",
+					"    \"load_sap_hr_weekly_test\",\n",
+					"    \"load_sap_pins_email\",\n",
+					"    \"load_sap_pins_email_monthly\",\n",
+					"    \"load_vw_sap_hr_email\",\n",
+					"    \"main_sourcesystem_fact\",\n",
+					"    \"nsip_document\",\n",
+					"    \"nsip_exam_timetable\",\n",
+					"    \"nsip_project\",\n",
+					"    \"nsip_relevant_representation\",\n",
+					"    \"nsip_representation\",\n",
+					"    \"nsip_s51_advice\",\n",
+					"    \"pins_inspector\",\n",
+					"    \"pins_lpa\",\n",
+					"    \"pipeline_control_counts\",\n",
+					"    \"pipeline_execution_metrics\",\n",
+					"    \"s62a_view_case_basic_data_dim\",\n",
+					"    \"s62a_view_case_dates_dim\",\n",
+					"    \"s62a_view_case_extended_data_dim\",\n",
+					"    \"s62a_view_case_officers_dim\",\n",
+					"    \"s62a_view_cases_dim\",\n",
+					"    \"sap_employee_hierarchy\",\n",
+					"    \"sap_hr_absence_all\",\n",
+					"    \"sap_hr_fact_absence_all\",\n",
+					"    \"sap_hr_fact_absence_all_temp\",\n",
+					"    \"sap_hr_fact_absence_sickness\",\n",
+					"    \"sap_hr_inspector_address\",\n",
+					"    \"sap_hr_inspector_specialisms\",\n",
+					"    \"sap_hr_leavers\",\n",
+					"    \"sap_hr_pc\",\n",
+					"    \"sap_hr_protected_data\",\n",
+					"    \"sap_hr_weekly\",\n",
+					"    \"sap_pins_email_weekly\",\n",
+					"    \"sb_appeal_document\",\n",
+					"    \"sb_appeal_event\",\n",
+					"    \"sb_appeal_event_estimate\",\n",
+					"    \"sb_appeal_has\",\n",
+					"    \"sb_appeal_representation\",\n",
+					"    \"sb_appeal_s78\",\n",
+					"    \"sb_folder\",\n",
+					"    \"sb_nsip_document\",\n",
+					"    \"sb_nsip_exam_timetable\",\n",
+					"    \"sb_nsip_project\",\n",
+					"    \"sb_nsip_project_update\",\n",
+					"    \"sb_nsip_representation\",\n",
+					"    \"sb_nsip_subscription\",\n",
+					"    \"sb_s51_advice\",\n",
+					"    \"sb_service_user\",\n",
+					"    \"service_user\",\n",
+					"    \"stage_sap_hr_leavers\",\n",
+					"    \"test_table_delta_logs\",\n",
+					"    \"transform_inspector_specialisms\"\n",
+					"}"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Curated tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"CURATED_TABLES = {\n",
+					"    \"appeal_document\",\n",
+					"    \"appeal_event\",\n",
+					"    \"appeal_event_curated_mipins\",\n",
+					"    \"appeal_event_estimate\",\n",
+					"    \"appeal_event_estimate_curated_mipins\",\n",
+					"    \"appeal_folder\",\n",
+					"    \"appeal_has\",\n",
+					"    \"appeal_representation\",\n",
+					"    \"appeal_s78\",\n",
+					"    \"appeal_service_user\",\n",
+					"    \"appeal_service_user_curated_mipins\",\n",
+					"    \"appeals_has_curated_mipins\",\n",
+					"    \"appeals_s78_curated_mipins\",\n",
+					"    \"dart_api\",\n",
+					"    \"entraid\",\n",
+					"    \"entraid_curated_mipins\",\n",
+					"    \"legacy_folder_data\",\n",
+					"    \"listed_building\",\n",
+					"    \"listed_building_delta\",\n",
+					"    \"listed_building_delta_backup\",\n",
+					"    \"listed_building_test\",\n",
+					"    \"nsip_document\",\n",
+					"    \"nsip_exam_timetable\",\n",
+					"    \"nsip_project\",\n",
+					"    \"nsip_project_update\",\n",
+					"    \"nsip_representation\",\n",
+					"    \"nsip_subscription\",\n",
+					"    \"pbi_dim_hr_cost_centre\",\n",
+					"    \"pbi_dim_hr_gender\",\n",
+					"    \"pbi_dim_hr_grade\",\n",
+					"    \"pbi_dim_hr_organisation_unit\",\n",
+					"    \"pbi_dim_hr_payrollarea\",\n",
+					"    \"pbi_dim_hr_personnel_area\",\n",
+					"    \"pbi_dim_hr_personnel_subarea\",\n",
+					"    \"pbi_dim_hr_work_contract\",\n",
+					"    \"pbi_employee_details\",\n",
+					"    \"pbi_fact_absence_all\",\n",
+					"    \"pbi_hr_measures\",\n",
+					"    \"pbi_hr_protecteddata\",\n",
+					"    \"pbi_payrollarea\",\n",
+					"    \"pins_inspector\",\n",
+					"    \"pins_inspectors_curated\",\n",
+					"    \"pins_lpa\",\n",
+					"    \"s51_advice\",\n",
+					"    \"service_user\"\n",
+					"}"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Create tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"ALL_DATA_TABLES = STANDARDISED_TABLES | HARMONISED_TABLES | CURATED_TABLES\n",
+					"ALL_DATA_TABLES = {\n",
+					"    \"odw_standardised_db\": STANDARDISED_TABLES,\n",
+					"    \"odw_harmonised_db\": HARMONISED_TABLES,\n",
+					"    \"odw_curated_db\": CURATED_TABLES\n",
+					"}\n",
+					"for db_name, tables in ALL_DATA_TABLES.items():\n",
+					"    for table in tables:\n",
+					"        mssparkutils.notebook.run(\n",
+					"            \"service-bus/create_table_from_schema\",\n",
+					"            300,\n",
+					"            {\n",
+					"                \"db_name\": db_name,\n",
+					"                \"entity_name\": table,\n",
+					"                \"is_servicebus_schema\": table not in NON_SERVICE_BUS_ENTITIES\n",
+					"            }\n",
+					"        )"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Config tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"CONFIG_TABLES = [\n",
+					"    \"datalabs_log\",\n",
+					"    \"main_pipeline_config\",\n",
+					"    \"raw_to_std_outstanding_files\"\n",
+					"]"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Logging tables"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"LOGGING_TABLES = [\n",
+					"    \"pipeline_logs\"\n",
+					"]"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
