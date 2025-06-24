@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "d6865a95-f865-4ece-8fc6-0c828e8d607d"
+				"spark.autotune.trackingId": "e0e37ab8-aefc-43f5-9068-aa9e989bce8f"
 			}
 		},
 		"metadata": {
@@ -94,7 +94,7 @@
 					"Param_File_Load_Type = 'MONTHLY'\n",
 					""
 				],
-				"execution_count": 30
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -141,7 +141,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 31
+				"execution_count": 36
 			},
 			{
 				"cell_type": "markdown",
@@ -161,7 +161,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 9
+				"execution_count": 37
 			},
 			{
 				"cell_type": "markdown",
@@ -343,8 +343,10 @@
 					"    ni_variations = ['ni number', 'ni_number', 'ninumber', 'national insurance', 'national_insurance']\n",
 					"    age_variations = ['age', 'age of employee', 'employee age', 'emp age', 'age of emp', 'age_of_employee', 'employee_age']\n",
 					"    email_variations = ['email', 'email address', 'email_address', 'emailaddress', 'e-mail', 'e_mail']\n",
-					"    pers_no_variations = ['persno','pers.no.', 'pers no', 'pers_no', 'staffnumber', 'staff number', 'staff_number', 'personnel number', 'personnel_number']\n",
+					"    # Updated to match your CSV exactly - including variations with dots and spaces\n",
+					"    pers_no_variations = ['pers.no.', 'pers.no', 'persno', 'pers no', 'pers_no', 'staffnumber', 'staff number', 'staff_number', 'personnel number', 'personnel_number', 'employee no.', 'employee no', 'employee_no']\n",
 					"    name_variations = ['first name', 'firstname', 'first_name', 'last name', 'lastname', 'last_name', 'forename', 'surname']\n",
+					"    # Updated to match your CSV exactly\n",
 					"    manager_name_variations = ['name of manager (om)', 'name of manager', 'manager name', 'managername', 'manager_name']\n",
 					"    \n",
 					"    # Convert headers to lowercase for comparison\n",
@@ -377,6 +379,7 @@
 					"        elif any(var in header for var in pers_no_variations):\n",
 					"            personnel_number_columns.append((i, original_header))\n",
 					"            print(f\"  - DEBUG: Found personnel number column: '{original_header}' at index {i}\")\n",
+					"            # Note: Personnel number columns are used for email anonymization but not anonymized themselves\n",
 					"        elif any(var in header for var in manager_name_variations):\n",
 					"            manager_name_columns.append(i)\n",
 					"            print(f\"  - DEBUG: Found manager name column: '{original_header}' at index {i}\")\n",
@@ -550,6 +553,7 @@
 					"files_and_dirs = list(parent_dir.list_directories_and_files())\n",
 					"file_metadata = []\n",
 					"processed_files = []\n",
+					"skipped_files = []\n",
 					"\n",
 					"print(\"Starting CSV anonymization process...\")\n",
 					"print(\"-\" * 50)\n",
@@ -573,6 +577,7 @@
 					"            \n",
 					"            if not data:\n",
 					"                print(f\"  - Skipped: Empty file\")\n",
+					"                skipped_files.append((item['name'], \"Empty file\"))\n",
 					"                continue\n",
 					"            \n",
 					"            # Get headers and find column indices\n",
@@ -623,6 +628,16 @@
 					"            \n",
 					"            if not column_indices:\n",
 					"                print(f\"  - No sensitive columns found, skipping randomization\")\n",
+					"                skipped_files.append((item['name'], \"No sensitive columns found\"))\n",
+					"                continue\n",
+					"            \n",
+					"            # Skip files that don't have any data to anonymize\n",
+					"            has_anonymizable_data = any(key in column_indices for key in \n",
+					"                ['salary', 'dob', 'ni', 'age', 'email_columns', 'lm_email_columns', 'name_columns', 'manager_name_columns'])\n",
+					"            \n",
+					"            if not has_anonymizable_data:\n",
+					"                print(f\"  - No anonymizable data columns found, skipping file\")\n",
+					"                skipped_files.append((item['name'], \"No anonymizable data columns\"))\n",
 					"                continue\n",
 					"            \n",
 					"            # Process each data row (skip header)\n",
@@ -648,15 +663,24 @@
 					"            \n",
 					"        except Exception as e:\n",
 					"            print(f\"  - Error processing {item['name']}: {str(e)}\")\n",
+					"            skipped_files.append((item['name'], f\"Error: {str(e)}\"))\n",
 					"            continue\n",
 					"\n",
 					"print(\"\\n\" + \"=\" * 50)\n",
 					"print(\"ANONYMIZATION SUMMARY\")\n",
 					"print(\"=\" * 50)\n",
 					"print(f\"Total files processed: {len(processed_files)}\")\n",
-					"print(f\"Successfully anonymized files:\")\n",
-					"for filename in processed_files:\n",
-					"    print(f\"  - {filename}\")\n",
+					"print(f\"Total files skipped: {len(skipped_files)}\")\n",
+					"\n",
+					"if processed_files:\n",
+					"    print(f\"\\nSuccessfully anonymized files:\")\n",
+					"    for filename in processed_files:\n",
+					"        print(f\"  - {filename}\")\n",
+					"\n",
+					"if skipped_files:\n",
+					"    print(f\"\\nSkipped files:\")\n",
+					"    for filename, reason in skipped_files:\n",
+					"        print(f\"  - {filename}: {reason}\")\n",
 					"\n",
 					"print(f\"\\nTotal unique emails anonymized: {len(email_mapping)}\")\n",
 					"if len(email_mapping) > 0:\n",
@@ -673,7 +697,7 @@
 					"\n",
 					"print(\"\\nAnonymization process completed!\")"
 				],
-				"execution_count": 33
+				"execution_count": 39
 			},
 			{
 				"cell_type": "markdown",
