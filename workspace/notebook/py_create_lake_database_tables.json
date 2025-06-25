@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9a488fad-a436-4bad-96d2-836040e147e7"
+				"spark.autotune.trackingId": "5378c84c-0d57-4c0f-bf6d-f0c62fd7b697"
 			}
 		},
 		"metadata": {
@@ -62,7 +62,7 @@
 					"import re\n",
 					"from typing import NamedTuple"
 				],
-				"execution_count": 44
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -74,25 +74,25 @@
 					"    table_type: str\n",
 					"    table_location: str"
 				],
-				"execution_count": 45
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": 46
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"def create_view(db_name: str, view_name: str):\n",
 					"    return\n",
-					"    print(f\"Creating view {db_name}.{view_name}\")\n",
-					"    spark.sql(f\"CREATE VIEW IF NOT EXISTS {db_name}.{view_name}\")\n",
-					"    print(f\"View {db_name}.{view_name} created\")"
+					"    #print(f\"Creating view {db_name}.{view_name}\")\n",
+					"    #spark.sql(f\"CREATE VIEW IF NOT EXISTS {db_name}.{view_name}\")\n",
+					"    #print(f\"View {db_name}.{view_name} created\")"
 				],
-				"execution_count": 47
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -113,7 +113,7 @@
 					"    spark.sql(f\"CREATE {table_type} TABLE IF NOT EXISTS {db_name}.{table_name} USING {table_format} LOCATION '{table_location}'\")\n",
 					"    print(f\"Table {db_name}.{table_name} created\")"
 				],
-				"execution_count": 48
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -130,7 +130,7 @@
 					"        is_external = table_type.lower() == \"external\"\n",
 					"        create_table(db_name, table_or_view_name, table_format, table_location, is_external)"
 				],
-				"execution_count": 49
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -144,7 +144,7 @@
 					"    \"logging_metadata\"\n",
 					"]"
 				],
-				"execution_count": 50
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -153,7 +153,7 @@
 					"response = requests.get(metadata_file_url)\n",
 					"existing_tables_metadata = {k: v for metadata in response.json() for k, v in metadata.items()}"
 				],
-				"execution_count": 51
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -167,32 +167,51 @@
 					"#            if thread_response\n",
 					"#        ]"
 				],
-				"execution_count": 52
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"analysis_exception_tables = []\n",
 					"all_other_exceptions = []\n",
+					"working_tables = []\n",
 					"for metadata_name in metadata_list:\n",
 					"    for table_metadata in existing_tables_metadata.get(metadata_name, []):\n",
 					"        try:\n",
 					"            create_table_or_view(table_metadata)\n",
+					"            working_tables = (table_metadata)\n",
 					"        except AnalysisException as e:\n",
 					"            analysis_exception_tables.append((table_metadata, e))\n",
 					"        except Exception as e:\n",
 					"            all_other_exceptions.append((table_metadata, e))"
 				],
-				"execution_count": 60
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"good = [\n",
+					"    (x[0][\"database_name\"], x[0][\"table_name\"], x[0][\"table_type\"])\n",
+					"    for x in analysis_exception_tables\n",
+					"]\n",
+					"search_strs = [\n",
+					"    \"You are trying to create an external table\",\n",
+					"    \"using Delta, but there is no transaction log present at\",\n",
+					"    'Check the upstream job to make sure that it is writing using\\nformat(\"delta\") and that the path is the root of the table'\n",
+					"]\n",
 					"bad = [\n",
-					"    (x[0][\"database_name\"], x[0][\"table_name\"], str(x[1])) for x in analysis_exception_tables\n",
+					"    (x[0][\"database_name\"], x[0][\"table_name\"], x[0][\"table_type\"], None if all(y in str(x[1]) for y in search_strs) else str(x[1])) for x in analysis_exception_tables\n",
 					"]"
 				],
-				"execution_count": 63
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"for x in good:\n",
+					"    print(x)"
+				],
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
@@ -200,7 +219,7 @@
 					"for x in bad:\n",
 					"    print(x)"
 				],
-				"execution_count": 64
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
