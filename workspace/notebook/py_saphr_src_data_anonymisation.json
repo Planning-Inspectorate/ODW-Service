@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "51d85327-b614-449e-ba2c-5c4aad58e39b"
+				"spark.autotune.trackingId": "73dd1f27-7917-413f-88ee-9ddde31e60f0"
 			}
 		},
 		"metadata": {
@@ -515,6 +515,32 @@
 					"    directory_path=directory_path\n",
 					")\n",
 					"\n",
+					""
+				],
+				"execution_count": 24
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Anonymised all csv files present in datalab"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"editable": true,
+					"run_control": {
+						"frozen": false
+					}
+				},
+				"source": [
 					"# Get files and directories\n",
 					"files_and_dirs = list(parent_dir.list_directories_and_files())\n",
 					"file_metadata = []\n",
@@ -639,150 +665,6 @@
 					"    print(f\"\\nSkipped files:\")\n",
 					"    for filename, reason in skipped_files:\n",
 					"        print(f\"  - {filename}: {reason}\")\n",
-					"\n",
-					"if file_metadata:\n",
-					"    most_recent_date = max(date for name, date in file_metadata)\n",
-					"    print(f\"\\nMost recent file date: {most_recent_date}\")\n",
-					"else:\n",
-					"    print(\"\\nNo CSV files found.\")\n",
-					"\n",
-					"print(\"\\nAnonymization process completed!\")\n",
-					""
-				],
-				"execution_count": 24
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Anonymised all csv files present in datalab"
-				]
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"editable": false,
-					"run_control": {
-						"frozen": true
-					}
-				},
-				"source": [
-					"\n",
-					"def write_csv_to_odw(file_client, data):\n",
-					"    \"\"\"Write CSV data back to Azure File Storage\"\"\"\n",
-					"    # Convert data back to CSV string\n",
-					"    output = StringIO()\n",
-					"    csv_writer = csv.writer(output)\n",
-					"    csv_writer.writerows(data)\n",
-					"    csv_content = output.getvalue().encode('utf-8')\n",
-					"    \n",
-					"    try:\n",
-					"        # Method 1: Try with overwrite parameter (newer SDK versions)\n",
-					"        file_client.upload_file(csv_content)\n",
-					"    except Exception as e:\n",
-					"        print(f\"  Error occurred while uploading csv files : {str(e)}\")\n",
-					"\n",
-					"# Define connection parameters\n",
-					"secret_name = \"datalab-connectionstring\"\n",
-					"kv_linked_service = \"ls_kv\"\n",
-					"share_name = \"datalab\"\n",
-					"directory_path = f\"ODW/HR/SAPHR_SharepointData/{Param_Env_Type}/MONTHLY/\"\n",
-					"\n",
-					"# Retrieve connection string securely from Key Vault\n",
-					"akv_name = spark.sparkContext.environment.get('keyVaultName', 'get')\n",
-					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
-					"\n",
-					"# Create ShareDirectoryClient instance\n",
-					"parent_dir = ShareDirectoryClient.from_connection_string(\n",
-					"    conn_str=creds,\n",
-					"    share_name=share_name,\n",
-					"    directory_path=directory_path\n",
-					")\n",
-					"\n",
-					"# Get files and directories\n",
-					"files_and_dirs = list(parent_dir.list_directories_and_files())\n",
-					"file_metadata = []\n",
-					"processed_files = []\n",
-					"\n",
-					"print(\"Starting CSV anonymization process...\")\n",
-					"print(\"-\" * 50)\n",
-					"\n",
-					"for item in files_and_dirs:\n",
-					"    if not item['is_directory'] and item['name'].endswith('.csv'):\n",
-					"        print(f\"\\nProcessing file: {item['name']}\")\n",
-					"        \n",
-					"        file_client = ShareFileClient.from_connection_string(\n",
-					"            conn_str=creds,\n",
-					"            share_name=share_name,\n",
-					"            file_path=f\"{directory_path}{item['name']}\"\n",
-					"        )\n",
-					"        \n",
-					"        try:\n",
-					"            # Download and read the file\n",
-					"            download_stream = file_client.download_file()\n",
-					"            content = download_stream.readall().decode('utf-8')\n",
-					"            csv_reader = csv.reader(StringIO(content))\n",
-					"            data = list(csv_reader)\n",
-					"            \n",
-					"            if not data:\n",
-					"                print(f\"  - Skipped: Empty file\")\n",
-					"                continue\n",
-					"            \n",
-					"            # Get headers and find column indices\n",
-					"            headers = data[0]\n",
-					"            column_indices = find_column_indices(headers)\n",
-					"            \n",
-					"            print(f\"  - Original rows: {len(data)}\")\n",
-					"            print(f\"  - Columns: {len(headers)}\")\n",
-					"            print(f\"  - Found sensitive columns: {list(column_indices.keys())}\")\n",
-					"            \n",
-					"            # Show email columns specifically\n",
-					"            if 'email_columns' in column_indices:\n",
-					"                email_headers = [headers[i] for i in column_indices['email_columns']]\n",
-					"                print(f\"  - Email columns found: {email_headers}\")\n",
-					"            \n",
-					"            if not column_indices:\n",
-					"                print(f\"  - No sensitive columns found, skipping randomization\")\n",
-					"                continue\n",
-					"            \n",
-					"            # Process each data row (skip header)\n",
-					"            randomized_count = 0\n",
-					"            for i in range(1, len(data)):\n",
-					"                if len(data[i]) == len(headers):  # Ensure row has correct number of columns\n",
-					"                    # Generate consistent DOB for age calculation\n",
-					"                    new_dob = generate_random_dob() if 'dob' in column_indices else None\n",
-					"                    data[i] = randomize_row_data(data[i], column_indices, new_dob)\n",
-					"                    randomized_count += 1\n",
-					"            \n",
-					"            # Write back to Azure\n",
-					"            write_csv_to_odw(file_client, data)\n",
-					"            \n",
-					"            print(f\"  - Randomized {randomized_count} rows\")\n",
-					"            print(f\"  - Successfully uploaded anonymized file\")\n",
-					"            processed_files.append(item['name'])\n",
-					"            \n",
-					"            # Get file metadata\n",
-					"            props = file_client.get_file_properties()\n",
-					"            last_modified_date = props['last_modified'].date()\n",
-					"            file_metadata.append((item['name'], last_modified_date))\n",
-					"            \n",
-					"        except Exception as e:\n",
-					"            print(f\"  - Error processing {item['name']}: {str(e)}\")\n",
-					"            continue\n",
-					"\n",
-					"print(\"\\n\" + \"=\" * 50)\n",
-					"print(\"ANONYMIZATION SUMMARY\")\n",
-					"print(\"=\" * 50)\n",
-					"print(f\"Total files processed: {len(processed_files)}\")\n",
-					"print(f\"Successfully anonymized files:\")\n",
-					"for filename in processed_files:\n",
-					"    print(f\"  - {filename}\")\n",
 					"\n",
 					"if file_metadata:\n",
 					"    most_recent_date = max(date for name, date in file_metadata)\n",
