@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "8eb76ad3-1ff7-4ba4-af0e-219adcfab565"
+				"spark.autotune.trackingId": "9a488fad-a436-4bad-96d2-836040e147e7"
 			}
 		},
 		"metadata": {
@@ -55,9 +55,152 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"from pyspark.errors import AnalysisException\n",
+					"from concurrent.futures import ThreadPoolExecutor\n",
+					"import requests\n",
+					"import json\n",
+					"import re\n",
+					"from typing import NamedTuple"
+				],
+				"execution_count": 44
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"class MetadataEntry(NamedTuple):\n",
+					"    database_name: str\n",
+					"    table_name: str\n",
+					"    table_format: str\n",
+					"    table_type: str\n",
+					"    table_location: str"
+				],
+				"execution_count": 45
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')"
 				],
-				"execution_count": null
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def create_view(db_name: str, view_name: str):\n",
+					"    return\n",
+					"    print(f\"Creating view {db_name}.{view_name}\")\n",
+					"    spark.sql(f\"CREATE VIEW IF NOT EXISTS {db_name}.{view_name}\")\n",
+					"    print(f\"View {db_name}.{view_name} created\")"
+				],
+				"execution_count": 47
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def create_table(db_name: str, table_name: str, table_format: str, table_location: str, is_external: bool):\n",
+					"    \"\"\"\n",
+					"        Create an logical Synapse lake database table with the specified properties\n",
+					"\n",
+					"        :param db_name: The database the table belongs to\n",
+					"        :param table_name: The table to create\n",
+					"        :param table_format: The format of the file the table represents\n",
+					"        :param table_location: Which file the table represents\n",
+					"        :param is_external: If the table is an external or a managed table\n",
+					"    \"\"\"\n",
+					"    # Create the table\n",
+					"    table_type = \"EXTERNAL\" if is_external else \"MANAGED\"\n",
+					"    print(f\"Creating table {db_name}.{table_name} at location\\n{table_location}\")\n",
+					"    spark.sql(f\"CREATE {table_type} TABLE IF NOT EXISTS {db_name}.{table_name} USING {table_format} LOCATION '{table_location}'\")\n",
+					"    print(f\"Table {db_name}.{table_name} created\")"
+				],
+				"execution_count": 48
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def create_table_or_view(metadata_entry: MetadataEntry):\n",
+					"    db_name = table.get(\"database_name\")\n",
+					"    table_or_view_name = table.get(\"table_name\")\n",
+					"    table_location = table.get(\"table_location\").replace(\"pinsstodwdevuks9h80mb.dfs.core.windows.net/\", storage_account)\n",
+					"    table_format = table.get(\"table_format\")\n",
+					"    table_type = table.get(\"table_type\")\n",
+					"    if table_type.lower() == \"view\":\n",
+					"        create_view(db_name, table_or_view_name)\n",
+					"    else:\n",
+					"        is_external = table_type.lower() == \"external\"\n",
+					"        create_table(db_name, table_or_view_name, table_format, table_location, is_external)"
+				],
+				"execution_count": 49
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# List of metadata kinds from existing-tables-metadata.json\n",
+					"metadata_list = [\n",
+					"    \"standardised_metadata\",\n",
+					"    \"harmonised_metadata\",\n",
+					"    \"curated_metadata\",\n",
+					"    \"config_metadata\",\n",
+					"    \"logging_metadata\"\n",
+					"]"
+				],
+				"execution_count": 50
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"metadata_file_url = \"https://raw.githubusercontent.com/Planning-Inspectorate/odw-config/refs/heads/main/data-lake/existing-tables-metadata.json\"\n",
+					"response = requests.get(metadata_file_url)\n",
+					"existing_tables_metadata = {k: v for metadata in response.json() for k, v in metadata.items()}"
+				],
+				"execution_count": 51
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#for metadata_name in metadata_list:\n",
+					"#    with ThreadPoolExecutor() as tpe:\n",
+					"#        # Download all artifacts in parallel\n",
+					"#        [\n",
+					"#            thread_response\n",
+					"#            for thread_response in tpe.map(create_table_or_view, existing_tables_metadata.get(metadata_name, []))\n",
+					"#            if thread_response\n",
+					"#        ]"
+				],
+				"execution_count": 52
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"analysis_exception_tables = []\n",
+					"all_other_exceptions = []\n",
+					"for metadata_name in metadata_list:\n",
+					"    for table_metadata in existing_tables_metadata.get(metadata_name, []):\n",
+					"        try:\n",
+					"            create_table_or_view(table_metadata)\n",
+					"        except AnalysisException as e:\n",
+					"            analysis_exception_tables.append((table_metadata, e))\n",
+					"        except Exception as e:\n",
+					"            all_other_exceptions.append((table_metadata, e))"
+				],
+				"execution_count": 60
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"bad = [\n",
+					"    (x[0][\"database_name\"], x[0][\"table_name\"], str(x[1])) for x in analysis_exception_tables\n",
+					"]"
+				],
+				"execution_count": 63
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"for x in bad:\n",
+					"    print(x)"
+				],
+				"execution_count": 64
 			},
 			{
 				"cell_type": "code",
@@ -564,7 +707,9 @@
 				"source": [
 					"LOGGING_TABLES = {\n",
 					"    \"pipeline_logs\",\n",
-					"    \"tables_logs\"\n",
+					"    \"tables_logs\",\n",
+					"    \"delta_backup_odw\",\n",
+					"    \"delta_backup_odw_log_summary\"\n",
 					"}\n",
 					"\n",
 					"for table_name in LOGGING_TABLES:\n",
