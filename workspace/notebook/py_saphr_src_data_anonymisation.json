@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "73dd1f27-7917-413f-88ee-9ddde31e60f0"
+				"spark.autotune.trackingId": "de6d2d70-ab43-4969-a4ac-b5ffa0d2c5cd"
 			}
 		},
 		"metadata": {
@@ -94,7 +94,7 @@
 					"Param_File_Load_Type = 'MONTHLY'\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -141,7 +141,7 @@
 					"import warnings\n",
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")"
 				],
-				"execution_count": 21
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -161,7 +161,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 37
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -179,17 +179,24 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"import logging\n",
-					"import csv\n",
-					"import random\n",
-					"import string\n",
-					"from io import StringIO\n",
-					"from datetime import datetime, timedelta\n",
-					"from azure.storage.fileshare import ShareDirectoryClient, ShareFileClient\n",
+					"#import logging\n",
+					"#import csv\n",
+					"#import random\n",
+					"#import string\n",
+					"#from io import StringIO\n",
+					"#from datetime import datetime, timedelta\n",
+					"#from azure.storage.fileshare import ShareDirectoryClient, ShareFileClient\n",
 					"\n",
 					"# Disable Azure Storage SDK logging\n",
 					"logging.getLogger('azure.storage').setLevel(logging.WARNING)\n",
 					"logging.getLogger('azure.core').setLevel(logging.WARNING)\n",
+					"\n",
+					"# Check environment type - only anonymize for dev or test environments\n",
+					"if Param_Env_Type.lower() not in ['dev', 'test']:\n",
+					"    print(f\"Environment type is '{Param_Env_Type}' - skipping anonymization process.\")\n",
+					"    print(\"Anonymization only runs for 'dev' or 'test' environments.\")\n",
+					"    exit()\n",
+					"\n",
 					"\n",
 					"# Global email mapping dictionary to ensure consistency across all files\n",
 					"email_mapping = {}\n",
@@ -493,31 +500,9 @@
 					"                file_client.upload_file(csv_content)\n",
 					"    except Exception as e:\n",
 					"                print(f\"Error uploading file to datalab/ODW : {str(e)}\")\n",
-					"\n",
-					"# Define connection parameters\n",
-					"secret_name = \"datalab-connectionstring\"\n",
-					"kv_linked_service = \"ls_kv\"\n",
-					"share_name = \"datalab\"\n",
-					"\n",
-					"directory_path = f\"ODW/HR/SAPHR_SharepointData/{Param_Env_Type}/\"\n",
-					"        \n",
-					"if Param_File_Load_Type:            \n",
-					"    directory_path += f\"{Param_File_Load_Type}/\"\n",
-					"\n",
-					"# Retrieve connection string securely from Key Vault\n",
-					"akv_name = spark.sparkContext.environment.get('keyVaultName', 'get')\n",
-					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
-					"\n",
-					"# Create ShareDirectoryClient instance\n",
-					"parent_dir = ShareDirectoryClient.from_connection_string(\n",
-					"    conn_str=creds,\n",
-					"    share_name=share_name,\n",
-					"    directory_path=directory_path\n",
-					")\n",
-					"\n",
 					""
 				],
-				"execution_count": 24
+				"execution_count": 30
 			},
 			{
 				"cell_type": "markdown",
@@ -541,6 +526,28 @@
 					}
 				},
 				"source": [
+					"\n",
+					"# Define connection parameters\n",
+					"secret_name = \"datalab-connectionstring\"\n",
+					"kv_linked_service = \"ls_kv\"\n",
+					"share_name = \"datalab\"\n",
+					"\n",
+					"directory_path = f\"ODW/HR/SAPHR_SharepointData/{Param_Env_Type}/\"\n",
+					"        \n",
+					"if Param_File_Load_Type:            \n",
+					"    directory_path += f\"{Param_File_Load_Type}/\"\n",
+					"\n",
+					"# Retrieve connection string securely from Key Vault\n",
+					"akv_name = spark.sparkContext.environment.get('keyVaultName', 'get')\n",
+					"creds = mssparkutils.credentials.getSecret(akv_name, secret_name, kv_linked_service)\n",
+					"\n",
+					"# Create ShareDirectoryClient instance\n",
+					"parent_dir = ShareDirectoryClient.from_connection_string(\n",
+					"    conn_str=creds,\n",
+					"    share_name=share_name,\n",
+					"    directory_path=directory_path\n",
+					")\n",
+					"\n",
 					"# Get files and directories\n",
 					"files_and_dirs = list(parent_dir.list_directories_and_files())\n",
 					"file_metadata = []\n",
@@ -674,7 +681,7 @@
 					"\n",
 					"print(\"\\nAnonymization process completed!\")"
 				],
-				"execution_count": 12
+				"execution_count": 31
 			}
 		]
 	}
