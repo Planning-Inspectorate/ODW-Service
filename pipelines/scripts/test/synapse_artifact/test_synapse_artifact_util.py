@@ -16,7 +16,8 @@ from copy import deepcopy
         ("g.h", 7),
         ("g.i.j", 8),
         ("c.2.sublistdir.a.0", 42),  # A complex test case,
-        ("g.k.l.m", 9)
+        ("g.k.l.m", 9),
+        ("c.2.sublistdir", {"a": [42]})
     ]
 )
 def test_synapse_artifact_util__get_by_attribute(test_case):
