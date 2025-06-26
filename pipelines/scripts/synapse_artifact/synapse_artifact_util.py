@@ -29,10 +29,12 @@ class SynapseArtifactsPropertyIterator():
         Class to iterate through the properties of a json object through dot notation
     """
     def __init__(self, dictionary: Dict[str, Any], attribute: str):
+        self.parent_attribute_collection: Union[Dict[str, Any], List[Any]] = None
         self.attribute_collection: Union[Dict[str, Any], List[Any]] = dictionary
-        self.attribute_split = attribute.split(".")
+        self.attribute_split = [x for x in attribute.split(".") if x]
         if not self.attribute_split:
             raise ValueError(f"There is no attribute to evaluate")
+        self.last_evaluated_attribute = None
 
     def __iter__(self):
         return self
@@ -47,43 +49,32 @@ class SynapseArtifactsPropertyIterator():
         """
         if not self.attribute_split:
             raise StopIteration
-        next_attribute = self.attribute_split.pop(0)
+        # Imagine everything below is wrapped in a while loop as long as self.attribute_split has value
+        self.last_evaluated_attribute = self.attribute_split.pop(0)
         if isinstance(self.attribute_collection, list):
-            try:
-                next_attribute = int(next_attribute)
-            except ValueError:
-                pass
-            if not isinstance(next_attribute, int):
-                raise ValueError(f"Trying to access an index of a list collection, but was passed using property '{next_attribute}'")
-            if next_attribute > len(self.attribute_collection):
-                raise IndexError(f"Attribute index '{next_attribute}' out of range for list {self.attribute_collection}")
-            old_collection = self.attribute_collection
-            self.attribute_collection = self.attribute_collection[next_attribute]
-            return SynapseArtifactsPropertyIteratorResult(old_collection, next_attribute, self.attribute_collection, ".".join(self.attribute_split))
+            if not self.last_evaluated_attribute.isdigit():
+                raise AttributeNotFoundException(f"Trying to access sub property '{self.last_evaluated_attribute}' on a list collection")
+            self.last_evaluated_attribute = int(self.last_evaluated_attribute)
+            if not (0 <= self.last_evaluated_attribute < len(self.attribute_collection)):
+                raise AttributeNotFoundException(f"List index out of range for subproperty '{self.last_evaluated_attribute}' in list collection")
+            self.parent_attribute_collection = self.attribute_collection
+            self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
         elif isinstance(self.attribute_collection, dict):
-            if next_attribute in self.attribute_collection:
-                old_collection = self.attribute_collection
-                self.attribute_collection = self.attribute_collection[next_attribute]
-                return SynapseArtifactsPropertyIteratorResult(old_collection, next_attribute, self.attribute_collection, ".".join(self.attribute_split))
-            while self.attribute_split:
-                next_attribute = f"{next_attribute}.{self.attribute_split.pop(0)}"
-                if next_attribute in self.attribute_collection:
-                    old_collection = self.attribute_collection
-                    self.attribute_collection = self.attribute_collection[next_attribute]
-                    return SynapseArtifactsPropertyIteratorResult(
-                        old_collection,
-                        next_attribute,
-                        self.attribute_collection,
-                        ".".join(self.attribute_split)
-                    )
-            raise AttributeNotFoundException(f"Couldn't find attribute '{next_attribute}' in the dictionary '{self.attribute_collection}'")
+            if self.last_evaluated_attribute not in self.attribute_collection:
+                raise AttributeNotFoundException(f"Sub attribute '{self.last_evaluated_attribute}' not in dictionary collection")
+            self.parent_attribute_collection = self.attribute_collection
+            self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
         else:
-            raise ValueError(
-                (
-                    f"Trying to access a property '{next_attribute}' of a literal value '{self.attribute_collection}' "
-                    f"with type {type(self.attribute_collection)} rather than a collection"
+            if len(self.attribute_split) > 0:
+                raise ValueError(
+                    f"Trying to access a leaf property of a collection, but the remaining sub properties still need to be expanded: {self.attribute_split}"
                 )
-            )
+        return SynapseArtifactsPropertyIteratorResult(
+            self.parent_attribute_collection,
+            self.last_evaluated_attribute,
+            self.attribute_collection,
+            ".".join(self.attribute_split)
+        )
 
 
 class SynapseArtifactUtil(ABC):
@@ -391,30 +382,6 @@ class SynapseArtifactUtil(ABC):
             :return: The attribute value
             :raises: An exception is raised if the given inputs are invalid
         """
-        attribute_split = [x for x in attribute.split(".") if x]
-        current_value = dictionary
-        while attribute_split:
-            sub_attribute = attribute_split.pop(0)
-            print(f"evaluating '{sub_attribute}'")
-            if isinstance(current_value, list):
-                if not sub_attribute.isdigit():
-                    raise ValueError(f"Trying to access sub property '{sub_attribute}' on a list collection")
-                sub_attribute = int(sub_attribute)
-                if not (0 <= sub_attribute < len(current_value)):
-                    raise ValueError(f"List index out of range for subproperty '{sub_attribute}' in list collection")
-                current_value = current_value[sub_attribute]
-            elif isinstance(current_value, dict):
-                if sub_attribute not in current_value:
-                    raise ValueError(f"Sub attribute '{sub_attribute}' not in dictionary collection")
-                current_value = current_value[sub_attribute]
-            else:
-                if len(attribute_split) > 0:
-                    raise ValueError(
-                        f"Trying to access a leaf property of a collection, but the remaining sub properties still need to be expanded: {attribute_split}"
-                    )
-                return current_value[sub_attribute]
-        return current_value
-        raise ValueError(f"Should not reach here '{current_value}' when evaluating '{attribute}'")
         property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
         return property_details.pop().value
 
