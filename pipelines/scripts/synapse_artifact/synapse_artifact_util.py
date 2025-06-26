@@ -61,9 +61,20 @@ class SynapseArtifactsPropertyIterator():
             self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
         elif isinstance(self.attribute_collection, dict):
             if self.last_evaluated_attribute not in self.attribute_collection:
-                raise AttributeNotFoundException(f"Sub attribute '{self.last_evaluated_attribute}' not in dictionary collection")
-            self.parent_attribute_collection = self.attribute_collection
-            self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
+                if not self.attribute_split:
+                    raise AttributeNotFoundException(
+                        f"Sub attribute '{self.last_evaluated_attribute}' not in dictionary collection {self.attribute_collection}"
+                    )
+                # Special case where the key contains a period
+                while self.attribute_split:
+                    next_attribute = self.attribute_split.pop(0)
+                    self.last_evaluated_attribute += f".{next_attribute}"
+                    if self.last_evaluated_attribute in self.attribute_collection:
+                        self.parent_attribute_collection = self.attribute_collection
+                        self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
+            else:
+                self.parent_attribute_collection = self.attribute_collection
+                self.attribute_collection = self.attribute_collection[self.last_evaluated_attribute]
         else:
             if len(self.attribute_split) > 0:
                 raise ValueError(
