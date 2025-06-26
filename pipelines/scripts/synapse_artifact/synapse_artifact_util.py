@@ -391,6 +391,30 @@ class SynapseArtifactUtil(ABC):
             :return: The attribute value
             :raises: An exception is raised if the given inputs are invalid
         """
+        attribute_split = [x for x in attribute.split(".") if x]
+        current_value = dictionary
+        while attribute_split:
+            sub_attribute = attribute_split.pop(0)
+            print(f"evaluating '{sub_attribute}'")
+            if isinstance(current_value, list):
+                if not sub_attribute.isdigit():
+                    raise ValueError(f"Trying to access sub property '{sub_attribute}' on a list collection")
+                sub_attribute = int(sub_attribute)
+                if not (0 <= sub_attribute < len(current_value)):
+                    raise ValueError(f"List index out of range for subproperty '{sub_attribute}' in list collection")
+                current_value = current_value[sub_attribute]
+            elif isinstance(current_value, dict):
+                if sub_attribute not in current_value:
+                    raise ValueError(f"Sub attribute '{sub_attribute}' not in dictionary collection")
+                current_value = current_value[sub_attribute]
+            else:
+                if len(attribute_split) > 0:
+                    raise ValueError(
+                        f"Trying to access a leaf property of a collection, but the remaining sub properties still need to be expanded: {attribute_split}"
+                    )
+                return current_value[sub_attribute]
+        return current_value
+        raise ValueError(f"Should not reach here '{current_value}' when evaluating '{attribute}'")
         property_details = [x for x in SynapseArtifactsPropertyIterator(dictionary, attribute)]
         return property_details.pop().value
 
