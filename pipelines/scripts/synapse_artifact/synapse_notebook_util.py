@@ -1,11 +1,18 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
+import re
 
 
 class SynapseNotebookUtil(SynapseArtifactUtil):
     """
         Class for managing the retrieval and analysis of Synapse Notebook artifacts
     """
+    PYTHON_REFERENCE_PATTERNS = [
+        r"%run",
+        r"mssparkutils.notebook.run",
+        r"mssparkutils.credentials.getFullConnectionString"
+    ]
+
     @classmethod
     def get_type_name(cls) -> str:
         return "notebook"
@@ -76,3 +83,54 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             "properties.metadata.a365ComputeOptions.id",
             "properties.metadata.a365ComputeOptions.endpoint"
         ]
+
+    @classmethod
+    def convert_to_python(cls, artifact: Dict[str, Any]) -> List[str]:
+        pass
+
+    @classmethod
+    def get_dependencies_in_notebook_code(cls, notebook_python: Set[str]):
+        cls.PYTHON_REFERENCE_PATTERNS = [
+            r"%run",
+            r"mssparkutils.notebook.run",
+            r"mssparkutils.credentials.getFullConnectionString"
+        ]
+        lines_with_external_references = [line for line in notebook_python if any(pattern in line for pattern in cls.PYTHON_REFERENCE_PATTERNS)]
+        dependency_names = {
+            cls._get_dependency_on_python_line(line)
+            for line in lines_with_external_references
+        }
+        
+
+        # Need to extract the dependency
+    
+    @classmethod
+    def _get_dependency_on_python_line(cls, python_line: str) -> str:
+        # Validation and error handling
+        pattern_matches = [pattern for pattern in cls.PYTHON_REFERENCE_PATTERNS if pattern in python_line]
+        if len(pattern_matches) > 1:
+            raise ValueError(
+                "Multiple matches were found for SynapseNotebookUtil.PYTHON_REFERENCE_PATTERNS, when trying to extract the reference value, "
+                "but we only expected one match. Please manually verify the dependencies for this notebook"
+            )
+        if not pattern_matches:
+            raise ValueError("No matches found in SynapseNotebookUtil.PYTHON_REFERENCE_PATTERNS when trying to extract the reference value")
+        matched_pattern = pattern_matches[0]
+        if matched_pattern == r"%run":
+            # The %run magic command is a special case
+            reference_value = python_line.replace(matched_pattern, "")
+            return reference_value.strip()
+        else:
+            regex_pattern = fr"(?<={re.escape(matched_pattern)}\()(.*)(?=\))"
+            reference_value_match = re.match(regex_pattern, python_line)
+            if not reference_value_match:
+                return None
+            # Remove trailing quote characters and whitespace
+            return reference_value_match[0].strip()[1:-1]
+
+    @classmethod
+    def dependent_artifacts(cls, artifact: Dict[str, Any]) -> Set[str]:
+        dependencies = super().dependent_artifacts(artifact)
+        notebook_python = cls.convert_to_python(artifact)
+        extra_dependencies = cls.get_dependencies_in_notebook_code(notebook_python)
+        return dependencies | extra_dependencies
