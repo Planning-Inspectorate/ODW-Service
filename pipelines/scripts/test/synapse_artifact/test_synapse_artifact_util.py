@@ -15,7 +15,8 @@ from copy import deepcopy
         ("e.0.f", 6),
         ("g.h", 7),
         ("g.i.j", 8),
-        ("c.2.sublistdir.a.0", 42)  # A complex test case
+        ("c.2.sublistdir.a.0", 42),  # A complex test case,
+        ("g.k.l.m", 9)
     ]
 )
 def test_synapse_artifact_util__get_by_attribute(test_case):
@@ -47,7 +48,8 @@ def test_synapse_artifact_util__get_by_attribute(test_case):
             "h": 7,
             "i": {
                 "j": 8
-            }
+            },
+            "k.l.m": 9
         }
     }
     attribute_string = test_case[0]
