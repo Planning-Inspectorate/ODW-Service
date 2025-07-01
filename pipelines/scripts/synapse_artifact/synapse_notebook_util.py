@@ -90,7 +90,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def convert_to_python(cls, artifact: Dict[str, Any]) -> str:
-        python_Lines = [
+        python_lines = [
             line.rstrip()
             for cell in artifact["properties"]["cells"]
             for line in cell["source"]
@@ -98,15 +98,14 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         ]
         # All available magic commands: https://ipython.readthedocs.io/en/stable/interactive/magics.html
         magic_command_map = {
-            "%": lambda x: "#  " + x,  # By default magic commands are turned into comments
             "%run ": lambda x: x.replace("%run ", "mssparkutils.notebook.run(\"") + "\")",  # %run is equivalent to mssparkutils.notebook.run
             # Add any other special magic command cases here
+            "%": lambda x: "#  " + x  # By default magic commands are turned into comments
         }
         # Replace magic command 
         python_line_magic_commands = {
-            line: (command if line.startswith(command) else None)
-            for command in magic_command_map.keys()
-            for line in python_Lines
+            line: next((command for command in magic_command_map.keys() if line.startswith(command)), None)
+            for line in python_lines
         }
         return "\n".join(
             [

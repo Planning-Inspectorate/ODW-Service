@@ -218,6 +218,12 @@ def test__synapse_notebook_util__convert_to_python():
                 {
                     "cell_type": "code",
                     "source": [
+                        "%%pyspark"
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
                         "%run utils/py_utils_get_storage_account"
                     ]
                 },
@@ -247,6 +253,7 @@ def test__synapse_notebook_util__convert_to_python():
     }
     expected_python = "\n".join(
         [
+            "#  %%pyspark",
             "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")",
             "from notebookutils import mssparkutils",
             "import re",
