@@ -48,6 +48,7 @@ class SynapseArtifactsPropertyIterator():
 
         """
         if not self.attribute_split:
+            #print()
             raise StopIteration
         # Imagine everything below is wrapped in a while loop as long as self.attribute_split has value
         self.last_evaluated_attribute = self.attribute_split.pop(0)
@@ -80,6 +81,7 @@ class SynapseArtifactsPropertyIterator():
                 raise ValueError(
                     f"Trying to access a leaf property of a collection, but the remaining sub properties still need to be expanded: {self.attribute_split}"
                 )
+        #print(f"Last evaluated: '{self.last_evaluated_attribute}'")
         return SynapseArtifactsPropertyIteratorResult(
             self.parent_attribute_collection,
             self.last_evaluated_attribute,

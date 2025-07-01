@@ -1,5 +1,8 @@
 from pipelines.scripts.synapse_artifact.synapse_notebook_util import SynapseNotebookUtil
 from copy import deepcopy
+import mock
+from typing import Tuple
+import pytest
 
 
 def test__synapse_notebook_util__replace_env_strings():
@@ -205,3 +208,86 @@ def test__synapse_notebook_util__compare__mismatch():
     }
     artifact_copy = {**artifact, **different_attributes}
     assert not SynapseNotebookUtil("some_workspace").compare(artifact, artifact_copy)
+
+
+def test__synapse_notebook_util__convert_to_python():
+    test_notebook = {
+        "name": "test_notebook",
+        "properties": {
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "%run utils/py_utils_get_storage_account"
+                    ]
+                },
+                {
+                    "cell_type": "markdown",
+                    "source": [
+                        "Some markdonw text which should be dropped"
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "from notebookutils import mssparkutils\n",
+                        "import re\n",
+                        "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)\n",
+                        "mssparkutils.notebook.exit(storage_account)"
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")"
+                    ]
+                }
+            ]
+        }
+    }
+    expected_python = "\n".join(
+        [
+            "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")",
+            "from notebookutils import mssparkutils",
+            "import re",
+            "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)",
+            "mssparkutils.notebook.exit(storage_account)",
+            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")'
+        ]
+    )
+    assert expected_python == SynapseNotebookUtil.convert_to_python(test_notebook)
+
+
+def test__synapse_notebook_util__get_dependencies_in_notebook_code():
+    notebook_code = "\n".join(
+        [
+            "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")",
+            "from notebookutils import mssparkutils",
+            "import re",
+            "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)",
+            "mssparkutils.notebook.exit(storage_account)",
+            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")'
+        ]
+    )
+    dependencies = SynapseNotebookUtil.get_dependencies_in_notebook_code(notebook_code)
+    expected_dependencies = {"utils/py_utils_get_storage_account", "ls_storage"}
+    assert expected_dependencies == dependencies
+
+'''
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        ("%run utils/py_utils_get_storage_account", "py_utils_get_storage_account"),
+        ("storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)", "ls_storage"),
+        ('mssparkutils.notebook.run("utils/py_utils_get_storage_account")', "py_utils_get_storage_account")
+    ]
+)
+def test__synapse_notebook_util___get_dependency_on_python_line(test_case: Tuple[str, str]):
+    sample_code = test_case[0]
+    expected_value = test_case[1]
+    assert expected_value == SynapseNotebookUtil._get_dependency_on_python_line(sample_code)
+
+
+def test__synapse_notebook_util__dependent_artifacts():
+    pass
+'''
