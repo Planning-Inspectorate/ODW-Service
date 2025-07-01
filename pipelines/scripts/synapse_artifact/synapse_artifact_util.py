@@ -510,3 +510,14 @@ class SynapseArtifactUtil(ABC):
             for attribute, attribute_type in reference_attributes.items()
             if reference_type_values[attribute_type] not in reference_types_to_ignore
         }
+    
+    @classmethod
+    def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
+        return artifact
+    
+    @classmethod
+    def is_archived(cls, artifact: Dict[str, Any]) -> bool:
+        existing_folder = artifact["properties"].get("folder", dict())
+        if not existing_folder:
+            return False
+        return existing_folder.get("name", "").startswith("archive")

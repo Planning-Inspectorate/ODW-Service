@@ -90,30 +90,38 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def convert_to_python(cls, artifact: Dict[str, Any]) -> str:
-        python_lines = [
-            line.rstrip()
-            for cell in artifact["properties"]["cells"]
-            for line in cell["source"]
-            if cell["cell_type"] == "code"
-        ]
-        # All available magic commands: https://ipython.readthedocs.io/en/stable/interactive/magics.html
-        magic_command_map = {
-            "%run ": lambda x: x.replace("%run ", "mssparkutils.notebook.run(\"") + "\")",  # %run is equivalent to mssparkutils.notebook.run
-            # Add any other special magic command cases here
-            "%": lambda x: "#  " + x  # By default magic commands are turned into comments
-        }
-        # Replace magic command 
-        python_line_magic_commands = {
-            line: next((command for command in magic_command_map.keys() if line.startswith(command)), None)
-            for line in python_lines
-        }
-        return "\n".join(
-            [
-                magic_command_map[magic_command](line) if magic_command else line
-                for line, magic_command in python_line_magic_commands.items()
-            ]
+        def _process_cell(cell: Dict[str, Any]) -> List[str]:
+            if cell["cell_type"] != "code":
+                # If the cell is not a code cell, then it can be dropped to simplify processing
+                return ""
+            # If there are no non-whitespace lines in the cell, the just return an empty string and skip the rest of the processing
+            first_meaningful_line = next((line for line in cell["source"] if line.strip()), None)
+            if not first_meaningful_line:
+                return ""
+            is_magic_cell = first_meaningful_line.startswith("%")
+            if is_magic_cell:
+                # Merge magic cells into one line to simplify processing
+                cleaned_cells = [line.strip() for line in cell["source"] if line.strip()]
+                cleaned_cell_line = " ".join(cleaned_cells)
+                # %run is a special magic command that can be converted to a real python command, which is important for detecting dependencies
+                if cleaned_cell_line.startswith("%run "):
+                    # Clean the arguments to be a single space between each arg, and convert to be a list of arguments
+                    run_arguments = " ".join(cleaned_cell_line[cleaned_cell_line.rindex("%run ")+5:].split())
+                    # The %run command either expects a quoted or unquoted path. The below logic only adds quotes if they are missing
+                    quote = "\"" if not (run_arguments.startswith('"') or run_arguments.startswith("'") or run_arguments.startswith("`")) else ""
+                    cleaned_line = f"mssparkutils.notebook.run({quote}{run_arguments}{quote})"
+                    return cleaned_line
+                else:
+                    # Comment out all other magic commands, since their operation is not important in the grant scheme of things
+                    return f"# {cleaned_cell_line}"   
+            # Combine all lines into a single string, separated by the newline character
+            return "\n".join([line.rstrip() for line in cell["source"]])
 
-        )
+        cell_code = [
+            _process_cell(cell)
+            for cell in artifact["properties"]["cells"]
+        ]
+        return "\n".join([line for line in cell_code if line])
 
     @classmethod
     def get_dependencies_in_notebook_code(cls, notebook_python: str):
@@ -136,7 +144,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         abstract_syntax_tree_functions = [cls.get_by_attribute(abstract_syntax_tree_json, x) for x in abstract_syntax_tree_funtion_attribute_names]
         # Retrieve all notebook calls associated with the mssparkutils.run method
         notebook_dependencies = {
-            f"notebook/{x['args'][0]['value'].split('/')[-1]}"
+            f"notebook/{x['args'][0]['value'].split('/')[-1]}.json"
             for x in abstract_syntax_tree_functions
             if (
                 x["func"]["attr"] == "run" and
@@ -146,45 +154,11 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         }
         # Retrieve all linked service references
         linked_service_dependencies = {
-            f"linkedService/{x['args'][0]['value']}"
+            f"linkedService/{x['args'][0]['value']}.json"
             for x in abstract_syntax_tree_functions
             if x["func"]["attr"] == "getFullConnectionString"
         }
         return notebook_dependencies | linked_service_dependencies
-
-    @classmethod
-    def _get_dependency_on_python_line(cls, python_line: str) -> str:
-        # Validation and error handling
-        pattern_matches = [pattern for pattern in cls.PYTHON_REFERENCE_PATTERNS if pattern in python_line]
-        if len(pattern_matches) > 1:
-            raise ValueError(
-                "Multiple matches were found for SynapseNotebookUtil.PYTHON_REFERENCE_PATTERNS, when trying to extract the reference value, "
-                "but we only expected one match. Please manually verify the dependencies for this notebook"
-            )
-        if not pattern_matches:
-            raise ValueError("No matches found in SynapseNotebookUtil.PYTHON_REFERENCE_PATTERNS when trying to extract the reference value")
-        matched_pattern = pattern_matches[0]
-        if matched_pattern == r"%run":
-            # The %run magic command is a special case
-            reference_value = python_line.replace(matched_pattern, "")
-            return reference_value.strip().split("/")[-1]
-        else:
-            abstract_syntax_tree = ast.parse(python_line)
-            #  This is only being called for a 1-line python function, so
-            target_function_args = abstract_syntax_tree.body[0].value.args
-            print("args: ", function_args)
-            c: ast.Constant = function_args[0]
-            print(c.value)
-            print(ast.dump(tree, indent=4))
-            1 + "a"
-            regex_pattern = fr"(?<={re.escape(matched_pattern)}\()(.*)(?=\))"
-            print(f"checkig pattern: '{regex_pattern}' against '{python_line}'")
-            reference_value_match = re.search(regex_pattern, python_line)
-            if not reference_value_match:
-                print("NO MATCH FOUND")
-                return None
-            # Remove trailing quote characters and whitespace
-            return reference_value_match[0].strip()[1:-1].split("/")[-1]
 
     @classmethod
     def dependent_artifacts(cls, artifact: Dict[str, Any]) -> Set[str]:
@@ -192,17 +166,15 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         notebook_python = cls.convert_to_python(artifact)
         extra_dependencies = cls.get_dependencies_in_notebook_code(notebook_python)
         return dependencies | extra_dependencies
-
-'''
-import json
-with open("workspace/notebook/py_utils_get_storage_account.json", "r") as f:
-    nb_content = json.load(f)
-
-tst = SynapseNotebookUtil.convert_to_python(nb_content)
-
-with open("pipelines/scripts/synapse_artifact/synapse_notebook_util__output.py", "w") as f:
-    f.write("\n".join(tst))
-'''
-
-
-#mssparkutils.notebook.run("utils/py_utils_get_storage_account")
+    
+    @classmethod
+    def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
+        existing_folder = artifact["properties"].get("folder", dict())
+        existing_folder_name = existing_folder.get("name", "")
+        existing_folder.update(
+            {
+                "name": "/".join(["archive", existing_folder_name])
+            }
+        )
+        artifact["properties"]["folder"] = existing_folder
+        return artifact
