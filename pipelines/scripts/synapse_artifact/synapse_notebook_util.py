@@ -122,39 +122,36 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             r"mssparkutils.notebook.run",
             r"mssparkutils.credentials.getFullConnectionString"
         ]
+        # Convert the python code into abstract syntax tree json that can be analysed
         abstract_syntax_tree = ast.parse(notebook_python)
-        print("asttt")
         abstract_syntax_tree_json = ast2json(abstract_syntax_tree)
-        #print(json.dumps(abstract_syntax_tree_json, indent=4))
         abstract_syntax_tree_attributes = cls.get_all_attributes(abstract_syntax_tree_json)
+        # Retrieve the list of attributes that correspond to function calls
         abstract_syntax_tree_funtion_attribute_names = [
             x[0:-10]
             for x in abstract_syntax_tree_attributes
             if ".func." in x and x.endswith("func.attr")
         ]
+        # Retrives all function all objects from the AST
         abstract_syntax_tree_functions = [cls.get_by_attribute(abstract_syntax_tree_json, x) for x in abstract_syntax_tree_funtion_attribute_names]
-        #for x in abstract_syntax_tree_funtion_attribute_names:
-        #    print(x)
-        #for x in abstract_syntax_tree_functions:
-        #    print(json.dumps(x, indent=4))
-        dependency_names = {
-            x["args"][0]["value"]
+        # Retrieve all notebook calls associated with the mssparkutils.run method
+        notebook_dependencies = {
+            f"notebook/{x['args'][0]['value'].split('/')[-1]}"
             for x in abstract_syntax_tree_functions
-            if x["func"]["attr"] == "run" or x["func"]["attr"] == "getFullConnectionString"# and x["func"]["value"] == "notebook" and x["func"]["value"]["value"]["id"] == "mssparkutils"
+            if (
+                x["func"]["attr"] == "run" and
+                x["func"].get("value", dict()).get("attr", None) == "notebook" and
+                x["func"].get("value", dict()).get("value", dict()).get("id", None) == "mssparkutils"
+            )
         }
-        return dependency_names
-        for x in dependency_names:
-            print(x)
-
-        lines_with_external_references = [line for line in notebook_python if any(pattern in line for pattern in cls.PYTHON_REFERENCE_PATTERNS)]
-        dependency_names = {
-            cls._get_dependency_on_python_line(line)
-            for line in lines_with_external_references
+        # Retrieve all linked service references
+        linked_service_dependencies = {
+            f"linkedService/{x['args'][0]['value']}"
+            for x in abstract_syntax_tree_functions
+            if x["func"]["attr"] == "getFullConnectionString"
         }
-        
+        return notebook_dependencies | linked_service_dependencies
 
-        # Need to extract the dependency
-    
     @classmethod
     def _get_dependency_on_python_line(cls, python_line: str) -> str:
         # Validation and error handling

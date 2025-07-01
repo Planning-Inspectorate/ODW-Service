@@ -273,11 +273,12 @@ def test__synapse_notebook_util__get_dependencies_in_notebook_code():
             "import re",
             "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)",
             "mssparkutils.notebook.exit(storage_account)",
-            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")'
+            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")',
+            "run(\"something\")"  # This is not associated with the mssparkutils run function, so should not be picked up as a dependency
         ]
     )
     dependencies = SynapseNotebookUtil.get_dependencies_in_notebook_code(notebook_code)
-    expected_dependencies = {"utils/py_utils_get_storage_account", "ls_storage"}
+    expected_dependencies = {"notebook/py_utils_get_storage_account", "linkedService/ls_storage"}
     assert expected_dependencies == dependencies
 
 '''
