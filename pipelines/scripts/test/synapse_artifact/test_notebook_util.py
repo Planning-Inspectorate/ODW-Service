@@ -229,6 +229,24 @@ def test__synapse_notebook_util__convert_to_python():
                     ]
                 },
                 {
+                    "cell_type": "code",
+                    "source": [
+                        "%run \"utils/py_utils_get_storage_account\""
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "%run 'utils/py_utils_get_storage_account'"
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "%run `utils/py_utils_get_storage_account`"
+                    ]
+                },
+                {
                     "cell_type": "markdown",
                     "source": [
                         "Some markdonw text which should be dropped"
@@ -256,6 +274,9 @@ def test__synapse_notebook_util__convert_to_python():
         [
             "# %%pyspark",
             "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")",
+            "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")",
+            "mssparkutils.notebook.run('utils/py_utils_get_storage_account')",
+            "mssparkutils.notebook.run(`utils/py_utils_get_storage_account`)",
             "from notebookutils import mssparkutils",
             "import re",
             "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)",
