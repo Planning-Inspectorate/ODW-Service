@@ -512,6 +512,10 @@ class SynapseArtifactUtil(ABC):
         }
     
     @classmethod
+    def can_be_archived(cls) -> bool:
+        return False
+    
+    @classmethod
     def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
         return artifact
     

@@ -166,7 +166,11 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         notebook_python = cls.convert_to_python(artifact)
         extra_dependencies = cls.get_dependencies_in_notebook_code(notebook_python)
         return dependencies | extra_dependencies
-    
+
+    @classmethod
+    def can_be_archived(cls) -> bool:
+        return True
+
     @classmethod
     def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
         existing_folder = artifact["properties"].get("folder", dict())
