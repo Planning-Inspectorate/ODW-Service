@@ -44,6 +44,10 @@ class SynapseSQLScriptUtil(SynapseArtifactUtil):
         return []
 
     @classmethod
+    def can_be_archived(cls) -> bool:
+        return True
+
+    @classmethod
     def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
         existing_folder = artifact["properties"].get("folder", dict())
         existing_folder_name = existing_folder.get("name", "")
