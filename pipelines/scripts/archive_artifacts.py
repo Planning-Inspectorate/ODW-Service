@@ -22,8 +22,14 @@ class ArtifactArchiver():
         }
         """Artifacts to use as the base of the dependency analysis"""
 
+        self.ARTIFACTS_TO_IGNORE = {
+            "workspace/template-parameters-definition.json",
+            "workspace/publish_config.json"
+        }
+        """Artifacts that should be skipped during all processing. i.e. artifacts that cannot be archived and should not affect processing"""
+
         self.ALL_ARTIFACT_NAMES = {
-            path for path in Util.get_all_artifact_paths("workspace")
+            path for path in Util.get_all_artifact_paths("workspace") if path not in self.ARTIFACTS_TO_IGNORE
         }
         """All json artifacts stored under the "./workspace" directory"""
 
