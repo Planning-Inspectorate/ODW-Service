@@ -145,6 +145,9 @@ class ArtifactArchiver():
             if SynapseArtifactUtil.is_archived(self.ALL_ARTIFACTS.get(artifact_path))
         }
         """Artifacts that have already been marked as archived"""
+    
+    def _get_artifact_json(self, artifact_path: str) -> Dict[str, Any]:
+        return json.load(open(artifact_path, "r"))
 
     def _get_artifact_json(self, artifact_path: str) -> Dict[str, Any]:
         return json.load(open(artifact_path, "r"))
