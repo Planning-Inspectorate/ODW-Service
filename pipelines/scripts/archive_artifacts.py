@@ -156,12 +156,12 @@ class ArtifactArchiver():
             for artifact in artifacts_to_archive
         }
         for artifact in artifacts_to_archive:
-            artifact_json = self.get_artifact(artifact)
+            artifact_json = self.get_artifact(artifact.replace("workspace/", ""))
             artifact_json = artifact_util_instances[artifact.split("/")[1]].archive(artifact_json)
             self._write_artifact(artifact, artifact_json)
     
     def _write_artifact(self, artifact_name: str, artifact_json: Dict[str, Any]):
-        with open(f"workspace/{artifact_name}", "w") as f:
+        with open(artifact_name, "w") as f:
             json.dump(artifact_json, f, indent="\t", ensure_ascii=False)
 
     def delete_artifacts(self, artifacts_to_delete: Set[str]):
