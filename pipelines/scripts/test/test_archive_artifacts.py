@@ -90,7 +90,7 @@ def test__artifact_archiver__get_artifact__successful():
     with mock.patch.object(Util, "get_all_artifact_paths", return_value=[]):
         archiver = ArtifactArchiver()
         with mock.patch.object(archiver, "ALL_ARTIFACTS", new=archiveable_artifacts):
-            assert archiver.get_artifact("notebook/artifact_a.json") == "a"
+            assert archiver.get_artifact("workspace/notebook/artifact_a.json") == "a"
 
 
 def test__artifact_archiver__get_artifact__failed():
