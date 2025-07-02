@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "844de296-ef9d-4194-b8fa-a3948628350b"
+				"spark.autotune.trackingId": "c94b843f-4a79-4a6e-89eb-333053ccc884"
 			}
 		},
 		"metadata": {
@@ -377,16 +377,19 @@
 					"    try:\n",
 					"        # Get JSON schema columns\n",
 					"        schema_json = json.loads(\"\".join([r.value for r in spark.read.text(schema_path).collect()]))\n",
-					"        json_columns = set([f['name'] for f in schema_json[\"fields\"]])\n",
+					"        all_json_columns = set([f['name'] for f in schema_json[\"fields\"]])\n",
 					"        \n",
-					"        # Get CSV/DataFrame columns (excluding metadata columns)\n",
+					"        # Separate metadata columns from business columns in JSON schema\n",
 					"        metadata_columns = {'ingested_datetime', 'expected_from', 'expected_to'}\n",
-					"        csv_columns = set([field.name for field in spark_df.schema.fields if field.name not in metadata_columns])\n",
+					"        json_business_columns = all_json_columns - metadata_columns\n",
 					"        \n",
-					"        # STEP 1: Ensure CSV matches JSON schema exactly\n",
-					"        if csv_columns != json_columns:\n",
-					"            missing_in_csv = json_columns - csv_columns\n",
-					"            extra_in_csv = csv_columns - json_columns\n",
+					"        # Get CSV/DataFrame business columns (system metadata columns are added automatically)\n",
+					"        csv_business_columns = set([field.name for field in spark_df.schema.fields if field.name not in metadata_columns])\n",
+					"        \n",
+					"        # STEP 1: Ensure CSV business columns match JSON business columns exactly\n",
+					"        if csv_business_columns != json_business_columns:\n",
+					"            missing_in_csv = json_business_columns - csv_business_columns\n",
+					"            extra_in_csv = csv_business_columns - json_business_columns\n",
 					"            \n",
 					"            error_msg = f\"CSV schema does not match JSON schema for {full_table_name}.\"\n",
 					"            if missing_in_csv:\n",
@@ -406,13 +409,13 @@
 					"        \n",
 					"        if table_exists:\n",
 					"            existing_df = spark.read.format(\"delta\").load(delta_table_path)\n",
-					"            # Get existing table columns (excluding metadata)\n",
-					"            existing_columns = set([field.name for field in existing_df.schema.fields if field.name not in metadata_columns])\n",
+					"            # Get existing table business columns (excluding metadata)\n",
+					"            existing_business_columns = set([field.name for field in existing_df.schema.fields if field.name not in metadata_columns])\n",
 					"            \n",
-					"            # STEP 4: Compare JSON schema with existing table schema\n",
-					"            if json_columns != existing_columns:\n",
-					"                added_columns = json_columns - existing_columns\n",
-					"                removed_columns = existing_columns - json_columns\n",
+					"            # STEP 4: Compare JSON business schema with existing table business schema\n",
+					"            if json_business_columns != existing_business_columns:\n",
+					"                added_columns = json_business_columns - existing_business_columns\n",
+					"                removed_columns = existing_business_columns - json_business_columns\n",
 					"                \n",
 					"                logInfo(f\"Schema difference detected for {full_table_name}:\")\n",
 					"                if added_columns:\n",
@@ -911,9 +914,10 @@
 					"result_json_str = json.dumps(json_result, indent=2, default=datetime_handler)\n",
 					"\n",
 					"# Exit with the JSON result for pipeline consumption\n",
-					"mssparkutils.notebook.exit(result_json_str)"
+					"mssparkutils.notebook.exit(result_json_str)\n",
+					""
 				],
-				"execution_count": 46
+				"execution_count": 47
 			},
 			{
 				"cell_type": "code",
