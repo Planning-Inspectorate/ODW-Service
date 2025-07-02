@@ -18,7 +18,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "24a007cc-138e-475b-afeb-5e55121c304c"
+				"spark.autotune.trackingId": "78fe2747-3909-4c5b-ac98-be5328b0fb05"
 			}
 		},
 		"metadata": {
@@ -73,7 +73,7 @@
 				"source": [
 					"%run /utils/unit-tests/py_unit_tests_functions"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -85,7 +85,7 @@
 					"from pyspark.sql.functions import udf\n",
 					"from pyspark.sql.types import StringType"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -95,7 +95,7 @@
 					"df_schema = spark.read.option(\"multiline\", \"true\").json(\"abfss://odw-config@pinsstodwdevuks9h80mb.dfs.core.windows.net/standardised_table_definitions/Horizon/*.json\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -104,7 +104,7 @@
 					"\n",
 					"df_explode = df_schema.selectExpr(\"explode(fields)\").select(\"col.*\").withColumn(\"File_name\", element_at(split(input_file_name(),\"/\"),-1))"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -120,27 +120,25 @@
 					"    base = re.sub(r'(?<=[a-z])(?=[A-Z])', '_', base)\n",
 					"    return base.lower()\n",
 					"\n",
-					"# Register UDF\n",
+					"# Udf registering\n",
 					"split_filename_udf = udf(split_filename, StringType())\n",
 					"\n",
-					"# Apply transformation\n",
+					"# Apply transformation to file_name\n",
 					"df_final = df_explode.withColumn(\"source_name\", split_filename_udf(col(\"File_name\")))\n",
-					"\n",
-					"# Display result\n",
-					"df_final.select(\"File_name\", \"source_name\").show(truncate=False)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"\n",
 					"df_final = df_explode.withColumn(\"source_name\", split_filename_udf(col(\"File_name\")))\n",
 					"\n",
 					"# Display result\n",
-					"df_final.select(\"File_name\", \"source_name\").show(truncate=False)"
+					"df_final.select(\"File_name\", \"source_name\")"
 				],
-				"execution_count": null
+				"execution_count": 6
 			},
 			{
 				"cell_type": "code",
@@ -149,7 +147,7 @@
 					"\n",
 					"df_std_tablelist = spark.sql(\"show TABLES in odw_standardised_db\")"
 				],
-				"execution_count": null
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -160,14 +158,14 @@
 					"    spark_schema = StructType.fromJson(json.loads(schema))\n",
 					"    return spark_schema"
 				],
-				"execution_count": null
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# create_spark_not_sb_schema()"
 				],
-				"execution_count": null
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -177,7 +175,7 @@
 				"source": [
 					"display(df_std_tablelist)"
 				],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -187,24 +185,14 @@
 				"source": [
 					"display(df_final)"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
 				"source": [
-					"matched_list = df_std_tablelist.join(df_final, df_std_tablelist.tableName == df_final.source_name, how=\"full\")"
+					"matched_list = df_std_tablelist.join(df_final, df_std_tablelist.tableName == df_final.source_name, how=\"inner\")"
 				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"collapsed": false
-				},
-				"source": [
-					"display(matched_list.select(\"tableName\", \"source_name\").distinct())"
-				],
-				"execution_count": null
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -212,9 +200,28 @@
 					"collapsed": false
 				},
 				"source": [
-					"matched_list = matched_list.select(\"tableName\", \"source_name\").distinct().show(truncate=False)"
+					"df_matched_tables = (matched_list.select(\"tableName\", \"source_name\").distinct())"
 				],
-				"execution_count": null
+				"execution_count": 30
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"display(df_matched_tables)"
+				],
+				"execution_count": 32
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#iterate through the tables \n",
+					"for table in df_matched_tables.collect():\n",
+					"    print(table[0])"
+				],
+				"execution_count": 38
 			},
 			{
 				"cell_type": "code",
