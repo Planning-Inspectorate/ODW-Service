@@ -156,13 +156,13 @@ def test__artifact_archiver__get_dependencies():
         {}, # No more dependencies found for the artifact being analysed
     ]
     expected_dependencies = {
-        "notebook/artifact_a.json",
-        "pipeline/artifact_b.json",
-        "notebook/artifact_g.json",
-        "pipeline/artifact_j.json",
-        "pipeline/artifact_j.json",
-        "pipeline/artifact_k.json",
-        "pipeline/artifact_l.json"
+        "workspace/notebook/artifact_a.json",
+        "workspace/pipeline/artifact_b.json",
+        "workspace/notebook/artifact_g.json",
+        "workspace/pipeline/artifact_j.json",
+        "workspace/pipeline/artifact_j.json",
+        "workspace/pipeline/artifact_k.json",
+        "workspace/pipeline/artifact_l.json"
     }
     mock_artifact_util = mock.MagicMock()
     with mock.patch.object(Util, "get_all_artifact_paths", return_value=all_artifacts):

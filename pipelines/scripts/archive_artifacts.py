@@ -101,7 +101,10 @@ class ArtifactArchiver():
             }
             undiscovered_artifacts.update(new_dependencies)
             discovered_artifacts.add(next_artifact_name)
-        return discovered_artifacts
+        return {
+            f"workspace/{x}"
+            for x in discovered_artifacts
+        }
 
     def get_artifacts_to_archive(self, dependencies: Set[str]) -> Set[str]:
         """
@@ -156,7 +159,7 @@ class ArtifactArchiver():
             for artifact in artifacts_to_archive
         }
         for artifact in artifacts_to_archive:
-            artifact_json = self.get_artifact(artifact.replace("workspace/", ""))
+            artifact_json = self.get_artifact(artifact)
             artifact_json = artifact_util_instances[artifact.split("/")[1]].archive(artifact_json)
             self._write_artifact(artifact, artifact_json)
     
