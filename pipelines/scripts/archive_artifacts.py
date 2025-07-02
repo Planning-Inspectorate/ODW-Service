@@ -240,7 +240,7 @@ class ArtifactArchiver():
             for artifact in artifacts_to_archive
         }
         for artifact in artifacts_to_archive:
-            artifact_json = self.get_artifact(artifact.replace("workspace/", ""))
+            artifact_json = self.get_artifact(artifact)
             artifact_json = artifact_util_instances[artifact.split("/")[1]].archive(artifact_json)
             self._write_artifact(artifact, artifact_json)
     
