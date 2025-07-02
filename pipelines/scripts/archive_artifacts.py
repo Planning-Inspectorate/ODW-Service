@@ -72,9 +72,9 @@ class ArtifactArchiver():
         return json.load(open(artifact_path, "r"))
 
     def get_artifact(self, artifact_path: str) -> Dict[str, Any]:
-        if f"workspace/{artifact_path}" not in self.ALL_ARTIFACTS:
-            raise ValueError(f"No artifact json could be found for 'workspace/{artifact_path}'")
-        return self.ALL_ARTIFACTS.get(f"workspace/{artifact_path}")
+        if artifact_path not in self.ALL_ARTIFACTS:
+            raise ValueError(f"No artifact json could be found for '{artifact_path}'")
+        return self.ALL_ARTIFACTS.get(artifact_path)
 
     def get_dependencies(self, artifact: str) -> Set[str]:
         """
@@ -91,7 +91,7 @@ class ArtifactArchiver():
             if next_artifact_path not in self.ALL_UNARCHIVEABLE_ARTIFACTS and next_artifact_path not in self.ALL_ARTIFACTS:
                 raise ValueError(f"Could not find artifact with path 'workspace/{next_artifact_name}'")
             logging.info(f"Analysing the dependencies of '{next_artifact_name}'")
-            new_artifact = self.get_artifact(next_artifact_name)
+            new_artifact = self.get_artifact(f"workspace/{next_artifact_name}")
             artifact_type = next_artifact_name.split("/")[0]
             artifact_dependencies = SynapseArtifactUtilFactory.get(artifact_type).dependent_artifacts(new_artifact)
             new_dependencies = {
