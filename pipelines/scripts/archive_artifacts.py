@@ -1,7 +1,7 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util_factory import SynapseArtifactUtilFactory
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
 from pipelines.scripts.util import Util
-from typing import Set, Tuple
+from typing import Set, Dict, Any
 import json
 import logging
 import os
@@ -28,7 +28,7 @@ class ArtifactArchiver():
         """All json artifacts stored under the "./workspace" directory"""
 
         self.ALL_ARTIFACTS = {
-            artifact_path: json.load(open(artifact_path, "r"))
+            artifact_path: self._get_artifact_json(artifact_path)
             for artifact_path in self.ALL_ARTIFACT_NAMES
         }
         """All artifact json for the artifacts listed as part of ALL_ARTIFACT_NAMES"""
@@ -61,8 +61,11 @@ class ArtifactArchiver():
             if SynapseArtifactUtil.is_archived(self.ALL_ARTIFACTS.get(artifact_path))
         }
         """Artifacts that have already been marked as archived"""
+    
+    def _get_artifact_json(self, artifact_path: str) -> Dict[str, Any]:
+        return json.load(open(artifact_path, "r"))
 
-    def get_artifact(self, artifact_path: str):
+    def get_artifact(self, artifact_path: str) -> Dict[str, Any]:
         if f"workspace/{artifact_path}" not in self.ALL_ARTIFACTS:
             raise ValueError(f"No artifact json could be found for 'workspace/{artifact_path}'")
         return self.ALL_ARTIFACTS.get(f"workspace/{artifact_path}")
@@ -85,7 +88,11 @@ class ArtifactArchiver():
             new_artifact = self.get_artifact(next_artifact_name)
             artifact_type = next_artifact_name.split("/")[0]
             artifact_dependencies = SynapseArtifactUtilFactory.get(artifact_type).dependent_artifacts(new_artifact)
-            new_dependencies = {dependency for dependency in artifact_dependencies if dependency not in discovered_artifacts}
+            new_dependencies = {
+                dependency
+                for dependency in artifact_dependencies
+                if dependency not in discovered_artifacts and dependency != next_artifact_name
+            }
             undiscovered_artifacts.update(new_dependencies)
             discovered_artifacts.add(next_artifact_name)
         return discovered_artifacts
@@ -99,8 +106,8 @@ class ArtifactArchiver():
         """
         return {
             artifact
-            for artifact in self.ALL_ARCHIVEABLE_ARTIFACTS
-            if not (artifact in dependencies or artifact in self.ARTIFACTS_TO_KEEP)
+            for artifact in self.ALL_ARTIFACT_NAMES
+            if not (artifact in dependencies or artifact in self.ARTIFACTS_TO_KEEP or artifact in self.ROOT_ARTIFACTS)
         }
     
     def get_artifacts_that_cannot_be_archived(self, artifacts_to_archive: Set[str]) -> Set[str]:
@@ -139,22 +146,24 @@ class ArtifactArchiver():
             Archive the given artifacts
         """
         artifact_util_instances = {
-            artifact.split("/")[0]: SynapseArtifactUtilFactory.get(artifact.split("/")[0])
+            artifact.split("/")[1]: SynapseArtifactUtilFactory.get(artifact.split("/")[1])
             for artifact in artifacts_to_archive
         }
         for artifact in artifacts_to_archive:
-            artifact_util_instances[artifact.split("/")[0]].archive()
             artifact_json = self.get_artifact(artifact)
-            artifact_json = SynapseArtifactUtilFactory.get(artifact_json).archive(artifact_json)
-            with open(f"workspace/{artifact}", "w") as f:
-                json.dump(artifact_json, f, indent="\t", ensure_ascii=False)
+            artifact_json = artifact_util_instances[artifact.split("/")[1]].archive(artifact_json)
+            self._write_artifact(artifact, artifact_json)
+    
+    def _write_artifact(self, artifact_name: str, artifact_json: Dict[str, Any]):
+        with open(f"workspace/{artifact_name}", "w") as f:
+            json.dump(artifact_json, f, indent="\t", ensure_ascii=False)
 
     def delete_artifacts(self, artifacts_to_delete: Set[str]):
         """
             Delete the given artifacts
         """
         for artifact in artifacts_to_delete:
-            os.remove(f"workspace/{artifact}")
+            os.remove(artifact)
 
     def main(self):
         """
@@ -162,22 +171,23 @@ class ArtifactArchiver():
         """
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
-        dependencies = set()
+        dependencies = set(self.ROOT_ARTIFACTS)
         for artifact in self.ROOT_ARTIFACTS:
             dependencies = dependencies.union(self.get_dependencies(artifact))
         logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
         # Get all artifacts that should not be archived (i.e. All components related to the ARTIFACTS_TO_KEEP)
-        artifacts_to_keep = set()
+        artifacts_to_keep = set(self.ARTIFACTS_TO_KEEP)
         for artifact in self.ARTIFACTS_TO_KEEP:
             artifacts_to_keep = artifacts_to_keep.union(self.get_dependencies(artifact))
         logging.info(f"A total of {len(artifacts_to_keep)} artifacts have been identified to be kept as dependencies of {self.ARTIFACTS_TO_KEEP}")
         # Get all artifacts that can be archived or deleted
-        archive_candidates = self.get_artifacts_to_archive(dependencies.difference(artifacts_to_keep))
+        archive_candidates = self.get_artifacts_to_archive(dependencies.union(artifacts_to_keep))
         artifacts_that_cannot_be_archived = self.get_artifacts_that_cannot_be_archived(archive_candidates)
         artifacts_to_archived = archive_candidates.difference(artifacts_that_cannot_be_archived)
         logging.info(f"A total of {len(artifacts_to_archived)} artifacts have been identified for archival")
         logging.info(f"Of the artifacts to be archived, {len(artifacts_that_cannot_be_archived)} cannot be archived and should be deleted instead")
         artifacts_to_delete = self.get_artifacts_to_delete(artifacts_to_archived)
+        artifacts_to_archived = artifacts_to_archived.difference(artifacts_to_delete)
         logging.info(f"A total of {len(artifacts_to_delete)} archived artifacts have been marked for archival again, and should be safe to delete")
         logging.info(f"The following artifacts have been identified as a dependency of one of the root artifacts {self.ROOT_ARTIFACTS}")
         logging.info(json.dumps(list(dependencies), indent=4))
@@ -191,9 +201,9 @@ class ArtifactArchiver():
         logging.info(json.dumps(list(artifacts_to_delete), indent=4))
         logging.info("Archiving artifacts")
         # Archive the artifacts
-        #self.archive_artifacts(artifacts_to_archived)
+        self.archive_artifacts(artifacts_to_archived)
         # Delete the artifacts
-        #self.delete_artifacts(artifacts_to_delete.union(artifacts_that_cannot_be_archived))
+        self.delete_artifacts(artifacts_to_delete.union(artifacts_that_cannot_be_archived))
 
 
 if __name__ == "__main__":
