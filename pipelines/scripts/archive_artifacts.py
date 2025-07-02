@@ -22,14 +22,20 @@ class ArtifactArchiver():
         }
         """Artifacts to use as the base of the dependency analysis"""
 
-        self.ALL_ARTIFACTS = {
+        self.ALL_ARTIFACT_NAMES = {
             path for path in Util.get_all_artifact_paths("workspace")
         }
         """All json artifacts stored under the "./workspace" directory"""
 
-        self.ALL_ARCHIVEABLE_ARTIFACTS = {
+        self.ALL_ARTIFACTS = {
             artifact_path: json.load(open(artifact_path, "r"))
-            for artifact_path in self.ALL_ARTIFACTS
+            for artifact_path in self.ALL_ARTIFACT_NAMES
+        }
+        """All artifact json for the artifacts listed as part of ALL_ARTIFACT_NAMES"""
+
+        self.ALL_ARCHIVEABLE_ARTIFACTS = {
+            artifact_path
+            for artifact_path in self.ALL_ARTIFACT_NAMES
             if any(
                 artifact_path.startswith(x)
                 for x in [  # Only the below artifacts types can be archived
@@ -44,20 +50,22 @@ class ArtifactArchiver():
 
         self.ALL_UNARCHIVEABLE_ARTIFACTS = {
             path
-            for path in self.ALL_ARTIFACTS
-            if path not in self.ALL_ARCHIVEABLE_ARTIFACTS.keys()
+            for path in self.ALL_ARTIFACT_NAMES
+            if path not in self.ALL_ARCHIVEABLE_ARTIFACTS
         }
-        """Artifacts that cannot be archived. i.e. ALL_ARTIFACTS - ALL_ARCHIVEABLE_ARTIFACTS"""
+        """Artifacts that cannot be archived. i.e. ALL_ARTIFACT_NAMES - ALL_ARCHIVEABLE_ARTIFACTS"""
 
         self.EXISTING_ARCHIVED_ARTIFACTS = {
             artifact_path
-            for artifact_path, artifact in self.ALL_ARCHIVEABLE_ARTIFACTS.items()
-            if SynapseArtifactUtil.is_archived(artifact)
+            for artifact_path in self.ALL_ARCHIVEABLE_ARTIFACTS
+            if SynapseArtifactUtil.is_archived(self.ALL_ARTIFACTS.get(artifact_path))
         }
         """Artifacts that have already been marked as archived"""
 
     def get_artifact(self, artifact_path: str):
-        return self.ALL_ARCHIVEABLE_ARTIFACTS.get(f"workspace/{artifact_path}")
+        if f"workspace/{artifact_path}" not in self.ALL_ARTIFACTS:
+            raise ValueError(f"No artifact json could be found for 'workspace/{artifact_path}'")
+        return self.ALL_ARTIFACTS.get(f"workspace/{artifact_path}")
 
     def get_dependencies(self, artifact: str) -> Set[str]:
         """
@@ -71,15 +79,14 @@ class ArtifactArchiver():
         while undiscovered_artifacts:
             next_artifact_name = undiscovered_artifacts.pop()
             next_artifact_path = f"workspace/{next_artifact_name}"
-            if next_artifact_path not in self.ALL_UNARCHIVEABLE_ARTIFACTS:
-                if next_artifact_path not in self.ALL_ARCHIVEABLE_ARTIFACTS:
-                    raise ValueError(f"Could not find artifact with path 'workspace/{next_artifact_name}'")
-                logging.info(f"Analysing the dependencies of '{next_artifact_name}'")
-                new_artifact = self.get_artifact(next_artifact_name)
-                artifact_type = next_artifact_name.split("/")[0]
-                artifact_dependencies = SynapseArtifactUtilFactory.get(artifact_type).dependent_artifacts(new_artifact)
-                new_dependencies = {dependency for dependency in artifact_dependencies if dependency not in discovered_artifacts}
-                undiscovered_artifacts.update(new_dependencies)
+            if next_artifact_path not in self.ALL_UNARCHIVEABLE_ARTIFACTS and next_artifact_path not in self.ALL_ARTIFACTS:
+                raise ValueError(f"Could not find artifact with path 'workspace/{next_artifact_name}'")
+            logging.info(f"Analysing the dependencies of '{next_artifact_name}'")
+            new_artifact = self.get_artifact(next_artifact_name)
+            artifact_type = next_artifact_name.split("/")[0]
+            artifact_dependencies = SynapseArtifactUtilFactory.get(artifact_type).dependent_artifacts(new_artifact)
+            new_dependencies = {dependency for dependency in artifact_dependencies if dependency not in discovered_artifacts}
+            undiscovered_artifacts.update(new_dependencies)
             discovered_artifacts.add(next_artifact_name)
         return discovered_artifacts
 
