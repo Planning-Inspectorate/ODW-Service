@@ -94,9 +94,25 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def convert_to_python(cls, artifact: Dict[str, Any]) -> str:
+        """
+            Convert the given notebook artifact to python
+
+            Note: This function does not fully account for all iPython magic commands. The implemented logic attempts to convert
+                  magic commands into comments, except for %run, which instead gets converted to mmsparkutils.notebook.run().
+                  Extending the logic to account for all magic commands/input combinations will take some time
+                  (and may involve importing the ipython package) however for all ODW notebooks seen as of 2025-07-03,
+                  none of these other cases occur or negatively impact the usage of this function, since it's only used for detecting dependencies.
+                  In the interest of time the functionality will be left as-is, unless there is a requirement to expand on this functionality
+                  (in which case please update this comment as appropriate)
+        """
         if artifact.get("properties", dict()).get("metadata", dict()).get("language_info", dict()).get("name") != "python":
             raise NotAPythonNotebookException(f"The given notebook artifact is not a python notebook")
         def _process_cell(cell: Dict[str, Any]) -> List[str]:
+            """
+                Convert the given cell to python, commenting out magic commands/converting %run to mssparkutils.notebook.run
+                This is done on a cell-by-cell basis because Synapse notebooks mostly only support a single magic command in a cell
+                (except for the special magic commands starting with %%)
+            """
             if cell["cell_type"] != "code":
                 # If the cell is not a code cell, then it can be dropped to simplify processing
                 return ""
@@ -134,7 +150,20 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def get_dependencies_in_notebook_code(cls, notebook_python: str):
+        """
+            Return the dependencies of the given Synapse notebook code
+
+            Note: This assumes the usage of mssparkutils is inline with Microsoft documentation. If mssparkutils has been explicitly imported
+                  as a different identifier then this will not work (i.e. import mssparkutils as something_else).
+                  As of 2025-07-03 all ODW notebooks follow the Microsoft documentation
+        """
         def get_dependencies(function_call: Dict[str, Any]) -> Set[str]:
+            """
+                Identify the dependencies of the given function call json.
+
+                Note: this only accounts for mssparkutils.notebook.run and mssparkutils.credentials.getFullConnectionString , since
+                      these are the only two function calls that can refer to external artifacts
+            """
             found_dependencies = set()
             # Process kwargs first (the args passed like arg_name=arg_value)
             function_kwargs_map = {
@@ -173,8 +202,9 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             for x in abstract_syntax_tree_attributes
             if ".func." in x and x.endswith("func.attr")
         ]
-        # Retrives all function all objects from the AST
+        # Retrives all function objects from the AST
         abstract_syntax_tree_functions = [cls.get_by_attribute(abstract_syntax_tree_json, x) for x in abstract_syntax_tree_funtion_attribute_names]
+        # Filter down the function objects to only be the ones related to mssparkutils.notebook.run and mssparkutils.credentials.getFullConnectionString
         abstract_syntax_tree_functions = [
             function_json
             for function_json in abstract_syntax_tree_functions

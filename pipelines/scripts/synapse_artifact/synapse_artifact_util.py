@@ -513,14 +513,25 @@ class SynapseArtifactUtil(ABC):
     
     @classmethod
     def can_be_archived(cls) -> bool:
+        """
+            Return True if the artifact kind can be archived, false otherwise. An artifact can be archived if it has a 'folder' property
+        """
         return False
     
     @classmethod
     def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
+        """
+            Archive the given artifact. Must be explicitly implemented for each individual base artifact util class. This prepends
+            the current folder property with 'archive/'
+        """
         return artifact
     
     @classmethod
     def is_archived(cls, artifact: Dict[str, Any]) -> bool:
+        """
+            Return True if the artifact has already been archived. If a 'folder' property exists and already starts with 'archive/' then return True,
+            False otherwise
+        """
         existing_folder = artifact["properties"].get("folder", dict())
         if not existing_folder:
             return False
