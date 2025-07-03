@@ -217,6 +217,11 @@ def test__synapse_notebook_util__compare__mismatch():
 def test__synapse_notebook_util__convert_to_python():
     test_notebook = {
         "name": "test_notebook",
+        "metadata": {
+            "language_info": {
+                "name": "python"
+            }
+        },
         "properties": {
             "metadata": {
                 "language_info": {
