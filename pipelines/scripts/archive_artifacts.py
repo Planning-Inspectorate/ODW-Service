@@ -9,7 +9,10 @@ import os
 
 logging.basicConfig(level=logging.INFO)
 
-
+# deps: 243
+# arch: 756
+# cant: 49
+# del: 443
 class ArtifactArchiver():
     def __init__(self):
         self.ROOT_ARTIFACTS = {
@@ -260,6 +263,7 @@ class ArtifactArchiver():
             Identify artifacts that can be archived or deleted, and then archive/delete them
         """
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
+        logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
         dependencies = set(self.ROOT_ARTIFACTS)
         for artifact in self.ROOT_ARTIFACTS:
