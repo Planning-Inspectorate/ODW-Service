@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bf967aae-1c2f-46c8-8f5b-cec51a177041"
+				"spark.autotune.trackingId": "07f17dbf-b656-4a13-bd61-c0ba1d7d3a92"
 			}
 		},
 		"metadata": {
@@ -92,7 +92,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "markdown",
@@ -114,7 +114,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -134,7 +134,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -158,9 +158,12 @@
 					"#source_delta_table = f\"{source_database_name}.sap_email_weekly\"\n",
 					"#target_delta_table = f\"{target_database_name}.load_sap_pins_email_weekly\"\n",
 					"delta_table_base_path = f\"abfss://odw-standardised@{storage_account}saphr/\"\n",
+					"\n",
+					"# JSON schema file path\n",
+					"json_schema_file_path = f\"abfss://odw-config@{storage_account}/orchestration/orchestration_saphr.json\"\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -232,6 +235,45 @@
 					"        processing_results[\"processing_summary\"][\"successful_overwrites\"] += 1\n",
 					"    else:\n",
 					"        processing_results[\"processing_summary\"][\"failed_overwrites\"] += 1\n",
+					"\n",
+					"# NEW FUNCTION: Read orchestration JSON file and extract saphr delta table names\n",
+					"@logging_to_appins\n",
+					"def get_delta_tables_from_json(json_file_path):\n",
+					"    \"\"\"\n",
+					"    Read orchestration JSON file and extract unique saphr delta table names\n",
+					"    with Source_Frequency_Folder filter for MONTHLY and WEEKLY\n",
+					"    \"\"\"\n",
+					"    try:\n",
+					"        logInfo(f\"Reading orchestration JSON file from: {json_file_path}\")\n",
+					"        \n",
+					"        # Read JSON file content\n",
+					"        json_content = mssparkutils.fs.head(json_file_path, max_bytes=1000000)  # Read up to 1MB\n",
+					"        orchestration_data = json.loads(json_content)\n",
+					"        \n",
+					"        # Extract unique table names from saphr path with frequency filter\n",
+					"        saphr_tables = set()\n",
+					"        allowed_frequencies = {\"MONTHLY\", \"WEEKLY\"}\n",
+					"        \n",
+					"        for definition in orchestration_data.get(\"definitions\", []):\n",
+					"            standardised_path = definition.get(\"Standardised_Path\", \"\")\n",
+					"            table_name = definition.get(\"Standardised_Table_Name\", \"\")\n",
+					"            frequency_folder = definition.get(\"Source_Frequency_Folder\", \"\")\n",
+					"            \n",
+					"            # Filter for saphr tables with MONTHLY or WEEKLY frequency\n",
+					"            if (standardised_path.lower() == \"saphr\" and \n",
+					"                table_name and \n",
+					"                frequency_folder in allowed_frequencies):\n",
+					"                saphr_tables.add(table_name)\n",
+					"                logInfo(f\"Added table: {table_name} (Frequency: {frequency_folder})\")\n",
+					"        \n",
+					"        table_list = list(saphr_tables)\n",
+					"        logInfo(f\"Found {len(table_list)} unique saphr tables with MONTHLY/WEEKLY frequency: {table_list}\")\n",
+					"        \n",
+					"        return table_list\n",
+					"        \n",
+					"    except Exception as e:\n",
+					"        logError(f\"Error reading orchestration JSON file: {e}\")\n",
+					"        return []\n",
 					"\n",
 					"def get_delta_tables(base_path):\n",
 					"    \n",
@@ -333,7 +375,7 @@
 					"    \n",
 					"    return exit_value"
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -408,6 +450,12 @@
 					"                UPDATE SET target.EmployeeNo = source.EmployeeNo\n",
 					"            \"\"\")\n",
 					"\n",
+					"            df_RecCnt = spark.sql(f\"\"\"\n",
+					"                SELECT *  FROM {target_table}\n",
+					"                WHERE EmployeeNo is NOT NULL\n",
+					"            \"\"\")\n",
+					"            print(f\"Record Count of {target_table} IS {df_RecCnt.count()}\")\n",
+					"\n",
 					"            logInfo(f\"Updated {target_table}\")\n",
 					"            #add_table_result(target_table, update_count, \"success\", \"\")\n",
 					"            \n",
@@ -455,7 +503,7 @@
 					"            logError(\"Delta table updates failed\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "code",
@@ -467,7 +515,7 @@
 					"result_json_str = json.dumps(final_results, indent=2, default=datetime_handler)\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 20
 			},
 			{
 				"cell_type": "code",
@@ -483,6 +531,19 @@
 					"#spark.sql(f\"DROP TABLE IF EXISTS odw_harmonised_db.load_sap_hr_weekly\")"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"spark.sql(f\"\"\"\n",
+					"                MERGE INTO odw_standardised_db.sap_hr_history_monthly AS target\n",
+					"                USING odw_standardised_db.sap_hr_previous_employee_numbers AS source\n",
+					"                ON target.PersNo = source.PersNo\n",
+					"                WHEN MATCHED THEN\n",
+					"                UPDATE SET target.EmployeeNo = source.EmployeeNo\n",
+					"            \"\"\")"
+				],
+				"execution_count": 1
 			}
 		]
 	}
