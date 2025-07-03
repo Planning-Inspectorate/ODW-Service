@@ -12,11 +12,6 @@ logging.basicConfig(level=logging.INFO)
 
 class ArtifactArchiver():
     def __init__(self):
-        self.ARTIFACTS_TO_KEEP = {
-            
-        }
-        """Artifacts that should not be marked for archival, even if they are identified as not being a dependency"""
-
         self.ROOT_ARTIFACTS = {
             "pipeline/pln_master.json"
         }
@@ -67,7 +62,7 @@ class ArtifactArchiver():
             if SynapseArtifactUtil.is_archived(self.ALL_ARTIFACTS.get(artifact_path))
         }
         """Artifacts that have already been marked as archived"""
-    
+
     def _get_artifact_json(self, artifact_path: str) -> Dict[str, Any]:
         return json.load(open(artifact_path, "r"))
 
@@ -116,7 +111,7 @@ class ArtifactArchiver():
         return {
             artifact
             for artifact in self.ALL_ARTIFACT_NAMES
-            if not (artifact in dependencies or artifact in self.ARTIFACTS_TO_KEEP or artifact in self.ROOT_ARTIFACTS)
+            if not (artifact in dependencies or artifact in self.ROOT_ARTIFACTS)
         }
     
     def get_artifacts_that_cannot_be_archived(self, artifacts_to_archive: Set[str]) -> Set[str]:
@@ -184,13 +179,8 @@ class ArtifactArchiver():
         for artifact in self.ROOT_ARTIFACTS:
             dependencies = dependencies.union(self.get_dependencies(artifact))
         logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
-        # Get all artifacts that should not be archived (i.e. All components related to the ARTIFACTS_TO_KEEP)
-        artifacts_to_keep = set(self.ARTIFACTS_TO_KEEP)
-        for artifact in self.ARTIFACTS_TO_KEEP:
-            artifacts_to_keep = artifacts_to_keep.union(self.get_dependencies(artifact))
-        logging.info(f"A total of {len(artifacts_to_keep)} artifacts have been identified to be kept as dependencies of {self.ARTIFACTS_TO_KEEP}")
         # Get all artifacts that can be archived or deleted
-        archive_candidates = self.get_artifacts_to_archive(dependencies.union(artifacts_to_keep))
+        archive_candidates = self.get_artifacts_to_archive(dependencies)
         artifacts_that_cannot_be_archived = self.get_artifacts_that_cannot_be_archived(archive_candidates)
         artifacts_to_archived = archive_candidates.difference(artifacts_that_cannot_be_archived)
         logging.info(f"A total of {len(artifacts_to_archived)} artifacts have been identified for archival")
@@ -200,8 +190,6 @@ class ArtifactArchiver():
         logging.info(f"A total of {len(artifacts_to_delete)} archived artifacts have been marked for archival again, and should be safe to delete")
         logging.info(f"The following artifacts have been identified as a dependency of one of the root artifacts {self.ROOT_ARTIFACTS}")
         logging.info(json.dumps(list(dependencies), indent=4))
-        logging.info(f"The following artifacts have been identified as a dependency of one of the artifacts to keep {self.ARTIFACTS_TO_KEEP}")
-        logging.info(json.dumps(list(artifacts_to_keep), indent=4))
         logging.info(f"The following artifacts can be archived")
         logging.info(json.dumps(list(artifacts_to_archived), indent=4))
         logging.info(f"The following artifacts have been marked for archival but cannot be archived due to their structure, so will be deleted")
