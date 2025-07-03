@@ -183,6 +183,8 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def archive(cls, artifact: Dict[str, Any]) -> Dict[str, Any]:
+        # This action breaks any mssparkutil or %run references. This is intentional, since it causes crashes which allows the team to catch any
+        # mistakes during the archival process
         existing_folder = artifact["properties"].get("folder", dict())
         existing_folder_name = existing_folder.get("name", "")
         existing_folder.update(
