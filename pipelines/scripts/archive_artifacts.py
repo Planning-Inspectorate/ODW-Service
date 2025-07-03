@@ -21,7 +21,6 @@ class ArtifactArchiver():
             "trigger/tr_daily_weekdays_1500.json",
             "trigger/tr_delta_backup_daily_0800.json",
             "trigger/tr_delta_backup_daily_0900.json",
-            "trigger/tr_delta_backup_daily_1400.json",
             "trigger/tr_delta_backup_odw_config_0900.json",
             "trigger/tr_delta_backup_odw_cur_0900.json",
             "trigger/tr_delta_backup_odw_cur_migr_0900.json",
