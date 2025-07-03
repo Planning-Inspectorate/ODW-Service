@@ -257,20 +257,20 @@ class ArtifactArchiver():
             Identify artifacts that can be archived or deleted, and then archive/delete them
         """
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
-        logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
         dependencies = set(self.ROOT_ARTIFACTS)
         for artifact in self.ROOT_ARTIFACTS:
             dependencies = dependencies.union(self.get_dependencies(artifact))
-        logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
         # Get all artifacts that can be archived or deleted
         archive_candidates = self.get_artifacts_to_archive(dependencies)
         artifacts_that_cannot_be_archived = self.get_artifacts_that_cannot_be_archived(archive_candidates)
         artifacts_to_archived = archive_candidates.difference(artifacts_that_cannot_be_archived)
-        logging.info(f"A total of {len(artifacts_to_archived)} artifacts have been identified for archival")
-        logging.info(f"Of the artifacts to be archived, {len(artifacts_that_cannot_be_archived)} cannot be archived and should be deleted instead")
         artifacts_to_delete = self.get_artifacts_to_delete(artifacts_to_archived)
         artifacts_to_archived = artifacts_to_archived.difference(artifacts_to_delete)
+        logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
+        logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
+        logging.info(f"A total of {len(archive_candidates)} artifacts have been identified for archival or deletion")
+        logging.info(f"Of the artifacts to be archived, {len(artifacts_that_cannot_be_archived)} cannot be archived and should be deleted instead")
         logging.info(f"A total of {len(artifacts_to_delete)} archived artifacts have been marked for archival again, and should be safe to delete")
         logging.info(f"The following artifacts have been identified as a dependency of one of the root artifacts {self.ROOT_ARTIFACTS}")
         logging.info(json.dumps(list(dependencies), indent=4))
