@@ -145,7 +145,7 @@ class ArtifactArchiver():
             if SynapseArtifactUtil.is_archived(self.ALL_ARTIFACTS.get(artifact_path))
         }
         """Artifacts that have already been marked as archived"""
-    
+
     def _get_artifact_json(self, artifact_path: str) -> Dict[str, Any]:
         return json.load(open(artifact_path, "r"))
 
@@ -277,8 +277,6 @@ class ArtifactArchiver():
         logging.info(f"A total of {len(artifacts_to_delete)} archived artifacts have been marked for archival again, and should be safe to delete")
         logging.info(f"The following artifacts have been identified as a dependency of one of the root artifacts {self.ROOT_ARTIFACTS}")
         logging.info(json.dumps(list(dependencies), indent=4))
-        logging.info(f"The following artifacts have been identified as a dependency of one of the artifacts to keep {self.ARTIFACTS_TO_KEEP}")
-        logging.info(json.dumps(list(artifacts_to_keep), indent=4))
         logging.info(f"The following artifacts can be archived")
         logging.info(json.dumps(list(artifacts_to_archived), indent=4))
         logging.info(f"The following artifacts have been marked for archival but cannot be archived due to their structure, so will be deleted")
