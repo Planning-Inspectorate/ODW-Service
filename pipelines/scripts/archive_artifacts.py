@@ -9,11 +9,86 @@ import os
 
 logging.basicConfig(level=logging.INFO)
 
-
+# deps: 243
+# arch: 756
+# cant: 49
+# del: 443
 class ArtifactArchiver():
     def __init__(self):
         self.ROOT_ARTIFACTS = {
-            "pipeline/pln_master.json"
+            "pipeline/pln_master.json",
+            "pipeline/pln_saphr_master.json",  # Keep relevant triggers
+            "trigger/tr_daily_7days_1800.json",
+            "trigger/tr_daily_7days_2100.json",
+            "trigger/tr_daily_weekdays_1500.json",
+            "trigger/tr_saphr_daily_800.json",
+            "notebook/py_unit_tests_appeal_document.json",  # Keep tests
+            "notebook/py_unit_tests_appeal_event_estimate.json",
+            "notebook/py_unit_tests_appeal_s78.json",
+            "notebook/py_unit_tests_appeals_events.json",
+            "notebook/py_unit_tests_appeals_representation.json",
+            "notebook/py_unit_tests_entraid.json",
+            "notebook/py_unit_tests_functions.json",
+            "notebook/py_unit_tests_has_appeals.json",
+            "notebook/py_unit_tests_listed_buildings.json",
+            "notebook/py_unit_tests_nsip_document.json",
+            "notebook/py_unit_tests_nsip_exam_timetable.json",
+            "notebook/py_unit_tests_nsip_project.json",
+            "notebook/py_unit_tests_nsip_s51_advice.json",
+            "notebook/py_unit_tests_nsip_subscription.json",
+            "notebook/py_unit_tests_pins_inspectors_curated.json",
+            "notebook/py_unit_tests_pins_lpa_curated.json",
+            "notebook/py_unit_tests_relevant_representation.json",
+            "notebook/py_unit_tests_s62a_view_cases.json",
+            "notebook/py_unit_tests_service_user.json",
+            "pipeline/rel_2_0_0.json",  # Keep release pipelines
+            "pipeline/rel_2_0_3.json",
+            "pipeline/rel_2_0_4.json",
+            "pipeline/rel_2_0_5.json",
+            "pipeline/rel_2_0_6.json",
+            "pipeline/rel_2_0_7.json",
+            "pipeline/rel_2_0_8.json",
+            "pipeline/rel_2_0_9.json",
+            "pipeline/rel_2_0_11_nsip_reps_migrated.json",
+            "pipeline/rel_3_0_0.json",
+            "pipeline/rel_3_0_3.json",
+            "pipeline/rel_3_0_4.json",
+            "pipeline/rel_4_0_0.json",
+            "pipeline/rel_4_0_1.json",
+            "pipeline/rel_6_0_1.json",
+            "pipeline/rel_6_0_2.json",
+            "pipeline/rel_6_0_3_s78.json",
+            "pipeline/rel_7_0_0.json",
+            "pipeline/rel_7_0_1.json",
+            "pipeline/Rel_7_0_2.json",
+            "pipeline/rel_7_0_3.json",
+            "pipeline/rel_8_0_1.json",
+            "pipeline/rel_8_0_2.json",
+            "pipeline/rel_8_0_3_hotfix.json",
+            "pipeline/rel_8_0_4_hotfix.json",
+            "pipeline/rel_8_0_5_pins_inspector.json",
+            "pipeline/rel_11_0_0_saphr_setup.json",
+            "pipeline/rel_12_0_0_appeal_event_estimate.json",
+            "pipeline/rel_13_0_0_saphr_setup.json",
+            "pipeline/rel_13_0_1_saphr_setup_v2.json",
+            "pipeline/rel_14_0_0_saphr_setup.json",
+            "pipeline/rel_971_logging_monitoring.json",
+            "pipeline/rel_1047_migration_db.json",
+            "pipeline/rel_1151_appeals_events.json",
+            "pipeline/rel_1262_entra_id.json",
+            "pipeline/rel_1269_document metadata.json",  # The name of this one breaks the convention and should be investigated
+            "pipeline/rel_1272_nsip_data.json",
+            "pipeline/rel_1273_s51.json",
+            "pipeline/rel_1298_relevant_representation.json",
+            "pipeline/rel_1309_nsip_exam.json",
+            "pipeline/rel_1347_nsip_representation.json",
+            "pipeline/rel_1349_appeal_document.json",
+            "pipeline/rel_1374_aie.json",
+            "pipeline/rel_1381_appeal_has.json",
+            "pipeline/rel_1403_entraid.json",
+            "pipeline/rel_1416_master_fixes.json",
+            "pipeline/rel_has_156.json",
+            "pipeline/rel_THEODW-992-WelshFields.json",
         }
         """Artifacts to use as the base of the dependency analysis"""
 
@@ -174,6 +249,7 @@ class ArtifactArchiver():
             Identify artifacts that can be archived or deleted, and then archive/delete them
         """
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
+        logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
         dependencies = set(self.ROOT_ARTIFACTS)
         for artifact in self.ROOT_ARTIFACTS:
