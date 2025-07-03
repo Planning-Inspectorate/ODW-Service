@@ -1,5 +1,5 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
-from pipelines.scripts.synapse_artifact.synapse_notebook_util import SynapseNotebookUtil
+from pipelines.scripts.synapse_artifact.synapse_notebook_util import SynapseNotebookUtil, NotAPythonNotebookException
 from copy import deepcopy
 import mock
 from typing import Tuple
@@ -214,6 +214,11 @@ def test__synapse_notebook_util__compare__mismatch():
 def test__synapse_notebook_util__convert_to_python():
     test_notebook = {
         "name": "test_notebook",
+        "metadata": {
+            "language_info": {
+                "name": "python"
+            }
+        },
         "properties": {
             "cells": [
                 {
@@ -287,6 +292,29 @@ def test__synapse_notebook_util__convert_to_python():
     assert expected_python == SynapseNotebookUtil.convert_to_python(test_notebook)
 
 
+def test__synapse_notebook_util__convert_to_python__not_python_exception():
+    test_notebook = {
+        "name": "test_notebook",
+        "metadata": {
+            "language_info": {
+                "name": "sql"
+            }
+        },
+        "properties": {
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "select * from some_table"
+                    ]
+                }
+            ]
+        }
+    }
+    with pytest.raises(NotAPythonNotebookException):
+        SynapseNotebookUtil.convert_to_python(test_notebook)
+
+
 def test__synapse_notebook_util__get_dependencies_in_notebook_code():
     notebook_code = "\n".join(
         [
@@ -315,3 +343,15 @@ def test__synapse_notebook_util__dependent_artifacts():
                 actual_return_value = SynapseNotebookUtil.dependent_artifacts(some_artifact)
                 assert expected_return_value == actual_return_value
                 SynapseNotebookUtil.get_dependencies_in_notebook_code.assert_called_once_with("some notebook code")
+
+
+def test__synapse_notebook_util__dependent_artifacts__with_not_python_exception():
+    some_artifact = {
+        "name": "some_notebook"
+    }
+    with mock.patch.object(SynapseNotebookUtil, "get_dependencies_in_notebook_code", return_value={"some_notebook_code_dependency"}):
+        with mock.patch.object(SynapseNotebookUtil, "convert_to_python", side_effect=NotAPythonNotebookException()):
+            with mock.patch.object(SynapseArtifactUtil, "dependent_artifacts", return_value={"some_notebook_dependency"}):
+                expected_return_value = {"some_notebook_dependency"}
+                actual_return_value = SynapseNotebookUtil.dependent_artifacts(some_artifact)
+                assert expected_return_value == actual_return_value

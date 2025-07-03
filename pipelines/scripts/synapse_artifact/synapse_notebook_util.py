@@ -7,6 +7,10 @@ import re
 import json
 
 
+class NotAPythonNotebookException(Exception):
+    pass
+
+
 class SynapseNotebookUtil(SynapseArtifactUtil):
     """
         Class for managing the retrieval and analysis of Synapse Notebook artifacts
@@ -90,6 +94,8 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def convert_to_python(cls, artifact: Dict[str, Any]) -> str:
+        if artifact.get("metadata", dict()).get("language_info", dict()).get("name") != "python":
+            raise NotAPythonNotebookException(f"The given notebook artifact is not a python notebook")
         def _process_cell(cell: Dict[str, Any]) -> List[str]:
             if cell["cell_type"] != "code":
                 # If the cell is not a code cell, then it can be dropped to simplify processing
@@ -163,7 +169,11 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
     @classmethod
     def dependent_artifacts(cls, artifact: Dict[str, Any]) -> Set[str]:
         dependencies = super().dependent_artifacts(artifact)
-        notebook_python = cls.convert_to_python(artifact)
+        try:
+            notebook_python = cls.convert_to_python(artifact)
+        except NotAPythonNotebookException:
+            # Only python notebooks can have dependencies
+            return dependencies
         extra_dependencies = cls.get_dependencies_in_notebook_code(notebook_python)
         return dependencies | extra_dependencies
 
