@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a438338b-70c2-4ddc-b2ce-5237a1d67c6d"
+				"spark.autotune.trackingId": "07977788-589a-4709-a5cf-3064d2bc72b5"
 			}
 		},
 		"metadata": {
@@ -86,14 +86,21 @@
 					]
 				},
 				"source": [
-					"entity_name = ''\r\n",
-					"db_name = 'appeal-event'\r\n",
+					"entity_name = 'appeal-event'\r\n",
+					"db_name = 'odw_standardised_db'\r\n",
 					"incremental_key = ''\r\n",
-					"is_servicebus_schema: bool = True\r\n",
+					"is_servicebus_schema: bool = False\r\n",
 					"return_json_schema = False\r\n",
 					"version = '1.10.2'"
 				],
-				"execution_count": null
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"horizon_entity_name = 'HorizonAppealsEvent'"
+				],
+				"execution_count": 206
 			},
 			{
 				"cell_type": "code",
@@ -104,7 +111,7 @@
 					"import json\r\n",
 					"import requests"
 				],
-				"execution_count": null
+				"execution_count": 207
 			},
 			{
 				"cell_type": "code",
@@ -122,7 +129,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": null
+				"execution_count": 208
 			},
 			{
 				"cell_type": "code",
@@ -147,7 +154,7 @@
 					"    'date-time': TimestampType()\r\n",
 					"    }"
 				],
-				"execution_count": null
+				"execution_count": 209
 			},
 			{
 				"cell_type": "code",
@@ -203,7 +210,7 @@
 					"if is_servicebus_schema:\r\n",
 					"    harmonised_fields = StructType(harmonised_fields.fields + [StructField(\"message_id\", StringType(), True)])"
 				],
-				"execution_count": null
+				"execution_count": 210
 			},
 			{
 				"cell_type": "code",
@@ -231,7 +238,7 @@
 					"    except requests.exceptions.RequestException as e:\r\n",
 					"        logException(e)"
 				],
-				"execution_count": null
+				"execution_count": 211
 			},
 			{
 				"cell_type": "code",
@@ -247,26 +254,26 @@
 					}
 				},
 				"source": [
-					"@logging_to_appins\r\n",
-					"def get_spark_type(field_schema: dict) -> dict:\r\n",
-					"    json_type: str = field_schema.get('type')\r\n",
+					"# @logging_to_appins\r\n",
+					"# def get_spark_type(field_schema: dict) -> dict:\r\n",
+					"#     json_type: str = field_schema.get('type')\r\n",
 					"    \r\n",
-					"    if isinstance(json_type, list):\r\n",
-					"        json_type = json_type[0]  # Consider the first type in the list for simplicity\r\n",
+					"#     if isinstance(json_type, list):\r\n",
+					"#         json_type = json_type[0]  # Consider the first type in the list for simplicity\r\n",
 					"\r\n",
-					"    if json_type == 'array':\r\n",
-					"        element_schema = field_schema['items']\r\n",
-					"        element_type = get_spark_type(element_schema)\r\n",
-					"        return ArrayType(element_type)\r\n",
-					"    elif json_type == 'object':\r\n",
-					"        return transform_schema(field_schema)\r\n",
-					"    elif json_type in type_mapping:\r\n",
-					"        return type_mapping[json_type]\r\n",
-					"    else:\r\n",
-					"        logException(e)\r\n",
-					"        raise ValueError(f\"Unsupported type: {json_type}\")"
+					"#     if json_type == 'array':\r\n",
+					"#         element_schema = field_schema['items']\r\n",
+					"#         element_type = get_spark_type(element_schema)\r\n",
+					"#         return ArrayType(element_type)\r\n",
+					"#     elif json_type == 'object':\r\n",
+					"#         return transform_schema(field_schema)\r\n",
+					"#     elif json_type in type_mapping:\r\n",
+					"#         return type_mapping[json_type]\r\n",
+					"#     else:\r\n",
+					"#         logException(e)\r\n",
+					"#         raise ValueError(f\"Unsupported type: {json_type}\")"
 				],
-				"execution_count": null
+				"execution_count": 212
 			},
 			{
 				"cell_type": "code",
@@ -292,7 +299,7 @@
 					"            fields.append(StructField(field_name, spark_type, field_nullable))\r\n",
 					"    return StructType(fields)"
 				],
-				"execution_count": null
+				"execution_count": 213
 			},
 			{
 				"cell_type": "code",
@@ -322,7 +329,7 @@
 					"    else:\r\n",
 					"        return schema"
 				],
-				"execution_count": null
+				"execution_count": 214
 			},
 			{
 				"cell_type": "code",
@@ -363,7 +370,25 @@
 					"\r\n",
 					"    return final_schema"
 				],
-				"execution_count": null
+				"execution_count": 215
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"outputs_hidden": true
+					}
+				},
+				"source": [
+					"# # existing code\r\n",
+					"# url: str = f\"https://raw.githubusercontent.com/Planning-Inspectorate/data-model/refs/tags/{version}/schemas/{entity_name}.schema.json\"\r\n",
+					"# logInfo(f\"Fetching from {url}\")\r\n",
+					"# json_schema: dict = get_schema_from_url(url)\r\n",
+					"# if not json_schema:\r\n",
+					"#     logError(f\"Invalid schema retrieved from {url}\")\r\n",
+					"#     mssparkutils.notebook.exit('')"
+				],
+				"execution_count": 216
 			},
 			{
 				"cell_type": "code",
@@ -379,14 +404,102 @@
 					}
 				},
 				"source": [
-					"url: str = f\"https://raw.githubusercontent.com/Planning-Inspectorate/data-model/refs/tags/{version}/schemas/{entity_name}.schema.json\"\r\n",
+					"url: str = f\"https://raw.githubusercontent.com/Planning-Inspectorate/odw-config/refs/heads/main/data-lake/standardised_table_definitions/Horizon/{horizon_entity_name}.json\"\r\n",
 					"logInfo(f\"Fetching from {url}\")\r\n",
 					"json_schema: dict = get_schema_from_url(url)\r\n",
 					"if not json_schema:\r\n",
 					"    logError(f\"Invalid schema retrieved from {url}\")\r\n",
 					"    mssparkutils.notebook.exit('')"
 				],
-				"execution_count": null
+				"execution_count": 217
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#revised code for horizon\r\n",
+					"def get_spark_type(field_schema: dict) -> dict:\r\n",
+					"    json_type: str = field_schema.get('type')\r\n",
+					"    print(json_type)\r\n",
+					"    \r\n",
+					"    if isinstance(json_type, list):\r\n",
+					"        json_type = json_type[0]  # Consider the first type in the list for simplicity\r\n",
+					"\r\n",
+					"    if json_type == 'array':\r\n",
+					"        element_schema = field_schema['items']\r\n",
+					"        element_type = get_spark_type(element_schema)\r\n",
+					"        return ArrayType(element_type)\r\n",
+					"    elif json_type == 'object':\r\n",
+					"        return transform_schema(field_schema)\r\n",
+					"    elif json_type in type_mapping:\r\n",
+					"        return type_mapping[json_type]\r\n",
+					"    else:\r\n",
+					"        logException(e)\r\n",
+					"        raise ValueError(f\"Unsupported type: {json_type}\")"
+				],
+				"execution_count": 218
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# def transform_schema(schema: dict) -> StructType:\r\n",
+					"#     fields: list = []\r\n",
+					"#     for field_name, field_schema in schema.items():\r\n",
+					"#         if field_schema != {}:\r\n",
+					"#             print(field_schema)\r\n",
+					"#             spark_type = get_spark_type(field_schema)\r\n",
+					"#             field_nullable = 'null' in field_schema.get('type', []) if isinstance(field_schema.get('type'), list) else False\r\n",
+					"#             fields.append(StructField(field_name, spark_type, field_nullable))\r\n",
+					"#     return StructType(fields)"
+				],
+				"execution_count": 219
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"##revised code for horizon \r\n",
+					"\r\n",
+					"type_mapping = {\r\n",
+					"    \"string\": StringType(),\r\n",
+					"    \"integer\": LongType(),\r\n",
+					"    \"boolean\": BooleanType(),\r\n",
+					"    \"timestamp\": TimestampType(),\r\n",
+					"    \"number\": DoubleType()\r\n",
+					"}\r\n",
+					"\r\n",
+					"\r\n",
+					"def get_spark_type(field_schema: dict) -> DataType:\r\n",
+					"    json_type = field_schema.get('type')\r\n",
+					"    \r\n",
+					"    if isinstance(json_type, list):\r\n",
+					"        json_type = json_type[0]\r\n",
+					"\r\n",
+					"    if json_type == 'array':\r\n",
+					"        element_schema = field_schema['items']\r\n",
+					"        element_type = get_spark_type(element_schema)\r\n",
+					"        return ArrayType(element_type)\r\n",
+					"    elif json_type == 'object':\r\n",
+					"        return transform_schema(field_schema)\r\n",
+					"    elif json_type in type_mapping:\r\n",
+					"        return type_mapping[json_type]\r\n",
+					"    else:\r\n",
+					"        raise ValueError(f\"Unsupported type: {json_type}\")"
+				],
+				"execution_count": 220
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#revised code for horizon\r\n",
+					"\r\n",
+					"def transform_schema(schema: dict) -> StructType:\r\n",
+					"    fields: list = []\r\n",
+					"    for field in schema.get(\"fields\", []):\r\n",
+					"        spark_type = get_spark_type(field)\r\n",
+					"        nullable = field.get(\"nullable\", True)\r\n",
+					"        fields.append(StructField(field[\"name\"], spark_type, nullable))\r\n",
+					"    return StructType(fields)"
+				],
+				"execution_count": 221
 			},
 			{
 				"cell_type": "code",
@@ -406,10 +519,10 @@
 					"if return_json_schema:\r\n",
 					"    mssparkutils.notebook.exit(resolved_schema)\r\n",
 					"    \r\n",
-					"spark_schema: StructType = transform_schema(resolved_schema)\r\n",
+					"spark_schema: StructType = transform_schema(json_schema)\r\n",
 					"final_schema: StructType = add_master_columns_to_schema(db_name)"
 				],
-				"execution_count": null
+				"execution_count": 222
 			},
 			{
 				"cell_type": "code",
@@ -428,7 +541,7 @@
 					"logInfo(f\"Spark schema created\")\r\n",
 					"mssparkutils.notebook.exit(final_schema.json())"
 				],
-				"execution_count": null
+				"execution_count": 223
 			}
 		]
 	}
