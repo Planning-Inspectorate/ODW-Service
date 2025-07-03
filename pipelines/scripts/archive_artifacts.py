@@ -9,10 +9,7 @@ import os
 
 logging.basicConfig(level=logging.INFO)
 
-# deps: 243
-# arch: 756
-# cant: 49
-# del: 443
+
 class ArtifactArchiver():
     def __init__(self):
         self.ROOT_ARTIFACTS = {
