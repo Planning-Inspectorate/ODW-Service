@@ -1,9 +1,12 @@
 from pipelines.scripts.synapse_artifact.synapse_artifact_util import SynapseArtifactUtil
 from pipelines.scripts.synapse_artifact.synapse_notebook_util import SynapseNotebookUtil, NotAPythonNotebookException
+from pipelines.scripts.util import Util
 from copy import deepcopy
 import mock
 from typing import Tuple
 import pytest
+import json
+import traceback
 
 
 def test__synapse_notebook_util__replace_env_strings():
@@ -214,12 +217,12 @@ def test__synapse_notebook_util__compare__mismatch():
 def test__synapse_notebook_util__convert_to_python():
     test_notebook = {
         "name": "test_notebook",
-        "metadata": {
-            "language_info": {
-                "name": "python"
-            }
-        },
         "properties": {
+            "metadata": {
+                "language_info": {
+                    "name": "python"
+                }
+            },
             "cells": [
                 {
                     "cell_type": "code",
@@ -271,6 +274,18 @@ def test__synapse_notebook_util__convert_to_python():
                     "source": [
                         "mssparkutils.notebook.run(\"utils/py_utils_get_storage_account\")"
                     ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        " %run utils/run_with_space_before_magic_command"
+                    ]
+                },
+                {
+                    "cell_type": "code",
+                    "source": [
+                        "%run utils/run_with_parameters {\"param_a\": \"param_a_value\"}"
+                    ]
                 }
             ]
         }
@@ -286,7 +301,9 @@ def test__synapse_notebook_util__convert_to_python():
             "import re",
             "storage_account=re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString('ls_storage')).group(1)",
             "mssparkutils.notebook.exit(storage_account)",
-            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")'
+            'mssparkutils.notebook.run("utils/py_utils_get_storage_account")',
+            "mssparkutils.notebook.run(\"utils/run_with_space_before_magic_command\")",
+            "mssparkutils.notebook.run(\"utils/run_with_parameters\")"
         ]
     )
     assert expected_python == SynapseNotebookUtil.convert_to_python(test_notebook)
@@ -295,10 +312,12 @@ def test__synapse_notebook_util__convert_to_python():
 def test__synapse_notebook_util__convert_to_python__not_python_exception():
     test_notebook = {
         "name": "test_notebook",
-        "metadata": {
-            "language_info": {
-                "name": "sql"
-            }
+        "properties": {
+            "metadata": {
+                "language_info": {
+                    "name": "sql"
+                }
+            },
         },
         "properties": {
             "cells": [
@@ -355,3 +374,30 @@ def test__synapse_notebook_util__dependent_artifacts__with_not_python_exception(
                 expected_return_value = {"some_notebook_dependency"}
                 actual_return_value = SynapseNotebookUtil.dependent_artifacts(some_artifact)
                 assert expected_return_value == actual_return_value
+
+
+def test__synapse_artifact_util__can_process_all_notebooks_into_python_and_can_get_all_code_dependencies():
+    all_notebooks = [x for x in Util.get_all_artifact_paths("workspace") if x.startswith("workspace/notebook")]
+    all_notebook_artifacts_map = {
+        artifact_name: json.load(open(artifact_name, "r"))
+        for artifact_name in all_notebooks
+    }
+    conversion_exceptions = []
+    all_notebook_python = dict()
+    for artifact_name, artifact_json in all_notebook_artifacts_map.items():
+        try:
+            if artifact_json.get("properties", dict()).get("metadata", dict()).get("language_info", dict()).get("name") == "python":
+                all_notebook_python[artifact_name] = SynapseNotebookUtil.convert_to_python(artifact_json)
+        except Exception as e:
+            conversion_exceptions.append((artifact_name, str(traceback.format_exc())))
+
+    if conversion_exceptions:
+        pytest.fail(f"Exceptions were raised when converting notebooks to python: {json.dumps(conversion_exceptions, indent=4)}")
+    dependency_analysis_exceptions = []
+    for notebook, code in all_notebook_python.items():
+        try:
+            SynapseNotebookUtil.get_dependencies_in_notebook_code(code)
+        except Exception as e:
+            dependency_analysis_exceptions.append((notebook, traceback.format_exc()))
+    if dependency_analysis_exceptions:
+        pytest.fail(f"Exceptions were raised when analysing python code extracted from the notebooks: {json.dumps(dependency_analysis_exceptions, indent=4)}")
