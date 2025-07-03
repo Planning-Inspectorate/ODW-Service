@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "07f17dbf-b656-4a13-bd61-c0ba1d7d3a92"
+				"spark.autotune.trackingId": "d8d2cbc2-6cfa-42b1-b547-5969539d977b"
 			}
 		},
 		"metadata": {
@@ -92,7 +92,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": 22
 			},
 			{
 				"cell_type": "markdown",
@@ -114,7 +114,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 12
+				"execution_count": 23
 			},
 			{
 				"cell_type": "markdown",
@@ -134,7 +134,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 13
+				"execution_count": 24
 			},
 			{
 				"cell_type": "markdown",
@@ -163,7 +163,7 @@
 					"json_schema_file_path = f\"abfss://odw-config@{storage_account}/orchestration/orchestration_saphr.json\"\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -267,26 +267,37 @@
 					"                logInfo(f\"Added table: {table_name} (Frequency: {frequency_folder})\")\n",
 					"        \n",
 					"        table_list = list(saphr_tables)\n",
-					"        logInfo(f\"Found {len(table_list)} unique saphr tables with MONTHLY/WEEKLY frequency: {table_list}\")\n",
-					"        \n",
 					"        return table_list\n",
 					"        \n",
 					"    except Exception as e:\n",
 					"        logError(f\"Error reading orchestration JSON file: {e}\")\n",
 					"        return []\n",
 					"\n",
-					"def get_delta_tables(base_path):\n",
-					"    \n",
-					"    #Retrieve the list of Delta tables from the ADLS2 path\n",
+					"# MODIFIED FUNCTION: Updated to accept table list from JSON instead of scanning directory\n",
+					"def get_delta_tables(base_path, table_names_from_json):\n",
+					"    \"\"\"\n",
+					"    Validate that the table names from JSON actually exist as Delta tables in the path\n",
+					"    \"\"\"\n",
 					"    try:\n",
-					"        table_list = []\n",
-					"        for item in mssparkutils.fs.ls(base_path):\n",
-					"            table_path = item.path.rstrip(\"/\") # Remove trailing slash if any\n",
-					"            if mssparkutils.fs.ls(table_path + \"/_delta_log\"): # Check if it's a Delta table\n",
-					"                table_list.append(item.name)\n",
-					"        return table_list\n",
+					"        validated_tables = []\n",
+					"        \n",
+					"        for table_name in table_names_from_json:\n",
+					"            table_path = f\"{base_path}{table_name}\"\n",
+					"            try:\n",
+					"                # Check if it's a valid Delta table\n",
+					"                if DeltaTable.isDeltaTable(spark, table_path):\n",
+					"                    validated_tables.append(table_name)\n",
+					"                    logInfo(f\"Validated Delta table: {table_name}\")\n",
+					"                else:\n",
+					"                    logInfo(f\"Not a Delta table (skipping): {table_name}\")\n",
+					"            except Exception as table_check_error:\n",
+					"                logInfo(f\"Error checking table {table_name}: {table_check_error}\")\n",
+					"        \n",
+					"        logInfo(f\"Validated {len(validated_tables)} Delta tables out of {len(table_names_from_json)} from JSON\")\n",
+					"        return validated_tables\n",
+					"        \n",
 					"    except Exception as e:\n",
-					"        logInfo(f\"Error retrieving Delta tables: {e}\")\n",
+					"        logError(f\"Error validating Delta tables: {e}\")\n",
 					"        return []\n",
 					"\n",
 					"@logging_to_appins\n",
@@ -375,7 +386,7 @@
 					"    \n",
 					"    return exit_value"
 				],
-				"execution_count": 15
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -393,17 +404,24 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"# Main Execution for processing\n",
-					"logInfo(\"Retrieving Delta tables...\")\n",
-					"delta_tables = get_delta_tables(delta_table_base_path)\n",
-					"logInfo(get_delta_tables(delta_table_base_path))\n",
-					"for table in delta_tables:\n",
-					"    process_delta_table(table)\n",
+					"# MODIFIED: Main Execution for processing - now uses JSON file instead of directory scanning\n",
+					"logInfo(\"Reading Delta table names from orchestration JSON file...\")\n",
+					"table_names_from_json = get_delta_tables_from_json(json_schema_file_path)\n",
 					"\n",
-					"logInfo(\"Delta table updates completed successfully.\")\n",
+					"if table_names_from_json:\n",
+					"    logInfo(\"Validating Delta tables...\")\n",
+					"    delta_tables = get_delta_tables(delta_table_base_path, table_names_from_json)\n",
+					"    logInfo(f\"Processing {len(delta_tables)} validated Delta tables\")\n",
+					"    \n",
+					"    for table in delta_tables:\n",
+					"        process_delta_table(table)\n",
+					"    \n",
+					"    logInfo(\"Delta table updates completed successfully.\")\n",
+					"else:\n",
+					"    logError(\"No tables found in orchestration JSON file. Exiting...\")\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
