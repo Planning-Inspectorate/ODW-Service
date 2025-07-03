@@ -94,7 +94,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def convert_to_python(cls, artifact: Dict[str, Any]) -> str:
-        if artifact.get("metadata", dict()).get("language_info", dict()).get("name") != "python":
+        if artifact.get("properties", dict()).get("metadata", dict()).get("language_info", dict()).get("name") != "python":
             raise NotAPythonNotebookException(f"The given notebook artifact is not a python notebook")
         def _process_cell(cell: Dict[str, Any]) -> List[str]:
             if cell["cell_type"] != "code":
@@ -104,18 +104,21 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             first_meaningful_line = next((line for line in cell["source"] if line.strip()), None)
             if not first_meaningful_line:
                 return ""
-            is_magic_cell = first_meaningful_line.startswith("%")
+            is_magic_cell = first_meaningful_line.lstrip().startswith("%")
             if is_magic_cell:
                 # Merge magic cells into one line to simplify processing
                 cleaned_cells = [line.strip() for line in cell["source"] if line.strip()]
-                cleaned_cell_line = " ".join(cleaned_cells)
+                cleaned_cell_line = " ".join(cleaned_cells).lstrip()
                 # %run is a special magic command that can be converted to a real python command, which is important for detecting dependencies
+                # Only 1 magic command can exist in a cell - this is assumed to be true
                 if cleaned_cell_line.startswith("%run "):
                     # Clean the arguments to be a single space between each arg, and convert to be a list of arguments
-                    run_arguments = " ".join(cleaned_cell_line[cleaned_cell_line.rindex("%run ")+5:].split())
+                    run_arguments = " ".join(cleaned_cell_line.lstrip()[cleaned_cell_line.rindex("%run ")+5:].split())
                     # The %run command either expects a quoted or unquoted path. The below logic only adds quotes if they are missing
                     quote = "\"" if not (run_arguments.startswith('"') or run_arguments.startswith("'") or run_arguments.startswith("`")) else ""
-                    cleaned_line = f"mssparkutils.notebook.run({quote}{run_arguments}{quote})"
+                    run_arguments_split = run_arguments.split("{")
+                    run_target_path = run_arguments_split[0].strip()
+                    cleaned_line = f"mssparkutils.notebook.run({quote}{run_target_path}{quote})"
                     return cleaned_line
                 else:
                     # Comment out all other magic commands, since their operation is not important in the grant scheme of things
@@ -131,16 +134,40 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
 
     @classmethod
     def get_dependencies_in_notebook_code(cls, notebook_python: str):
-        cls.PYTHON_REFERENCE_PATTERNS = [
-            r"%run",
-            r"mssparkutils.notebook.run",
-            r"mssparkutils.credentials.getFullConnectionString"
-        ]
+        def get_dependencies(function_call: Dict[str, Any]) -> Set[str]:
+            found_dependencies = set()
+            # Process kwargs first (the args passed like arg_name=arg_value)
+            function_kwargs_map = {
+                "run": ["path"],
+                "getFullConnectionString": []
+            }
+            mssparkutils_function_call = function_call["func"]["attr"]
+            kwargs_to_look_for = function_kwargs_map[mssparkutils_function_call]
+            keyword_dependencies = [
+                kwarg
+                for kwarg in function_call.get("keywords", [])
+                if kwarg["arg"] in kwargs_to_look_for
+            ]
+            found_dependencies.update(
+                kwarg["value"]["value"]
+                for kwarg in keyword_dependencies
+            )
+            args = function_call.get("args", [])
+            # Process just the first loose argument (the argument passed without a keyword name)
+            if args:
+                found_dependencies.add(args[0]["value"])
+            # Prepare the dependencies depending on the underlying mssparkutils function being called
+            cleaned_found_dependencies = {
+                f"notebook/{dependency.split('/')[-1]}.json" if mssparkutils_function_call == "run" else f"linkedService/{dependency}.json"
+                for dependency in found_dependencies
+            }
+            return cleaned_found_dependencies
+
         # Convert the python code into abstract syntax tree json that can be analysed
         abstract_syntax_tree = ast.parse(notebook_python)
         abstract_syntax_tree_json = ast2json(abstract_syntax_tree)
         abstract_syntax_tree_attributes = cls.get_all_attributes(abstract_syntax_tree_json)
-        # Retrieve the list of attributes that correspond to function calls
+
         abstract_syntax_tree_funtion_attribute_names = [
             x[0:-10]
             for x in abstract_syntax_tree_attributes
@@ -148,23 +175,27 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
         ]
         # Retrives all function all objects from the AST
         abstract_syntax_tree_functions = [cls.get_by_attribute(abstract_syntax_tree_json, x) for x in abstract_syntax_tree_funtion_attribute_names]
-        # Retrieve all notebook calls associated with the mssparkutils.run method
-        notebook_dependencies = {
-            f"notebook/{x['args'][0]['value'].split('/')[-1]}.json"
-            for x in abstract_syntax_tree_functions
+        abstract_syntax_tree_functions = [
+            function_json
+            for function_json in abstract_syntax_tree_functions
             if (
-                x["func"]["attr"] == "run" and
-                x["func"].get("value", dict()).get("attr", None) == "notebook" and
-                x["func"].get("value", dict()).get("value", dict()).get("id", None) == "mssparkutils"
+                (
+                    function_json["func"]["attr"] == "run" and
+                    function_json["func"].get("value", dict()).get("attr") == "notebook" and True
+                )
+                or (
+                    function_json["func"]["attr"] == "getFullConnectionString" and 
+                    function_json["func"].get("value", dict()).get("attr") == "credentials"
+                )
             )
+        ]
+        dependencies = {
+            dependency
+            for function_json in abstract_syntax_tree_functions
+            for dependency in get_dependencies(function_json)
         }
-        # Retrieve all linked service references
-        linked_service_dependencies = {
-            f"linkedService/{x['args'][0]['value']}.json"
-            for x in abstract_syntax_tree_functions
-            if x["func"]["attr"] == "getFullConnectionString"
-        }
-        return notebook_dependencies | linked_service_dependencies
+
+        return dependencies
 
     @classmethod
     def dependent_artifacts(cls, artifact: Dict[str, Any]) -> Set[str]:
