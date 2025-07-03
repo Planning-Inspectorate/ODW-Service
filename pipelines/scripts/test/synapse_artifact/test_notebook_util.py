@@ -283,6 +283,10 @@ def test__synapse_notebook_util__convert_to_python():
                 },
                 {
                     "cell_type": "code",
+                    "source": []
+                },
+                {
+                    "cell_type": "code",
                     "source": [
                         "%run utils/run_with_parameters {\"param_a\": \"param_a_value\"}"
                     ]
