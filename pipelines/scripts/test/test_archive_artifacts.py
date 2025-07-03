@@ -190,7 +190,7 @@ def test__artifact_archiver__get_artifacts_to_archive():
         "workspace/pipeline/artifact_d.json"
 
     }
-    artifacts_to_keep = {
+    root_artifacts = {
         "workspace/pipeline/artifact_f.json"
     }
     expected_artifacts_to_archive = {
@@ -201,7 +201,7 @@ def test__artifact_archiver__get_artifacts_to_archive():
     with mock.patch.object(Util, "get_all_artifact_paths", return_value=[]):
         archiver = ArtifactArchiver()
         with mock.patch.object(archiver, "ALL_ARTIFACT_NAMES", new=all_artifacts):
-            with mock.patch.object(archiver, "ARTIFACTS_TO_KEEP", new=artifacts_to_keep):
+            with mock.patch.object(archiver, "ROOT_ARTIFACTS", new=root_artifacts):
                 actual_artifacts_to_archice = archiver.get_artifacts_to_archive(dependencies)
                 assert expected_artifacts_to_archive == actual_artifacts_to_archice
 
@@ -382,8 +382,11 @@ def test_artifact_archiver__main():
             "workspace/integrationRuntime/ir_artifact.json"
         }
     ]
-    root_artifacts = {"workspace/notebook/notebook_artifact_a.json", "workspace/integrationRuntime/ir_artifact.json"}
-    artifacts_to_keep = {"workspace/linkedService/ls_artifact.json"}
+    root_artifacts = {
+        "workspace/notebook/notebook_artifact_a.json",
+        "workspace/integrationRuntime/ir_artifact.json",
+        "workspace/linkedService/ls_artifact.json"
+    }
     expected_artifacts_to_archive = {
         "workspace/notebook/notebook_artifact_b.json",  # Can be archived
         "workspace/pipeline/pipeline_artifact.json"  # Can be archived
@@ -398,10 +401,9 @@ def test_artifact_archiver__main():
                 with mock.patch.object(SynapseArtifactUtil, "is_archived", _mock_is_archived):
                     archiver = ArtifactArchiver()
                     with mock.patch.object(archiver, "ROOT_ARTIFACTS", new=root_artifacts):
-                        with mock.patch.object(archiver, "ARTIFACTS_TO_KEEP", new=artifacts_to_keep):
-                            with mock.patch.object(ArtifactArchiver, "get_dependencies", side_effect=dependency_side_effects):
-                                with mock.patch.object(ArtifactArchiver, "archive_artifacts", return_value=True):
-                                    with mock.patch.object(ArtifactArchiver, "delete_artifacts", return_value=True):
-                                        archiver.main()
-                                        ArtifactArchiver.archive_artifacts.assert_called_once_with(expected_artifacts_to_archive)
-                                        ArtifactArchiver.delete_artifacts.assert_called_once_with(expected_artifacts_to_delete)
+                        with mock.patch.object(ArtifactArchiver, "get_dependencies", side_effect=dependency_side_effects):
+                            with mock.patch.object(ArtifactArchiver, "archive_artifacts", return_value=True):
+                                with mock.patch.object(ArtifactArchiver, "delete_artifacts", return_value=True):
+                                    archiver.main()
+                                    ArtifactArchiver.archive_artifacts.assert_called_once_with(expected_artifacts_to_archive)
+                                    ArtifactArchiver.delete_artifacts.assert_called_once_with(expected_artifacts_to_delete)
