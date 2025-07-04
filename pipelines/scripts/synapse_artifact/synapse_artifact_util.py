@@ -94,10 +94,10 @@ class SynapseArtifactUtil(ABC):
     """
         Abstract class for managing the retrieval and analysis of Synapse artifacts
     """
-    credential = ChainedTokenCredential(
+    credential = None #ChainedTokenCredential(
         #ManagedIdentityCredential(),
-        AzureCliCredential()
-    )
+    #    AzureCliCredential()
+    #)
     _token = credential.get_token("https://dev.azuresynapse.net").token
     def __init__(self, workspace_name: str):
         """
