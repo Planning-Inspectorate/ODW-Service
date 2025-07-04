@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ec5ae5ac-802c-461e-84d1-4792db341e07"
+				"spark.autotune.trackingId": "9da5acb7-8e9e-4c94-adac-392c1f1a9337"
 			}
 		},
 		"metadata": {
@@ -113,7 +113,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 23
+				"execution_count": 24
 			},
 			{
 				"cell_type": "markdown",
@@ -135,7 +135,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": 9
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -155,7 +155,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 10
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -183,7 +183,7 @@
 					"print(target_delta_table)\n",
 					"print(delta_table_path)"
 				],
-				"execution_count": 11
+				"execution_count": 27
 			},
 			{
 				"cell_type": "markdown",
@@ -236,7 +236,7 @@
 					")\n",
 					""
 				],
-				"execution_count": 20
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -272,6 +272,22 @@
 					"\n",
 					"    logInfo(f\" Data successfully written to {target_delta_table}\")\n",
 					"\n",
+					"    # Check the number of rows inserted\n",
+					"    inserted_rows = spark.sql(\"SELECT COUNT(*) as count FROM odw_harmonised_db.load_sap_hr_monthly\").collect()[0]['count']\n",
+					"    result[\"record_count\"] = inserted_rows\n",
+					"    logInfo(f\"Successfully inserted {inserted_rows} rows into odw_harmonised_db.load_sap_hr_monthly\")\n",
+					"    \n",
+					"    # Verify data quality\n",
+					"    null_rowid_count = spark.sql(\"SELECT COUNT(*) as count FROM odw_harmonised_db.load_sap_hr_monthly WHERE RowID IS NULL\").collect()[0]['count']\n",
+					"    if null_rowid_count > 0:\n",
+					"        logError(f\"Data quality issue: {null_rowid_count} rows have NULL RowID values\")\n",
+					"        result[\"status\"] = \"warning\"\n",
+					"    else:\n",
+					"        logInfo(\"Data quality check passed: No NULL RowID values found\")\n",
+					"    \n",
+					"    # Final success message\n",
+					"    logInfo(\"SAP HR monthly data processing completed successfully\")\n",
+					"\n",
 					"except Exception as e:\n",
 					"    # Capture error information and limit to 300 characters\n",
 					"    error_msg = f\"Error in SAP HR Weekly data processing: {str(e)}\"\n",
@@ -297,7 +313,7 @@
 					"    mssparkutils.notebook.exit(json.dumps(result))\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
