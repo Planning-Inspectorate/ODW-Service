@@ -35,14 +35,22 @@ jobs:
         git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
         git config user.name "${GITHUB_ACTOR}"
 
-        python3 -m pip install ast2json azure-identity 
-        export PYTHONPATH="${PYTHONPATH}:/./"
-        python3 pipelines/scripts/archive_artifacts.py
-
         pullRequests=$(gh pr list -B main -H "fix/autoArchive")
         if [[ -z "$pullRequests" ]]; then
+
+          git pull
+          git checkout -b "fix/autoArchive"
+
+          python3 -m pip install ast2json azure-identity 
+          export PYTHONPATH="${PYTHONPATH}:/./"
+          python3 pipelines/scripts/archive_artifacts.py
+
+          git add -A
+          git commit -m"Auto archive Synapse artifacts"
+          git push --set-upstream origin "fix/autoArchive"
+
             echo "No pull requests found from "fix/autoArchive"->main , raising a pull request"
             gh pr create -B main -H "fix/autoArchive" --title "Auto archive Synapse artifacts" --body "$COMMIT_MESSAGE"
         else
-            echo "A pull request from the "fix/autoArchive" branch to the main branch already exists" 
+            echo "A pull request from the "fix/autoArchive" branch to the main branch already exists. This must be merged before more artifacts can be archived" 
         fi
