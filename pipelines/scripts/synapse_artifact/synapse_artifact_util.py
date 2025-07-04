@@ -98,7 +98,7 @@ class SynapseArtifactUtil(ABC):
         #ManagedIdentityCredential(),
     #    AzureCliCredential()
     #)
-    _token = credential.get_token("https://dev.azuresynapse.net").token
+    _token = None#credential.get_token("https://dev.azuresynapse.net").token
     def __init__(self, workspace_name: str):
         """
             :param workspace_name: The name of the Synapse workspace
