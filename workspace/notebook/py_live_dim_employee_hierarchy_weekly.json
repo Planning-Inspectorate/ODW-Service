@@ -1,5 +1,5 @@
 {
-	"name": "py_live_dim_employee_hierarchy",
+	"name": "py_live_dim_employee_hierarchy_weekly",
 	"properties": {
 		"folder": {
 			"name": "odw-harmonised/saphr"
@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ad116171-7b13-4291-8008-9c4c6ae91bfe"
+				"spark.autotune.trackingId": "13662ccc-15d3-453a-8311-a7e9479d4ec1"
 			}
 		},
 		"metadata": {
@@ -95,7 +95,7 @@
 					"warnings.filterwarnings(\"ignore\", message=\"iteritems is deprecated\")\n",
 					""
 				],
-				"execution_count": 11
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -117,7 +117,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					""
 				],
-				"execution_count": 12
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -137,7 +137,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 13
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -162,7 +162,7 @@
 					"delta_table_path = f\"abfss://odw-harmonised@{storage_account}saphr/live_dim_emp_hierarchy\"\n",
 					""
 				],
-				"execution_count": 14
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -184,7 +184,7 @@
 					"        Firstname,\n",
 					"        Lastname,\n",
 					"        PersNo1\n",
-					"        FROM odw_harmonised_db.load_sap_hr_monthly\"\"\")\n",
+					"        FROM odw_harmonised_db.load_sap_hr_weekly\"\"\")\n",
 					"\n",
 					"# Anchor: top-most employees (no manager)\n",
 					"current_level = employee_df.filter((col(\"PersNo1\").isNull()) | (col(\"PersNo1\") == '00000000'))\\\n",
@@ -218,7 +218,7 @@
 					"max_depth = level\n",
 					"#print(f\"Max hierarchy depth = {max_depth}\")"
 				],
-				"execution_count": 15
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -243,8 +243,8 @@
 					"from pyspark.sql.window import Window\n",
 					"\n",
 					"\n",
-					"df_sap = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_monthly\")\n",
-					"df_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email\")\n",
+					"df_sap = spark.sql(\"SELECT * FROM odw_harmonised_db.load_sap_hr_weekly\")\n",
+					"df_email = spark.sql(\"SELECT * FROM odw_harmonised_db.load_vw_sap_hr_email_weekly\")\n",
 					"df_live_dim_inspector = spark.sql(\"SELECT * FROM odw_harmonised_db.live_dim_inspector\")\n",
 					"\n",
 					"\n",
@@ -307,7 +307,7 @@
 					"       .withColumn(\"Manager\", concat_ws(\" \", col(\"ManagerFirst\"), col(\"ManagerLast\")))\n",
 					""
 				],
-				"execution_count": 16
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -397,34 +397,10 @@
 					"        \"hierarchy\"\n",
 					"    ).dropDuplicates()\n",
 					"\n",
-					"# SGL hierarchy\n",
-					"# Final output schema matches expected file: includes mgr_id and hierarchy\n",
-					"sgl_df = spark.sql(\"\"\"\n",
-					"    SELECT \n",
-					"        E2.PersNo AS emp_id,\n",
-					"        CONCAT(E2.Firstname, ' ', E2.Lastname) AS emp_name,\n",
-					"        I2.pins_email_address AS emp_email_address,\n",
-					"        E.PersNo AS mgr_id,\n",
-					"        CONCAT(E.Firstname, ' ', E.Lastname) AS mgr_name,\n",
-					"        1 AS mgr_level,               \n",
-					"        I.pins_email_address AS mgr_email_address,\n",
-					"        CONCAT('Chart (', I.resource_code, ')') AS hierarchy\n",
-					"    FROM odw_harmonised_db.live_dim_inspector I2 \n",
-					"    INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E2 ON I2.pins_email_address = E2.email_address\n",
-					"    INNER JOIN odw_harmonised_db.live_dim_inspector I ON I2.resource_code = I.resource_code AND I.is_sgl = 1\n",
-					"    INNER JOIN odw_harmonised_db.load_vw_sap_hr_email E ON I.pins_email_address = E.email_address\n",
-					"    WHERE I.is_sgl = 1 AND I.active_status = 'ACTIVE' AND I2.is_sgl = 0\n",
-					"\"\"\")\n",
+					"rowid_columns = [c for c in df_normalized.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}]\n",
 					"\n",
-					"\n",
-					"# Final output sorted in descending mgr_level = closest at top\n",
-					"df_final_dim_hierarchy = df_normalized.unionByName(sgl_df.select(df_normalized.columns)).dropDuplicates()\n",
-					"\n",
-					"\n",
-					"rowid_columns = [c for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\"}]\n",
-					"\n",
-					"df_final_dim_hierarchy = df_final_dim_hierarchy.select(\n",
-					"    *[col(c) for c in df_final_dim_hierarchy.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\",\"mgr_level\"}],\n",
+					"df_final_dim_hierarchy = df_normalized.select(\n",
+					"    *[col(c) for c in df_normalized.columns if c not in {\"SourceSystemID\",\"IngestionDate\",\"ValidFrom\",\"ValidTo\",\"RowID\",\"IsActive\",\"mgr_level\"}],\n",
 					"    col(\"mgr_level\").cast(\"string\").alias(\"mgr_level\"),\n",
 					"    lit(\"SapHr\").alias(\"SourceSystemID\"),\n",
 					"    current_timestamp().alias(\"IngestionDate\"),\n",
@@ -453,7 +429,7 @@
 					"\n",
 					""
 				],
-				"execution_count": 17
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -515,7 +491,7 @@
 					"    # Output the result as JSON for ADF to capture\n",
 					"    mssparkutils.notebook.exit(json.dumps(result))"
 				],
-				"execution_count": 18
+				"execution_count": null
 			}
 		]
 	}
