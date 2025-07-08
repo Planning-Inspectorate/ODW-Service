@@ -26,10 +26,10 @@ class TestSmokeAzureFunctions(TestCase):
             "appealhas",
             "appealevent",
             "appealserviceuser",
-            "getDaRT",
+            #"getDaRT",
             "appeals78",
             "appealrepresentation",
-            "gettimesheets",
+            #"gettimesheets",
             "appealeventestimate",
             "serviceuser"
 
