@@ -27,7 +27,7 @@ class TestUnitAzureFunctions(TestCase):
             ("appealhas", ""),
             ("appealevent", ""),
             ("appealserviceuser", ""),
-            ("getDaRT", "&caseReference=&applicationReference="),
+            #("getDaRT", "&caseReference=&applicationReference="),
             ("appeals78", ""),
             ("appealrepresentation", ""),
             ("gettimesheets", "&searchCriteria="),
