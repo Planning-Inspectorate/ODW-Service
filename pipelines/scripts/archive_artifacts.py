@@ -225,20 +225,18 @@ class ArtifactArchiver():
 
     def get_unarchiveable_artifacts_to_delete(
             self,
-            artifacts_to_keep: Set[str],
+            artifacts_to_archive: Set[str],
             unarchiveable_artifacts: Set[str],
-            dependency_map: Dict[str, Set[str]]
         ) -> Set[str]:
         """
-            Filter out the unarchiveable_artifacts that are not listed as dependencies of artifacts_to_keep
+            Filter out the unarchiveable_artifacts that are not listed as dependencies of artifacts_to_archive
+
+            :return: unarchiveable_artifacts - artifacts_to_archive.dependencies
         """
-        dependencies_of_artifacts_to_keep = {
-            artifact
-            for dependency, dependencies in dependency_map.items()
-            for artifact in dependencies
-            if dependency in artifacts_to_keep
-        }
-        return unarchiveable_artifacts.difference(dependencies_of_artifacts_to_keep)
+        dependencies_of_artifacts_to_archive = set()
+        for artifact in artifacts_to_archive:
+            dependencies_of_artifacts_to_archive = dependencies_of_artifacts_to_archive.union(self.get_dependencies(artifact))
+        return unarchiveable_artifacts.difference(dependencies_of_artifacts_to_archive)
 
     def get_artifacts_to_delete(self, artifacts_to_archive: Set[str]):
         """
@@ -304,9 +302,8 @@ class ArtifactArchiver():
         artifacts_to_delete = self.get_artifacts_to_delete(artifacts_to_archived)
         artifacts_to_archived = artifacts_to_archived.difference(artifacts_to_delete)
         unarchiveable_artifacts_to_delete = self.get_unarchiveable_artifacts_to_delete(
-            dependencies,
-            artifacts_that_cannot_be_archived,
-            artifact_dependency_map
+            artifacts_to_archived,
+            artifacts_that_cannot_be_archived
         )
         logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
