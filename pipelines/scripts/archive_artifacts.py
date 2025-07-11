@@ -80,7 +80,7 @@ class ArtifactArchiver():
             "pipeline/rel_13_0_0_saphr_setup.json",
             "pipeline/rel_13_0_1_saphr_setup_v2.json",
             "pipeline/rel_14_0_0_saphr_setup.json",
-            "workspace/pipeline/rel_15_0_0_saphr_setup.json",
+            "pipeline/rel_15_0_0_saphr_setup.json",
             "pipeline/rel_971_logging_monitoring.json",
             "pipeline/rel_1047_migration_db.json",
             "pipeline/rel_1151_appeals_events.json",
