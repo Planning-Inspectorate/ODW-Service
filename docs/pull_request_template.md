@@ -27,11 +27,66 @@ We only care about new columns or columns that change type.
 		- [ ] Please set py_change_table to run in the pipeline *pln_post_deployments*
 		- [ ] Please create a script to backdate and fill in this new column in Test and Prod
 			Only delete and recreate tables with caution!
- 4. Have any scripts run in isolation in dev? Please look at the *"spark.autotune.trackingId"*
-		- If these changes need to be reflected in Test and Prod, please add to the pipeline *post-			deployment/pln_post_deployment*
-	- [ ] Yes - I have reflected this script in the *pln_post_deployments* pipeline
-	- [ ] Yes - This script is part of a scheduled run and has been added to the appropriate end to end pipeline with a trigger at the correct frequency
-	- [ ] No - This change does not need to take place in Test and Prod
+ 5. Have any scripts run in isolation in dev? Please look at the *"spark.autotune.trackingId"*
+	- If these changes need to be reflected in Test and Prod, please add to the pipeline *post-			deployment/pln_post_deployment*
+	  - [ ] Yes - I have reflected this script in the *pln_post_deployments* pipeline
+	  - [ ] Yes - This script is part of a scheduled run and has been added to the appropriate end to end pipeline with a trigger at the correct frequency
+	  - [ ] No - This change does not need to take place in Test and Prod
 	- [ ] No - No scripts have run 
-	
+6.	JIRA ticket reference included?
+       -If Yes:
+  - [ ]	The correct JIRA ticket is referenced in the PR title and description.
+  - [ ]	If No:
+  - [ ]	Add the correct JIRA ticket reference to the PR title and description before proceeding.
+7.	Summary of the work provided?
+       - If Yes:
+    [ ] The PR contains a clear summary explaining the purpose and scope of the changes.
+  - [ ]	If No:
+           - [ ] Write a concise summary of the work in the PR description.
+8.	Metadata and configuration files updated?
+  - [ ]	If Yes:
+         - [ ]	All relevant metadata and configuration files (e.g., pipeline YAML, JSON) have been updated and validated.
+  - [ ]	If No:
+         - [ ]	Update and validate all necessary metadata and configuration files.
+9.	Pipeline registration completed?
+  - [ ]	If Yes:
+         - [ ]	The pipeline is registered in the correct environment and its triggers/parameters are set as intended.
+  - [ ]	If No:
+         - [ ]	Register the pipeline in the target environment and set up triggers/parameters.
+10.	Table creation and schema validation performed?
+  - [ ]	If Yes:
+         - [ ]	Required tables are created and schema has been validated against requirements.
+  - [ ]	If No:
+         - [ ]	Create the necessary tables and validate the schema.
+10.	Azure Function setup and testing completed?
+  - [ ]	If Yes:
+         - [ ]	Azure Functions are deployed and configured.
+         - [ ]	Unit and integration tests have been run and passed.
+         - [ ]	Logs have been checked for errors.
+  - [ ]	If No:
+         - [ ]	Deploy and configure Azure Functions, then run and pass all required tests.
+11.	Key Vault integration done?
+  - [ ]	If Yes:
+         - [ ]	Secrets and configuration values are stored in Azure Key Vault.
+         - [ ]	The pipeline and Azure Functions retrieve secrets as expected.
+  - [ ]	If No:
+         - [ ]	Store secrets in Azure Key Vault and ensure integration with the pipeline and Azure Functions.
+12.	Final enablement of the pipeline (App Insights logging checked)?
+  - [ ]	If Yes:
+         - [ ]	The pipeline is enabled in the target environment.
+         - [ ]	Creation and execution logs are visible in Application Insights.
+  - [ ]	If No:
+         - [ ]	Enable the pipeline and verify logs in Application Insights.
+13.	Deployment and schema change handling documented?
+  - [ ]	If Yes:
+         - [ ]	Deployment process and rollback steps are documented.
+  - [ ]	Schema change handling procedures are outlined and tested.
+  - [ ]	If No:
+         - [ ]	Document the deployment process, rollback steps, and schema change handling.
+14.	Warning reviewed: automatic archiving process?
+  - [ ]	If Yes:
+         - [ ]	You have reviewed the automatic archiving logic.
+         - [ ]	Archiving schedules and retention policies have been checked to avoid accidental data loss.
+  - [ ]	If No:
+         - [ ]	Review the automatic archiving logic, schedules, and retention policies.	
  
