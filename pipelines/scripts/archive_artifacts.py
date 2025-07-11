@@ -223,6 +223,23 @@ class ArtifactArchiver():
             if not self.is_artifact_archiveable(artifact) 
         }
 
+    def get_unarchiveable_artifacts_to_delete(
+            self,
+            artifacts_to_keep: Set[str],
+            unarchiveable_artifacts: Set[str],
+            dependency_map: Dict[str, Set[str]]
+        ) -> Set[str]:
+        """
+            Filter out the unarchiveable_artifacts that are not listed as dependencies of artifacts_to_keep
+        """
+        dependencies_of_artifacts_to_keep = {
+            artifact
+            for dependency, dependencies in dependency_map.items()
+            for artifact in dependencies
+            if dependency in artifacts_to_keep
+        }
+        return unarchiveable_artifacts.difference(dependencies_of_artifacts_to_keep)
+
     def get_artifacts_to_delete(self, artifacts_to_archive: Set[str]):
         """
             Return all artifacts that have been marked for archival but are already archived, or physically cannot be archived
@@ -271,33 +288,47 @@ class ArtifactArchiver():
         """
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
-        dependencies = set(self.ROOT_ARTIFACTS)
-        for artifact in self.ROOT_ARTIFACTS:
-            dependencies = dependencies.union(self.get_dependencies(artifact))
+        artifact_dependency_map = {
+            artifact: self.get_dependencies(artifact)
+            for artifact in self.ROOT_ARTIFACTS
+        }
+        dependencies = {
+            artifact
+            for dependency_list in artifact_dependency_map.values()
+            for artifact in dependency_list
+        }.union(set(self.ROOT_ARTIFACTS))
         # Get all artifacts that can be archived or deleted
         archive_candidates = self.get_artifacts_to_archive(dependencies)
         artifacts_that_cannot_be_archived = self.get_artifacts_that_cannot_be_archived(archive_candidates)
         artifacts_to_archived = archive_candidates.difference(artifacts_that_cannot_be_archived)
         artifacts_to_delete = self.get_artifacts_to_delete(artifacts_to_archived)
         artifacts_to_archived = artifacts_to_archived.difference(artifacts_to_delete)
+        unarchiveable_artifacts_to_delete = self.get_unarchiveable_artifacts_to_delete(
+            dependencies,
+            artifacts_that_cannot_be_archived,
+            artifact_dependency_map
+        )
         logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
         logging.info(f"A total of {len(archive_candidates)} artifacts have been identified for archival or deletion")
-        logging.info(f"Of the artifacts to be archived, {len(artifacts_that_cannot_be_archived)} cannot be archived and should be deleted instead")
+        logging.info(f"Of the artifacts to be archived, {len(artifacts_that_cannot_be_archived)} cannot be archived")
+        logging.info(f"Of the unarchiveable artifacts, {len(unarchiveable_artifacts_to_delete)} can have no references and can be safely deleted")
         logging.info(f"A total of {len(artifacts_to_delete)} archived artifacts have been marked for archival again, and should be safe to delete")
         logging.info(f"The following artifacts have been identified as a dependency of one of the root artifacts {self.ROOT_ARTIFACTS}")
         logging.info(json.dumps(list(dependencies), indent=4))
         logging.info(f"The following artifacts can be archived")
         logging.info(json.dumps(list(artifacts_to_archived), indent=4))
-        logging.info(f"The following artifacts have been marked for archival but cannot be archived due to their structure, so will be deleted")
+        logging.info(f"The following artifacts have been marked for archival but cannot be archived due to their structure")
         logging.info(json.dumps(list(artifacts_that_cannot_be_archived), indent=4))
+        logging.info(f"The following unarchiveable artifacts have no references, so will be be deleted")
+        logging.info(json.dumps(list(unarchiveable_artifacts_to_delete), indent=4))
         logging.info(f"The following archived artifacts have been marked for archival again, so will be deleted")
         logging.info(json.dumps(list(artifacts_to_delete), indent=4))
         logging.info("Archiving artifacts")
         # Archive the artifacts
         self.archive_artifacts(artifacts_to_archived)
         # Delete the artifacts
-        self.delete_artifacts(artifacts_to_delete.union(artifacts_that_cannot_be_archived))
+        self.delete_artifacts(artifacts_to_delete.union(unarchiveable_artifacts_to_delete))
 
 
 if __name__ == "__main__":
