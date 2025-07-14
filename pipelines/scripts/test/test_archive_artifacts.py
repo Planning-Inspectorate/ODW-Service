@@ -102,7 +102,7 @@ def test__artifact_archiver__get_artifact__failed():
                 assert archiver.get_artifact("who asked?") == "a"
 
 
-def test__artifact_archiver__get_dependencies():
+def test__artifact_archiver__get_root_dependencies():
     def _mock_get_artifact(inst, artifact_name: str):
         artifact_json_map = {
             "workspace/notebook/artifact_a.json": {"name": "a"},
@@ -171,7 +171,7 @@ def test__artifact_archiver__get_dependencies():
                 with mock.patch.object(mock_artifact_util, "dependent_artifacts", side_effect=dependent_artifacts_side_effects):
                     with mock.patch.object(SynapseArtifactUtil, "is_archived", return_value=False):
                         archiver = ArtifactArchiver()
-                        dependencies = archiver.get_dependencies(root_artifact)
+                        dependencies = archiver.get_root_dependencies(root_artifact)
                         assert expected_dependencies == dependencies
                         assert 6 == mock_artifact_util.dependent_artifacts.call_count
 
@@ -408,7 +408,7 @@ def test_artifact_archiver__main():
                 with mock.patch.object(SynapseArtifactUtil, "is_archived", _mock_is_archived):
                     archiver = ArtifactArchiver()
                     with mock.patch.object(archiver, "ROOT_ARTIFACTS", new=root_artifacts):
-                        with mock.patch.object(ArtifactArchiver, "get_dependencies", side_effect=dependency_side_effects):
+                        with mock.patch.object(ArtifactArchiver, "get_root_dependencies", side_effect=dependency_side_effects):
                             with mock.patch.object(ArtifactArchiver, "archive_artifacts", return_value=True):
                                 with mock.patch.object(ArtifactArchiver, "delete_artifacts", return_value=True):
                                     archiver.main()

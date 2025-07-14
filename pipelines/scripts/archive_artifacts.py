@@ -167,7 +167,7 @@ class ArtifactArchiver():
             raise ValueError(f"No artifact json could be found for '{artifact_path}'")
         return self.ALL_ARTIFACTS.get(artifact_path)
 
-    def get_dependencies(self, artifact: str) -> Set[str]:
+    def get_root_dependencies(self, artifact: str) -> Set[str]:
         """
             Deeply return all dependencies of the root artifacts
 
@@ -201,7 +201,7 @@ class ArtifactArchiver():
         """
             Return all artifacts that can be archived
 
-            :param dependencies: The set of dependencies identified by get_dependencies()
+            :param dependencies: The set of dependencies identified by get_root_dependencies()
             :return: A set of all artifacts that can be archived, and a set of artifacts that can be archived but physically can't
         """
         return {
@@ -290,7 +290,7 @@ class ArtifactArchiver():
         logging.info(f"Identifying the dependencies of the root artifacts {self.ROOT_ARTIFACTS}")
         # Get all artifacts that are essential for the ODW (i.e. all components related to the root artifacts)
         artifact_dependency_map = {
-            artifact: self.get_dependencies(artifact)
+            artifact: self.get_root_dependencies(artifact)
             for artifact in self.ROOT_ARTIFACTS
         }
         dependencies = {
