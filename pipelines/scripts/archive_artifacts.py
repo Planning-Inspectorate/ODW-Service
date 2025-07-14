@@ -307,7 +307,7 @@ class ArtifactArchiver():
         # Get all artifacts that can be archived or deleted
         archive_candidates = self.get_artifacts_to_archive(dependencies)
         artifacts_to_delete = self.get_artifacts_to_delete(archive_candidates)
-        artifacts_to_archive = archive_candidates.difference(artifacts_to_delete)
+        artifacts_to_archive = archive_candidates.difference(artifacts_to_delete).difference(self.EXISTING_ARCHIVED_ARTIFACTS)
         logging.info(f"A total of {len(self.ALL_ARTIFACT_NAMES)} artifacts have been discovered")
         logging.info(f"A total of {len(dependencies)} artifacts have been identified as dependencies of the artifacts {self.ROOT_ARTIFACTS}")
         logging.info(f"A total of {len(archive_candidates)} artifacts have been identified for archival or deletion")
