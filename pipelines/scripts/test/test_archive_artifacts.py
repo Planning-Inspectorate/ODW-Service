@@ -152,13 +152,13 @@ def test__artifact_archiver__get_artifact_dependencies():
         "pipeline/artifact_e.json"
     }
     expected_dependencies = {
-        "notebook/artifact_a.json",
-        "pipeline/artifact_c.json",
-        "pipeline/artifact_e.json",
-        "pipeline/artifact_b.json",
-        "pipeline/artifact_d.json",
-        "pipeline/artifact_k.json",
-        "pipeline/artifact_l.json"
+        "workspace/notebook/artifact_a.json",
+        "workspace/pipeline/artifact_c.json",
+        "workspace/pipeline/artifact_e.json",
+        "workspace/pipeline/artifact_b.json",
+        "workspace/pipeline/artifact_d.json",
+        "workspace/pipeline/artifact_k.json",
+        "workspace/pipeline/artifact_l.json"
     }
     with mock.patch.object(Util, "get_all_artifact_paths", return_value=all_artifacts):
         with mock.patch.object(ArtifactArchiver, "_get_artifact_json", _mock_get_artifact):

@@ -173,7 +173,8 @@ class ArtifactArchiver():
         visited = set()
         while artifacts_to_explore:
             artifact_name = artifacts_to_explore.pop()
-            artifact = self.get_artifact(f"workspace/{artifact_name}")
+            artifact_name = f"workspace/{artifact_name}" if "workspace" not in artifact_name else artifact_name
+            artifact = self.get_artifact(artifact_name)
             artifact_dependencies.add(artifact_name)
             if artifact_name not in artifact:
                 visited.add(artifact_name)
