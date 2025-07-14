@@ -259,45 +259,6 @@ def test_artifact_archiver__get_artifacts_to_delete():
             assert expected_artifacts_to_delete == actual_artifacts_to_delete
 
 
-def test__artifact_archiver__get_unarchiveable_artifacts_to_delete():
-    artifacts_to_archive = {
-        "artifact_a",
-        "artifact_b",
-        "artifact_c",
-        "artifact_d",
-        "artifact_e",
-        "artifact_f",
-        "artifact_g"
-    }
-    unarchiveable_artifacts = {
-        "artifact_c",
-        "artifact_d",
-        "artifact_g"
-    }
-    expected_artifacts_to_delete = {
-        "artifact_d"
-    }
-
-    dependency_side_effects = [
-        {"artifact_b", "artifact_c"},
-        {"artifact_g"},
-        set(),
-        set(),
-        set(),
-        set(),
-        set()
-    ]
-
-    with mock.patch.object(Util, "get_all_artifact_paths", return_value=[]):
-        with mock.patch.object(ArtifactArchiver, "get_dependencies", side_effect=dependency_side_effects):
-            archiver = ArtifactArchiver()
-            actual_artifacts_to_delete = archiver.get_unarchiveable_artifacts_to_delete(
-                artifacts_to_archive,
-                unarchiveable_artifacts
-            )
-            assert expected_artifacts_to_delete == actual_artifacts_to_delete
-
-
 def test_artifact_archiver__is_artifact_archiveable():
     mock_synapse_artifact_util = mock.MagicMock()
     with mock.patch.object(Util, "get_all_artifact_paths", return_value=[]):
