@@ -106,7 +106,8 @@ class ArtifactArchiver():
             "managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sql--pins-synw-odw-dev-uks.json",
             "managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sql--pins-synw-odw-dev-ukw.json",
             "managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sqlOnDemand--pins-synw-odw-dev-uks.json",
-            "managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sqlOnDemand--pins-synw-odw-dev-ukw.json"
+            "managedVirtualNetwork/default/managedPrivateEndpoint/synapse-ws-sqlOnDemand--pins-synw-odw-dev-ukw.json",
+            "notebook/py_sap_hr_protected_data.json"  # Keep specific SAPHR notebook
         }
         """Artifacts to use as the base of the dependency analysis"""
 
