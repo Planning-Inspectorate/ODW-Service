@@ -166,6 +166,20 @@ class ArtifactArchiver():
         if artifact_path not in self.ALL_ARTIFACTS:
             raise ValueError(f"No artifact json could be found for '{artifact_path}'")
         return self.ALL_ARTIFACTS.get(artifact_path)
+    
+    def get_artifact_dependencies(self, artifacts: Set[str]) -> Set[str]:
+        artifact_dependencies = set()
+        artifacts_to_explore = set().union(artifacts)
+        visited = set()
+        while artifacts_to_explore:
+            artifact_name = artifacts_to_explore.pop()
+            artifact = self.get_artifact(f"workspace/{artifact_name}")
+            artifact_dependencies.add(artifact_name)
+            if artifact_name not in artifact:
+                visited.add(artifact_name)
+                new_dependencies = SynapseArtifactUtil.dependent_artifacts(artifact)
+                artifacts_to_explore = artifacts_to_explore.union(new_dependencies)
+        return artifact_dependencies
 
     def get_root_dependencies(self, artifact: str) -> Set[str]:
         """
@@ -237,19 +251,10 @@ class ArtifactArchiver():
     def get_artifacts_to_delete(self, artifacts_to_archive: Set[str]):
         unarchiveable_artifacts = self.get_artifacts_that_cannot_be_archived(artifacts_to_archive)
         already_archived_artifacts = self.get_already_archived_artifacts(artifacts_to_archive)
-        candidate_artifacts_to_delete = unarchiveable_artifacts.union(already_archived_artifacts)
+        candidate_artifacts_to_delete = artifacts_to_archive.intersection(unarchiveable_artifacts.union(already_archived_artifacts))
         artifacts_to_keep = artifacts_to_archive.difference(candidate_artifacts_to_delete)
         # Delete only the artifacts that are not dependencies of other things that are being kept
-        artifact_dependencies = set()
-        artifacts_to_explore = set().union(artifacts_to_keep)
-        visited = set()
-        while artifacts_to_explore:
-            artifact = artifacts_to_explore.pop()
-            artifact_dependencies.add(artifact)
-            if artifact not in artifact:
-                visited.add(artifact)
-                new_dependencies = SynapseArtifactUtil.dependent_artifacts(artifact)
-                artifacts_to_explore = artifacts_to_explore.union(new_dependencies)
+        artifact_dependencies = self.get_artifact_dependencies(artifacts_to_keep)
         return candidate_artifacts_to_delete.difference(artifact_dependencies)
 
     def is_artifact_archiveable(self, artifact: str) -> bool:
