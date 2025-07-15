@@ -94,7 +94,7 @@
 		- [ ] Archiving schedules and retention policies have been checked to avoid accidental data loss.
   	- [ ] If no:
 		- [ ] Review the automatic archiving logic, schedules, and retention policies.
-16. If there is end to end regression testing has been performed over the existing pipeline?
+16. Has end to end regression testing been performed over the existing pipeline?
      - [ ] yes:
      - [ ] no
  
