@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fe7e5339-e0fd-4dad-aabe-cd5658da3371"
+				"spark.autotune.trackingId": "c141668a-a983-4956-9408-6452205a9249"
 			}
 		},
 		"metadata": {
@@ -93,6 +93,15 @@
 					"return_json_schema = False\r\n",
 					"odw_config_entity = ''\r\n",
 					"version = '1.10.2'"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# db_name: str = \"odw_curated_db\"\r\n",
+					"# entity_name: str = \"nsip-exam-timetable\"\r\n",
+					"# table_name: str = \"odw_curated_db.nsip_exam_timetable\""
 				],
 				"execution_count": null
 			},
@@ -249,11 +258,50 @@
 					}
 				},
 				"source": [
+					"# @logging_to_appins\r\n",
+					"# def get_spark_type(field_schema: dict) -> DataType:\r\n",
+					"#     try:\r\n",
+					"#         json_type = field_schema.get('type')\r\n",
+					"#         print(f\"Processing type: {json_type}\")\r\n",
+					"\r\n",
+					"#         if isinstance(json_type, list):\r\n",
+					"#             json_type = json_type[0]\r\n",
+					"\r\n",
+					"#         if json_type == 'array':\r\n",
+					"#             element_schema = field_schema['items']\r\n",
+					"#             return ArrayType(get_spark_type(element_schema))\r\n",
+					"#         elif json_type == 'object':\r\n",
+					"#             return transform_schema(field_schema)\r\n",
+					"#         elif json_type in type_mapping:\r\n",
+					"#             return type_mapping[json_type]\r\n",
+					"#         else:\r\n",
+					"#             raise ValueError(f\"Unsupported type: {json_type}\")\r\n",
+					"#     except Exception as e:\r\n",
+					"#         logException(e) \r\n",
+					"#         raise"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
 					"@logging_to_appins\r\n",
 					"def get_spark_type(field_schema: dict) -> DataType:\r\n",
+					"    print(\"get_spark_type is being called in July\")\r\n",
 					"    try:\r\n",
 					"        json_type = field_schema.get('type')\r\n",
-					"        print(f\"Processing type: {json_type}\")\r\n",
+					"        print(f\"Processing type: {json_type} | schema: {field_schema}\")\r\n",
+					"\r\n",
+					"        # Try resolving $ref if type is missing\r\n",
+					"        if json_type is None and '$ref' in field_schema:\r\n",
+					"            ref = field_schema['$ref']\r\n",
+					"            ref_path = ref.split('/')\r\n",
+					"            if ref_path[0] == '#' and ref_path[1] == '$defs':\r\n",
+					"                resolved = json_schema['$defs'][ref_path[2]]\r\n",
+					"                return get_spark_type(resolved)\r\n",
+					"\r\n",
+					"        if json_type is None:\r\n",
+					"            raise ValueError(f\"Missing 'type' in schema: {field_schema}\")\r\n",
 					"\r\n",
 					"        if isinstance(json_type, list):\r\n",
 					"            json_type = json_type[0]\r\n",
@@ -268,8 +316,9 @@
 					"        else:\r\n",
 					"            raise ValueError(f\"Unsupported type: {json_type}\")\r\n",
 					"    except Exception as e:\r\n",
-					"        logException(e) \r\n",
-					"        raise"
+					"        logException(e)\r\n",
+					"        raise\r\n",
+					""
 				],
 				"execution_count": null
 			},
