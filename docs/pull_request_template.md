@@ -10,8 +10,7 @@
   	- [ ] If No
    	- [ ] If yes:
 		- [ ] orchestration.json has been updated and tested in Dev and has been / is about to be PRd into main
-		- [ ] the new schema exists inside *odw-config/standardised-table-definitions* OR is a
-   		- [ ] bout to be PRd into main
+		- [ ] the new schema exists inside *odw-config/standardised-table-definitions* OR is a about to be PRd into main
 			- Make sure to run Platform Integrate and Platform Deploy to Dev at least to ensure the schema is deployed into Synapse Dev Live 
 		- [ ] Is the raw-to-standardised python script scheduled to run for this dataset grouping?
  3. Have any new tables been created in Harmonised or Curated?
