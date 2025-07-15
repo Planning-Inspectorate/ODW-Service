@@ -95,6 +95,6 @@
   	- [ ] If no:
 		- [ ] Review the automatic archiving logic, schedules, and retention policies.
 16. Has end to end regression testing been performed over the existing pipeline?
-     - [ ] yes:
+     - [ ] yes
      - [ ] no
  
