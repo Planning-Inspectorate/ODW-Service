@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7212fb73-defe-4707-a562-b1a9ad3f7af7"
+				"spark.autotune.trackingId": "d5c82368-c9e4-4de1-8e25-6c6fc3882382"
 			}
 		},
 		"metadata": {
@@ -45,12 +45,32 @@
 				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 32,
-				"automaticScaleJobs": true
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read json format files for service bus and appends into single owb_standarsied_db Delta tables.\r\n",
+					"\r\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \r\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;15-Jul-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The functionality of this notebook is to ingest odw-standardised/ServiceBus Delta Tables after successful reading of json formatted data.\r\n",
+					"\r\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\r\n",
+					"\r\n",
+					""
+				]
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -145,6 +165,79 @@
 				},
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialize and define all functions required for Application Insight logging"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Initialize json processing results\r\n",
+					"processing_results = {\r\n",
+					"    \"processing_summary\":{\r\n",
+					"    \"total_tables_processed\": 0,\r\n",
+					"    \"successful_overwrites\": 0,\r\n",
+					"    \"failed_overwrites\": 0\r\n",
+					"    },\r\n",
+					"    \"update_table_details\": []\r\n",
+					"}\r\n",
+					"\r\n",
+					"@logging_to_appins\r\n",
+					"def time_diff_seconds(start, end):\r\n",
+					"    try:\r\n",
+					"        if not start or not end:\r\n",
+					"            return 0\r\n",
+					"\r\n",
+					"        # Parse strings into datetime objects if needed\r\n",
+					"        if isinstance(start, str):\r\n",
+					"            start = datetime.strptime(start, \"%Y-%m-%d %H:%M:%S.%f\")\r\n",
+					"        if isinstance(end, str):\r\n",
+					"            end = datetime.strptime(end, \"%Y-%m-%d %H:%M:%S.%f\")\r\n",
+					"\r\n",
+					"        diff_seconds = int((end - start).total_seconds())\r\n",
+					"        return diff_seconds if diff_seconds > 0 else 0\r\n",
+					"\r\n",
+					"    except Exception as e:\r\n",
+					"        return 0\r\n",
+					"\r\n",
+					"#This funtion handles datetime object and covert into string\r\n",
+					"def datetime_handler(obj):\r\n",
+					"    if isinstance(obj, datetime):\r\n",
+					"        return obj.isoformat()\r\n",
+					"    raise TypeError(f\"Object of type {obj.__class__.__name__} is not JSON serializable\")\r\n",
+					"\r\n",
+					"@logging_to_appins\r\n",
+					"def add_table_result(delta_table_name, update_count=0, table_result=\"success\",\r\n",
+					"start_update_exec_time=\"\",end_update_exec_time=\"\",total_update_exec_time=\"\", error_message=\"\"):\r\n",
+					"    \"\"\"Add processing result for a table to the tracking structure\"\"\"\r\n",
+					"    table_detail = {\r\n",
+					"        \"delta_table_name\": delta_table_name,\r\n",
+					"        \"update_count\": update_count,\r\n",
+					"        \"table_result\": table_result,\r\n",
+					"        \"start_update_exec_time\": start_update_exec_time,\r\n",
+					"        \"end_update_exec_time\": end_update_exec_time,\r\n",
+					"        \"total_update_exec_time\": total_update_exec_time,\r\n",
+					"        \"error_message\": error_message\r\n",
+					"    }\r\n",
+					"    processing_results[\"update_table_details\"].append(table_detail)\r\n",
+					"    processing_results[\"processing_summary\"][\"total_tables_processed\"] += 1\r\n",
+					"    \r\n",
+					"    if table_result == \"success\":\r\n",
+					"        processing_results[\"processing_summary\"][\"successful_overwrites\"] += 1\r\n",
+					"    else:\r\n",
+					"        processing_results[\"processing_summary\"][\"failed_overwrites\"] += 1"
 				],
 				"execution_count": null
 			},
