@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7f3e5664-c653-4e4c-a363-3963243495f5"
+				"spark.autotune.trackingId": "c28e6e12-5b84-472d-a82f-24de542a9cef"
 			}
 		},
 		"metadata": {
@@ -611,6 +611,9 @@
 					}
 				},
 				"source": [
+					"start_exec_time = str(datetime.now())\r\n",
+					"insert_count = 0\r\n",
+					"\r\n",
 					"USE_MAX_DATE_FILTER = False\r\n",
 					"\r\n",
 					"if USE_MAX_DATE_FILTER:\r\n",
@@ -677,6 +680,7 @@
 					"    logInfo(f\"Row count before append: {table_row_count}\")\r\n",
 					"    df = dedupe_dataframe(df=df)\r\n",
 					"    rows_to_append = df.count()\r\n",
+					"    insert_count = rows_to_append\r\n",
 					"    logInfo(f\"Rows to append: {rows_to_append}\")\r\n",
 					"    expected_new_count = table_row_count + rows_to_append\r\n",
 					"    logInfo(f\"Expected new count: {expected_new_count}\")\r\n",
@@ -718,10 +722,23 @@
 					"try:\r\n",
 					"    logInfo(f\"Appending new rows to table {table_name}\")\r\n",
 					"    append_df_to_table(df=df, table_name=table_name)\r\n",
+					"    \r\n",
+					"    end_exec_time = str(datetime.now())\r\n",
+					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
+					"    add_table_result(table_name, insert_count, \"success\",start_exec_time, end_exec_time,\r\n",
+					"                 time_diff,\"\")\r\n",
+					"\r\n",
 					"    logInfo(\"Done appending rows to table\")\r\n",
 					"    new_table_row_count = spark.table(table_name).count()\r\n",
 					"except Exception as e:\r\n",
-					"    logError(f\"Error appending rows:\\n{e}\")"
+					"    logError(f\"Error appending rows:\\n{e}\")\r\n",
+					"\r\n",
+					"    error_msg = f\"Error appending rows:\\n{str(e)}\"\r\n",
+					"    \r\n",
+					"    end_exec_time = str(datetime.now())\r\n",
+					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
+					"    add_table_result(table_name, insert_count, \"failed\",start_exec_time, end_exec_time,\r\n",
+					"                 time_diff,error_msg)"
 				],
 				"execution_count": null
 			},
@@ -756,8 +773,21 @@
 				"source": [
 					"if not test_rows_appended(new_table_row_count=new_table_row_count, expected_row_count=expected_new_count):\r\n",
 					"    logError(\"Error appending rows. The new row count isn't as expected.\")\r\n",
+					"\r\n",
+					"    error_msg = f\"Error appending rows: {table_name} . The new row count isn't as expected.\"\r\n",
+					"    end_exec_time = str(datetime.now())\r\n",
+					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
+					"    add_table_result(table_name, insert_count, \"failed\",start_exec_time, end_exec_time,\r\n",
+					"                 time_diff,error_msg)\r\n",
 					"else:\r\n",
 					"    logInfo(\"Rows appended successfully.\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					""
 				],
 				"execution_count": null
 			}
