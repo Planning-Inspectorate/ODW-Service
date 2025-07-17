@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "bbb9750f-a15b-4c17-84f2-e8bc4fae55a9"
+				"spark.autotune.trackingId": "d5e79561-8e42-42dc-9b65-de41f3027eed"
 			}
 		},
 		"metadata": {
@@ -89,7 +89,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 9
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
@@ -111,14 +111,15 @@
 					"entity_name='appeal-has'\r\n",
 					"date_folder=''"
 				],
-				"execution_count": 10
+				"execution_count": 23
 			},
 			{
 				"cell_type": "code",
 				"source": [
+					"import json\r\n",
+					"import traceback\r\n",
 					"from pyspark.sql import SparkSession\r\n",
 					"from notebookutils import mssparkutils\r\n",
-					"import json\r\n",
 					"from datetime import datetime, date\r\n",
 					"from pyspark.sql.functions import current_timestamp, expr, to_timestamp, lit, input_file_name\r\n",
 					"from pyspark.sql import DataFrame\r\n",
@@ -126,7 +127,7 @@
 					"from pyspark.sql.functions import *\r\n",
 					"import re"
 				],
-				"execution_count": 11
+				"execution_count": 24
 			},
 			{
 				"cell_type": "code",
@@ -148,9 +149,10 @@
 					"date_folder = datetime.now().date().strftime('%Y-%m-%d') if date_folder == '' else date_folder\r\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/\"\r\n",
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\r\n",
-					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''"
+					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''\r\n",
+					""
 				],
-				"execution_count": 12
+				"execution_count": 42
 			},
 			{
 				"cell_type": "code",
@@ -168,7 +170,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": 13
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -270,7 +272,7 @@
 					"    \r\n",
 					"    return exit_value"
 				],
-				"execution_count": 14
+				"execution_count": 27
 			},
 			{
 				"cell_type": "code",
@@ -303,7 +305,7 @@
 					"\r\n",
 					"    return max_value"
 				],
-				"execution_count": 15
+				"execution_count": 28
 			},
 			{
 				"cell_type": "code",
@@ -341,7 +343,7 @@
 					"    formatted_timestamp: str = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
 					"    return formatted_timestamp"
 				],
-				"execution_count": 16
+				"execution_count": 29
 			},
 			{
 				"cell_type": "code",
@@ -384,7 +386,7 @@
 					"    \r\n",
 					"    return files"
 				],
-				"execution_count": 17
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -424,7 +426,7 @@
 					"\r\n",
 					"    return missing_files"
 				],
-				"execution_count": 18
+				"execution_count": 31
 			},
 			{
 				"cell_type": "code",
@@ -466,7 +468,7 @@
 					"\r\n",
 					"    return filtered_paths"
 				],
-				"execution_count": 19
+				"execution_count": 32
 			},
 			{
 				"cell_type": "code",
@@ -509,7 +511,7 @@
 					"\r\n",
 					"    return df"
 				],
-				"execution_count": 20
+				"execution_count": 33
 			},
 			{
 				"cell_type": "code",
@@ -544,7 +546,7 @@
 					"    return df\r\n",
 					""
 				],
-				"execution_count": 21
+				"execution_count": 34
 			},
 			{
 				"cell_type": "code",
@@ -576,7 +578,7 @@
 					"    .saveAsTable(table_name)\r\n",
 					""
 				],
-				"execution_count": 22
+				"execution_count": 35
 			},
 			{
 				"cell_type": "code",
@@ -607,7 +609,7 @@
 					"    \"\"\"\r\n",
 					"    return new_table_row_count == expected_new_count"
 				],
-				"execution_count": 23
+				"execution_count": 36
 			},
 			{
 				"cell_type": "markdown",
@@ -668,7 +670,7 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting list of missing files:\\n{e}\")"
 				],
-				"execution_count": 24
+				"execution_count": 37
 			},
 			{
 				"cell_type": "markdown",
@@ -716,7 +718,7 @@
 					"except Exception as e:\r\n",
 					"    logError(f\"Error deduping and generating counts:\\n{e}\")"
 				],
-				"execution_count": 25
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -762,14 +764,29 @@
 					"except Exception as e:\r\n",
 					"    logError(f\"Error appending rows:\\n{e}\")\r\n",
 					"\r\n",
-					"    error_msg = f\"Error appending rows:\\n{str(e)}\"\r\n",
+					"    #Code added to capture meaningful error message\r\n",
+					"    full_trace = traceback.format_exc()\r\n",
+					"    \r\n",
+					"    table_error_msg = str(e)\r\n",
+					"\r\n",
+					"    complete_msg = table_error_msg + \"\\n\" + full_trace\r\n",
+					"    error_text = complete_msg[:300]           \r\n",
+					"    \r\n",
+					"    # Find the position of the last full stop before 300 characters\r\n",
+					"    last_period_index = error_text.rfind('.')\r\n",
+					"\r\n",
+					"    # Use up to the last full stop, if found; else fall back to 300 chars\r\n",
+					"    if last_period_index != -1:\r\n",
+					"        error_message = error_text[:last_period_index + 1] \r\n",
+					"    else:\r\n",
+					"        error_message = error_text\r\n",
 					"    \r\n",
 					"    end_exec_time = str(datetime.now())\r\n",
 					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
 					"    add_table_result(table_name, insert_count, \"failed\",start_exec_time, end_exec_time,\r\n",
-					"                 time_diff,error_msg)"
+					"                 time_diff,error_message)"
 				],
-				"execution_count": 26
+				"execution_count": 43
 			},
 			{
 				"cell_type": "markdown",
@@ -811,7 +828,7 @@
 					"else:\r\n",
 					"    logInfo(\"Rows appended successfully.\")"
 				],
-				"execution_count": 32
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -825,7 +842,7 @@
 					"# Exit with the JSON result\r\n",
 					"mssparkutils.notebook.exit(result_json_str)"
 				],
-				"execution_count": 31
+				"execution_count": 41
 			}
 		]
 	}
