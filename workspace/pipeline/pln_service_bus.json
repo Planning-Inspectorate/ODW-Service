@@ -309,9 +309,9 @@
 							"type": "ExecutePipeline",
 							"dependsOn": [
 								{
-									"activity": "Set Error Message",
+									"activity": "Raw to Std",
 									"dependencyConditions": [
-										"Succeeded"
+										"Failed"
 									]
 								}
 							],
@@ -343,8 +343,12 @@
 										"value": "@formatDateTime(utcnow(), 'yyyy-MM-ddTHH:mm:ssZ')",
 										"type": "Expression"
 									},
+									"Inserts": {
+										"value": "@int(json(activity('Raw to Std').output.status.output.result.exitValue).table_details.insert_count)",
+										"type": "Expression"
+									},
 									"ErrorMessage": {
-										"value": "@activity('Raw to Std').Error.message ",
+										"value": "@json(activity('Raw to Std').output.status.output.result.exitValue).table_details.error_message",
 										"type": "Expression"
 									},
 									"StatusMessage": {
@@ -459,7 +463,7 @@
 							"type": "ExecutePipeline",
 							"dependsOn": [
 								{
-									"activity": "Raw to Std",
+									"activity": "Record src to std",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -514,6 +518,7 @@
 										"type": "Expression"
 									},
 									"ActivityType": "Pipeline",
+									"StatusCode": "200",
 									"AppInsIKey": {
 										"value": "@pipeline().parameters.apps_insights_ikey",
 										"type": "Expression"
@@ -546,26 +551,82 @@
 							}
 						},
 						{
-							"name": "Set Error Message",
-							"type": "SetVariable",
+							"name": "Record src to std",
+							"type": "ExecutePipeline",
 							"dependsOn": [
 								{
-									"activity": "Raw to Std",
+									"activity": "record_count",
 									"dependencyConditions": [
-										"Failed"
+										"Succeeded"
 									]
 								}
 							],
 							"policy": {
-								"secureOutput": false,
 								"secureInput": false
 							},
 							"userProperties": [],
 							"typeProperties": {
-								"variableName": "Error_message",
-								"value": {
-									"value": "@json(activity('Raw to Std').output.status.output.result.exitValue).table_details.error_message",
-									"type": "Expression"
+								"pipeline": {
+									"referenceName": "pln_log_to_appins",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"Stage": "OnProgress",
+									"PipelineName": {
+										"value": "@variables('pipeline name')",
+										"type": "Expression"
+									},
+									"PipelineRunID": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"StartTime": {
+										"value": "@json(activity('Raw to Std').output.status.output.result.exitValue).table_details.start_exec_time",
+										"type": "Expression"
+									},
+									"EndTime": {
+										"value": "@json(activity('Raw to Std').output.status.output.result.exitValue).table_details.end_exec_time",
+										"type": "Expression"
+									},
+									"Inserts": {
+										"value": "@int(json(activity('Raw to Std').output.status.output.result.exitValue).table_details.insert_count)",
+										"type": "Expression"
+									},
+									"StatusMessage": {
+										"value": "@concat(variables('entity_name'), ': Processing standardised to harmonised')",
+										"type": "Expression"
+									},
+									"PipelineTriggerID": {
+										"value": "@pipeline().TriggerId",
+										"type": "Expression"
+									},
+									"PipelineTriggerName": {
+										"value": "@pipeline().TriggerName",
+										"type": "Expression"
+									},
+									"PipelineTriggerType": {
+										"value": "@pipeline().TriggerType",
+										"type": "Expression"
+									},
+									"PipelineTriggeredbyPipelineName": {
+										"value": "@pipeline()?.TriggeredByPipelineName",
+										"type": "Expression"
+									},
+									"PipelineTriggeredbyPipelineRunID": {
+										"value": "@pipeline()?.TriggeredByPipelineRunId",
+										"type": "Expression"
+									},
+									"ActivityType": "Pipeline",
+									"DurationSeconds": {
+										"value": "@json(activity('Raw to Std').output.status.output.result.exitValue).table_details.total_exec_time",
+										"type": "Expression"
+									},
+									"StatusCode": "200",
+									"AppInsIKey": {
+										"value": "@pipeline().parameters.apps_insights_ikey",
+										"type": "Expression"
+									}
 								}
 							}
 						}
