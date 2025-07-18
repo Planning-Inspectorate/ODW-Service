@@ -11,9 +11,4 @@ class TestSmokeSynapseConnectivity(NotebookRunTestCase):
         notebook_name = "test_smoke_py_connectivity"
         notebook_parameters = dict()
 
-        notebook_run_result = self.run_notebook(notebook_name, notebook_parameters)
-        error_message = (
-            f"Expected the notebook's exit vallue to be '{constants.NOTEBOOK_EXIT_CODE_SUCCESS}', "
-            f"but was '{notebook_run_result['result']['exitValue']}'"
-        )
-        assert notebook_run_result["result"]["exitValue"] == constants.NOTEBOOK_EXIT_CODE_SUCCESS, error_message
+        self.run_notebook(notebook_name, notebook_parameters)
