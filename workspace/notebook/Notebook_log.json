@@ -16,7 +16,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "2dd36d81-27d3-40e3-b699-081d584e292d"
+				"spark.autotune.trackingId": "3c2c532a-1e8b-462b-a50d-e734da2819ce"
 			}
 		},
 		"metadata": {
@@ -35,6 +35,104 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"import requests\n",
+					"import json\n",
+					"from pyspark.sql import SparkSession\n",
+					"from pyspark.sql.types import *\n",
+					"from delta.tables import *\n",
+					"import pandas as pd\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"app_id = \"your-application-insights-app-id\"\n",
+					"api_key = \"your-api-key\"\n",
+					"base_url = f\"https://api.applicationinsights.io/v1/apps/{app_id}\"\n",
+					"\n",
+					"# Headers for API calls\n",
+					"headers = {\n",
+					"    'X-API-Key': api_key,\n",
+					"    'Content-Type': 'application/json'\n",
+					"}\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def query_app_insights(query, timespan=None):\n",
+					"    \"\"\"\n",
+					"    Query Application Insights using KQL\n",
+					"    \"\"\"\n",
+					"    url = f\"{base_url}/query\"\n",
+					"    \n",
+					"    payload = {\n",
+					"        \"query\": query\n",
+					"    }\n",
+					"    \n",
+					"    if timespan:\n",
+					"        payload[\"timespan\"] = timespan\n",
+					"    \n",
+					"    response = requests.post(url, headers=headers, json=payload)\n",
+					"    \n",
+					"    if response.status_code == 200:\n",
+					"        return response.json()\n",
+					"    else:\n",
+					"        raise Exception(f\"Query failed: {response.status_code} - {response.text}\")\n",
+					"\n",
+					"# Example query - get requests from last 7 days\n",
+					"kql_query = \"\"\"\n",
+					"requests\n",
+					"| where timestamp > ago(7d)\n",
+					"| project timestamp, name, url, duration, resultCode, success\n",
+					"| order by timestamp desc\n",
+					"\"\"\"\n",
+					"\n",
+					"# Execute query\n",
+					"result = query_app_insights(kql_query)\n",
+					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"def ai_result_to_dataframe(result):\n",
+					"    \"\"\"\n",
+					"    Convert Application Insights query result to Spark DataFrame\n",
+					"    \"\"\"\n",
+					"    tables = result.get('tables', [])\n",
+					"    if not tables:\n",
+					"        return spark.createDataFrame([], StructType([]))\n",
+					"    \n",
+					"    # Get first table (usually the main result)\n",
+					"    table = tables[0]\n",
+					"    columns = [col['name'] for col in table['columns']]\n",
+					"    rows = table['rows']\n",
+					"    \n",
+					"    # Convert to pandas first, then to Spark DataFrame\n",
+					"    pandas_df = pd.DataFrame(rows, columns=columns)\n",
+					"    \n",
+					"    # Convert pandas DataFrame to Spark DataFrame\n",
+					"    spark_df = spark.createDataFrame(pandas_df)\n",
+					"    \n",
+					"    return spark_df\n",
+					"\n",
+					"# Convert result to DataFrame\n",
+					"df = ai_result_to_dataframe(result)\n",
+					"\n",
+					"# Write to Delta table\n",
+					"delta_table_path = \"/mnt/delta/application_insights_requests\"\n",
+					"\n",
+					"df.write \\\n",
+					"  .format(\"delta\") \\\n",
+					"  .mode(\"append\") \\\n",
+					"  .option(\"mergeSchema\", \"true\") \\\n",
+					"  .save(delta_table_path)\n",
 					""
 				],
 				"execution_count": null
