@@ -183,6 +183,7 @@ class SynapseNotebookUtil(SynapseArtifactUtil):
             )
             args = function_call.get("args", [])
             # Process just the first loose argument (the argument passed without a keyword name)
+            # The argument cannot be a variable reference - variable references are very complicated to trace
             if args:
                 found_dependencies.add(args[0]["value"])
             # Prepare the dependencies depending on the underlying mssparkutils function being called
