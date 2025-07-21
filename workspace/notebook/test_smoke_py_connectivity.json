@@ -17,10 +17,10 @@
 			"executorCores": 4,
 			"numExecutors": 2,
 			"conf": {
-				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.enabled": "true",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "19a5fa75-a1a7-4708-95f8-6dc5e5b5e2e8"
+				"spark.autotune.trackingId": "2ba612ab-9bf8-4ebb-ba19-6bb06378d498"
 			}
 		},
 		"metadata": {
@@ -54,7 +54,9 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"import re"
+					"import json\n",
+					"import re\n",
+					"import traceback"
 				],
 				"execution_count": null
 			},
@@ -98,6 +100,7 @@
 					"    storage_endpoint = re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString(\"ls_backup_destination\")).group(1)\n",
 					"    env = re.search(\"pinsstodw(.*)ukw\", storage_endpoint).group(1)\n",
 					"    if env == \"build\":\n",
+					"        print(\"Skipping test_datalake_failover_connectivity because the build environment does not have any backup data\")\n",
 					"        return\n",
 					"    exception_raised = None\n",
 					"    try:\n",
@@ -123,9 +126,23 @@
 					"    if symbol.startswith(\"test\") and callable(eval(symbol))\n",
 					"}\n",
 					"print(\"Running tests\\n\")\n",
+					"exception_map = dict()\n",
 					"for test_name, test in tests_to_run.items():\n",
-					"    print(test_name)\n",
-					"    test()"
+					"    print(f\"Running test '{test_name}'\")\n",
+					"    try:\n",
+					"        test()\n",
+					"    except Exception:\n",
+					"        exception_map[test_name] = traceback.format_exc()\n",
+					"\n",
+					"if exception_map:\n",
+					"    for test_case, exception in exception_map.items():\n",
+					"        print(f\"Test '{test_case}' failed with the below exception\")\n",
+					"        print(exception)\n",
+					"        print()\n",
+					"    \n",
+					"    failing_tests = list(exception_map.keys())\n",
+					"    mssparkutils.notebook.exit(failing_tests)\n",
+					"mssparkutils.notebook.exit([])"
 				],
 				"execution_count": null
 			}
