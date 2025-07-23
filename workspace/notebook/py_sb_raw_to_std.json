@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9b0f02cc-e0cb-4add-9f18-3d00b9547897"
+				"spark.autotune.trackingId": "75a7e45f-6912-457e-804c-c00ff0381d7b"
 			}
 		},
 		"metadata": {
@@ -89,7 +89,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "code",
@@ -111,7 +111,7 @@
 					"entity_name='appeal-has'\r\n",
 					"date_folder=''"
 				],
-				"execution_count": null
+				"execution_count": 2
 			},
 			{
 				"cell_type": "code",
@@ -127,7 +127,7 @@
 					"from pyspark.sql.functions import *\r\n",
 					"import re"
 				],
-				"execution_count": null
+				"execution_count": 3
 			},
 			{
 				"cell_type": "code",
@@ -152,7 +152,7 @@
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -170,7 +170,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": null
+				"execution_count": 5
 			},
 			{
 				"cell_type": "markdown",
@@ -188,9 +188,9 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"%run utils/main/py_utils_common_logging_output"
+					"%run utils/py_utils_common_logging_output"
 				],
-				"execution_count": 1
+				"execution_count": 6
 			},
 			{
 				"cell_type": "markdown",
@@ -207,6 +207,12 @@
 			},
 			{
 				"cell_type": "code",
+				"metadata": {
+					"editable": false,
+					"run_control": {
+						"frozen": true
+					}
+				},
 				"source": [
 					"# Initialize json processing results\r\n",
 					"processing_results = initialize_processing_results()\r\n",
@@ -308,6 +314,9 @@
 					}
 				},
 				"source": [
+					"# Initialize json processing results for logging output\r\n",
+					"processing_results = initialize_processing_results()\r\n",
+					"\r\n",
 					"@logging_to_appins\r\n",
 					"def get_max_value_from_column(table_name: str, column_name: str) -> datetime:\r\n",
 					"    \"\"\"\r\n",
@@ -325,7 +334,7 @@
 					"\r\n",
 					"    return max_value"
 				],
-				"execution_count": null
+				"execution_count": 7
 			},
 			{
 				"cell_type": "code",
@@ -363,7 +372,7 @@
 					"    formatted_timestamp: str = max_timestamp.strftime(\"%Y-%m-%dT%H:%M:%S.%f\")+\"+0000\"\r\n",
 					"    return formatted_timestamp"
 				],
-				"execution_count": null
+				"execution_count": 8
 			},
 			{
 				"cell_type": "code",
@@ -406,7 +415,7 @@
 					"    \r\n",
 					"    return files"
 				],
-				"execution_count": null
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -446,7 +455,7 @@
 					"\r\n",
 					"    return missing_files"
 				],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "code",
@@ -488,7 +497,7 @@
 					"\r\n",
 					"    return filtered_paths"
 				],
-				"execution_count": null
+				"execution_count": 11
 			},
 			{
 				"cell_type": "code",
@@ -527,11 +536,14 @@
 					"\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f'Raw data not found at {source_path}, Exception is {e}')\r\n",
+					"        \r\n",
+					"        # Use the imported format_error_message function\r\n",
+					"        error_message = format_error_message(e, max_length=300)\r\n",
 					"        mssparkutils.notebook.exit('')\r\n",
 					"\r\n",
 					"    return df"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "code",
@@ -566,7 +578,7 @@
 					"    return df\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "code",
@@ -598,7 +610,7 @@
 					"    .saveAsTable(table_name)\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 14
 			},
 			{
 				"cell_type": "code",
@@ -629,7 +641,7 @@
 					"    \"\"\"\r\n",
 					"    return new_table_row_count == expected_new_count"
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "markdown",
@@ -675,6 +687,7 @@
 					"        print(f\"max_extracted_date: {max_extracted_date}\")\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting the maximum file date:\\n{e}\")\r\n",
+					"        error_message = format_error_message(e, max_length=300)\r\n",
 					"\r\n",
 					"    try:\r\n",
 					"        logInfo(\"Getting the filtered list of paths\")\r\n",
@@ -682,15 +695,18 @@
 					"        df = read_raw_messages(filtered_paths=filtered_paths)\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting the filtered list of paths:\\n{e}\")\r\n",
+					"        error_message = format_error_message(e, max_length=300)\r\n",
+					"\r\n",
 					"else:\r\n",
 					"    try:\r\n",
 					"        logInfo(\"Getting list of missing files\")\r\n",
 					"        missing_files = get_missing_files(table_name, source_path)\r\n",
 					"        df = read_raw_messages(filtered_paths=missing_files)\r\n",
 					"    except Exception as e:\r\n",
-					"        logError(f\"Error getting list of missing files:\\n{e}\")"
+					"        logError(f\"Error getting list of missing files:\\n{e}\")\r\n",
+					"        error_message = format_error_message(e, max_length=300)"
 				],
-				"execution_count": null
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
@@ -736,9 +752,10 @@
 					"    expected_new_count = table_row_count + rows_to_append\r\n",
 					"    logInfo(f\"Expected new count: {expected_new_count}\")\r\n",
 					"except Exception as e:\r\n",
-					"    logError(f\"Error deduping and generating counts:\\n{e}\")"
+					"    logError(f\"Error deduping and generating counts:\\n{e}\")\r\n",
+					"    error_message = format_error_message(e, max_length=300)"
 				],
-				"execution_count": null
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -775,13 +792,15 @@
 					"    append_df_to_table(df=df, table_name=table_name)\r\n",
 					"    \r\n",
 					"    end_exec_time = str(datetime.now())\r\n",
-					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
-					"    add_table_result(table_name, \r\n",
+					"    #time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
+					"    processing_results = add_table_result(\r\n",
+					"                    processing_results,\r\n",
+					"                    table_name, \r\n",
 					"                    insert_count, \r\n",
 					"                    \"success\",\r\n",
 					"                    start_exec_time, \r\n",
 					"                    end_exec_time,\r\n",
-					"                    time_diff,\r\n",
+					"                    \"\",\r\n",
 					"                    \"\"\r\n",
 					"                    )\r\n",
 					"\r\n",
@@ -789,36 +808,22 @@
 					"    new_table_row_count = spark.table(table_name).count()\r\n",
 					"except Exception as e:\r\n",
 					"    logError(f\"Error appending rows:\\n{e}\")\r\n",
-					"\r\n",
-					"    #Code added to capture meaningful error message\r\n",
-					"    full_trace = traceback.format_exc()\r\n",
-					"    \r\n",
-					"    table_error_msg = str(e)\r\n",
-					"\r\n",
-					"    complete_msg = table_error_msg + \"\\n\" + full_trace\r\n",
-					"    error_text = complete_msg[:300]           \r\n",
-					"    \r\n",
-					"    # Find the position of the last full stop before 300 characters\r\n",
-					"    last_period_index = error_text.rfind('.')\r\n",
-					"\r\n",
-					"    # Use up to the last full stop, if found; else fall back to 300 chars\r\n",
-					"    if last_period_index != -1:\r\n",
-					"        error_message = error_text[:last_period_index + 1] \r\n",
-					"    else:\r\n",
-					"        error_message = error_text\r\n",
+					"    error_message = format_error_message(e, max_length=300)\r\n",
 					"    \r\n",
 					"    end_exec_time = str(datetime.now())\r\n",
-					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
-					"    add_table_result(table_name, \r\n",
+					"    \r\n",
+					"    processing_results = add_table_result(\r\n",
+					"                    processing_results,\r\n",
+					"                    table_name, \r\n",
 					"                    insert_count, \r\n",
 					"                    \"failed\",\r\n",
 					"                    start_exec_time, \r\n",
 					"                    end_exec_time,\r\n",
-					"                    time_diff,\r\n",
+					"                    \"\",\r\n",
 					"                    error_message\r\n",
 					"                    )"
 				],
-				"execution_count": null
+				"execution_count": 21
 			},
 			{
 				"cell_type": "markdown",
@@ -854,32 +859,39 @@
 					"\r\n",
 					"    error_msg = f\"Error appending rows: {table_name} . The new row count isn't as expected.\"\r\n",
 					"    end_exec_time = str(datetime.now())\r\n",
-					"    time_diff = time_diff_seconds(start_exec_time, end_exec_time)\r\n",
-					"    add_table_result(table_name, \r\n",
+					"    \r\n",
+					"    processing_results = add_table_result(\r\n",
+					"                    processing_results,\r\n",
+					"                    table_name, \r\n",
 					"                    insert_count, \r\n",
 					"                    \"failed\",\r\n",
 					"                    start_exec_time, \r\n",
 					"                    end_exec_time,\r\n",
-					"                    time_diff,error_msg\r\n",
+					"                    \"\",\r\n",
+					"                    error_msg\r\n",
 					"                    )\r\n",
 					"else:\r\n",
 					"    logInfo(\"Rows appended successfully.\")"
 				],
-				"execution_count": null
+				"execution_count": 22
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"# Generate and display the final results\r\n",
-					"final_results = generate_processing_results()\r\n",
+					"final_results = generate_processing_results(processing_results)\r\n",
+					"\r\n",
 					"\r\n",
 					"# Convert to JSON string\r\n",
-					"result_json_str = json.dumps(final_results, indent=2, default=datetime_handler)\r\n",
+					"result_json_str = json.dumps(final_results, \r\n",
+					"                            indent=2, \r\n",
+					"                            default=lambda obj: obj.isoformat() if isinstance(obj, datetime) else None\r\n",
+					"                            )\r\n",
 					"\r\n",
 					"# Exit with the JSON result\r\n",
 					"mssparkutils.notebook.exit(result_json_str)"
 				],
-				"execution_count": null
+				"execution_count": 24
 			}
 		]
 	}
