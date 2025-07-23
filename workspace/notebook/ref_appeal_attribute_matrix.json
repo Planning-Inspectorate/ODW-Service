@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "54ef6dcb-ddac-4939-a9a4-ba5eaafa8d1a"
+				"spark.autotune.trackingId": "df1f776a-aa57-46ea-8a56-7ca6179ec1d8"
 			}
 		},
 		"metadata": {
@@ -68,9 +68,11 @@
 				"source": [
 					"import re\n",
 					"from pyspark.sql.functions import col\n",
+					"from datetime import datetime\n",
 					"\n",
 					"#Latest ingestion date from odw-raw\n",
-					"ingestion_date = \"2025-07-23\"\n",
+					"ingestion_date = datetime.today().strftime('%Y-%m-%d')\n",
+					"print(ingestion_date)\n",
 					"\n",
 					"file_path = f\"abfss://odw-raw@{storage_account}AppealAttributeMatrix/{ingestion_date}/appeals-attribute-matrix.csv\"\n",
 					"target_path = f\"abfss://odw-standardised@{storage_account}AppealAttributeMatrix/appeal_attribute_matrix\"\n",
@@ -98,7 +100,13 @@
 					"    df = df.withColumnRenamed(colname, new_name)\n",
 					"\n",
 					"df.write.mode(\"overwrite\").format(\"delta\").save(target_path)\n",
-					"df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(\"odw_standardised_db.appeal_attribute_matrix\")\n",
+					"table_name = \"odw_standardised_db.appeal_attribute_matrix\"\n",
+					"\n",
+					"if not spark.catalog.tableExists(table_name):\n",
+					"    df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(table_name)\n",
+					"    print(f\"Table '{table_name}' created.\")\n",
+					"else:\n",
+					"    print(f\"Table '{table_name}' already exists. Skipping write.\")\n",
 					"\n",
 					"display(df)"
 				],
