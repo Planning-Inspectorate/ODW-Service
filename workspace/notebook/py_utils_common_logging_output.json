@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "66f2112a-cb7f-4d32-91c4-47300d2c40a4"
+				"spark.autotune.trackingId": "94102b89-69b1-49d4-bf8d-b3dba44efb67"
 			}
 		},
 		"metadata": {
@@ -105,7 +105,7 @@
 					"from typing import Dict, Any, Union\r\n",
 					""
 				],
-				"execution_count": null
+				"execution_count": 17
 			},
 			{
 				"cell_type": "markdown",
@@ -125,7 +125,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 18
 			},
 			{
 				"cell_type": "markdown",
@@ -143,23 +143,14 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"class LoggingProcessor:\r\n",
+					"class ProcessingLogger:\r\n",
 					"    \"\"\"\r\n",
-					"    Class defined to organize processing result functions.\r\n",
+					"    class to organize processing result functions.\r\n",
 					"    \"\"\"\r\n",
 					"    \r\n",
 					"    def __init__(self):\r\n",
-					"        \"\"\"Initialize the LoggingProcessor\"\"\"\r\n",
-					"        pass\r\n",
-					"    \r\n",
-					"    @logging_to_appins\r\n",
-					"    def initialize_processing_results(self) -> Dict[str, Any]:\r\n",
-					"        \"\"\"\r\n",
-					"        Initialize the processing results structure  \r\n",
-					"        Returns:\r\n",
-					"            Dict containing the processing results structure\r\n",
-					"        \"\"\"\r\n",
-					"        return {\r\n",
+					"        \"\"\"Initialize the ProcessingLogger with processing_results as instance variable\"\"\"\r\n",
+					"        self.processing_results = {\r\n",
 					"            \"processing_summary\": {\r\n",
 					"                \"total_tables_processed\": 0,\r\n",
 					"                \"successful_tables\": 0,\r\n",
@@ -196,7 +187,6 @@
 					"\r\n",
 					"    @logging_to_appins\r\n",
 					"    def add_table_result(self, \r\n",
-					"                        processing_results: Dict[str, Any] = None,\r\n",
 					"                        delta_table_name: str = \"\", \r\n",
 					"                        insert_count: int = 0, \r\n",
 					"                        table_result: str = \"success\",\r\n",
@@ -208,7 +198,6 @@
 					"        Add processing result for a table to the tracking structure\r\n",
 					"        \r\n",
 					"        Args:\r\n",
-					"            processing_results: The processing results dictionary\r\n",
 					"            delta_table_name: Name of the delta table\r\n",
 					"            insert_count: Number of records inserted\r\n",
 					"            table_result: Result status (\"success\" or \"failed\")\r\n",
@@ -220,10 +209,6 @@
 					"        Returns:\r\n",
 					"            Updated processing_results dictionary\r\n",
 					"        \"\"\"\r\n",
-					"        # Auto initialize if None or not provided\r\n",
-					"        if processing_results is None:\r\n",
-					"            processing_results = self.initialize_processing_results()\r\n",
-					"\r\n",
 					"        # Calculate total execution time if not provided\r\n",
 					"        if not total_exec_time and start_exec_time and end_exec_time:\r\n",
 					"            total_exec_time = self.time_diff_seconds(start_exec_time, end_exec_time)\r\n",
@@ -238,31 +223,28 @@
 					"            \"error_message\": error_message\r\n",
 					"        }\r\n",
 					"        \r\n",
-					"        processing_results[\"table_details\"].append(table_detail)\r\n",
-					"        processing_results[\"processing_summary\"][\"total_tables_processed\"] += 1\r\n",
+					"        self.processing_results[\"table_details\"].append(table_detail)\r\n",
+					"        self.processing_results[\"processing_summary\"][\"total_tables_processed\"] += 1\r\n",
 					"        \r\n",
 					"        if table_result == \"success\":\r\n",
-					"            processing_results[\"processing_summary\"][\"successful_tables\"] += 1\r\n",
+					"            self.processing_results[\"processing_summary\"][\"successful_tables\"] += 1\r\n",
 					"        else:\r\n",
-					"            processing_results[\"processing_summary\"][\"failed_tables\"] += 1\r\n",
+					"            self.processing_results[\"processing_summary\"][\"failed_tables\"] += 1\r\n",
 					"        \r\n",
-					"        return processing_results\r\n",
+					"        return self.processing_results\r\n",
 					"\r\n",
 					"    @logging_to_appins\r\n",
-					"    def generate_processing_results(self, processing_results: Dict[str, Any]) -> Dict[str, Any]:\r\n",
+					"    def generate_processing_results(self) -> Dict[str, Any]:\r\n",
 					"        \"\"\"\r\n",
 					"        Generate and display the final processing results in JSON format\r\n",
 					"        \r\n",
-					"        Args:\r\n",
-					"            processing_results: The processing results dictionary\r\n",
-					"            \r\n",
 					"        Returns:\r\n",
 					"            Final processing results dictionary\r\n",
 					"        \"\"\"\r\n",
 					"        # Create the final result structure\r\n",
 					"        exit_value = {\r\n",
-					"            \"processing_summary\": processing_results[\"processing_summary\"],\r\n",
-					"            \"table_details\": processing_results[\"table_details\"]\r\n",
+					"            \"processing_summary\": self.processing_results[\"processing_summary\"],\r\n",
+					"            \"table_details\": self.processing_results[\"table_details\"]\r\n",
 					"        }\r\n",
 					"        \r\n",
 					"        # Convert to JSON string for display\r\n",
@@ -316,7 +298,7 @@
 					"        \r\n",
 					"        return error_message"
 				],
-				"execution_count": null
+				"execution_count": 19
 			},
 			{
 				"cell_type": "markdown",
@@ -334,9 +316,9 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"logging_app_processor = LoggingProcessor()"
+					"app_insight_processor = ProcessingLogger()"
 				],
-				"execution_count": null
+				"execution_count": 21
 			}
 		]
 	}
