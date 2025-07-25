@@ -1,0 +1,69 @@
+{
+	"name": "CompareCuratedAndHarmonised",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"name": "CuratedSource"
+				},
+				{
+					"name": "ServiceBusHarmonisedSource"
+				},
+				{
+					"name": "HorizonHarmonisedSource"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "ServiceBusHarmonisedCount"
+				},
+				{
+					"name": "HorizonHarmonisedCount"
+				},
+				{
+					"name": "CuratedCount"
+				},
+				{
+					"name": "HarmonisedCount"
+				},
+				{
+					"name": "JoinTables"
+				}
+			],
+			"scriptLines": [
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     store: 'synapse',",
+				"     databaseType: 'spark',",
+				"     format: 'table',",
+				"     database: 'odw_curated_db',",
+				"     tableName: 'appeal_s78') ~> CuratedSource",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     store: 'synapse',",
+				"     databaseType: 'spark',",
+				"     format: 'table',",
+				"     database: 'odw_harmonised_db',",
+				"     tableName: 'sb_appeal_s78') ~> ServiceBusHarmonisedSource",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     store: 'synapse',",
+				"     databaseType: 'spark',",
+				"     format: 'table',",
+				"     database: 'odw_harmonised_db',",
+				"     tableName: 'appeal_s78') ~> HorizonHarmonisedSource",
+				"ServiceBusHarmonisedSource aggregate(rowCount = count(1)) ~> ServiceBusHarmonisedCount",
+				"HorizonHarmonisedSource aggregate(rowCount = count(1)) ~> HorizonHarmonisedCount",
+				"CuratedSource aggregate(rowCount = count(1)) ~> CuratedCount",
+				"ServiceBusHarmonisedCount, HorizonHarmonisedCount union(byName: true)~> HarmonisedCount",
+				"CuratedCount, HarmonisedCount join(CuratedCount@rowCount - HarmonisedCount@rowCount,",
+				"     joinType:'cross',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> JoinTables"
+			]
+		}
+	}
+}
