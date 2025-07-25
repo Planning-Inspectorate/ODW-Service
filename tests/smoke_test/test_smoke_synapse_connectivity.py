@@ -5,6 +5,11 @@ import json
 class TestSmokeSynapseConnectivity(NotebookRunTestCase):
     """
         This test verifies that external connections from synapse are working properly
+
+        The following connections are tested:
+        - data lake
+        - failover data lake
+        - key vault
     """
     def test_synapse_connectivity(self):
         notebook_name = "test_smoke_py_connectivity"
