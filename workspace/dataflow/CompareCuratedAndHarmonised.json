@@ -26,10 +26,13 @@
 					"name": "CuratedCount"
 				},
 				{
-					"name": "HarmonisedCount"
+					"name": "JoinTables"
 				},
 				{
-					"name": "JoinTables"
+					"name": "rowDifference"
+				},
+				{
+					"name": "HarmonisedCount"
 				}
 			],
 			"scriptLines": [
@@ -39,30 +42,35 @@
 				"     databaseType: 'spark',",
 				"     format: 'table',",
 				"     database: 'odw_curated_db',",
-				"     tableName: 'appeal_s78') ~> CuratedSource",
+				"     tableName: 's51_advice') ~> CuratedSource",
 				"source(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     store: 'synapse',",
 				"     databaseType: 'spark',",
 				"     format: 'table',",
 				"     database: 'odw_harmonised_db',",
-				"     tableName: 'sb_appeal_s78') ~> ServiceBusHarmonisedSource",
+				"     tableName: 'sb_s51_advice') ~> ServiceBusHarmonisedSource",
 				"source(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     store: 'synapse',",
 				"     databaseType: 'spark',",
 				"     format: 'table',",
-				"     database: 'odw_harmonised_db',",
-				"     tableName: 'appeal_s78') ~> HorizonHarmonisedSource",
-				"ServiceBusHarmonisedSource aggregate(rowCount = count(1)) ~> ServiceBusHarmonisedCount",
-				"HorizonHarmonisedSource aggregate(rowCount = count(1)) ~> HorizonHarmonisedCount",
-				"CuratedSource aggregate(rowCount = count(1)) ~> CuratedCount",
-				"ServiceBusHarmonisedCount, HorizonHarmonisedCount union(byName: true)~> HarmonisedCount",
-				"CuratedCount, HarmonisedCount join(CuratedCount@rowCount - HarmonisedCount@rowCount,",
+				"     database: 'odw_standardised_db',",
+				"     tableName: 'horizon_nsip_advice') ~> HorizonHarmonisedSource",
+				"ServiceBusHarmonisedSource aggregate(rowServiceBusHarmonisedCount = count(1)) ~> ServiceBusHarmonisedCount",
+				"HorizonHarmonisedSource aggregate(rowHorizonHarmonisedCount = count(1)) ~> HorizonHarmonisedCount",
+				"CuratedSource aggregate(rowCuratedCount = count(1)) ~> CuratedCount",
+				"CuratedCount, HarmonisedCount join(1 == 1,",
 				"     joinType:'cross',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> JoinTables"
+				"     broadcast: 'auto')~> JoinTables",
+				"JoinTables derive(rowDifference = rowCuratedCount - (rowServiceBusHarmonisedCount + rowHorizonHarmonisedCount)) ~> rowDifference",
+				"ServiceBusHarmonisedCount, HorizonHarmonisedCount join(1 == 1,",
+				"     joinType:'cross',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> HarmonisedCount"
 			]
 		}
 	}
