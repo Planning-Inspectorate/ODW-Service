@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "ccae219f-a48a-434b-b456-07c392922f4f"
+				"spark.autotune.trackingId": "9ceee6d1-c358-456d-bfc2-05e6a6249d03"
 			}
 		},
 		"metadata": {
@@ -45,12 +45,31 @@
 				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 32,
-				"automaticScaleJobs": true
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db Delta table and appends into single owb_harmonised_db Delta table based on passing the table name as a parameter.\r\n",
+					"\r\n",
+					"**Author** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Created Date** &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; **Description**  \r\n",
+					"Rohit Shukla &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25-Jul-2025 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db Delta table and &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;appends into single owb_harmonised_db Delta tables based on passing the table names as a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;parameter&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\r\n",
+					"\r\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\r\n",
+					""
+				]
+			},
 			{
 				"cell_type": "code",
 				"metadata": {
@@ -67,7 +86,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 1
 			},
 			{
 				"cell_type": "markdown",
@@ -102,6 +121,26 @@
 				},
 				"source": [
 					"entity_name = ''"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialize Application Insight Logging functions"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_utils_common_logging_output"
 				],
 				"execution_count": null
 			},
@@ -266,26 +305,29 @@
 				"source": [
 					"@logging_to_appins\r\n",
 					"def set_harmonised_master_columns(df: DataFrame) -> DataFrame:\r\n",
-					"    source_system_df: DataFrame = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\r\n",
-					"    \r\n",
-					"    # Set source system ID\r\n",
-					"    df: DataFrame = df.withColumn(\"SourceSystemID\", lit(source_system_df.select('SourceSystemID').collect()[0][0]))\r\n",
-					"    \r\n",
-					"    # Set master column values\r\n",
-					"    df: DataFrame = df.withColumn(\"RowID\", lit('').cast(\"string\"))\r\n",
-					"    df: DataFrame = df.withColumn(\"migrated\", lit('1').cast(\"string\"))\r\n",
-					"    df: DataFrame = df.withColumn(\"ODTSourceSystem\", lit('ODT').cast(\"string\"))\r\n",
-					"    df: DataFrame = df.withColumn(\"ValidTo\", lit('').cast(\"string\"))\r\n",
-					"    df: DataFrame = df.withColumn(\"IsActive\", lit('Y').cast(\"string\"))\r\n",
-					"    df: DataFrame = df.withColumn(hrm_incremental_key, lit(None).cast(LongType()))\r\n",
-					"    df: DataFrame = df.withColumn(\"IngestionDate\", col(\"message_enqueued_time_utc\").cast(\"string\"))\r\n",
-					"    \r\n",
-					"    # drop standardised columns from DataFrame\r\n",
-					"    df: DataFrame = df.drop(\"message_enqueued_time_utc\")\r\n",
-					"    df: DataFrame = df.drop(\"expected_from\")\r\n",
-					"    df: DataFrame = df.drop(\"expected_to\")\r\n",
-					"    df: DataFrame = df.drop(\"input_file\")\r\n",
-					"    \r\n",
+					"    try:\r\n",
+					"        source_system_df: DataFrame = spark.sql(f\"SELECT * FROM {hrm_db}.main_sourcesystem_fact WHERE Description = 'Casework' AND IsActive = 'Y'\")\r\n",
+					"        \r\n",
+					"        # Set source system ID\r\n",
+					"        df: DataFrame = df.withColumn(\"SourceSystemID\", lit(source_system_df.select('SourceSystemID').collect()[0][0]))\r\n",
+					"        \r\n",
+					"        # Set master column values\r\n",
+					"        df: DataFrame = df.withColumn(\"RowID\", lit('').cast(\"string\"))\r\n",
+					"        df: DataFrame = df.withColumn(\"migrated\", lit('1').cast(\"string\"))\r\n",
+					"        df: DataFrame = df.withColumn(\"ODTSourceSystem\", lit('ODT').cast(\"string\"))\r\n",
+					"        df: DataFrame = df.withColumn(\"ValidTo\", lit('').cast(\"string\"))\r\n",
+					"        df: DataFrame = df.withColumn(\"IsActive\", lit('Y').cast(\"string\"))\r\n",
+					"        df: DataFrame = df.withColumn(hrm_incremental_key, lit(None).cast(LongType()))\r\n",
+					"        df: DataFrame = df.withColumn(\"IngestionDate\", col(\"message_enqueued_time_utc\").cast(\"string\"))\r\n",
+					"        \r\n",
+					"        # drop standardised columns from DataFrame\r\n",
+					"        df: DataFrame = df.drop(\"message_enqueued_time_utc\")\r\n",
+					"        df: DataFrame = df.drop(\"expected_from\")\r\n",
+					"        df: DataFrame = df.drop(\"expected_to\")\r\n",
+					"        df: DataFrame = df.drop(\"input_file\")\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error setting up Audit columns:\\n{e}\")\r\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return df"
 				],
 				"execution_count": null
