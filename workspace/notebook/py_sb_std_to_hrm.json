@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "9ceee6d1-c358-456d-bfc2-05e6a6249d03"
+				"spark.autotune.trackingId": "d033e5a6-d346-43a7-b0b2-ae18ad7bf252"
 			}
 		},
 		"metadata": {
@@ -120,9 +120,9 @@
 					]
 				},
 				"source": [
-					"entity_name = ''"
+					"entity_name = 'appeal-has'"
 				],
-				"execution_count": null
+				"execution_count": 12
 			},
 			{
 				"cell_type": "markdown",
@@ -142,7 +142,7 @@
 				"source": [
 					"%run utils/py_utils_common_logging_output"
 				],
-				"execution_count": null
+				"execution_count": 9
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +169,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +187,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": null
+				"execution_count": 10
 			},
 			{
 				"cell_type": "markdown",
@@ -229,7 +229,7 @@
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")\r\n",
 					"logInfo(\"Done reading orchestration config\")"
 				],
-				"execution_count": null
+				"execution_count": 13
 			},
 			{
 				"cell_type": "markdown",
@@ -270,7 +270,7 @@
 					"hrm_incremental_key: str = definition[\"Harmonised_Incremental_Key\"]\r\n",
 					"entity_primary_key: str = definition[\"Entity_Primary_Key\"]"
 				],
-				"execution_count": null
+				"execution_count": 14
 			},
 			{
 				"cell_type": "markdown",
@@ -330,7 +330,7 @@
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return df"
 				],
-				"execution_count": null
+				"execution_count": 15
 			},
 			{
 				"cell_type": "code",
@@ -348,15 +348,18 @@
 				"source": [
 					"@logging_to_appins\r\n",
 					"def insert_rows_in_df(source_df: DataFrame, target_df: DataFrame, incremental_key: str) -> DataFrame:\r\n",
-					"    # appending the incremental key\r\n",
-					"    max_id: int = target_df.count()\r\n",
+					"    try:\r\n",
+					"        # appending the incremental key\r\n",
+					"        max_id: int = target_df.count()\r\n",
 					"\r\n",
-					"    w: Window = Window.orderBy(lit(1))\r\n",
-					"    source_df: DataFrame = source_df.withColumn(incremental_key, (max_id + row_number().over(w)).cast(LongType()))\r\n",
-					"\r\n",
+					"        w: Window = Window.orderBy(lit(1))\r\n",
+					"        source_df: DataFrame = source_df.withColumn(incremental_key, (max_id + row_number().over(w)).cast(LongType()))\r\n",
+					"    except Exception as e:\r\n",
+					"        logError(f\"Error in creating source data frame :\\n{e}\")\r\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": null
+				"execution_count": 16
 			},
 			{
 				"cell_type": "markdown",
