@@ -8,10 +8,20 @@
 					"name": "CuratedSource"
 				},
 				{
+					"name": "HarmonisedSource"
+				},
+				{
 					"name": "ServiceBusHarmonisedSource"
 				},
 				{
-					"name": "HorizonHarmonisedSource"
+					"name": "StandardisedSource"
+				},
+				{
+					"linkedService": {
+						"referenceName": "ls_storage",
+						"type": "LinkedServiceReference"
+					},
+					"name": "Schemas"
 				}
 			],
 			"sinks": [
@@ -21,10 +31,10 @@
 			],
 			"transformations": [
 				{
-					"name": "ServiceBusHarmonisedCount"
+					"name": "HarmonisedCount"
 				},
 				{
-					"name": "HorizonHarmonisedCount"
+					"name": "ServiceBusHarmonisedCount"
 				},
 				{
 					"name": "CuratedCount"
@@ -34,9 +44,6 @@
 				},
 				{
 					"name": "rowDifference"
-				},
-				{
-					"name": "HarmonisedCount"
 				}
 			],
 			"scriptLines": [
@@ -53,6 +60,13 @@
 				"     databaseType: 'spark',",
 				"     format: 'table',",
 				"     database: 'odw_harmonised_db',",
+				"     tableName: 'nsip_s51_advice') ~> HarmonisedSource",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     store: 'synapse',",
+				"     databaseType: 'spark',",
+				"     format: 'table',",
+				"     database: 'odw_harmonised_db',",
 				"     tableName: 'sb_s51_advice') ~> ServiceBusHarmonisedSource",
 				"source(allowSchemaDrift: true,",
 				"     validateSchema: false,",
@@ -60,21 +74,23 @@
 				"     databaseType: 'spark',",
 				"     format: 'table',",
 				"     database: 'odw_standardised_db',",
-				"     tableName: 'horizon_nsip_advice') ~> HorizonHarmonisedSource",
-				"ServiceBusHarmonisedSource aggregate(rowServiceBusHarmonisedCount = count(1)) ~> ServiceBusHarmonisedCount",
-				"HorizonHarmonisedSource aggregate(rowHorizonHarmonisedCount = count(1)) ~> HorizonHarmonisedCount",
+				"     tableName: 'sb_s51_advice') ~> StandardisedSource",
+				"source(useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'json',",
+				"     documentForm: 'documentPerLine') ~> Schemas",
+				"HarmonisedSource aggregate(rowHarmonisedCount = sum(iif(toString(byName('IsActive')) == 'Y', 1, 0))",
+				") ~> HarmonisedCount",
+				"ServiceBusHarmonisedSource aggregate(rowHorizonHarmonisedCount = count(1)) ~> ServiceBusHarmonisedCount",
 				"CuratedSource aggregate(rowCuratedCount = count(1)) ~> CuratedCount",
 				"CuratedCount, HarmonisedCount join(1 == 1,",
 				"     joinType:'cross',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> JoinTables",
-				"JoinTables derive(rowDifference = rowCuratedCount - (rowServiceBusHarmonisedCount + rowHorizonHarmonisedCount)) ~> rowDifference",
-				"ServiceBusHarmonisedCount, HorizonHarmonisedCount join(1 == 1,",
-				"     joinType:'cross',",
-				"     matchType:'exact',",
-				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> HarmonisedCount",
+				"JoinTables derive(rowDifference = rowCuratedCount - (rowHarmonisedCount)) ~> rowDifference",
 				"rowDifference sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     store: 'synapse',",
