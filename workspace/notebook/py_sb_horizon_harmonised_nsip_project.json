@@ -21,7 +21,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "7252997d-fb1d-4857-ba60-7bc668da34a3"
+				"spark.autotune.trackingId": "90b52b5e-53df-40a5-951f-50a3760ad3b7"
 			}
 		},
 		"metadata": {
@@ -91,7 +91,7 @@
 					"from pyspark.sql import Row\n",
 					"from pyspark.sql.functions import *"
 				],
-				"execution_count": 1
+				"execution_count": 24
 			},
 			{
 				"cell_type": "markdown",
@@ -103,7 +103,7 @@
 					}
 				},
 				"source": [
-					"##### Define required delta tables"
+					"##### Define required delta tables and variables"
 				]
 			},
 			{
@@ -122,29 +122,12 @@
 				"source": [
 					"service_bus_table = \"odw_harmonised_db.sb_nsip_project\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_nsip_data\"\n",
-					"spark_table_final = \"odw_harmonised_db.nsip_project\""
+					"spark_table_final = \"odw_harmonised_db.nsip_project\"\n",
+					"insert_count = 0\n",
+					"update_count = 0\n",
+					"delete_count = 0"
 				],
-				"execution_count": 2
-			},
-			{
-				"cell_type": "markdown",
-				"metadata": {
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"##### Initialize Application Insight Logging functions"
-				]
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"%run utils/py_utils_common_logging_output"
-				],
-				"execution_count": 3
+				"execution_count": 25
 			},
 			{
 				"cell_type": "markdown",
@@ -164,7 +147,27 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 4
+				"execution_count": 27
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialize Application Insight Logging functions"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_utils_common_logging_output"
+				],
+				"execution_count": 26
 			},
 			{
 				"cell_type": "markdown",
@@ -309,7 +312,7 @@
 					"        logError(f\"Error in source Service Bus SQL query :\\n{e}\")\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
-				"execution_count": 5
+				"execution_count": 28
 			},
 			{
 				"cell_type": "markdown",
@@ -535,7 +538,7 @@
 					"        logError(f\"Error in source Horizon SQL query:\\n{e}\")\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
-				"execution_count": 6
+				"execution_count": 29
 			},
 			{
 				"cell_type": "markdown",
@@ -595,7 +598,7 @@
 					"        logError(f\"Error in processing Horizon data set:\\n{e}\")\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
-				"execution_count": 7
+				"execution_count": 30
 			},
 			{
 				"cell_type": "code",
@@ -613,7 +616,7 @@
 				"source": [
 					"results = service_bus_data.union(horizon_data)"
 				],
-				"execution_count": 8
+				"execution_count": 31
 			},
 			{
 				"cell_type": "markdown",
@@ -649,7 +652,7 @@
 					"        logError(f\"Error in ingesting delta table {spark_table_final}:\\n{e}\")\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
-				"execution_count": 9
+				"execution_count": 32
 			},
 			{
 				"cell_type": "markdown",
@@ -701,7 +704,7 @@
 					"FROM\n",
 					"    odw_harmonised_db.nsip_project"
 				],
-				"execution_count": 10
+				"execution_count": 33
 			},
 			{
 				"cell_type": "markdown",
@@ -976,10 +979,10 @@
 					"    \n",
 					"    end_exec_time = str(datetime.now())\n",
 					"    app_insight_logger.add_table_result(                    \n",
-					"                        delta_table_name = f\"{spark_table_final}\",\n",
+					"                        delta_table_name = spark_table_final,\n",
 					"                        insert_count = insert_count, \n",
-					"                        update_count = 0, \n",
-					"                        delete_count = 0, \n",
+					"                        update_count = update_count, \n",
+					"                        delete_count = delete_count, \n",
 					"                        table_result = \"success\",\n",
 					"                        start_exec_time = start_exec_time, \n",
 					"                        end_exec_time = end_exec_time,\n",
@@ -994,10 +997,10 @@
 					"        \n",
 					"        end_exec_time = str(datetime.now())\n",
 					"        app_insight_logger.add_table_result(\n",
-					"                    delta_table_name = f\"{spark_table_final}\",\n",
-					"                    insert_count = 0, \n",
-					"                    update_count = 0, \n",
-					"                    delete_count = 0, \n",
+					"                    delta_table_name = spark_table_final,\n",
+					"                    insert_count = insert_count, \n",
+					"                    update_count = update_count, \n",
+					"                    delete_count = delete_count, \n",
 					"                    table_result = \"failed\",\n",
 					"                    start_exec_time = start_exec_time, \n",
 					"                    end_exec_time = end_exec_time,\n",
@@ -1005,7 +1008,7 @@
 					"                    error_message = error_message\n",
 					"                    )"
 				],
-				"execution_count": 12
+				"execution_count": 34
 			},
 			{
 				"cell_type": "markdown",
