@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "f5ecbc72-ec3b-49be-b215-a6609cc35e57"
+				"spark.autotune.trackingId": "5a1ab804-71cc-488b-9ac3-3e2789e641cb"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": null
+				"execution_count": 96
 			},
 			{
 				"cell_type": "markdown",
@@ -120,9 +120,9 @@
 					]
 				},
 				"source": [
-					"entity_name = 'appeal-has'"
+					"entity_name = 'nsip-project'"
 				],
-				"execution_count": null
+				"execution_count": 97
 			},
 			{
 				"cell_type": "markdown",
@@ -142,7 +142,7 @@
 				"source": [
 					"%run utils/py_utils_common_logging_output"
 				],
-				"execution_count": null
+				"execution_count": 98
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +169,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": null
+				"execution_count": 99
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +187,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": null
+				"execution_count": 100
 			},
 			{
 				"cell_type": "markdown",
@@ -229,7 +229,7 @@
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")\r\n",
 					"logInfo(\"Done reading orchestration config\")"
 				],
-				"execution_count": null
+				"execution_count": 101
 			},
 			{
 				"cell_type": "markdown",
@@ -270,7 +270,7 @@
 					"hrm_incremental_key: str = definition[\"Harmonised_Incremental_Key\"]\r\n",
 					"entity_primary_key: str = definition[\"Entity_Primary_Key\"]"
 				],
-				"execution_count": null
+				"execution_count": 102
 			},
 			{
 				"cell_type": "markdown",
@@ -330,7 +330,7 @@
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return df"
 				],
-				"execution_count": null
+				"execution_count": 103
 			},
 			{
 				"cell_type": "code",
@@ -359,7 +359,7 @@
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": null
+				"execution_count": 104
 			},
 			{
 				"cell_type": "markdown",
@@ -410,25 +410,25 @@
 				"source": [
 					"@logging_to_appins\r\n",
 					"def get_latest_ingested_data() -> tuple:\r\n",
-					"    try:\r\n",
-					"        latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT DISTINCT message_id FROM {hrm_db}.{hrm_table} where message_id IS NOT NULL) ORDER BY message_enqueued_time_utc\")\r\n",
+					"    #try:\r\n",
+					"    latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT DISTINCT message_id FROM {hrm_db}.{hrm_table} where message_id IS NOT NULL) ORDER BY message_enqueued_time_utc\")\r\n",
 					"\r\n",
-					"        if latest_ingestion.count() == 0:\r\n",
-					"            logError(f\"Standardised data not available for {entity_name}\")\r\n",
-					"            mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\r\n",
+					"    if latest_ingestion.count() == 0:\r\n",
+					"        logError(f\"Standardised data not available for {entity_name}\")\r\n",
+					"        mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\r\n",
 					"\r\n",
-					"        # remove the column ingested_datetime and then remove duplicates\r\n",
-					"        latest_ingestion = latest_ingestion.drop(\"ingested_datetime\").dropDuplicates()\r\n",
-					"        latest_ingestion = set_harmonised_master_columns(latest_ingestion)\r\n",
-					"        # create dataframes for each message type and the target dataframe (the harmonised target table)\r\n",
-					"        create_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Create\"]\r\n",
-					"        update_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"].isin([\"update\", \"Update\", \"Publish\", \"Unpublish\"])]\r\n",
-					"        delete_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Delete\"]\r\n",
-					"        target_df: DataFrame = spark.table(f\"{hrm_db}.{hrm_table}\").drop(\"input_file\")\r\n",
+					"    # remove the column ingested_datetime and then remove duplicates\r\n",
+					"    latest_ingestion = latest_ingestion.drop(\"ingested_datetime\").dropDuplicates()\r\n",
+					"    latest_ingestion = set_harmonised_master_columns(latest_ingestion)\r\n",
+					"    # create dataframes for each message type and the target dataframe (the harmonised target table)\r\n",
+					"    create_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Create\"]\r\n",
+					"    update_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"].isin([\"update\", \"Update\", \"Publish\", \"Unpublish\"])]\r\n",
+					"    delete_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Delete\"]\r\n",
+					"    target_df: DataFrame = spark.table(f\"{hrm_db}.{hrm_table}\").drop(\"input_file\")\r\n",
 					"\r\n",
-					"    except Exception as e:\r\n",
-					"        logError(f\"Error in getting latest ingestion date from data frames :\\n{e}\")\r\n",
-					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"#except Exception as e:\r\n",
+					"#    logError(f\"Error in getting latest ingestion date from data frames :\\n{e}\")\r\n",
+					"#    error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"\r\n",
 					"    return (latest_ingestion,\r\n",
 					"            create_df, \r\n",
@@ -436,7 +436,7 @@
 					"            delete_df,\r\n",
 					"            target_df)"
 				],
-				"execution_count": null
+				"execution_count": 105
 			},
 			{
 				"cell_type": "code",
@@ -456,7 +456,7 @@
 					"latest_ingestion, create_df, update_df, delete_df, target_df = get_latest_ingested_data()\r\n",
 					"logInfo(\"Read ingested data\")"
 				],
-				"execution_count": null
+				"execution_count": 106
 			},
 			{
 				"cell_type": "markdown",
