@@ -16,6 +16,7 @@ class ArtifactArchiver():
             "pipeline/pln_master.json",
             "pipeline/pln_saphr_master.json",
             "pipeline/0_Timesheets_Data_Copy_RAW.json",  # Keep artifacts related to timesheets
+            "pipeline/0_Legacy_Timesheet_Data_Copy_RAW.json",
             "notebook/timesheets_master.json",
             "notebook/timesheets_minutes_dim.json",
             "notebook/timesheets_record_fact.json",
