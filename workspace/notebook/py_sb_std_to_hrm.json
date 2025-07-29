@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "c5b1e534-cc70-456b-9c99-dd1a2546d396"
+				"spark.autotune.trackingId": "20353590-e59b-4a56-b660-088d0578047b"
 			}
 		},
 		"metadata": {
@@ -86,7 +86,7 @@
 				"source": [
 					"%run utils/py_logging_decorator"
 				],
-				"execution_count": 23
+				"execution_count": 34
 			},
 			{
 				"cell_type": "markdown",
@@ -122,7 +122,7 @@
 				"source": [
 					"entity_name = 'nsip-project'"
 				],
-				"execution_count": 24
+				"execution_count": 35
 			},
 			{
 				"cell_type": "markdown",
@@ -142,7 +142,7 @@
 				"source": [
 					"%run utils/py_utils_common_logging_output"
 				],
-				"execution_count": 25
+				"execution_count": 36
 			},
 			{
 				"cell_type": "code",
@@ -169,7 +169,7 @@
 					"from pyspark.sql.window import Window\r\n",
 					"from pyspark.sql.types import LongType"
 				],
-				"execution_count": 26
+				"execution_count": 37
 			},
 			{
 				"cell_type": "code",
@@ -187,7 +187,7 @@
 				"source": [
 					"%run service-bus/py_spark_df_ingestion_functions"
 				],
-				"execution_count": 27
+				"execution_count": 38
 			},
 			{
 				"cell_type": "markdown",
@@ -229,7 +229,7 @@
 					"    mssparkutils.notebook.exit(f\"Definition not found for {entity_name}\")\r\n",
 					"logInfo(\"Done reading orchestration config\")"
 				],
-				"execution_count": 28
+				"execution_count": 39
 			},
 			{
 				"cell_type": "markdown",
@@ -276,7 +276,7 @@
 					"delete_count = 0\r\n",
 					""
 				],
-				"execution_count": 29
+				"execution_count": 40
 			},
 			{
 				"cell_type": "markdown",
@@ -336,7 +336,7 @@
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return df"
 				],
-				"execution_count": 30
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -365,7 +365,7 @@
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
 					"    return target_df.union(source_df)"
 				],
-				"execution_count": 31
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -412,62 +412,11 @@
 							"deleting": false
 						}
 					},
-					"editable": false,
+					"editable": true,
 					"run_control": {
-						"frozen": true
+						"frozen": false
 					}
 				},
-				"source": [
-					"@logging_to_appins\r\n",
-					"def get_latest_ingested_data() -> tuple:\r\n",
-					"    try:\r\n",
-					"        latest_ingestion = spark.sql(f\"SELECT * FROM {std_db}.{std_table} WHERE message_id not in (SELECT DISTINCT message_id FROM {hrm_db}.{hrm_table} where message_id IS NOT NULL) ORDER BY message_enqueued_time_utc\")\r\n",
-					"\r\n",
-					"        if latest_ingestion.count() == 0:\r\n",
-					"            logError(f\"Standardised data not available for {entity_name}\")\r\n",
-					"\r\n",
-					"            error_exception = Exception(f\"Standardised data not available for {entity_name}\")\r\n",
-					"            error_message = app_insight_logger.format_error_message(error_exception, max_length=300)\r\n",
-					"            end_exec_time = str(datetime.now())\r\n",
-					"            app_insight_logger.add_table_result(\r\n",
-					"                        delta_table_name = f\"{hrm_db}.{hrm_table}\",\r\n",
-					"                        insert_count = insert_count, \r\n",
-					"                        #update_count = update_count, \r\n",
-					"                        #delete_count = delete_count, \r\n",
-					"                        table_result = \"failed\",\r\n",
-					"                        start_exec_time = start_exec_time, \r\n",
-					"                        end_exec_time = end_exec_time,\r\n",
-					"                        total_exec_time = \"\",\r\n",
-					"                        error_message = error_message\r\n",
-					"                        )\r\n",
-					"            mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
-					"\r\n",
-					"            #mssparkutils.notebook.exit(f\"Standardised data not available for {entity_name}\")\r\n",
-					"\r\n",
-					"        # remove the column ingested_datetime and then remove duplicates\r\n",
-					"        latest_ingestion = latest_ingestion.drop(\"ingested_datetime\").dropDuplicates()\r\n",
-					"        latest_ingestion = set_harmonised_master_columns(latest_ingestion)\r\n",
-					"        # create dataframes for each message type and the target dataframe (the harmonised target table)\r\n",
-					"        create_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Create\"]\r\n",
-					"        update_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"].isin([\"update\", \"Update\", \"Publish\", \"Unpublish\"])]\r\n",
-					"        delete_df: DataFrame = latest_ingestion[latest_ingestion[\"message_type\"] == \"Delete\"]\r\n",
-					"        target_df: DataFrame = spark.table(f\"{hrm_db}.{hrm_table}\").drop(\"input_file\")\r\n",
-					"        return (latest_ingestion,\r\n",
-					"            create_df, \r\n",
-					"            update_df,\r\n",
-					"            delete_df,\r\n",
-					"            target_df)\r\n",
-					"\r\n",
-					"    except Exception as e:\r\n",
-					"        logError(f\"Error in getting latest ingestion date from data frames :\\n{e}\")\r\n",
-					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
-					"\r\n",
-					""
-				],
-				"execution_count": 123
-			},
-			{
-				"cell_type": "code",
 				"source": [
 					"@logging_to_appins\r\n",
 					"def get_latest_ingested_data() -> tuple:\r\n",
@@ -531,22 +480,7 @@
 					"        \r\n",
 					"        return (latest_ingestion, create_df, update_df, delete_df, target_df)"
 				],
-				"execution_count": 32
-			},
-			{
-				"cell_type": "code",
-				"source": [
-					"logInfo(\"Reading ingested data\")\r\n",
-					"latest_ingestion, create_df, update_df, delete_df, target_df = get_latest_ingested_data()\r\n",
-					"logInfo(\"Read ingested data successfully\")\r\n",
-					"# Check if we got valid data\r\n",
-					"if latest_ingestion is None or latest_ingestion.count() == 0:\r\n",
-					"    logError(\"No data available for processing. Exiting notebook.\")\r\n",
-					"    \r\n",
-					"    # Generate final results and exit    \r\n",
-					"    mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
-				],
-				"execution_count": 33
+				"execution_count": 43
 			},
 			{
 				"cell_type": "code",
@@ -560,17 +494,23 @@
 							"deleting": false
 						}
 					},
-					"editable": false,
+					"editable": true,
 					"run_control": {
-						"frozen": true
+						"frozen": false
 					}
 				},
 				"source": [
 					"logInfo(\"Reading ingested data\")\r\n",
 					"latest_ingestion, create_df, update_df, delete_df, target_df = get_latest_ingested_data()\r\n",
-					"logInfo(\"Read ingested data\")"
+					"logInfo(\"Read ingested data successfully\")\r\n",
+					"# Check if we got valid data\r\n",
+					"if latest_ingestion is None or latest_ingestion.count() == 0:\r\n",
+					"    logError(\"No data available for processing. Exiting notebook.\")\r\n",
+					"    \r\n",
+					"    # Generate final results and exit    \r\n",
+					"    mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
-				"execution_count": 124
+				"execution_count": 44
 			},
 			{
 				"cell_type": "markdown",
