@@ -20,12 +20,12 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "07518ead-5ad8-4777-baa1-cfec415164ba"
+				"spark.autotune.trackingId": "9f3c1fa4-a1b3-4525-8feb-b1bd484408fe"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": false,
+			"enableDebugMode": true,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -52,11 +52,70 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db.sb_appeal_document Delta table and other source tables to owb_harmonised_db.appeal_event Delta table based on existing MiPINS business logic.\n",
+					"\n",
+					"**Description**  \n",
+					"The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db.sb_appeal_document Delta table and other source tables to owb_harmonised_db.appeal_event Delta table based on existing MiPINS business logic.\n",
+					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from pyspark.sql.types import IntegerType, ArrayType, StructType, StructField\n",
 					"from pyspark.sql import Row\n",
-					"from pyspark.sql.functions import *"
+					"from pyspark.sql.functions import *\n",
+					"from datetime import date,datetime"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialise Logging decorator"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialise Application Insight Logging functions"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_utils_common_logging_output"
 				],
 				"execution_count": null
 			},
@@ -77,26 +136,21 @@
 					"service_bus_table = \"odw_harmonised_db.sb_appeal_event\"\n",
 					"horizon_table = \"odw_standardised_db.horizon_appeals_event\"\n",
 					"spark_table_final = \"odw_harmonised_db.appeal_event\"\n",
-					"primary_key = \"eventId\""
+					"primary_key = \"eventId\"\n",
+					"\n",
+					"start_exec_time = str(datetime.now())\n",
+					"insert_count = 0\n",
+					"update_count = 0\n",
+					"delete_count = 0"
 				],
 				"execution_count": null
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
 				"source": [
-					"# Get data out of the service bus with additional fields needed for Horizon data\n",
-					"service_bus_data = spark.sql(f\"\"\"\n",
+					"try:\n",
+					"    # Get data out of the service bus with additional fields needed for Horizon data\n",
+					"    service_bus_data = spark.sql(f\"\"\"\n",
 					"                    SELECT DISTINCT\n",
 					"                            AppealsEventId\n",
 					"                            ,eventId\n",
@@ -122,8 +176,10 @@
 					"                            ,RowID\n",
 					"                            ,IsActive\n",
 					"                    FROM {service_bus_table} AS Service_Bus\n",
-					"\n",
-					"                    \"\"\")"
+					"                    \"\"\")\n",
+					"except Exception as e:\n",
+					"        logError(f\"Error in source Service Bus SQL query {service_bus_table}:\\n{e}\")\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
 				"execution_count": null
 			},
@@ -147,46 +203,39 @@
 			},
 			{
 				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
 				"source": [
-					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
-					"horizon_data = spark.sql(f\"\"\"\n",
-					"                SELECT DISTINCT \n",
-					"                        CAST(NULL AS LONG) as AppealsEventId\n",
-					"                        ,CONCAT(casenumber, '-',eventId) AS eventId\n",
-					"                        ,caseReference\n",
-					"                        ,eventType\n",
-					"                        ,eventName\n",
-					"                        ,eventStatus\n",
-					"                        ,CAST(NULL AS BOOLEAN) as isUrgent\n",
-					"                        ,CAST(NULL AS BOOLEAN) as eventPublished\n",
-					"                        ,CAST(NULL AS String) as eventStartDatetime\n",
-					"                        ,CAST(NULL AS String)  as eventEndDatetime\n",
-					"                        ,notificationOfSitevisit\n",
-					"                        ,eventaddressline1 as addressLine1\n",
-					"                        ,eventaddressline2 as addressLine2\n",
-					"                        ,eventaddresstown as addressTown\n",
-					"                        ,eventaddresscounty as addressCounty\n",
-					"                        ,eventaddresspostcode as addressPostcode\n",
-					"                        ,0 AS Migrated\n",
-					"                        ,'Horizon' AS ODTSourceSystem\n",
-					"                        ,9 AS SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
-					"                        ,ingested_datetime AS IngestionDate\n",
-					"                        ,CAST(NULL AS String) AS ValidTo\n",
-					"                        ,'' as RowID\n",
-					"                        ,'Y' as IsActive\n",
-					"                FROM {horizon_table} AS Horizon\n",
-					"     WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")"
+					"try:\n",
+					"    # Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
+					"    horizon_data = spark.sql(f\"\"\"\n",
+					"                    SELECT DISTINCT \n",
+					"                            CAST(NULL AS LONG) as AppealsEventId\n",
+					"                            ,CONCAT(casenumber, '-',eventId) AS eventId\n",
+					"                            ,caseReference\n",
+					"                            ,eventType\n",
+					"                            ,eventName\n",
+					"                            ,eventStatus\n",
+					"                            ,CAST(NULL AS BOOLEAN) as isUrgent\n",
+					"                            ,CAST(NULL AS BOOLEAN) as eventPublished\n",
+					"                            ,CAST(NULL AS String) as eventStartDatetime\n",
+					"                            ,CAST(NULL AS String)  as eventEndDatetime\n",
+					"                            ,notificationOfSitevisit\n",
+					"                            ,eventaddressline1 as addressLine1\n",
+					"                            ,eventaddressline2 as addressLine2\n",
+					"                            ,eventaddresstown as addressTown\n",
+					"                            ,eventaddresscounty as addressCounty\n",
+					"                            ,eventaddresspostcode as addressPostcode\n",
+					"                            ,0 AS Migrated\n",
+					"                            ,'Horizon' AS ODTSourceSystem\n",
+					"                            ,9 AS SourceSystemID -- ID for appeals in odw_harmonised_db.main_sourcesystem_fact\n",
+					"                            ,ingested_datetime AS IngestionDate\n",
+					"                            ,CAST(NULL AS String) AS ValidTo\n",
+					"                            ,'' as RowID\n",
+					"                            ,'Y' as IsActive\n",
+					"                    FROM {horizon_table} AS Horizon\n",
+					"        WHERE ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table}) \"\"\")\n",
+					"except Exception as e:\n",
+					"        logError(f\"Error in source Horizon SQL query {horizon_table}:\\n{e}\")\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
 				"execution_count": null
 			},
