@@ -1,81 +1,130 @@
 {
   "name": "unit_test_framework",
   "properties": {
-    "activities": [
-      {
-        "name": "ParametrizedUnitTestRunner",
-        "type": "SynapseNotebook",
-        "dependsOn": [],
-        "policy": {
-          "timeout": "7.00:00:00",
-          "retry": 0,
-          "retryIntervalInSeconds": 30,
-          "secureOutput": false,
-          "secureInput": false
+    "type": "MappingDataFlow",
+    "typeProperties": {
+      "sources": [
+        {
+          "name": "StandardisedSource"
         },
-        "userProperties": [],
-        "typeProperties": {
-          "notebook": {
-            "referenceName": "parametrized_unit_test_runner",
-            "type": "NotebookReference"
+        {
+          "name": "HarmonisedSource"
+        },
+        {
+          "name": "CuratedSource"
+        },
+        {
+          "linkedService": {
+            "referenceName": "ls_storage",
+            "type": "LinkedServiceReference"
           },
-          "parameters": {
-            "test_config": {
-              "value": "@pipeline().parameters.test_config",
-              "type": "Expression"
-            },
-            "entity_name": {
-              "value": "@pipeline().parameters.entity_name",
-              "type": "Expression"
-            }
-          },
-          "snapshot": true,
-          "sparkPool": {
-            "referenceName": "pinssynspodw34",
-            "type": "BigDataPoolReference"
-          },
-          "executorSize": "Medium",
-          "conf": {
-            "spark.dynamicAllocation.enabled": false,
-            "spark.dynamicAllocation.minExecutors": 2,
-            "spark.dynamicAllocation.maxExecutors": 2
-          },
-          "driverSize": "Medium",
-          "numExecutors": 2
+          "name": "ConfigSource"
         }
-      }
-    ],
-    "parameters": {
-      "test_config": {
-        "type": "object",
-        "defaultValue": {
-          "entity_name": "appeal-document",
-          "databases": {
-            "standardised": "odw_standardised_db",
-            "harmonised": "odw_harmonised_db",
-            "curated": "odw_curated_db"
-          },
-          "tables": {
-            "std_table": "sb_appeal_document",
-            "hrm_table": "sb_appeal_document",
-            "hrm_final": "appeal_document",
-            "curated_table": "appeal_document"
-          },
-          "test_categories": [
-            "schema_validation",
-            "row_count_validation",
-            "data_integrity",
-            "no_record_dropping"
-          ],
-          "primary_key": "documentId"
+      ],
+      "sinks": [
+        {
+          "name": "TestResultOutput"
         }
-      },
-      "entity_name": {
-        "type": "string",
-        "defaultValue": "appeal-document"
-      }
-    },
-    "annotations": []
-  },
-  "type": "Microsoft.Synapse/workspaces/pipelines"
+      ],
+      "transformations": [
+        {
+          "name": "StandardisedCount"
+        },
+        {
+          "name": "HarmonisedCount"
+        },
+        {
+          "name": "CuratedCount"
+        },
+        {
+          "name": "SchemaValidation"
+        },
+        {
+          "name": "RowCountComparison"
+        },
+        {
+          "name": "TestResults"
+        }
+      ],
+      "scriptLines": [
+        "parameters{",
+        "     entity_name as string ('appeal-document'),",
+        "     std_db as string ('odw_standardised_db'),",
+        "     hrm_db as string ('odw_harmonised_db'),",
+        "     cur_db as string ('odw_curated_db'),",
+        "     std_table as string ('sb_appeal_document'),",
+        "     hrm_table as string ('sb_appeal_document'),",
+        "     hrm_final as string ('appeal_document'),",
+        "     cur_table as string ('appeal_document'),",
+        "     primary_key as string ('documentId')",
+        "}",
+        "source(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     store: 'synapse',",
+        "     databaseType: 'spark',",
+        "     format: 'table',",
+        "     database: ($std_db),",
+        "     tableName: ($std_table)) ~> StandardisedSource",
+        "source(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     store: 'synapse',",
+        "     databaseType: 'spark',",
+        "     format: 'table',",
+        "     database: ($hrm_db),",
+        "     tableName: ($hrm_final)) ~> HarmonisedSource",
+        "source(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     store: 'synapse',",
+        "     databaseType: 'spark',",
+        "     format: 'table',",
+        "     database: ($cur_db),",
+        "     tableName: ($cur_table)) ~> CuratedSource",
+        "source(useSchema: false,",
+        "     allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     ignoreNoFilesFound: false,",
+        "     format: 'json',",
+        "     fileSystem: 'odw-config',",
+        "     folderPath: 'standardised_table_definitions',",
+        "     fileName: ($entity_name),",
+        "     documentForm: 'documentPerLine') ~> ConfigSource",
+        "StandardisedSource aggregate(std_count = count(1),",
+        "          std_with_message_type = sum(iif(isNull(message_type) || isNull(message_id), 0, 1))) ~> StandardisedCount",
+        "HarmonisedSource aggregate(hrm_count = count(1),",
+        "          hrm_active_count = sum(iif(toString(byName('IsActive')) == 'Y', 1, 0))) ~> HarmonisedCount",
+        "CuratedSource aggregate(cur_count = count(1),",
+        "          cur_distinct_count = countDistinct(byName($primary_key))) ~> CuratedCount",
+        "StandardisedSource, HarmonisedSource exists(StandardisedSource@message_id == HarmonisedSource@message_id,",
+        "     negate:false,",
+        "     broadcast: 'auto')~> SchemaValidation",
+        "StandardisedCount, HarmonisedCount, CuratedCount join(1 == 1,",
+        "     joinType:'cross',",
+        "     matchType:'exact',",
+        "     ignoreSpaces: false,",
+        "     broadcast: 'auto')~> RowCountComparison",
+        "RowCountComparison derive(entity = $entity_name,",
+        "          std_to_hrm_match = std_with_message_type == hrm_count,",
+        "          hrm_to_cur_match = hrm_active_count == cur_count,",
+        "          cur_unique_check = cur_count == cur_distinct_count,",
+        "          test_timestamp = currentTimestamp(),",
+        "          std_hrm_diff = std_with_message_type - hrm_count,",
+        "          hrm_cur_diff = hrm_active_count - cur_count) ~> TestResults",
+        "TestResults sink(allowSchemaDrift: true,",
+        "     validateSchema: false,",
+        "     store: 'synapse',",
+        "     databaseType: 'spark',",
+        "     format: 'table',",
+        "     database: 'logging',",
+        "     tableName: 'unit_test_results',",
+        "     recreate:false,",
+        "     upsertable:false,",
+        "     deletable:false,",
+        "     insertable:true,",
+        "     updateable:false,",
+        "     truncate:false,",
+        "     skipDuplicateMapInputs: true,",
+        "     skipDuplicateMapOutputs: true) ~> TestResultOutput"
+      ]
+    }
+  }
 }
