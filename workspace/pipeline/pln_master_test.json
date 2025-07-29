@@ -3,8 +3,8 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "CompareCuratedAndHarmonised",
-				"type": "ExecuteDataFlow",
+				"name": "Lookup_orchestration_file",
+				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
@@ -15,15 +15,66 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"dataflow": {
-						"referenceName": "CompareCuratedAndHarmonised",
-						"type": "DataFlowReference"
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
 					},
-					"compute": {
-						"coreCount": 8,
-						"computeType": "General"
+					"dataset": {
+						"referenceName": "Is_storage_config",
+						"type": "DatasetReference",
+						"parameters": {
+							"folder": "orchestration",
+							"file_name": "orchestration.json"
+						}
 					},
-					"traceLevel": "Fine"
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_horizon_files",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Filter_Horizon_Table').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 10,
+					"activities": [
+						{
+							"name": "CompareCuratedAndHarmonised",
+							"type": "ExecuteDataFlow",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataflow": {
+									"referenceName": "CompareCuratedAndHarmonised",
+									"type": "DataFlowReference"
+								},
+								"compute": {
+									"coreCount": 8,
+									"computeType": "General"
+								},
+								"traceLevel": "Fine"
+							}
+						}
+					]
 				}
 			}
 		],
