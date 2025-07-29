@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "5f709b8b-0f27-4cd7-96c7-a5d16a5fdbc3"
+				"spark.autotune.trackingId": "daea5d72-513c-4b75-85e2-bba280da68b9"
 			}
 		},
 		"metadata": {
@@ -45,18 +45,78 @@
 				"sparkVersion": "3.4",
 				"nodeCount": 3,
 				"cores": 4,
-				"memory": 32,
-				"automaticScaleJobs": true
+				"memory": 28,
+				"automaticScaleJobs": false
 			},
 			"sessionKeepAliveTimeout": 30
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"#### The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db.sb_appeal_document Delta table and proccess to owb_harmonised_db.appeal_document Delta table along with other related tables based on existing MiPINS business logic.\n",
+					"\n",
+					"**Description**  \n",
+					"The purpose of this pyspark notebook is to read service bus data from owb_standarsied_db Delta table and appends into owb_harmonised_db.appeal_document and other Delta tables based on the existing MiPINS business logic.\n",
+					"\n",
+					"**Spark Cluster Configuration** -> Apache Spark Version- 3.4, Python Version \t\t- 3.10, Delta Lake Version \t- 2.4\n",
+					""
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from pyspark.sql.types import IntegerType, ArrayType, StructType, StructField\n",
 					"from pyspark.sql import Row\n",
-					"from pyspark.sql.functions import *"
+					"from pyspark.sql.functions import *\n",
+					"from datetime import date,datetime"
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialise Logging decorator"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_logging_decorator"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Initialise Application Insight Logging functions"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"%run utils/py_utils_common_logging_output"
 				],
 				"execution_count": null
 			},
@@ -79,7 +139,12 @@
 					"aie_extracts_table = \"odw_harmonised_db.aie_document_data\"\n",
 					"spark_table_final = \"odw_harmonised_db.appeal_document\"\n",
 					"\n",
-					"primary_key = 'TEMP_PK'"
+					"primary_key = 'TEMP_PK'\n",
+					"\n",
+					"start_exec_time = str(datetime.now())\n",
+					"insert_count = 0\n",
+					"update_count = 0\n",
+					"delete_count = 0"
 				],
 				"execution_count": null
 			},
@@ -97,140 +162,148 @@
 					}
 				},
 				"source": [
-					"# Get data out of the service bus with additional fields needed for Horizon data\n",
-					"service_bus_data = spark.sql(f\"\"\"\n",
-					"                    SELECT DISTINCT\n",
-					"                        MD5(CONCAT(documentId, filename, version, documentURI)) AS {primary_key}\n",
-					"                        ,AppealsDocumentMetadataID\n",
-					"                        ,documentId\n",
-					"                        ,caseId\n",
-					"                        ,caseReference\n",
-					"                        ,version\n",
-					"                        ,filename\n",
-					"                        ,originalFilename\n",
-					"                        ,size\n",
-					"                        ,mime\n",
-					"                        ,documentURI\n",
-					"                        ,publishedDocumentURI\n",
-					"                        ,virusCheckStatus\n",
-					"                        ,fileMD5\n",
-					"                        ,dateCreated\n",
-					"                        ,dateReceived\n",
-					"                        ,datePublished\n",
-					"                        ,lastModified\n",
-					"                        ,caseType\n",
-					"                        ,redactedStatus\n",
-					"                        ,documentType\n",
-					"                        ,sourceSystem\n",
-					"                        ,origin\n",
-					"                        ,owner\n",
-					"                        ,author\n",
-					"                        ,description\n",
-					"                        ,caseStage\n",
-					"                        ,horizonFolderId\n",
+					"try:\n",
+					"    # Get data out of the service bus with additional fields needed for Horizon data\n",
+					"    service_bus_data = spark.sql(f\"\"\"\n",
+					"                        SELECT DISTINCT\n",
+					"                            MD5(CONCAT(documentId, filename, version, documentURI)) AS {primary_key}\n",
+					"                            ,AppealsDocumentMetadataID\n",
+					"                            ,documentId\n",
+					"                            ,caseId\n",
+					"                            ,caseReference\n",
+					"                            ,version\n",
+					"                            ,filename\n",
+					"                            ,originalFilename\n",
+					"                            ,size\n",
+					"                            ,mime\n",
+					"                            ,documentURI\n",
+					"                            ,publishedDocumentURI\n",
+					"                            ,virusCheckStatus\n",
+					"                            ,fileMD5\n",
+					"                            ,dateCreated\n",
+					"                            ,dateReceived\n",
+					"                            ,datePublished\n",
+					"                            ,lastModified\n",
+					"                            ,caseType\n",
+					"                            ,redactedStatus\n",
+					"                            ,documentType\n",
+					"                            ,sourceSystem\n",
+					"                            ,origin\n",
+					"                            ,owner\n",
+					"                            ,author\n",
+					"                            ,description\n",
+					"                            ,caseStage\n",
+					"                            ,horizonFolderId\n",
 					"\n",
-					"                        -- Start Horizon columns\n",
-					"                        ,CAST(NULL AS String) AS caseNumber\n",
-					"                        ,CAST(NULL AS String) AS caseworkTypeGroup\n",
-					"                        ,CAST(NULL AS String) AS caseworkTypeAbbreviation\n",
-					"                        ,CAST(NULL AS String) AS versionFilename\n",
-					"                        ,CAST(NULL AS String) AS incomingOutgoingExternal\n",
-					"                        ,CAST(NULL AS String) AS publishedStatus\n",
-					"                        -- End Horizon columns\n",
+					"                            -- Start Horizon columns\n",
+					"                            ,CAST(NULL AS String) AS caseNumber\n",
+					"                            ,CAST(NULL AS String) AS caseworkTypeGroup\n",
+					"                            ,CAST(NULL AS String) AS caseworkTypeAbbreviation\n",
+					"                            ,CAST(NULL AS String) AS versionFilename\n",
+					"                            ,CAST(NULL AS String) AS incomingOutgoingExternal\n",
+					"                            ,CAST(NULL AS String) AS publishedStatus\n",
+					"                            -- End Horizon columns\n",
+					"                            \n",
+					"                            ,Migrated\n",
+					"                            ,ODTSourceSystem\n",
+					"                            ,SourceSystemID\n",
+					"                            ,IngestionDate \n",
+					"                            ,NULLIF(ValidTo, '') AS ValidTo\n",
+					"                            ,'' as RowID\n",
+					"                            ,IsActive\n",
+					"                            \n",
+					"                        FROM \n",
+					"                            {service_bus_table}\n",
+					"\n",
+					"                    \"\"\")\n",
+					"except Exception as e:\n",
+					"        logError(f\"Error in source Service Bus SQL query :\\n{e}\")\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"try:\n",
+					"    # Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
+					"    horizon_data = spark.sql(f\"\"\"\n",
+					"                    SELECT DISTINCT \n",
+					"                        MD5(\n",
+					"                            CONCAT(\n",
+					"                                COALESCE(Doc.documentId, ''), \n",
+					"                                COALESCE(Doc.filename, ''), \n",
+					"                                COALESCE(CAST(Doc.version AS INTEGER), ''),\n",
+					"                                COALESCE(Aie.documentURI, '')\n",
+					"                            )\n",
+					"                        ) AS {primary_key}\n",
+					"                        ,CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
+					"                        ,Doc.documentId\n",
+					"                        ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
+					"                        ,Doc.caseReference\n",
+					"                        ,CAST(Doc.version AS INTEGER) AS version\n",
+					"                        ,Doc.filename as filename\n",
+					"                        ,Doc.filename as originalFilename\n",
+					"                        ,CAST(Doc.size AS INTEGER) AS size\n",
+					"                        ,Aie.mime\n",
+					"                        ,Aie.documentURI\n",
+					"                        ,CAST(NULL AS String) AS publishedDocumentURI\n",
+					"                        ,Doc.virusCheckStatus\n",
+					"                        ,Aie.fileMD5\n",
+					"                        ,Doc.dateCreated\n",
+					"                        ,CAST(NULL AS String) AS dateReceived\n",
+					"                        ,Doc.datePublished\n",
+					"                        ,Doc.lastModified\n",
+					"                        ,Doc.caseworkType as caseType\n",
+					"                        ,Doc.redactedStatus\n",
+					"                        ,Doc.documentType\n",
+					"                        ,Doc.sourceSystem -- set to horizon\n",
+					"                        ,CAST(NULL AS String) AS origin\n",
+					"                        ,Aie.owner\n",
+					"                        ,Aie.author\n",
+					"                        ,Doc.documentDescription AS description\n",
+					"                        ,CAST(NULL AS String) AS caseStage\n",
+					"                        ,Doc.folderid AS horizonFolderId\n",
 					"                        \n",
-					"                        ,Migrated\n",
-					"                        ,ODTSourceSystem\n",
-					"                        ,SourceSystemID\n",
-					"                        ,IngestionDate \n",
-					"                        ,NULLIF(ValidTo, '') AS ValidTo\n",
+					"                        -- Start Horizon Fields Not in SB\n",
+					"                        ,Doc.caseNumber\n",
+					"                        ,Doc.caseworkTypeGroup\n",
+					"                        ,Doc.caseworkTypeAbbreviation\n",
+					"                        ,Doc.versionFilename\n",
+					"                        ,Doc.incomingOutgoingExternal\n",
+					"                        ,Doc.publishedStatus\n",
+					"                        -- END Horizon Fields Not in SB\n",
+					"\n",
+					"                        ,\"0\" as Migrated\n",
+					"                        ,\"Horizon\" as ODTSourceSystem\n",
+					"                        ,NULL AS SourceSystemID\n",
+					"                        , to_timestamp(Doc.expected_from)  AS IngestionDate\n",
+					"                        ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
 					"                        ,'' as RowID\n",
-					"                        ,IsActive\n",
-					"                        \n",
-					"                    FROM \n",
-					"                        {service_bus_table}\n",
-					"\n",
-					"                    \"\"\")"
-				],
-				"execution_count": null
-			},
-			{
-				"cell_type": "code",
-				"metadata": {
-					"jupyter": {
-						"source_hidden": false,
-						"outputs_hidden": false
-					},
-					"nteract": {
-						"transient": {
-							"deleting": false
-						}
-					}
-				},
-				"source": [
-					"# Get data out of Horizon and matching the SB schema (with additional fields and ensure data types match)\n",
-					"horizon_data = spark.sql(f\"\"\"\n",
-					"                SELECT DISTINCT \n",
-					"                    MD5(\n",
-					"                        CONCAT(\n",
-					"                            COALESCE(Doc.documentId, ''), \n",
-					"                            COALESCE(Doc.filename, ''), \n",
-					"                            COALESCE(CAST(Doc.version AS INTEGER), ''),\n",
-					"                            COALESCE(Aie.documentURI, '')\n",
-					"                        )\n",
-					"                    ) AS {primary_key}\n",
-					"                    ,CAST(NULL AS LONG) AS AppealsDocumentMetadataID\n",
-					"                    ,Doc.documentId\n",
-					"                    ,CAST(Doc.casenodeid AS INTEGER) AS caseId\n",
-					"                    ,Doc.caseReference\n",
-					"                    ,CAST(Doc.version AS INTEGER) AS version\n",
-					"                    ,Doc.filename as filename\n",
-					"                    ,Doc.filename as originalFilename\n",
-					"                    ,CAST(Doc.size AS INTEGER) AS size\n",
-					"                    ,Aie.mime\n",
-					"                    ,Aie.documentURI\n",
-					"                    ,CAST(NULL AS String) AS publishedDocumentURI\n",
-					"                    ,Doc.virusCheckStatus\n",
-					"                    ,Aie.fileMD5\n",
-					"                    ,Doc.dateCreated\n",
-					"                    ,CAST(NULL AS String) AS dateReceived\n",
-					"                    ,Doc.datePublished\n",
-					"                    ,Doc.lastModified\n",
-					"                    ,Doc.caseworkType as caseType\n",
-					"                    ,Doc.redactedStatus\n",
-					"                    ,Doc.documentType\n",
-					"                    ,Doc.sourceSystem -- set to horizon\n",
-					"                    ,CAST(NULL AS String) AS origin\n",
-					"                    ,Aie.owner\n",
-					"                    ,Aie.author\n",
-					"                    ,Doc.documentDescription AS description\n",
-					"                    ,CAST(NULL AS String) AS caseStage\n",
-					"                    ,Doc.folderid AS horizonFolderId\n",
-					"                    \n",
-					"                    -- Start Horizon Fields Not in SB\n",
-					"                    ,Doc.caseNumber\n",
-					"                    ,Doc.caseworkTypeGroup\n",
-					"                    ,Doc.caseworkTypeAbbreviation\n",
-					"                    ,Doc.versionFilename\n",
-					"                    ,Doc.incomingOutgoingExternal\n",
-					"                    ,Doc.publishedStatus\n",
-					"                    -- END Horizon Fields Not in SB\n",
-					"\n",
-					"                    ,\"0\" as Migrated\n",
-					"                    ,\"Horizon\" as ODTSourceSystem\n",
-					"                    ,NULL AS SourceSystemID\n",
-					"                    , to_timestamp(Doc.expected_from)  AS IngestionDate\n",
-					"                    ,CAST(null as string) as ValidTo -- to avoid any null descrepancies\n",
-					"                    ,'' as RowID\n",
-					"                    ,'Y' as IsActive\n",
-					"                FROM\n",
-					"                    {horizon_table} AS Doc\n",
-					"                LEFT JOIN {aie_extracts_table} AS Aie\n",
-					"                    ON Doc.documentId = Aie.documentid\n",
-					"                    AND Doc.size = Aie.size\n",
-					"                    AND Doc.version = Aie.version\n",
-					"                WHERE\n",
-					"                    Doc.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
-					"            \"\"\")"
+					"                        ,'Y' as IsActive\n",
+					"                    FROM\n",
+					"                        {horizon_table} AS Doc\n",
+					"                    LEFT JOIN {aie_extracts_table} AS Aie\n",
+					"                        ON Doc.documentId = Aie.documentid\n",
+					"                        AND Doc.size = Aie.size\n",
+					"                        AND Doc.version = Aie.version\n",
+					"                    WHERE\n",
+					"                        Doc.ingested_datetime = (SELECT MAX(ingested_datetime) FROM {horizon_table})\n",
+					"                \"\"\")\n",
+					"except Exception as e:\n",
+					"        logError(f\"Error in source Horizon SQL query:\\n{e}\")\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
 				"execution_count": null
 			},
@@ -254,6 +327,19 @@
 				"execution_count": null
 			},
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Prepare data for intermediate appeal_document processing"
+				]
+			},
+			{
 				"cell_type": "code",
 				"metadata": {
 					"jupyter": {
@@ -267,7 +353,12 @@
 					}
 				},
 				"source": [
-					"results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")"
+					"try:\n",
+					"    results.write.format(\"delta\").mode(\"Overwrite\").option(\"overwriteSchema\", \"true\").partitionBy(\"IsActive\").saveAsTable(f\"{spark_table_final}\")\n",
+					"\n",
+					"except Exception as e:\n",
+					"        logError(f\"Error in ingesting delta table {spark_table_final}:\\n{e}\")\n",
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
 				],
 				"execution_count": null
 			},
