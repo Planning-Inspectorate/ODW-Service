@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "a7495842-ae6b-4f2a-be54-0e577c1a36e8"
+				"spark.autotune.trackingId": "7c55ef38-495d-412f-aa17-de2539170fcc"
 			}
 		},
 		"metadata": {
@@ -334,6 +334,20 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error setting up Audit columns:\\n{e}\")\r\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"        end_exec_time = str(datetime.now())\r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"                            delta_table_name = table_name,\r\n",
+					"                            insert_count = insert_count,\r\n",
+					"                            update_count = update_count, \r\n",
+					"                            delete_count = delete_count, \r\n",
+					"                            table_result = \"failed\",\r\n",
+					"                            start_exec_time = start_exec_time, \r\n",
+					"                            end_exec_time = end_exec_time,\r\n",
+					"                            total_exec_time = \"\",\r\n",
+					"                            error_message = error_message\r\n",
+					"                            )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
 					"    return df"
 				],
 				"execution_count": null
@@ -363,6 +377,21 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error in creating source data frame :\\n{e}\")\r\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"        \r\n",
+					"        end_exec_time = str(datetime.now())\r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"                            delta_table_name = table_name,\r\n",
+					"                            insert_count = insert_count,\r\n",
+					"                            update_count = update_count, \r\n",
+					"                            delete_count = delete_count, \r\n",
+					"                            table_result = \"failed\",\r\n",
+					"                            start_exec_time = start_exec_time, \r\n",
+					"                            end_exec_time = end_exec_time,\r\n",
+					"                            total_exec_time = \"\",\r\n",
+					"                            error_message = error_message\r\n",
+					"                            )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
 					"    return target_df.union(source_df)"
 				],
 				"execution_count": null
@@ -477,6 +506,8 @@
 					"            end_exec_time=end_exec_time,\r\n",
 					"            error_message=error_message\r\n",
 					"        )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
 					"        \r\n",
 					"        return (latest_ingestion, create_df, update_df, delete_df, target_df)"
 				],
@@ -507,8 +538,18 @@
 					"# Check if there is valid data available\r\n",
 					"if latest_ingestion is None or latest_ingestion.count() == 0:\r\n",
 					"    logError(\"No data available for processing. Exiting notebook.\")\r\n",
+					"    error_message = \"No data available for processing. Exiting notebook.\"\r\n",
 					"    \r\n",
-					"    # Generate final results and exit    \r\n",
+					"    end_exec_time = str(datetime.now())        \r\n",
+					"    app_insight_logger.add_table_result(\r\n",
+					"        delta_table_name=f\"{hrm_db}.{hrm_table}\",\r\n",
+					"        insert_count=0,\r\n",
+					"        table_result=\"failed\",\r\n",
+					"        start_exec_time=start_exec_time, \r\n",
+					"        end_exec_time=end_exec_time,\r\n",
+					"        error_message=error_message\r\n",
+					"    )\r\n",
+					"    # Exit with the JSON result    \r\n",
 					"    mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
@@ -819,6 +860,17 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error in data frames processing steps: \\n{e}\")\r\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"            end_exec_time = str(datetime.now())        \r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"            delta_table_name=f\"{hrm_db}.{hrm_table}\",\r\n",
+					"            insert_count=0,\r\n",
+					"            table_result=\"failed\",\r\n",
+					"            start_exec_time=start_exec_time, \r\n",
+					"            end_exec_time=end_exec_time,\r\n",
+					"            error_message=error_message\r\n",
+					"        )\r\n",
+					"        # Exit with the JSON result    \r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())        \r\n",
 					"\r\n",
 					"logInfo(f\"Updated rows: {update_df.count()}\\nTarget dataframe: {target_df.count()}\")"
 				],
@@ -1110,7 +1162,9 @@
 					"                    end_exec_time = end_exec_time,\r\n",
 					"                    total_exec_time = \"\",\r\n",
 					"                    error_message = error_message\r\n",
-					"                    )"
+					"                    )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
 			},
