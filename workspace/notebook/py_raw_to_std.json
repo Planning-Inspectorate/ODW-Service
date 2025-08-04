@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "49739a28-8750-4f89-b752-92f7187db2c5"
+				"spark.autotune.trackingId": "1a67c682-168c-48f4-8812-e5d9fd6a1273"
 			}
 		},
 		"metadata": {
@@ -307,10 +307,43 @@
 					"\n",
 					"        logInfo(f\"Ingesting {file.name}\")\n",
 					"        (ingestion_failure, row_count) = ingest_adhoc(storage_account, definition, source_path, file.name, expected_from, expected_to, process_name, isMultiLine, dataAttribute)\n",
+					"        \n",
+					"        insert_count = row_count\n",
+					"        end_exec_time = str(datetime.now())\n",
+					"        app_insight_logger.add_table_result(                    \n",
+					"                        delta_table_name = f\"odw_standardised_db.{definition['Standardised_Table_Name']}\", \n",
+					"                        insert_count = insert_count, \n",
+					"                        update_count = 0, \n",
+					"                        delete_count = 0, \n",
+					"                        table_result = \"success\",\n",
+					"                        start_exec_time = start_exec_time, \n",
+					"                        end_exec_time = end_exec_time,\n",
+					"                        total_exec_time = \"\",\n",
+					"                        error_message = \"\"\n",
+					"                        )\n",
+					"        \n",
 					"        logInfo(f\"Ingested {row_count} rows\")\n",
 					"\n",
 					"        if ingestion_failure:\n",
-					"            print(f\"Errors reported during Ingestion!!\")\n",
+					"            logInfo(f\"Errors reported during Ingestion!!\")\n",
+					"            \n",
+					"            error_msg = f\"Errors reported during Ingestion!!\"\n",
+					"            \n",
+					"            error_message = app_insight_processor.format_error_message(error_msg, max_length=300)\n",
+					"            end_exec_time = str(datetime.now())\n",
+					"            app_insight_logger.add_table_result(\n",
+					"                            delta_table_name = f\"odw_standardised_db.{definition['Standardised_Table_Name']}\",\n",
+					"                            insert_count = insert_count,\n",
+					"                            update_count = 0, \n",
+					"                            delete_count = 0, \n",
+					"                            table_result = \"failed\",\n",
+					"                            start_exec_time = start_exec_time, \n",
+					"                            end_exec_time = end_exec_time,\n",
+					"                            total_exec_time = \"\",\n",
+					"                            error_message = error_message\n",
+					"                            )\n",
+					"            # Exit with the JSON result\n",
+					"            mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\n",
 					"            raise RuntimeError(\"Ingestion Failure\")\n",
 					"        else:\n",
 					"            print(f\"No Errors reported during Ingestion\")\n",
@@ -325,6 +358,27 @@
 					"        else:\n",
 					"            logError(\"No definition found\")\n",
 					""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"##### Produce Json format output"
+				]
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# Exit with the JSON result\n",
+					"mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
 			}
