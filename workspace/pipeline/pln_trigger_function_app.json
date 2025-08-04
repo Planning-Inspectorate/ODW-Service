@@ -98,11 +98,52 @@
 				}
 			},
 			{
+				"name": "Set Secret Name",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": true,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "secret_name",
+					"value": {
+						"value": "@concat('function-url-', replace(pipeline().parameters.function_name, '-', ''))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Function Secret",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Secret Name",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "function_secret",
+					"value": {
+						"value": "@concat(pipeline().parameters.Key_Vault_Url, variables('secret_name'), '?api-version=', pipeline().parameters.api_version)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
 				"name": "Get Function Secret",
 				"type": "WebActivity",
 				"dependsOn": [
 					{
-						"activity": "Set Secret Name",
+						"activity": "Set Function Secret",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -119,7 +160,7 @@
 				"typeProperties": {
 					"method": "GET",
 					"url": {
-						"value": "@concat(pipeline().parameters.Key_Vault_Url, variables('secret_name'), '?api-version=', pipeline().parameters.api_version)",
+						"value": "@variables('function_secret')",
 						"type": "Expression"
 					},
 					"connectVia": {
@@ -129,23 +170,6 @@
 					"authentication": {
 						"type": "MSI",
 						"resource": "https://vault.azure.net"
-					}
-				}
-			},
-			{
-				"name": "Set Secret Name",
-				"type": "SetVariable",
-				"dependsOn": [],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "secret_name",
-					"value": {
-						"value": "@concat('function-url-', replace(pipeline().parameters.function_name, '-', ''))",
-						"type": "Expression"
 					}
 				}
 			}
@@ -164,6 +188,12 @@
 		},
 		"variables": {
 			"secret_name": {
+				"type": "String"
+			},
+			"Key_Vault_Url": {
+				"type": "String"
+			},
+			"function_secret": {
 				"type": "String"
 			}
 		},
