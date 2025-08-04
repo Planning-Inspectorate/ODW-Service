@@ -20,12 +20,12 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "422116bc-07d9-440e-b6bf-cf98a3c996b8"
+				"spark.autotune.trackingId": "10db757c-543f-47d0-b3cd-7a6f7a20d0bc"
 			}
 		},
 		"metadata": {
 			"saveOutput": true,
-			"enableDebugMode": true,
+			"enableDebugMode": false,
 			"kernelspec": {
 				"name": "synapse_pyspark",
 				"display_name": "Synapse PySpark"
@@ -148,6 +148,9 @@
 					"source_path: str = f\"abfss://odw-raw@{storage_account}ServiceBus/{entity_name}/\"\r\n",
 					"schema = mssparkutils.notebook.run(\"/py_create_spark_schema\", 30, {\"db_name\": 'odw_standardised_db', \"entity_name\": entity_name})\r\n",
 					"spark_schema = StructType.fromJson(json.loads(schema)) if schema != '' else ''\r\n",
+					"\r\n",
+					"start_exec_time = str(datetime.now())\r\n",
+					"insert_count = 0\r\n",
 					""
 				],
 				"execution_count": null
@@ -426,7 +429,20 @@
 					"        \r\n",
 					"        # Use the imported format_error_message function\r\n",
 					"        error_message = app_insight_processor.format_error_message(e, max_length=300)\r\n",
-					"        mssparkutils.notebook.exit('')\r\n",
+					"        end_exec_time = str(datetime.now())\r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"                        delta_table_name = table_name,\r\n",
+					"                        insert_count = insert_count,\r\n",
+					"                        update_count = 0, \r\n",
+					"                        delete_count = 0, \r\n",
+					"                        table_result = \"failed\",\r\n",
+					"                        start_exec_time = start_exec_time, \r\n",
+					"                        end_exec_time = end_exec_time,\r\n",
+					"                        total_exec_time = \"\",\r\n",
+					"                        error_message = error_message\r\n",
+					"                        )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
 					"\r\n",
 					"    return df"
 				],
@@ -561,9 +577,6 @@
 					}
 				},
 				"source": [
-					"start_exec_time = str(datetime.now())\r\n",
-					"insert_count = 0\r\n",
-					"\r\n",
 					"USE_MAX_DATE_FILTER = False\r\n",
 					"\r\n",
 					"if USE_MAX_DATE_FILTER:\r\n",
@@ -583,6 +596,20 @@
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting the filtered list of paths:\\n{e}\")\r\n",
 					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"        end_exec_time = str(datetime.now())\r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"                        delta_table_name = table_name,\r\n",
+					"                        insert_count = insert_count,\r\n",
+					"                        update_count = 0, \r\n",
+					"                        delete_count = 0, \r\n",
+					"                        table_result = \"failed\",\r\n",
+					"                        start_exec_time = start_exec_time, \r\n",
+					"                        end_exec_time = end_exec_time,\r\n",
+					"                        total_exec_time = \"\",\r\n",
+					"                        error_message = error_message\r\n",
+					"                        )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())\r\n",
 					"\r\n",
 					"else:\r\n",
 					"    try:\r\n",
@@ -591,7 +618,21 @@
 					"        df = read_raw_messages(filtered_paths=missing_files)\r\n",
 					"    except Exception as e:\r\n",
 					"        logError(f\"Error getting list of missing files:\\n{e}\")\r\n",
-					"        error_message = app_insight_logger.format_error_message(e, max_length=300)"
+					"        error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"        end_exec_time = str(datetime.now())\r\n",
+					"        app_insight_logger.add_table_result(\r\n",
+					"                        delta_table_name = table_name,\r\n",
+					"                        insert_count = insert_count,\r\n",
+					"                        update_count = 0, \r\n",
+					"                        delete_count = 0, \r\n",
+					"                        table_result = \"failed\",\r\n",
+					"                        start_exec_time = start_exec_time, \r\n",
+					"                        end_exec_time = end_exec_time,\r\n",
+					"                        total_exec_time = \"\",\r\n",
+					"                        error_message = error_message\r\n",
+					"                        )\r\n",
+					"        # Exit with the JSON result\r\n",
+					"        mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
 			},
@@ -640,7 +681,22 @@
 					"    logInfo(f\"Expected new count: {expected_new_count}\")\r\n",
 					"except Exception as e:\r\n",
 					"    logError(f\"Error deduping and generating counts:\\n{e}\")\r\n",
-					"    error_message = app_insight_logger.format_error_message(e, max_length=300)"
+					"    error_message = app_insight_logger.format_error_message(e, max_length=300)\r\n",
+					"    \r\n",
+					"    end_exec_time = str(datetime.now())\r\n",
+					"    app_insight_logger.add_table_result(\r\n",
+					"                        delta_table_name = table_name,\r\n",
+					"                        insert_count = insert_count,\r\n",
+					"                        update_count = 0, \r\n",
+					"                        delete_count = 0, \r\n",
+					"                        table_result = \"failed\",\r\n",
+					"                        start_exec_time = start_exec_time, \r\n",
+					"                        end_exec_time = end_exec_time,\r\n",
+					"                        total_exec_time = \"\",\r\n",
+					"                        error_message = error_message\r\n",
+					"                        )\r\n",
+					"    # Exit with the JSON result\r\n",
+					"    mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
 			},
@@ -709,7 +765,9 @@
 					"                        end_exec_time = end_exec_time,\r\n",
 					"                        total_exec_time = \"\",\r\n",
 					"                        error_message = error_message\r\n",
-					"                        )"
+					"                        )\r\n",
+					"    # Exit with the JSON result\r\n",
+					"    mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
 				"execution_count": null
 			},
