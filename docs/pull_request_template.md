@@ -1,10 +1,13 @@
 **PR Template**
 
  1. JIRA Ticket Reference
-     [ Reference the Jira Ticket Number and Title here ]
+          <!-- Replace with JIRA ticket number and title -->
+    [ Enter JIRA ticket number and title here]
 
+ 
  2.  Summary of the work 
-     [ Add a clear summary explaining the purpose and scope of the changes]
+         <!-- Replace with a short summary of changes -->
+    [ Enter Summary here]
  
  3.  New Source-to-Raw Datasets
 	
