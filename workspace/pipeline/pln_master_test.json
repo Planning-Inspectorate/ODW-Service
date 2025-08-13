@@ -1,6 +1,28 @@
 {
 	"name": "pln_master_test",
 	"properties": {
+		"variables": {
+			"entity_name": {
+				"type": "String",
+				"defaultValue": ""
+			},
+			"std_table": {
+				"type": "String",
+				"defaultValue": ""
+			},
+			"hrm_table": {
+				"type": "String",
+				"defaultValue": ""
+			},
+			"cur_table": {
+				"type": "String",
+				"defaultValue": ""
+			},
+			"primary_key": {
+				"type": "String",
+				"defaultValue": ""
+			}
+		},
 		"activities": [
 			{
 				"name": "Lookup_orchestration_file",
@@ -49,7 +71,142 @@
 					"batchCount": 10,
 					"activities": [
 						{
-							"name": "df_unit_test_framework",
+							"name": "Set entity_name",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "entity_name",
+								"value": {
+									"value": "@item().entity_name",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set cur_table",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "cur_table",
+								"value": {
+									"value": "@replace(item().entity_name, '-', '_')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Lookup_orchestration_table",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('SELECT Standardised_Table_Name, Harmonised_Table_Name, Entity_Primary_Key FROM odw_config_db.orchestration WHERE entity_name = ''', item().entity_name, '''')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_odw_main_config",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "Set std_table",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Lookup_orchestration_table",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "std_table",
+								"value": {
+									"value": "@activity('Lookup_orchestration_table').output.firstRow.Standardised_Table_Name",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set hrm_table",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Lookup_orchestration_table",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "hrm_table",
+								"value": {
+									"value": "@activity('Lookup_orchestration_table').output.firstRow.Harmonised_Table_Name",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Set primary_key",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Lookup_orchestration_table",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "primary_key",
+								"value": {
+									"value": "@activity('Lookup_orchestration_table').output.firstRow.Entity_Primary_Key",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "CompareCuratedAndHarmonised",
 							"type": "ExecuteDataFlow",
 							"dependsOn": [],
 							"policy": {
