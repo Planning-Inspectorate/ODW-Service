@@ -14,14 +14,7 @@
 					"name": "CuratedSource"
 				},
 				{
-					"linkedService": {
-						"referenceName": "ls_storage",
-						"type": "LinkedServiceReference"
-					},
-					"name": "ConfigSource"
-				},
-				{
-					"name": "OrchestrationSource"
+					"name": "source1"
 				}
 			],
 			"sinks": [
@@ -61,7 +54,7 @@
 				"     std_db as string ('odw_standardised_db'),",
 				"     hrm_db as string ('odw_harmonised_db'),",
 				"     cur_db as string ('odw_curated_db'),",
-				"     std_table as string ('sb_appeal_document'),",
+				"     std_table as string ($std_table),",
 				"     hrm_table as string ($hrm_table),",
 				"     cur_table as string ($cur_table),",
 				"     primary_key as string ($primary_key)",
@@ -168,37 +161,13 @@
 				"     format: 'table',",
 				"     database: ($cur_db),",
 				"     tableName: ($cur_table)) ~> CuratedSource",
-				"source(useSchema: false,",
-				"     allowSchemaDrift: true,",
-				"     validateSchema: false,",
-				"     ignoreNoFilesFound: false,",
-				"     format: 'json',",
-				"     fileSystem: 'odw-config',",
-				"     folderPath: 'standardised_table_definitions',",
-				"     fileName: ($entity_name),",
-				"     documentForm: 'documentPerLine') ~> ConfigSource",
-				"source(output(",
-				"          Source_ID as integer,",
-				"          Source_Folder as string,",
-				"          Horizon_Table_Name as string,",
-				"          Source_Frequency_Folder as string,",
-				"          Source_Filename_Format as string,",
-				"          Source_Filename_Start as string,",
-				"          Expected_Within_Weekdays as integer,",
-				"          Standardised_Path as string,",
-				"          Standardised_Table_Name as string,",
-				"          Standardised_Table_Definition as string,",
-				"          Harmonised_Table_Name as string,",
-				"          Harmonised_Incremental_Key as string,",
-				"          Entity_Primary_Key as string",
-				"     ),",
-				"     allowSchemaDrift: true,",
+				"source(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     store: 'synapse',",
 				"     databaseType: 'spark',",
 				"     format: 'table',",
 				"     database: 'odw_config_db',",
-				"     tableName: 'orchestration') ~> OrchestrationSource",
+				"     tableName: 'orchestration') ~> source1",
 				"StandardisedFilter aggregate(std_count = count(1)) ~> StandardisedCount",
 				"HarmonisedSource aggregate(hrm_count = count(1),",
 				"          hrm_active_count = sum(iif(toString(byName('IsActive')) == 'Y', 1, 0))) ~> HarmonisedCount",
