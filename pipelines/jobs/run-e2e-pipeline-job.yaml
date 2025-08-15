@@ -1,0 +1,71 @@
+parameters:
+  agentPool: ''
+  env: ''
+  pipelineName: ''
+
+##
+# Execute E2E Synapse pipeline
+##
+jobs:
+- job: RunE2EPipelineJob
+  pool: ${{ parameters.agentPool }}
+  timeoutInMinutes: 0 # Max timeout
+  steps:
+  - checkout: self
+    clean: true
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml@odw-common
+  - script: |
+      # Set environment variables
+      export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
+      export PIPELINE_NAME="${{ parameters.pipelineName }}"
+      
+      echo "Workspace: $SYNAPSE_WORKSPACE"
+      echo "Pipeline: $PIPELINE_NAME"
+      
+      # Trigger the E2E Synapse pipeline
+      echo "Starting E2E Synapse pipeline execution..."
+      RUN_ID=$(az synapse pipeline create-run \
+        --workspace-name $SYNAPSE_WORKSPACE \
+        --name $PIPELINE_NAME \
+        --query "runId" -o tsv)
+      
+      echo "E2E Pipeline run started with ID: $RUN_ID"
+      
+      # Wait for pipeline completion and monitor status
+      echo "Monitoring E2E pipeline execution..."
+      
+      while true; do
+        STATUS=$(az synapse pipeline-run query-by-workspace \
+          --workspace-name $SYNAPSE_WORKSPACE \
+          --run-id $RUN_ID \
+          --query "[0].status" -o tsv)
+        
+        echo "Current status: $STATUS"
+        
+        case $STATUS in
+          "Succeeded")
+            echo "E2E Pipeline completed successfully!"
+            echo "E2E test results have been written to logging.e2e_test_results table"
+            exit 0
+            ;;
+          "Failed"|"Cancelled")
+            echo "E2E Pipeline failed or was cancelled. Status: $STATUS"
+            # Get error details
+            az synapse pipeline-run query-by-workspace \
+              --workspace-name $SYNAPSE_WORKSPACE \
+              --run-id $RUN_ID \
+              --query "[0]" -o json
+            exit 1
+            ;;
+          "InProgress"|"Queued")
+            echo "E2E Pipeline is still running. Waiting 30 seconds..."
+            sleep 30
+            ;;
+          *)
+            echo "Unknown status: $STATUS. Waiting 30 seconds..."
+            sleep 30
+            ;;
+        esac
+      done
+      
+    displayName: 'Run ${{ parameters.pipelineName }} E2E Pipeline'
