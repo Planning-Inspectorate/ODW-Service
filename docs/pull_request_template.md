@@ -1,11 +1,12 @@
 **PR Template**
 
- 1. JIRA Ticket Reference
-          <!-- Replace with JIRA ticket number and title -->
-    [ Enter JIRA ticket number and title here]
+Note: Run the correct ADO pipeline for this PR - check the list here:
+[ODW Repositories](https://pins-ds.atlassian.net/wiki/spaces/ODW/pages/2285764637/ODW+repositories)
+ 1. JIRA Ticket Reference  :
+         <!-- Replace with JIRA ticket number and title -->
+    [ Enter JIRA ticket number and Title here]
 
- 
- 2.  Summary of the work 
+ 2.  Summary of the work : 
          <!-- Replace with a short summary of changes -->
     [ Enter Summary here]
  
@@ -23,7 +24,7 @@
  5.   New Tables in Harmonised or Curated Layers
 
       - [ ] New harmonised or curated tables have been created
- 		- Script is configured in the pipeline pln_post_deployments (py_odw_harmonised_table_creation or py_odw_curated_table_creation)
+ 		- Script is configured in the pipeline pln_post_deployments
         - Schema exists in odw-config/harmonised-table-definitions or curated-table-definitions or is about to be PRd
  
  6.  Schema or Column Changes
@@ -36,8 +37,8 @@
 
  7. Script Execution in Build
 	 - [ ] Scripts have run in isolation in Build
-		- [ ] Script has been added to pln_post_deployments
-		- [ ] Script is now part of a scheduled pipeline with correct triggers
+		-  Script has been added to pln_post_deployments
+	    -  Script is now part of a scheduled pipeline with correct triggers
 	 - [ ] No scripts have run or no action required in Test/Prod
 
 8. Table Creation and Schema Validation
