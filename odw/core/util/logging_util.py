@@ -6,7 +6,8 @@ from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
-from tenacity import retry, wait_exponential, stop_after_delay, before_sleep
+from tenacity import retry, wait_exponential, stop_after_delay
+from tenacity.before_sleep import before_sleep_nothing
 import threading
 
 
@@ -68,7 +69,7 @@ class LoggingUtil():
         """
         self.logger.exception(f"{self.pipelinejobid} : {ex}")
 
-    @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_delay(20), reraise=True, before_sleep=before_sleep)
+    @retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_delay(20), reraise=True, before_sleep=before_sleep_nothing)
     def setup_logging(self, force=False):
         """
             Initialise logging to Azure App Insights
@@ -77,6 +78,8 @@ class LoggingUtil():
             self.log_info("Logging already initialised.")
             return
         key = mssparkutils.credentials.getSecretWithLS("ls_kv", "application-insights-connection-string")
+        if not key:
+            raise RuntimeError("The credential returned by mssparkutils.credentials.getSecretWithLS was blank or None")
         conn_string = key.split(";")[0]
 
         set_logger_provider(self.LOGGER_PROVIDER)
