@@ -13,15 +13,10 @@ JOB_ID = uuid4()
 
 
 def query_app_insights(app_id: str, expected_message: str):
-    query = f"traces | where message contains \"{expected_message}\""
-    payload = {
-        "query": query,
-        "timespan": "PT30M"
-    }
+    query = f'traces | where message contains "{expected_message}"'
+    payload = {"query": query, "timespan": "PT30M"}
     resp = requests.post(
-        f"https://api.applicationinsights.io/v1/apps/{app_id}/query",
-        json=payload,
-        headers={"Authorization": f"Bearer {APP_INSIGHTS_TOKEN}"}
+        f"https://api.applicationinsights.io/v1/apps/{app_id}/query", json=payload, headers={"Authorization": f"Bearer {APP_INSIGHTS_TOKEN}"}
     )
     resp_json = resp.json()
     return resp_json
@@ -33,10 +28,7 @@ def run_logging_util():
     def some_test_function(mock_arg_a: str, mock_arg_b: str):
         return f"some_test_function says '{mock_arg_a}' and '{mock_arg_b}'"
 
-    mock_mssparkutils_context = {
-        "pipelinejobid": JOB_ID,
-        "isForPipeline": True
-    }
+    mock_mssparkutils_context = {"pipelinejobid": JOB_ID, "isForPipeline": True}
     app_insights_connection_string = TEST_CONFIG["APP_INSIGHTS_CONNECTION_STRING"]
     with mock.patch("notebookutils.mssparkutils.runtime.context", mock_mssparkutils_context):
         with mock.patch.object(notebookutils.mssparkutils.credentials, "getSecretWithLS", return_value=app_insights_connection_string):

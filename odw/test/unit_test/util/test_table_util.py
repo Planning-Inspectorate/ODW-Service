@@ -25,7 +25,7 @@ DESCRIPTION_SCHEMA = StructType(
         StructField("properties", MapType(StringType(), StringType()), True),
         StructField("minReaderVersion", IntegerType(), True),
         StructField("minWriterVersion", IntegerType(), True),
-        StructField("tableFeatures", ArrayType(StringType()), True)
+        StructField("tableFeatures", ArrayType(StringType()), True),
     ]
 )
 
@@ -40,7 +40,7 @@ def get_sample_table_dataframe(table_details: List[Dict[str, str]], table_kind: 
                 "some_guid",
                 f"spark_catalog.{details['db_name']}.{details['table_name']}",
                 None,
-                details['table_location'],
+                details["table_location"],
                 datetime.strptime("2024-01-01 00:00:00.000000", datetime_format),
                 datetime.strptime("2025-01-01 00:00:00.000000", datetime_format),
                 [],
@@ -49,11 +49,11 @@ def get_sample_table_dataframe(table_details: List[Dict[str, str]], table_kind: 
                 {},
                 1,
                 2,
-                ["appendOnly", "invariants"]
+                ["appendOnly", "invariants"],
             )
             for details in table_details
         ],
-        DESCRIPTION_SCHEMA
+        DESCRIPTION_SCHEMA,
     )
 
 
@@ -71,10 +71,7 @@ def test_delete_table__successful():
                         with mock.patch.object(notebookutils.mssparkutils.fs, "rm", return_value=None):
                             TableUtil.delete_table(db_name, table_name)
                             SparkSession.sql.assert_has_calls(
-                                [
-                                    mock.call(f"DESCRIBE DETAIL {db_name}.{table_name}"),
-                                    mock.call(f"DROP TABLE IF EXISTS {db_name}.{table_name}")
-                                ]
+                                [mock.call(f"DESCRIBE DETAIL {db_name}.{table_name}"), mock.call(f"DROP TABLE IF EXISTS {db_name}.{table_name}")]
                             )
                             notebookutils.mssparkutils.fs.rm.assert_called_once_with(table_location, True)
 
@@ -89,12 +86,7 @@ def test_delete_table__table_does_not_exist():
                     with mock.patch.object(notebookutils.mssparkutils.fs, "rm", return_value=None):
                         TableUtil.delete_table(db_name, table_name)
                         assert not SparkSession.sql.called
-                        LoggingUtil.log_info.assert_has_calls(
-                            [
-                                mock.call("Table does not exist")
-                            ],
-                            any_order=True
-                        )
+                        LoggingUtil.log_info.assert_has_calls([mock.call("Table does not exist")], any_order=True)
                         assert not notebookutils.mssparkutils.fs.rm.called
 
 
@@ -107,9 +99,9 @@ def test_delete_table__multiple_occurrences():
         mock_df = get_sample_table_dataframe(
             [
                 {"db_name": db_name, "table_name": table_name, "table_location": table_location},
-                {"db_name": db_name, "table_name": table_name, "table_location": "some_other_location"}
+                {"db_name": db_name, "table_name": table_name, "table_location": "some_other_location"},
             ],
-            "parquet"
+            "parquet",
         )
         with mock.patch.object(SparkSession, "sql", return_value=mock_df):
             with mock.patch.object(LoggingUtil, "_initialise", return_value=None):
@@ -136,10 +128,7 @@ def test_delete_table_contents__successful():
                         with mock.patch.object(notebookutils.mssparkutils.fs, "rm", return_value=None):
                             TableUtil.delete_table_contents(db_name, table_name)
                             SparkSession.sql.assert_has_calls(
-                                [
-                                    mock.call(f"DESCRIBE DETAIL {db_name}.{table_name}"),
-                                    mock.call(f"DELETE FROM {db_name}.{table_name}")
-                                ]
+                                [mock.call(f"DESCRIBE DETAIL {db_name}.{table_name}"), mock.call(f"DELETE FROM {db_name}.{table_name}")]
                             )
                             # Should not delete the underlying file system
                             assert not notebookutils.mssparkutils.fs.rm.called
@@ -154,12 +143,7 @@ def test_delete_table_contents__table_does_not_exist():
                 with mock.patch.object(LoggingUtil, "log_info", return_value=None):
                     TableUtil.delete_table_contents(db_name, table_name)
                     assert not SparkSession.sql.called
-                    LoggingUtil.log_info.assert_has_calls(
-                        [
-                            mock.call("Table does not exist")
-                        ],
-                        any_order=True
-                    )
+                    LoggingUtil.log_info.assert_has_calls([mock.call("Table does not exist")], any_order=True)
 
 
 def test_delete_table_contents__multiple_occurrences():
@@ -171,9 +155,9 @@ def test_delete_table_contents__multiple_occurrences():
         mock_df = get_sample_table_dataframe(
             [
                 {"db_name": db_name, "table_name": table_name, "table_location": table_location},
-                {"db_name": db_name, "table_name": table_name, "table_location": "some_other_location"}
+                {"db_name": db_name, "table_name": table_name, "table_location": "some_other_location"},
             ],
-            "delta"
+            "delta",
         )
         with mock.patch.object(SparkSession, "sql", return_value=mock_df):
             with mock.patch.object(LoggingUtil, "_initialise", return_value=None):

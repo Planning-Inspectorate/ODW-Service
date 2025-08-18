@@ -12,6 +12,7 @@ Usage:
 - Import `notebookutils` from this module BEFORE the real import. Use odw/test/unit_test/util/test_logging_util.py as an example
 """
 
+
 class NotebookExit(Exception):
     pass
 
@@ -36,7 +37,7 @@ submodules = [
     "runtime",
     "session",
     "udf",
-    "variableLibrary"
+    "variableLibrary",
 ]
 
 notebookutils = types.ModuleType(module_name)

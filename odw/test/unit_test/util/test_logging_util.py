@@ -27,10 +27,7 @@ def test_logging_util__initialise():
     with mock.patch.object(LoggingUtil, "setup_logging", return_value=None):
         with mock.patch.object(LoggingUtil, "flush_logging", return_value=None):
             with mock.patch.object(Logger, "removeHandler", return_value=None):
-                mock_mssparkutils_context = {
-                    "pipelinejobid": "some_guid",
-                    "isForPipeline": True
-                }
+                mock_mssparkutils_context = {"pipelinejobid": "some_guid", "isForPipeline": True}
                 with mock.patch("notebookutils.mssparkutils.runtime.context", mock_mssparkutils_context):
                     logging_util_inst = LoggingUtil()
                     assert isinstance(logging_util_inst.LOGGER_PROVIDER, LoggerProvider)
@@ -72,11 +69,11 @@ def test_logging_util__log_exception():
 
 
 @pytest.mark.parametrize(
-        "test_case",
-        [
-            (False, False),  # Without force initialisation. i.e. If not initialised, then initialise
-            (True, True)  # With forced initialisation. i.e. If already initialised and running with force, then initialise
-        ]
+    "test_case",
+    [
+        (False, False),  # Without force initialisation. i.e. If not initialised, then initialise
+        (True, True),  # With forced initialisation. i.e. If already initialised and running with force, then initialise
+    ],
 )
 def test_logging_util__setup_logging(test_case):
     logging_initialised = test_case[0]
@@ -159,6 +156,7 @@ def test_logging_util__logging_to_appins__with_args():
 
 def test_logging_util__logging_to_appins__with_notebook_exception():
     notebook_exit_exception = notebookutils.mssparkutils.handlers.notebookHandler.NotebookExit("Some exception")
+
     @LoggingUtil.logging_to_appins
     def my_function_with_notebook_exception():
         raise notebook_exit_exception
@@ -174,7 +172,7 @@ def test_logging_util__logging_to_appins__with_notebook_exception():
                 LoggingUtil.log_info.assert_has_calls(
                     [
                         mock.call(f"Function my_function_with_notebook_exception called with args: {', '.join(args_repr + kwargs_repr)}"),
-                        mock.call("Notebook exited: Some exception")
+                        mock.call("Notebook exited: Some exception"),
                     ]
                 )
                 notebookutils.mssparkutils.notebook.exit.assert_called_once_with(notebook_exit_exception)
@@ -182,6 +180,7 @@ def test_logging_util__logging_to_appins__with_notebook_exception():
 
 def test_logging_util__logging_to_appins__with_exception():
     exception = Exception("Some exception")
+
     @LoggingUtil.logging_to_appins
     def my_function_with_exception():
         raise exception
@@ -194,12 +193,14 @@ def test_logging_util__logging_to_appins__with_exception():
             with mock.patch.object(LoggingUtil, "_initialise", return_value=None):
                 with pytest.raises(Exception):
                     my_function_with_exception()
-                LoggingUtil.log_info.assert_called_once_with(f"Function my_function_with_exception called with args: {', '.join(args_repr + kwargs_repr)}")
+                LoggingUtil.log_info.assert_called_once_with(
+                    f"Function my_function_with_exception called with args: {', '.join(args_repr + kwargs_repr)}"
+                )
                 LoggingUtil.log_exception.assert_called_once_with(exception)
 
 
 def test_logging_util__logging_to_appins__with_instance_method():
-    class MyClass():
+    class MyClass:
         @LoggingUtil.logging_to_appins
         def my_function(self):
             return "Hello world"
@@ -216,7 +217,7 @@ def test_logging_util__logging_to_appins__with_instance_method():
 
 
 def test_logging_util__logging_to_appins__with_class_method():
-    class MyClass():
+    class MyClass:
         @classmethod
         @LoggingUtil.logging_to_appins
         def my_function(cls):

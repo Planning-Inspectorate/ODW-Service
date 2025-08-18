@@ -31,17 +31,14 @@ DESCRIPTION_SCHEMA = StructType(
         StructField("properties", MapType(StringType(), StringType()), True),
         StructField("minReaderVersion", IntegerType(), True),
         StructField("minWriterVersion", IntegerType(), True),
-        StructField("tableFeatures", ArrayType(StringType()), True)
+        StructField("tableFeatures", ArrayType(StringType()), True),
     ]
 )
 
 
 def validate_table_deleted(database_name: str, table_name: str, raw_data_path: str, function_to_test: Callable):
     with mock.patch.object(notebookutils.mssparkutils.fs, "rm", return_value=None):
-        mock_mssparkutils_context = {
-            "pipelinejobid": "some_guid",
-            "isForPipeline": True
-        }
+        mock_mssparkutils_context = {"pipelinejobid": "some_guid", "isForPipeline": True}
         app_insights_connection_string = TEST_CONFIG["APP_INSIGHTS_CONNECTION_STRING"]
         with mock.patch("notebookutils.mssparkutils.runtime.context", mock_mssparkutils_context):
             with mock.patch.object(notebookutils.mssparkutils.credentials, "getSecretWithLS", return_value=app_insights_connection_string):
@@ -64,17 +61,18 @@ def validate_table_deleted(database_name: str, table_name: str, raw_data_path: s
                                 {},
                                 1,
                                 2,
-                                ["appendOnly", "invariants"]
+                                ["appendOnly", "invariants"],
                             )
                         ],
-                        DESCRIPTION_SCHEMA
+                        DESCRIPTION_SCHEMA,
                     )
                     real_sql_function = spark.sql
+
                     def sql_side_effect(sql_query: str):
                         # A wrapper around spark.sql, to allow the DESCRIBE DETAIL call to be overridden
                         if "DESCRIBE DETAIL" in sql_query:
                             return mock_table_details
-                        return real_sql_function(sql_query) 
+                        return real_sql_function(sql_query)
 
                     with mock.patch.object(SparkSession, "sql", side_effect=sql_side_effect):
                         function_to_test(database_name, table_name)
@@ -91,7 +89,7 @@ def create_table(data_format: str, file_path: str, database_name: str, table_nam
             ("William Riker", "Commander"),
             ("Data", "Lt, Commander"),
         ],
-        schema=["Name", "Rank"]
+        schema=["Name", "Rank"],
     )
     spark.sql(f"CREATE DATABASE IF NOT EXISTS {database_name}")
     data.write.format(data_format).mode("overwrite").save(file_path)
