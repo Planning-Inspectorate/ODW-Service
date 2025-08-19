@@ -28,60 +28,79 @@ jobs:
         az account show
         echo "Azure CLI ready for Synapse operations"
   
-  - script: |
-      # Set environment variables
-      export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
-      export PIPELINE_NAME="pln_master_test"
-      
-      echo "Workspace: $SYNAPSE_WORKSPACE"
-      echo "Pipeline: $PIPELINE_NAME"
-      
-      # Trigger the master test pipeline in Synapse
-      echo "Starting Synapse master test pipeline execution..."
-      RUN_ID=$(az synapse pipeline create-run \
-        --workspace-name $SYNAPSE_WORKSPACE \
-        --name $PIPELINE_NAME \
-        --query "runId" -o tsv)
-      
-      echo "Master test pipeline run started with ID: $RUN_ID"
-      
-      # Wait for pipeline completion and monitor status
-      echo "Monitoring master test pipeline execution..."
-      
-      while true; do
-        STATUS=$(az synapse pipeline-run query-by-workspace \
+  - task: AzureCLI@2
+    displayName: 'Trigger and Monitor Synapse Master Test Pipeline'
+    inputs:
+      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        # Set environment variables
+        export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
+        export PIPELINE_NAME="pln_master_test"
+        
+        echo "Workspace: $SYNAPSE_WORKSPACE"
+        echo "Pipeline: $PIPELINE_NAME"
+        
+        # Verify Azure CLI is authenticated
+        echo "Verifying Azure CLI authentication..."
+        az account show
+        
+        # Trigger the master test pipeline in Synapse
+        echo "Starting Synapse master test pipeline execution..."
+        RUN_ID=$(az synapse pipeline create-run \
           --workspace-name $SYNAPSE_WORKSPACE \
-          --run-id $RUN_ID \
-          --query "[0].status" -o tsv)
+          --name $PIPELINE_NAME \
+          --query "runId" -o tsv)
         
-        echo "Current pipeline status: $STATUS"
+        if [ -z "$RUN_ID" ]; then
+          echo "ERROR: Failed to start pipeline. No run ID returned."
+          exit 1
+        fi
         
-        case $STATUS in
-          "Succeeded")
-            echo "Master test pipeline completed successfully!"
-            break
-            ;;
-          "Failed"|"Cancelled")
-            echo "Master test pipeline failed or was cancelled. Status: $STATUS"
-            # Get error details
-            az synapse pipeline-run query-by-workspace \
-              --workspace-name $SYNAPSE_WORKSPACE \
-              --run-id $RUN_ID \
-              --query "[0]" -o json
-            exit 1
-            ;;
-          "InProgress"|"Queued")
-            echo "Master test pipeline is still running. Waiting 30 seconds..."
-            sleep 30
-            ;;
-          *)
-            echo "Unknown pipeline status: $STATUS. Waiting 30 seconds..."
-            sleep 30
-            ;;
-        esac
-      done
-      
-    displayName: 'Trigger Synapse Master Test Pipeline'
+        echo "Master test pipeline run started with ID: $RUN_ID"
+        
+        # Wait for pipeline completion and monitor status
+        echo "Monitoring master test pipeline execution..."
+        
+        while true; do
+          # Use the correct command to get pipeline run status
+          STATUS=$(az synapse pipeline-run show \
+            --workspace-name $SYNAPSE_WORKSPACE \
+            --run-id $RUN_ID \
+            --query "status" -o tsv)
+          
+          echo "Current pipeline status: $STATUS"
+          
+          case $STATUS in
+            "Succeeded")
+              echo "Master test pipeline completed successfully!"
+              break
+              ;;
+            "Failed"|"Cancelled")
+              echo "Master test pipeline failed or was cancelled. Status: $STATUS"
+              # Get error details
+              echo "Getting detailed error information..."
+              az synapse pipeline-run show \
+                --workspace-name $SYNAPSE_WORKSPACE \
+                --run-id $RUN_ID \
+                --query "{status: status, message: message, runStart: runStart, runEnd: runEnd}" -o json
+              exit 1
+              ;;
+            "InProgress"|"Queued"|"Running")
+              echo "Master test pipeline is still running. Waiting 30 seconds..."
+              sleep 30
+              ;;
+            "")
+              echo "ERROR: Unable to retrieve pipeline status. Check if pipeline run ID is valid."
+              exit 1
+              ;;
+            *)
+              echo "Unexpected pipeline status: $STATUS. Waiting 30 seconds..."
+              sleep 30
+              ;;
+          esac
+        done
   
   - task: AzureCLI@2
     displayName: 'Retrieve and Validate E2E Test Results'
