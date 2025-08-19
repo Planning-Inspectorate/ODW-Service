@@ -5,20 +5,18 @@ parameters:
 - name: env
   type: string
   default: ''
-- name: pipelineName
-  type: string
-  default: ''
 
 ##
-# Execute E2E Synapse pipeline
+# Execute E2E Synapse pipeline and validate results
 ##
 jobs:
-- job: RunE2EPipelineJob
+- job: RunSynapseE2ETests
   pool: ${{ parameters.agentPool }}
   timeoutInMinutes: 0 # Max timeout
   steps:
   - checkout: self
     clean: true
+  
   - task: AzureCLI@2
     displayName: 'Azure CLI Login'
     inputs:
@@ -29,25 +27,26 @@ jobs:
         echo "Logging in to Azure..."
         az account show
         echo "Azure CLI ready for Synapse operations"
+  
   - script: |
       # Set environment variables
       export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
-      export PIPELINE_NAME="${{ parameters.pipelineName }}"
+      export PIPELINE_NAME="pln_master_test"
       
       echo "Workspace: $SYNAPSE_WORKSPACE"
       echo "Pipeline: $PIPELINE_NAME"
       
-      # Trigger the E2E Synapse pipeline
-      echo "Starting E2E Synapse pipeline execution..."
+      # Trigger the master test pipeline in Synapse
+      echo "Starting Synapse master test pipeline execution..."
       RUN_ID=$(az synapse pipeline create-run \
         --workspace-name $SYNAPSE_WORKSPACE \
         --name $PIPELINE_NAME \
         --query "runId" -o tsv)
       
-      echo "E2E Pipeline run started with ID: $RUN_ID"
+      echo "Master test pipeline run started with ID: $RUN_ID"
       
       # Wait for pipeline completion and monitor status
-      echo "Monitoring E2E pipeline execution..."
+      echo "Monitoring master test pipeline execution..."
       
       while true; do
         STATUS=$(az synapse pipeline-run query-by-workspace \
@@ -55,16 +54,15 @@ jobs:
           --run-id $RUN_ID \
           --query "[0].status" -o tsv)
         
-        echo "Current status: $STATUS"
+        echo "Current pipeline status: $STATUS"
         
         case $STATUS in
           "Succeeded")
-            echo "E2E Pipeline completed successfully!"
-            echo "E2E test results have been written to logging.e2e_test_results table"
-            exit 0
+            echo "Master test pipeline completed successfully!"
+            break
             ;;
           "Failed"|"Cancelled")
-            echo "E2E Pipeline failed or was cancelled. Status: $STATUS"
+            echo "Master test pipeline failed or was cancelled. Status: $STATUS"
             # Get error details
             az synapse pipeline-run query-by-workspace \
               --workspace-name $SYNAPSE_WORKSPACE \
@@ -73,14 +71,64 @@ jobs:
             exit 1
             ;;
           "InProgress"|"Queued")
-            echo "E2E Pipeline is still running. Waiting 30 seconds..."
+            echo "Master test pipeline is still running. Waiting 30 seconds..."
             sleep 30
             ;;
           *)
-            echo "Unknown status: $STATUS. Waiting 30 seconds..."
+            echo "Unknown pipeline status: $STATUS. Waiting 30 seconds..."
             sleep 30
             ;;
         esac
       done
       
-    displayName: 'Run ${{ parameters.pipelineName }} E2E Pipeline'
+    displayName: 'Trigger Synapse Master Test Pipeline'
+  
+  - task: AzureCLI@2
+    displayName: 'Retrieve and Validate E2E Test Results'
+    inputs:
+      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        # Set environment variables
+        export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
+        export SQL_POOL="SqlPool01" # Adjust if your SQL pool has a different name
+        
+        echo "Retrieving E2E test results from logging.e2e_test_results table..."
+        
+        # Query the e2e_test_results table to get the latest test results
+        QUERY="SELECT TOP 1 test_status, error_message, test_timestamp FROM logging.e2e_test_results ORDER BY test_timestamp DESC"
+        
+        # Execute the query and get results
+        RESULTS=$(az synapse sql query \
+          --workspace-name $SYNAPSE_WORKSPACE \
+          --sql-pool-name $SQL_POOL \
+          --query-text "$QUERY" \
+          --output json)
+        
+        echo "Query results: $RESULTS"
+        
+        # Parse the results
+        TEST_STATUS=$(echo $RESULTS | jq -r '.[0].test_status // empty')
+        ERROR_MESSAGE=$(echo $RESULTS | jq -r '.[0].error_message // empty')
+        TEST_TIMESTAMP=$(echo $RESULTS | jq -r '.[0].test_timestamp // empty')
+        
+        echo "Test Status: $TEST_STATUS"
+        echo "Test Timestamp: $TEST_TIMESTAMP"
+        
+        if [ "$TEST_STATUS" = "Succeeded" ]; then
+          echo "E2E Tests PASSED! All data validation tests completed successfully."
+          echo "Test completed at: $TEST_TIMESTAMP"
+          exit 0
+        elif [ "$TEST_STATUS" = "Failed" ]; then
+          echo "E2E Tests FAILED! Data validation tests encountered errors."
+          echo "Test completed at: $TEST_TIMESTAMP"
+          if [ -n "$ERROR_MESSAGE" ] && [ "$ERROR_MESSAGE" != "null" ]; then
+            echo "Error details: $ERROR_MESSAGE"
+          fi
+          exit 1
+        else
+          echo "Unexpected test status or no results found: $TEST_STATUS"
+          echo "Please check the logging.e2e_test_results table manually."
+          exit 1
+        fi
