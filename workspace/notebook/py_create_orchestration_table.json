@@ -1,0 +1,367 @@
+{
+	"name": "py_create_orchestration_table",
+	"properties": {
+		"folder": {
+			"name": "utils/"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"## Create Orchestration Table\n",
+					"\n",
+					"This notebook creates the `orchestration` table in the `odw_config_db` database by reading from the orchestration.json file in the config storage and creating a Delta table with all the orchestration definitions.\n",
+					"\n",
+					"The orchestration table is used by various pipelines, including `pln_master_test`, to look up metadata about data sources including:\n",
+					"- Standardised table names\n",
+					"- Harmonised table names  \n",
+					"- Entity primary keys\n",
+					"- Source frequency and folder information"
+				]
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from pyspark.sql import SparkSession\n",
+					"from notebookutils import mssparkutils\n",
+					"import json\n",
+					"from pyspark.sql.types import *\n",
+					"from pyspark.sql.functions import *\n",
+					"\n",
+					"spark = SparkSession.builder.getOrCreate()\n",
+					"\n",
+					"# Get storage account name\n",
+					"storage_account = mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"print(f\"Using storage account: {storage_account}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Read orchestration.json from config storage\n",
+					"orchestration_json_path = f\"abfss://odw-config@{storage_account}.dfs.core.windows.net/orchestration/orchestration.json\"\n",
+					"print(f\"Reading orchestration config from: {orchestration_json_path}\")\n",
+					"\n",
+					"try:\n",
+					"    orchestration_json_content = spark.read.text(orchestration_json_path, wholetext=True).first().value\n",
+					"    orchestration_config = json.loads(orchestration_json_content)\n",
+					"    definitions = orchestration_config['definitions']\n",
+					"    print(f\"Found {len(definitions)} orchestration definitions\")\n",
+					"except Exception as e:\n",
+					"    print(f\"Error reading orchestration.json: {e}\")\n",
+					"    raise"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Define the schema for the orchestration table based on the JSON structure\n",
+					"orchestration_schema = StructType([\n",
+					"    StructField(\"Source_ID\", IntegerType(), True),\n",
+					"    StructField(\"Source_Folder\", StringType(), True),\n",
+					"    StructField(\"Source_Frequency_Folder\", StringType(), True),\n",
+					"    StructField(\"Source_Filename_Format\", StringType(), True),\n",
+					"    StructField(\"Source_Filename_Start\", StringType(), True),\n",
+					"    StructField(\"Completion_Frequency_CRON\", StringType(), True),\n",
+					"    StructField(\"Expected_Within_Weekdays\", IntegerType(), True),\n",
+					"    StructField(\"Standardised_Path\", StringType(), True),\n",
+					"    StructField(\"Standardised_Table_Name\", StringType(), True),\n",
+					"    StructField(\"Standardised_Table_Definition\", StringType(), True),\n",
+					"    StructField(\"Harmonised_Table_Name\", StringType(), True),\n",
+					"    StructField(\"Entity_Primary_Key\", StringType(), True),\n",
+					"    StructField(\"Source_Sheet_Name\", StringType(), True),  # Optional field for Excel files\n",
+					"    StructField(\"ingested_datetime\", TimestampType(), True),\n",
+					"    StructField(\"expected_from\", TimestampType(), True),\n",
+					"    StructField(\"expected_to\", TimestampType(), True)\n",
+					"])\n",
+					"\n",
+					"print(\"Defined orchestration table schema\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"from datetime import datetime\n",
+					"\n",
+					"# Convert JSON definitions to DataFrame rows\n",
+					"rows = []\n",
+					"current_timestamp = datetime.now()\n",
+					"\n",
+					"for definition in definitions:\n",
+					"    row = (\n",
+					"        definition.get('Source_ID'),\n",
+					"        definition.get('Source_Folder'),\n",
+					"        definition.get('Source_Frequency_Folder', ''),  # Default to empty string if not present\n",
+					"        definition.get('Source_Filename_Format'),\n",
+					"        definition.get('Source_Filename_Start'),\n",
+					"        definition.get('Completion_Frequency_CRON'),\n",
+					"        definition.get('Expected_Within_Weekdays'),\n",
+					"        definition.get('Standardised_Path'),\n",
+					"        definition.get('Standardised_Table_Name'),\n",
+					"        definition.get('Standardised_Table_Definition'),\n",
+					"        definition.get('Harmonised_Table_Name'),  # May be None for some entries\n",
+					"        definition.get('Entity_Primary_Key'),     # May be None for some entries\n",
+					"        definition.get('Source_Sheet_Name'),      # May be None for most entries\n",
+					"        current_timestamp,  # ingested_datetime\n",
+					"        current_timestamp,  # expected_from\n",
+					"        current_timestamp   # expected_to\n",
+					"    )\n",
+					"    rows.append(row)\n",
+					"\n",
+					"# Create DataFrame\n",
+					"orchestration_df = spark.createDataFrame(rows, orchestration_schema)\n",
+					"print(f\"Created DataFrame with {orchestration_df.count()} rows\")\n",
+					"orchestration_df.show(5, truncate=False)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Create the database if it doesn't exist\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS odw_config_db\")\n",
+					"print(\"Database odw_config_db created/verified\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Define table path\n",
+					"table_path = f\"abfss://odw-standardised@{storage_account}.dfs.core.windows.net/config/orchestration\"\n",
+					"table_name = \"odw_config_db.orchestration\"\n",
+					"\n",
+					"print(f\"Table path: {table_path}\")\n",
+					"print(f\"Table name: {table_name}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Drop the table if it exists (for a clean recreate)\n",
+					"try:\n",
+					"    spark.sql(f\"DROP TABLE IF EXISTS {table_name}\")\n",
+					"    print(f\"Dropped existing table {table_name}\")\n",
+					"except Exception as e:\n",
+					"    print(f\"No existing table to drop or error dropping: {e}\")"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Write the DataFrame as a Delta table\n",
+					"try:\n",
+					"    orchestration_df.write \\\n",
+					"        .format(\"delta\") \\\n",
+					"        .option(\"path\", table_path) \\\n",
+					"        .mode(\"overwrite\") \\\n",
+					"        .saveAsTable(table_name)\n",
+					"    \n",
+					"    print(f\"Successfully created orchestration table: {table_name}\")\n",
+					"    print(f\"Table location: {table_path}\")\n",
+					"    \n",
+					"    # Verify the table was created\n",
+					"    result_count = spark.sql(f\"SELECT COUNT(*) as count FROM {table_name}\").collect()[0]['count']\n",
+					"    print(f\"Table contains {result_count} records\")\n",
+					"    \n",
+					"except Exception as e:\n",
+					"    print(f\"Error creating table: {e}\")\n",
+					"    raise"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Show a sample of the created table to verify structure\n",
+					"print(\"Sample of created orchestration table:\")\n",
+					"spark.sql(f\"\"\"\n",
+					"    SELECT \n",
+					"        Source_ID,\n",
+					"        Standardised_Table_Name,\n",
+					"        Harmonised_Table_Name,\n",
+					"        Entity_Primary_Key,\n",
+					"        Source_Frequency_Folder\n",
+					"    FROM {table_name} \n",
+					"    LIMIT 10\n",
+					"\"\"\").show(truncate=False)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"# Test a query similar to what pln_master_test pipeline does\n",
+					"print(\"Testing pipeline lookup query:\")\n",
+					"test_query = f\"\"\"\n",
+					"    SELECT \n",
+					"        Standardised_Table_Name,\n",
+					"        Harmonised_Table_Name,\n",
+					"        Entity_Primary_Key\n",
+					"    FROM {table_name}\n",
+					"    WHERE Standardised_Table_Name IS NOT NULL\n",
+					"      AND Harmonised_Table_Name IS NOT NULL\n",
+					"      AND Entity_Primary_Key IS NOT NULL\n",
+					"    LIMIT 5\n",
+					"\"\"\"\n",
+					"\n",
+					"spark.sql(test_query).show(truncate=False)\n",
+					"print(\"\\nOrchestration table successfully created and tested!\")"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
