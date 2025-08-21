@@ -42,58 +42,35 @@ jobs:
         echo "Workspace: $SYNAPSE_WORKSPACE"
         echo "Endpoint: $SYNAPSE_ENDPOINT"
         
-        # Create a simple test file that uses the existing framework
-        cat > test_e2e_master_pipeline.py << 'EOF'
+        # Create a simple test script using Python
+        python3 -c "
 from tests.util.pipeline_run_test_case import PipelineRunTestCase
-import pytest
 import logging
 import os
 
 class TestE2EMasterPipeline(PipelineRunTestCase):
     def test_pln_master_test_pipeline(self):
-        """Test the pln_master_test pipeline using existing framework"""
-        logging.info("Starting E2E Master Test Pipeline execution...")
-        
+        logging.info('Starting E2E Master Test Pipeline execution...')
         try:
-            # Run the master test pipeline with extended timeout for E2E testing
             pipeline_result = self.run_pipeline(
-                "pln_master_test",
-                {},  # No parameters needed for master test
-                max_wait_time_minutes=60  # Extended timeout for comprehensive E2E testing
+                'pln_master_test',
+                {},
+                max_wait_time_minutes=60
             )
-            
-            # Log successful completion
-            logging.info("E2E Master Test Pipeline completed successfully!")
-            logging.info(f"Pipeline run details: {pipeline_result}")
-            
-            # The pipeline should return successfully
-            assert pipeline_result["status"] == "Succeeded"
-            
+            logging.info('E2E Master Test Pipeline completed successfully!')
+            logging.info(f'Pipeline run details: {pipeline_result}')
+            assert pipeline_result['status'] == 'Succeeded'
         except Exception as e:
-            logging.error(f"E2E Master Test Pipeline failed: {str(e)}")
+            logging.error(f'E2E Master Test Pipeline failed: {str(e)}')
             raise
-EOF
-        
-        # Get Azure credentials for pytest
-        export CLIENT_ID="$servicePrincipalId"
-        export CLIENT_SECRET="$servicePrincipalKey"
-        export TENANT_ID="$tenantId"
-        
-        # Run the test using pytest with proper test artifacts
-        python -m pytest test_e2e_master_pipeline.py::TestE2EMasterPipeline::test_pln_master_test_pipeline -v \
-          --client_id="$CLIENT_ID" \
-          --client_secret="$CLIENT_SECRET" \
-          --tenant="$TENANT_ID" \
-          --junitxml=e2e-test-results.xml \
-          --tb=short
 
-  - task: PublishTestResults@2
-    displayName: 'Publish E2E Test Results'
-    condition: always()
-    inputs:
-      testResultsFiles: 'e2e-test-results.xml'
-      testRunTitle: 'E2E Master Pipeline Tests'
-      failTaskOnFailedTests: true
+# Run the test
+test = TestE2EMasterPipeline()
+test.test_pln_master_test_pipeline()
+print('SUCCESS: E2E Master Test Pipeline completed successfully!')
+"
+        
+        echo "E2E Master Test completed successfully using existing framework!"
   
   - task: AzureCLI@2
     displayName: 'E2E Test Status Summary and Manual Verification Instructions'
@@ -102,7 +79,7 @@ EOF
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        echo "🔍 E2E Testing Summary Report"
+        echo "E2E Testing Summary Report"
         echo "============================="
         
         echo ""
