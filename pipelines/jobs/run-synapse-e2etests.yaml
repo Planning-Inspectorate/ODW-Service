@@ -1,61 +1,35 @@
 parameters:
-- name: agentPool
-  type: string
-  default: ''
-- name: env
-  type: string
-  default: ''
+  agentPool: ''
+  env: ''
 
 ##
-# Execute E2E Synapse pipeline and validate results
+# Run Synapse E2E tests
 ##
 jobs:
-- job: RunSynapseE2ETests
+- job: RunSynapseE2ETestsJob
   pool: ${{ parameters.agentPool }}
   timeoutInMinutes: 0 # Max timeout
   steps:
   - checkout: self
     clean: true
-  
-  - task: UsePythonVersion@0
-    displayName: 'Set up Python'
-    inputs:
-      versionSpec: '3.9'
-      addToPath: true
-
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml@odw-common
   - script: |
-      python -m pip install --upgrade pip
-      pip install pytest requests azure-identity
-    displayName: 'Install Python dependencies'
-
-  - task: AzureCLI@2
-    displayName: 'Run E2E Master Test Pipeline using existing framework'
+      export PATH="$PATH:/home/AzDevOps/.local/bin/"
+      sudo apt-get install unixodbc-dev
+      export SYNAPSE_ENDPOINT="${{ format('https://pins-synw-odw-{0}-uks.dev.azuresynapse.net/', lower(parameters.env)) }}"
+      export CREDENTIAL_NAME="${{ format('https://dev.azuresynapse.net/.default', lower(parameters.env)) }}"
+      echo $SYNAPSE_ENDPOINT
+      echo $CREDENTIAL_NAME
+      python3 -m pytest $(Build.SourcesDirectory)/tests/e2e_test/test_e2e_pln_master_test.py::TestE2EPlnMasterTest::test_pln_master_test_pipeline -vv -rP --junitxml=e2e-test-results.xml --client_id="$servicePrincipalId" --client_secret="$servicePrincipalKey" --tenant="$tenantId"
+    displayName: 'Run E2E Tests with pytest'
+  
+  - task: PublishTestResults@2
+    displayName: 'Publish E2E Test Results'
+    condition: always()
     inputs:
-      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        # Set environment variables for the test framework
-        export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
-        export SYNAPSE_ENDPOINT="https://$SYNAPSE_WORKSPACE.dev.azuresynapse.net"
-        
-        echo "Workspace: $SYNAPSE_WORKSPACE"
-        echo "Endpoint: $SYNAPSE_ENDPOINT"
-        
-        # Use existing framework directly with pytest
-        python3 -c "
-import sys
-sys.path.append('.')
-from tests.util.pipeline_run_test_case import PipelineRunTestCase
-import logging
-
-logging.basicConfig(level=logging.INFO)
-test_case = PipelineRunTestCase()
-pipeline_result = test_case.run_pipeline('pln_master_test', {}, max_wait_time_minutes=60)
-print('E2E Master Test Pipeline completed successfully using existing framework!')
-"
-        
-        echo "SUCCESS: E2E test completed using existing pipeline_run_test_case.py framework"
+      testResultsFiles: 'e2e-test-results.xml'
+      testRunTitle: 'E2E Master Pipeline Tests'
+      failTaskOnFailedTests: true
   
   - task: AzureCLI@2
     displayName: 'E2E Test Status Summary and Manual Verification Instructions'
