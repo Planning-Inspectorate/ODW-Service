@@ -17,90 +17,83 @@ jobs:
   - checkout: self
     clean: true
   
+  - task: UsePythonVersion@0
+    displayName: 'Set up Python'
+    inputs:
+      versionSpec: '3.9'
+      addToPath: true
+
+  - script: |
+      python -m pip install --upgrade pip
+      pip install pytest requests azure-identity
+    displayName: 'Install Python dependencies'
+
   - task: AzureCLI@2
-    displayName: 'Azure CLI Login'
+    displayName: 'Run E2E Master Test Pipeline using pytest'
     inputs:
       azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        echo "Logging in to Azure..."
-        az account show
-        echo "Azure CLI ready for Synapse operations"
-  
-  - task: AzureCLI@2
-    displayName: 'Trigger and Monitor Synapse Master Test Pipeline'
-    inputs:
-      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        # Set environment variables
+        # Set environment variables for the test
         export SYNAPSE_WORKSPACE="pins-synw-odw-${{ parameters.env }}-uks"
-        export PIPELINE_NAME="pln_master_test"
+        export SYNAPSE_ENDPOINT="https://$SYNAPSE_WORKSPACE.dev.azuresynapse.net"
         
         echo "Workspace: $SYNAPSE_WORKSPACE"
-        echo "Pipeline: $PIPELINE_NAME"
+        echo "Endpoint: $SYNAPSE_ENDPOINT"
         
-        # Verify Azure CLI is authenticated
-        echo "Verifying Azure CLI authentication..."
-        az account show
+        # Create a simple test file that uses the existing framework
+        cat > test_e2e_master_pipeline.py << 'EOF'
+from tests.util.pipeline_run_test_case import PipelineRunTestCase
+import pytest
+import logging
+import os
+
+class TestE2EMasterPipeline(PipelineRunTestCase):
+    def test_pln_master_test_pipeline(self):
+        """Test the pln_master_test pipeline using existing framework"""
+        logging.info("Starting E2E Master Test Pipeline execution...")
         
-        # Trigger the master test pipeline in Synapse
-        echo "Starting Synapse master test pipeline execution..."
-        RUN_ID=$(az synapse pipeline create-run \
-          --workspace-name $SYNAPSE_WORKSPACE \
-          --name $PIPELINE_NAME \
-          --query "runId" -o tsv)
+        try:
+            # Run the master test pipeline with extended timeout for E2E testing
+            pipeline_result = self.run_pipeline(
+                "pln_master_test",
+                {},  # No parameters needed for master test
+                max_wait_time_minutes=60  # Extended timeout for comprehensive E2E testing
+            )
+            
+            # Log successful completion
+            logging.info("E2E Master Test Pipeline completed successfully!")
+            logging.info(f"Pipeline run details: {pipeline_result}")
+            
+            # The pipeline should return successfully
+            assert pipeline_result["status"] == "Succeeded"
+            
+        except Exception as e:
+            logging.error(f"E2E Master Test Pipeline failed: {str(e)}")
+            raise
+EOF
         
-        if [ -z "$RUN_ID" ]; then
-          echo "ERROR: Failed to start pipeline. No run ID returned."
-          exit 1
-        fi
+        # Get Azure credentials for pytest
+        export CLIENT_ID="$servicePrincipalId"
+        export CLIENT_SECRET="$servicePrincipalKey"
+        export TENANT_ID="$tenantId"
         
-        echo "Master test pipeline run started with ID: $RUN_ID"
-        
-        # Wait for pipeline completion and monitor status
-        echo "Monitoring master test pipeline execution..."
-        
-        while true; do
-          # Use the correct command to get pipeline run status
-          STATUS=$(az synapse pipeline-run show \
-            --workspace-name $SYNAPSE_WORKSPACE \
-            --run-id $RUN_ID \
-            --query "status" -o tsv)
-          
-          echo "Current pipeline status: $STATUS"
-          
-          case $STATUS in
-            "Succeeded")
-              echo "Master test pipeline completed successfully!"
-              break
-              ;;
-            "Failed"|"Cancelled")
-            echo "Master test pipeline failed or was cancelled. Status: $STATUS"
-            # Get error details for logging
-            echo "Getting detailed pipeline error information..."
-            az synapse pipeline-run show \
-              --workspace-name $SYNAPSE_WORKSPACE \
-              --run-id $RUN_ID \
-              --query "{status: status, message: message, runStart: runStart, runEnd: runEnd}" -o json
-            exit 1
-            ;;
-            "InProgress"|"Queued"|"Running")
-              echo "Master test pipeline is still running. Waiting 30 seconds..."
-              sleep 30
-              ;;
-            "")
-              echo "ERROR: Unable to retrieve pipeline status. Check if pipeline run ID is valid."
-              exit 1
-              ;;
-            *)
-              echo "Unexpected pipeline status: $STATUS. Waiting 30 seconds..."
-              sleep 30
-              ;;
-          esac
-        done
+        # Run the test using pytest with proper test artifacts
+        python -m pytest test_e2e_master_pipeline.py::TestE2EMasterPipeline::test_pln_master_test_pipeline -v \
+          --client_id="$CLIENT_ID" \
+          --client_secret="$CLIENT_SECRET" \
+          --tenant="$TENANT_ID" \
+          --junitxml=e2e-test-results.xml \
+          --tb=short
+
+  - task: PublishTestResults@2
+    displayName: 'Publish E2E Test Results'
+    condition: always()
+    inputs:
+      testResultsFiles: 'e2e-test-results.xml'
+      testRunTitle: 'E2E Master Pipeline Tests'
+      failTaskOnFailedTests: true
   
   - task: AzureCLI@2
     displayName: 'E2E Test Status Summary and Manual Verification Instructions'
@@ -115,7 +108,7 @@ jobs:
         echo ""
         echo "SUCCESS: Synapse Master Test Pipeline was triggered successfully"
         echo "SUCCESS: E2E testing framework is operational"
-        echo "⚠KNOWN ISSUE: Data flow CSV output configuration has URI formatting issue"
+        echo "KNOWN ISSUE: Data flow CSV output configuration has URI formatting issue"
         
         echo ""
         echo "Manual Verification Required:"
@@ -137,7 +130,7 @@ jobs:
         echo "- entity should show the tested data entities"
         echo "- test_timestamp should be recent (within last 2 hours)"
         echo ""
-        echo "🔧 Next Steps to Fix CSV Issue:"
+        echo "Next Steps to Fix CSV Issue:"
         echo "The pipeline execution failed due to a CSV filename format issue in the data flow."
         echo "The core E2E validation logic is working, but needs this configuration fix:"
         echo "- Update the df_e2e_test_framework data flow to use a valid filename format"
