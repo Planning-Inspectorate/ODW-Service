@@ -1,0 +1,333 @@
+{
+	"name": "pln_retrieve_data_validation_test_results",
+	"properties": {
+		"description": "Retrieve E2E data validation test results and convert to NUnit XML format for Azure DevOps reporting",
+		"activities": [
+			{
+				"name": "Execute GenerateTestResult Stored Procedure",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[GenerateTestResult]",
+					"storedProcedureParameters": {
+						"hours_back": {
+							"value": {
+								"value": "@pipeline().parameters.hours_back",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"workspace_name": {
+							"value": {
+								"value": "@pipeline().parameters.workspace_name",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_synapse_serverless",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Copy XML to Storage",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Execute GenerateTestResult Stored Procedure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"additionalColumns": [
+							{
+								"name": "timestamp",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						],
+						"sqlReaderQuery": {
+							"value": "EXEC [dbo].[GenerateTestResult] @hours_back = @{pipeline().parameters.hours_back}, @workspace_name = '@{pipeline().parameters.workspace_name}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": false,
+							"fileExtension": ".csv"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_synapse_serverless_sql",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_test_results_output",
+						"type": "DatasetReference",
+						"parameters": {
+							"filename": {
+								"value": "@concat('test-results-', formatDateTime(utcnow(), 'yyyy-MM-dd-HHmmss'), '.csv')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Create NUnit XML File",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Execute GenerateTestResult Stored Procedure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "EXEC [dbo].[GenerateTestResult] @hours_back = @{pipeline().parameters.hours_back}, @workspace_name = '@{pipeline().parameters.workspace_name}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": false,
+							"fileExtension": ".xml",
+							"columnDelimiter": "\t"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "XmlOutput"
+								},
+								"sink": {
+									"name": "TestResults",
+									"type": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_synapse_serverless_sql",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_test_results_xml_output",
+						"type": "DatasetReference",
+						"parameters": {
+							"filename": {
+								"value": "@concat('TestResults-', formatDateTime(utcnow(), 'yyyy-MM-dd-HHmmss'), '.xml')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "Set Output Variables",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Create NUnit XML File",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Copy XML to Storage",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "xml_file_path",
+					"value": {
+						"value": "@concat('TestResults-', formatDateTime(utcnow(), 'yyyy-MM-dd-HHmmss'), '.xml')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Log Results to AppInsights",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Set Output Variables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pln_log_to_appins",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Stage": "Completed",
+						"PipelineName": {
+							"value": "@pipeline().Pipeline",
+							"type": "Expression"
+						},
+						"PipelineRunID": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						},
+						"StatusMessage": {
+							"value": "@concat('Test results generated successfully. XML file: ', variables('xml_file_path'))",
+							"type": "Expression"
+						},
+						"PipelineTriggerID": {
+							"value": "@pipeline().TriggerId",
+							"type": "Expression"
+						},
+						"PipelineTriggerName": {
+							"value": "@pipeline().TriggerName",
+							"type": "Expression"
+						},
+						"PipelineTriggerType": {
+							"value": "@pipeline().TriggerType",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineName": {
+							"value": "@pipeline()?.TriggeredByPipelineName",
+							"type": "Expression"
+						},
+						"PipelineTriggeredbyPipelineRunID": {
+							"value": "@pipeline()?.TriggeredByPipelineRunId",
+							"type": "Expression"
+						},
+						"ActivityType": "Pipeline",
+						"AppInsIKey": {
+							"value": "@pipeline().parameters.apps_insights_ikey",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"hours_back": {
+				"type": "int",
+				"defaultValue": 2
+			},
+			"workspace_name": {
+				"type": "string",
+				"defaultValue": "pins-synw-odw"
+			},
+			"apps_insights_ikey": {
+				"type": "string"
+			},
+			"output_container": {
+				"type": "string",
+				"defaultValue": "test-results"
+			}
+		},
+		"variables": {
+			"xml_file_path": {
+				"type": "String"
+			},
+			"test_count": {
+				"type": "String"
+			},
+			"failure_count": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Testing"
+		},
+		"annotations": [
+			"data-validation",
+			"testing",
+			"nunit",
+			"azure-devops"
+		]
+	}
+}

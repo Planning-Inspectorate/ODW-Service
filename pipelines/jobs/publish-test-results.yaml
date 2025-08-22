@@ -1,0 +1,258 @@
+parameters:
+  agentPool: ''
+  env: ''
+  synapseWorkspaceName: ''
+
+##
+# Retrieve and publish data validation test results from Synapse
+##
+jobs:
+- job: TriggerSynapsePipeline
+  displayName: 'Trigger Synapse Pipeline for Test Results'
+  pool: ${{ parameters.agentPool }}
+  timeoutInMinutes: 30
+  steps:
+  - checkout: none
+  
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml@odw-common
+  
+  # Install Azure CLI Synapse extension
+  - script: |
+      az extension add --name synapse --only-show-errors
+      echo "Azure CLI Synapse extension installed"
+    displayName: 'Install Azure CLI Extensions'
+  
+  # Trigger Synapse pipeline to generate test results
+  - task: AzureCLI@2
+    displayName: 'Trigger Synapse Pipeline for Test Results'
+    inputs:
+      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        set -e
+        
+        echo "Triggering Synapse pipeline to retrieve test results..."
+        echo "Workspace: ${{ parameters.synapseWorkspaceName }}"
+        echo "Environment: ${{ parameters.env }}"
+        
+        # Get Application Insights instrumentation key from Key Vault
+        KEYVAULT_NAME="pins-kv-synw-odw-${{ parameters.env }}-uks"
+        echo "Getting App Insights key from Key Vault: $KEYVAULT_NAME"
+        
+        APPS_INSIGHTS_IKEY=$(az keyvault secret show \
+          --vault-name "$KEYVAULT_NAME" \
+          --name "application-insights-connection-string" \
+          --query "value" -o tsv | cut -d';' -f1 | cut -d'=' -f2 || echo "")
+        
+        if [ -z "$APPS_INSIGHTS_IKEY" ]; then
+          echo "Warning: Could not retrieve App Insights key, using empty value"
+          APPS_INSIGHTS_IKEY=""
+        fi
+        
+        # Trigger the Synapse pipeline
+        echo "Triggering pipeline: pln_retrieve_data_validation_test_results"
+        PIPELINE_RUN_ID=$(az synapse pipeline create-run \
+          --workspace-name "${{ parameters.synapseWorkspaceName }}" \
+          --name "pln_retrieve_data_validation_test_results" \
+          --parameters hours_back=2 \
+                      workspace_name="${{ parameters.synapseWorkspaceName }}" \
+                      apps_insights_ikey="$APPS_INSIGHTS_IKEY" \
+          --query "runId" -o tsv)
+        
+        echo "Pipeline triggered with run ID: $PIPELINE_RUN_ID"
+        echo "##vso[task.setvariable variable=pipelineRunId;isOutput=true]$PIPELINE_RUN_ID"
+        
+        # Wait for pipeline completion
+        echo "Waiting for pipeline completion..."
+        MAX_WAIT_SECONDS=600  # 10 minutes
+        WAIT_TIME=0
+        SLEEP_INTERVAL=30
+        
+        while [ $WAIT_TIME -lt $MAX_WAIT_SECONDS ]; do
+          STATUS=$(az synapse pipeline-run show \
+            --workspace-name "${{ parameters.synapseWorkspaceName }}" \
+            --run-id "$PIPELINE_RUN_ID" \
+            --query "status" -o tsv 2>/dev/null || echo "Unknown")
+          
+          echo "Pipeline status: $STATUS (waited ${WAIT_TIME}s/${MAX_WAIT_SECONDS}s)"
+          
+          case "$STATUS" in
+            "Succeeded")
+              echo "✓ Pipeline completed successfully!"
+              exit 0
+              ;;
+            "Failed"|"Cancelled")
+              echo "✗ Pipeline failed with status: $STATUS"
+              
+              # Get error details
+              az synapse pipeline-run show \
+                --workspace-name "${{ parameters.synapseWorkspaceName }}" \
+                --run-id "$PIPELINE_RUN_ID" \
+                --query "{status:status, message:message}" -o table 2>/dev/null || echo "Could not get error details"
+              
+              exit 1
+              ;;
+            "InProgress"|"Queued"|"Running")
+              echo "Pipeline is still running, waiting..."
+              sleep $SLEEP_INTERVAL
+              WAIT_TIME=$((WAIT_TIME + SLEEP_INTERVAL))
+              ;;
+            *)
+              echo "Unknown status: $STATUS, continuing to wait..."
+              sleep $SLEEP_INTERVAL
+              WAIT_TIME=$((WAIT_TIME + SLEEP_INTERVAL))
+              ;;
+          esac
+        done
+        
+        echo "✗ Pipeline did not complete within 10 minutes"
+        exit 1
+    name: TriggerPipeline
+
+- job: DownloadAndPublishResults
+  displayName: 'Download and Publish Test Results'
+  dependsOn: TriggerSynapsePipeline
+  condition: succeeded()
+  pool: ${{ parameters.agentPool }}
+  timeoutInMinutes: 15
+  steps:
+  - checkout: none
+  
+  - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml@odw-common
+  
+  # Download the generated XML test results from storage
+  - task: AzureCLI@2
+    displayName: 'Download Test Results XML'
+    inputs:
+      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        set -e
+        
+        echo "Downloading test results XML files..."
+        
+        # Create directory for test results
+        mkdir -p "$(Agent.TempDirectory)/test-results"
+        
+        # Get storage account name for the environment
+        STORAGE_ACCOUNT="pins-synw-odw-${{ parameters.env }}-uks"
+        echo "Storage account: $STORAGE_ACCOUNT"
+        
+        # Download the most recent test results XML file
+        echo "Searching for test results files..."
+        LATEST_XML=$(az storage blob list \
+          --account-name "$STORAGE_ACCOUNT" \
+          --container-name "synapse-workspace" \
+          --prefix "test-results/TestResults-" \
+          --query "sort_by([?ends_with(name, '.xml')], &properties.lastModified)[-1].name" \
+          --output tsv 2>/dev/null || echo "")
+        
+        if [ -n "$LATEST_XML" ] && [ "$LATEST_XML" != "null" ]; then
+          echo "Found XML file: $LATEST_XML"
+          echo "Downloading to: $(Agent.TempDirectory)/test-results/TestResults.xml"
+          
+          az storage blob download \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "synapse-workspace" \
+            --name "$LATEST_XML" \
+            --file "$(Agent.TempDirectory)/test-results/TestResults.xml" \
+            --no-progress
+          
+          # Validate XML file
+          if [ -f "$(Agent.TempDirectory)/test-results/TestResults.xml" ]; then
+            FILE_SIZE=$(stat -c%s "$(Agent.TempDirectory)/test-results/TestResults.xml" 2>/dev/null || stat -f%z "$(Agent.TempDirectory)/test-results/TestResults.xml" 2>/dev/null || echo "0")
+            echo "✓ Test results downloaded successfully"
+            echo "File size: $FILE_SIZE bytes"
+            
+            if [ "$FILE_SIZE" -gt 100 ]; then
+              echo "First 500 characters of XML:"
+              head -c 500 "$(Agent.TempDirectory)/test-results/TestResults.xml"
+              echo ""
+              echo "##vso[task.setvariable variable=xmlFileExists;isOutput=true]true"
+            else
+              echo "✗ XML file is too small, may be empty"
+              echo "##vso[task.setvariable variable=xmlFileExists;isOutput=true]false"
+            fi
+          else
+            echo "✗ XML file was not downloaded successfully"
+            echo "##vso[task.setvariable variable=xmlFileExists;isOutput=true]false"
+          fi
+        else
+          echo "✗ No test results XML file found in storage"
+          echo "Available files in test-results folder:"
+          az storage blob list \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "synapse-workspace" \
+            --prefix "test-results/" \
+            --query "[].{name:name, lastModified:properties.lastModified}" \
+            --output table 2>/dev/null || echo "Could not list files"
+          echo "##vso[task.setvariable variable=xmlFileExists;isOutput=true]false"
+        fi
+    name: DownloadResults
+
+  # Publish test results to Azure DevOps
+  - task: PublishTestResults@2
+    displayName: 'Publish Data Validation Test Results'
+    condition: and(succeeded(), eq(dependencies.DownloadAndPublishResults.outputs['DownloadResults.xmlFileExists'], 'true'))
+    inputs:
+      testResultsFormat: 'NUnit'
+      testResultsFiles: '$(Agent.TempDirectory)/test-results/TestResults.xml'
+      testRunTitle: 'Data Validation E2E Tests - ${{ parameters.env }}'
+      buildPlatform: 'Synapse Analytics'
+      buildConfiguration: '${{ parameters.env }}'
+      mergeTestResults: true
+      publishRunAttachments: true
+      failTaskOnFailedTests: false  # Don't fail the pipeline based on test results
+
+  # Create summary report
+  - task: AzureCLI@2
+    displayName: 'Create Test Summary'
+    condition: always()
+    inputs:
+      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        echo "## Data Validation Test Results Summary" > "$(Agent.TempDirectory)/test-summary.md"
+        echo "" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "**Environment:** ${{ parameters.env }}" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "**Workspace:** ${{ parameters.synapseWorkspaceName }}" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "**Search Range:** Last 2 hours" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "**Generated:** $(date -u)" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "" >> "$(Agent.TempDirectory)/test-summary.md"
+        
+        # Try to extract test count information from XML
+        if [ -f "$(Agent.TempDirectory)/test-results/TestResults.xml" ]; then
+          TOTAL_TESTS=$(grep -o 'total="[0-9]*"' "$(Agent.TempDirectory)/test-results/TestResults.xml" | cut -d'"' -f2 || echo "Unknown")
+          FAILURES=$(grep -o 'failures="[0-9]*"' "$(Agent.TempDirectory)/test-results/TestResults.xml" | cut -d'"' -f2 || echo "Unknown")
+          
+          echo "**Test Statistics:**" >> "$(Agent.TempDirectory)/test-summary.md"
+          echo "- Total Tests: $TOTAL_TESTS" >> "$(Agent.TempDirectory)/test-summary.md"
+          echo "- Failures: $FAILURES" >> "$(Agent.TempDirectory)/test-summary.md"
+          
+          if [ "$TOTAL_TESTS" != "Unknown" ] && [ "$FAILURES" != "Unknown" ] && [ "$TOTAL_TESTS" -gt 0 ]; then
+            SUCCESS_RATE=$(( (TOTAL_TESTS - FAILURES) * 100 / TOTAL_TESTS ))
+            echo "- Success Rate: ${SUCCESS_RATE}%" >> "$(Agent.TempDirectory)/test-summary.md"
+          else
+            echo "- Success Rate: N/A" >> "$(Agent.TempDirectory)/test-summary.md"
+          fi
+        else
+          echo "**Status:** XML file not found - unable to parse test statistics" >> "$(Agent.TempDirectory)/test-summary.md"
+        fi
+        
+        echo "" >> "$(Agent.TempDirectory)/test-summary.md"
+        echo "For detailed test results, check the **Tests** tab in this build." >> "$(Agent.TempDirectory)/test-summary.md"
+        
+        echo "Test summary created:"
+        cat "$(Agent.TempDirectory)/test-summary.md"
+
+  # Upload summary as build artifact
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Test Summary'
+    condition: always()
+    inputs:
+      PathtoPublish: '$(Agent.TempDirectory)/test-summary.md'
+      ArtifactName: 'data-validation-test-summary-${{ parameters.env }}'
+      publishLocation: 'Container'
