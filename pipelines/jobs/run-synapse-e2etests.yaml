@@ -15,7 +15,6 @@ jobs:
   - template: ${{variables['System.DefaultWorkingDirectory']}}/pipelines/steps/azure-login.yaml@odw-common
   - script: |
       export PATH="$PATH:/home/AzDevOps/.local/bin/"
-      sudo apt-get install unixodbc-dev
       export SYNAPSE_ENDPOINT="${{ format('https://pins-synw-odw-{0}-uks.dev.azuresynapse.net/', lower(parameters.env)) }}"
       export CREDENTIAL_NAME="${{ format('https://dev.azuresynapse.net/.default', lower(parameters.env)) }}"
       echo $SYNAPSE_ENDPOINT
@@ -36,11 +35,49 @@ jobs:
       python3 -m pip install --upgrade pip
       python3 -m pip install -r $(Build.SourcesDirectory)/scripts/requirements.txt
       
-      # Install ODBC driver for SQL Server
-      curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-      curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      # Fix any broken packages first
+      sudo apt --fix-broken install -y
+      
+      # Update package lists
       sudo apt-get update
+      
+      # Remove any existing ODBC packages that might conflict
+      sudo apt-get remove -y unixodbc unixodbc-dev msodbcsql17 || true
+      
+      # Install ODBC dependencies in correct order
+      sudo apt-get install -y curl apt-transport-https gnupg lsb-release
+      
+      # Add Microsoft repository
+      curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+      
+      # Determine Ubuntu version and add appropriate repository
+      UBUNTU_VERSION=$(lsb_release -rs)
+      echo "Ubuntu version: $UBUNTU_VERSION"
+      
+      if [[ "$UBUNTU_VERSION" == "18.04" ]]; then
+        curl -sSL https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      elif [[ "$UBUNTU_VERSION" == "20.04" ]]; then
+        curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      elif [[ "$UBUNTU_VERSION" == "22.04" ]]; then
+        curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      else
+        echo "Unsupported Ubuntu version: $UBUNTU_VERSION, trying 20.04 repository"
+        curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      fi
+      
+      # Update package lists after adding Microsoft repository
+      sudo apt-get update
+      
+      # Install unixODBC first (this provides the base ODBC functionality)
+      sudo apt-get install -y unixodbc unixodbc-dev
+      
+      # Install Microsoft ODBC Driver 17 for SQL Server
       sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
+      
+      # Verify installation
+      odbcinst -j
+      echo "ODBC drivers installed:"
+      odbcinst -q -d
     displayName: 'Install dependencies for E2E verification'
     
   - task: AzureCLI@2
