@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "df1f776a-aa57-46ea-8a56-7ca6179ec1d8"
+				"spark.autotune.trackingId": "2b2c3691-8607-4376-a5c7-0341c30536d2"
 			}
 		},
 		"metadata": {
@@ -58,7 +58,7 @@
 					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
 					"print(storage_account)"
 				],
-				"execution_count": null
+				"execution_count": 4
 			},
 			{
 				"cell_type": "code",
@@ -71,10 +71,19 @@
 					"from datetime import datetime\n",
 					"\n",
 					"#Latest ingestion date from odw-raw\n",
-					"ingestion_date = datetime.today().strftime('%Y-%m-%d')\n",
-					"print(ingestion_date)\n",
+					"base_dir = f\"abfss://odw-raw@{storage_account}AppealAttributeMatrix/\"\n",
+					"entries = mssparkutils.fs.ls(base_dir)\n",
+					"date_dirs = [e.name.strip(\"/\").split(\"/\")[-1]\n",
+					"             for e in entries\n",
+					"             if re.fullmatch(r\"\\d{4}-\\d{2}-\\d{2}\", e.name.strip(\"/\").split(\"/\")[-1])]\n",
 					"\n",
-					"file_path = f\"abfss://odw-raw@{storage_account}AppealAttributeMatrix/{ingestion_date}/appeals-attribute-matrix.csv\"\n",
+					"if not date_dirs:\n",
+					"    raise FileNotFoundError(f\"No YYYY-MM-DD folders found under {base_dir}\")\n",
+					"\n",
+					"ingestion_date = max(date_dirs)\n",
+					"print(f\"Using latest ingestion_date: {ingestion_date}\")\n",
+					"\n",
+					"file_path = f\"{base_dir}{ingestion_date}/appeals-attribute-matrix.csv\"\n",
 					"target_path = f\"abfss://odw-standardised@{storage_account}AppealAttributeMatrix/appeal_attribute_matrix\"\n",
 					"\n",
 					"df = (\n",
@@ -106,11 +115,12 @@
 					"    df.write.format(\"delta\").mode(\"overwrite\").saveAsTable(table_name)\n",
 					"    print(f\"Table '{table_name}' created.\")\n",
 					"else:\n",
-					"    print(f\"Table '{table_name}' already exists. Skipping write.\")\n",
+					"    df.write.format(\"delta\").mode(\"overwrite\").option(\"mergeSchema\",\"true\").option(\"overwriteSchema\",\"true\").saveAsTable(table_name)\n",
+					"    print(f\"Table '{table_name}' already exists. If new schema changes have been added, the table has been updated.\")\n",
 					"\n",
 					"display(df)"
 				],
-				"execution_count": null
+				"execution_count": 6
 			}
 		]
 	}
