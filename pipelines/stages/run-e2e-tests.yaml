@@ -1,0 +1,31 @@
+parameters:
+  agentPool: ''
+  env: ''
+
+##
+# Run E2E Synapse tests for data validation
+##
+stages:
+- stage: RunE2ETests
+  displayName: 'Run E2E data validation tests in ${{ parameters.env }} environment'
+  condition: |
+    not(or(failed(), canceled()))
+  jobs:
+  - template: ../jobs/run-synapse-e2etests.yaml
+    parameters:
+      agentPool: ${{ parameters.agentPool }}
+      env: ${{ parameters.env }}
+
+- stage: PublishTestResults
+  displayName: 'Retrieve and Publish Data Validation Test Results'
+  dependsOn: RunE2ETests
+  condition: always() # Run even if tests failed to capture results
+  variables:
+  - name: synapseWorkspaceName
+    value: 'pins-synw-odw-${{ parameters.env }}-uks'
+  jobs:
+  - template: ../jobs/publish-test-results.yaml
+    parameters:
+      agentPool: ${{ parameters.agentPool }}
+      env: ${{ parameters.env }}
+      synapseWorkspaceName: $(synapseWorkspaceName)
