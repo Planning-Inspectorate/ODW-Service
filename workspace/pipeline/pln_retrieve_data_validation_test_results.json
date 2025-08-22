@@ -4,77 +4,6 @@
 		"description": "Retrieve E2E data validation test results and convert to NUnit XML format for Azure DevOps reporting",
 		"activities": [
 			{
-				"name": "Copy XML to Storage",
-				"type": "Copy",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 1,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "SqlServerSource",
-						"additionalColumns": [
-							{
-								"name": "timestamp",
-								"value": {
-									"value": "@utcnow()",
-									"type": "Expression"
-								}
-							}
-						],
-						"sqlReaderQuery": {
-							"value": "EXEC [dbo].[GenerateTestResult] @hours_back = @{pipeline().parameters.hours_back}, @workspace_name = '@{pipeline().parameters.workspace_name}'",
-							"type": "Expression"
-						},
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"sink": {
-						"type": "DelimitedTextSink",
-						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
-						},
-						"formatSettings": {
-							"type": "DelimitedTextWriteSettings",
-							"quoteAllText": false,
-							"fileExtension": ".csv"
-						}
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
-						"referenceName": "ds_synapse_serverless_sql",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "ds_test_results_output",
-						"type": "DatasetReference",
-						"parameters": {
-							"filename": {
-								"value": "@concat('test-results-', formatDateTime(utcnow(), 'yyyy-MM-dd-HHmmss'), '.csv')",
-								"type": "Expression"
-							}
-						}
-					}
-				]
-			},
-			{
 				"name": "Create NUnit XML File",
 				"type": "Copy",
 				"dependsOn": [],
@@ -88,11 +17,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "SqlServerSource",
-						"sqlReaderQuery": {
-							"value": "EXEC [dbo].[GenerateTestResult] @hours_back = @{pipeline().parameters.hours_back}, @workspace_name = '@{pipeline().parameters.workspace_name}'",
-							"type": "Expression"
-						},
+						"type": "AzureSqlSource",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -117,8 +42,8 @@
 									"name": "XmlOutput"
 								},
 								"sink": {
-									"name": "TestResults",
-									"type": "String"
+									"type": "String",
+									"ordinal": 1
 								}
 							}
 						],
@@ -131,7 +56,7 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "ds_synapse_serverless_sql",
+						"referenceName": "ds_e2e_test_result",
 						"type": "DatasetReference"
 					}
 				],
@@ -154,12 +79,6 @@
 				"dependsOn": [
 					{
 						"activity": "Create NUnit XML File",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "Copy XML to Storage",
 						"dependencyConditions": [
 							"Succeeded"
 						]
