@@ -30,12 +30,6 @@ jobs:
       testRunTitle: 'E2E Master Pipeline Tests'
       failTaskOnFailedTests: true
   
-  - script: |
-      # Install requests for REST API calls
-      python3 -m pip install --upgrade pip
-      python3 -m pip install requests
-    displayName: 'Install Python dependencies'
-    
   - task: AzureCLI@2
     displayName: 'Validate E2E Test Results'
     inputs:
@@ -48,23 +42,16 @@ jobs:
         echo "Starting automated E2E test results verification..."
         echo "===================================================="
         
-        # Set environment variables for authentication
-        export AZURE_CLIENT_ID="$servicePrincipalId"
-        export AZURE_CLIENT_SECRET="$servicePrincipalKey"
-        export AZURE_TENANT_ID="$tenantId"
-        
-        # Define Synapse endpoint based on environment
-        SYNAPSE_ENDPOINT="${{ format('https://pins-synw-odw-{0}-uks.dev.azuresynapse.net/', lower(parameters.env)) }}"
+        # Define workspace name based on environment
+        WORKSPACE_NAME="pins-synw-odw-${{ parameters.env }}-uks"
         
         echo "Environment: ${{ parameters.env }}"
-        echo "Synapse Endpoint: $SYNAPSE_ENDPOINT"
+        echo "Workspace: $WORKSPACE_NAME"
         echo ""
         
-        # Run the REST API-based verification script
-        python3 $(Build.SourcesDirectory)/scripts/verify-e2e-test-results-rest.py \
-          --synapse-endpoint "$SYNAPSE_ENDPOINT" \
-          --hours-back 2 \
-          --max-wait 10
+        # Make the script executable and run it
+        chmod +x $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.sh
+        $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.sh "$WORKSPACE_NAME" 2 10
         
         echo ""
         echo "E2E test verification completed successfully!"
