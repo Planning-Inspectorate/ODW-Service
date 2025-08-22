@@ -8,10 +8,16 @@ class TestE2EPlnMasterTest(PipelineRunTestCase):
         Test the pln_master_test pipeline which runs E2E data validation
         across all enabled entities in the system.
         """
-        pipeline_result = self.run_pipeline(
+        # Trigger the pipeline
+        pipeline_run_id = self._trigger_pipeline(
             "pln_master_test",
-            {},  # No parameters needed - pipeline gets entities from orchestration config
-            max_wait_time_minutes=60  # Extended timeout for comprehensive E2E testing
+            {}  # No parameters needed - pipeline gets entities from orchestration config
+        )
+        
+        # Wait for the pipeline to complete with extended timeout for comprehensive E2E testing
+        pipeline_result = self._wait_for_pipeline_run(
+            pipeline_run_id,
+            max_wait_time_minutes=60
         )
         
         # The pipeline should complete successfully

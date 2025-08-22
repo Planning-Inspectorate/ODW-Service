@@ -31,53 +31,48 @@ jobs:
       testRunTitle: 'E2E Master Pipeline Tests'
       failTaskOnFailedTests: true
   
+  - script: |
+      # Install Python dependencies
+      python3 -m pip install --upgrade pip
+      python3 -m pip install -r $(Build.SourcesDirectory)/scripts/requirements.txt
+      
+      # Install ODBC driver for SQL Server
+      curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+      curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+      sudo apt-get update
+      sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
+    displayName: 'Install dependencies for E2E verification'
+    
   - task: AzureCLI@2
-    displayName: 'E2E Test Status Summary and Manual Verification Instructions'
+    displayName: 'Verify E2E Test Results'
     inputs:
       azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
-        echo "E2E Testing Summary Report"
-        echo "============================="
+        set -e  # Exit immediately if any command fails
+        
+        echo "Starting automated E2E test results verification..."
+        echo "===================================================="
+        
+        # Set environment variables for authentication
+        export AZURE_CLIENT_ID="$servicePrincipalId"
+        export AZURE_CLIENT_SECRET="$servicePrincipalKey"
+        export AZURE_TENANT_ID="$tenantId"
+        
+        # Define Synapse endpoint based on environment
+        SYNAPSE_ENDPOINT="${{ format('https://pins-synw-odw-{0}-uks.dev.azuresynapse.net/', lower(parameters.env)) }}"
+        
+        echo "Environment: ${{ parameters.env }}"
+        echo "Synapse Endpoint: $SYNAPSE_ENDPOINT"
+        echo ""
+        
+        # Run the verification script
+        python3 $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.py \
+          --synapse-endpoint "$SYNAPSE_ENDPOINT" \
+          --hours-back 2 \
+          --max-wait 10
         
         echo ""
-        echo "SUCCESS: Synapse Master Test Pipeline was triggered successfully"
-        echo "SUCCESS: E2E testing framework is operational"
-        echo "KNOWN ISSUE: Data flow CSV output configuration has URI formatting issue"
-        
-        echo ""
-        echo "Manual Verification Required:"
-        echo "Please check the following in Synapse Analytics Studio:"
-        echo ""
-        echo "1. Open Synapse Analytics Studio: https://web.azuresynapse.net/"
-        echo "2. Navigate to Data > Databases > logging > Tables > e2e_test_results"
-        echo "3. Run this SQL query to check recent test results:"
-        echo ""
-        echo "   SELECT TOP 10 *"
-        echo "   FROM logging.e2e_test_results "
-        echo "   WHERE test_timestamp >= DATEADD(hour, -2, GETDATE())"
-        echo "   ORDER BY test_timestamp DESC"
-        echo ""
-        echo "4. Verify the test_status column shows 'PASSED' or review failure details"
-        echo ""
-        echo "Expected Results:"
-        echo "- test_status should be 'PASSED' for successful validation"
-        echo "- entity should show the tested data entities"
-        echo "- test_timestamp should be recent (within last 2 hours)"
-        echo ""
-        echo "Next Steps to Fix CSV Issue:"
-        echo "The pipeline execution failed due to a CSV filename format issue in the data flow."
-        echo "The core E2E validation logic is working, but needs this configuration fix:"
-        echo "- Update the df_e2e_test_framework data flow to use a valid filename format"
-        echo "- Remove spaces and special characters from timestamp in CSV filename"
-        echo "- Or remove the CSV output entirely if only table output is needed"
-        echo ""
-        echo "OVERALL STATUS: E2E Testing Framework is Functional"
-        echo "The core testing logic is working as expected. The only issue is a"
-        echo "configuration problem with CSV file output formatting."
-        echo ""
-        echo "This pipeline run is considered SUCCESSFUL for E2E framework validation."
-        
-        # Exit with success since the core E2E framework is working
-        exit 0
+        echo "E2E test verification completed successfully!"
+        echo "All tests passed - pipeline can proceed."
