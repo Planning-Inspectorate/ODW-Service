@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6fd8c711-ac23-4e3a-ab6a-8af87a191f7e"
+				"spark.autotune.trackingId": "de5a337c-a76e-449a-a114-00d931f8bc8f"
 			}
 		},
 		"metadata": {
@@ -113,7 +113,7 @@
 					}
 				},
 				"source": [
-					" %run utils/py_logging_decorator"
+					"from odw.core.util.logging_util import LoggingUtil"
 				],
 				"execution_count": null
 			},
@@ -153,6 +153,8 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"from odw.core.util.util import Util\n",
+					"from odw.core.util.table_util import TableUtil\n",
 					"import asyncio\n",
 					"import nest_asyncio\n",
 					"import tracemalloc\n",
@@ -236,7 +238,7 @@
 				"cell_type": "code",
 				"source": [
 					"spark = SparkSession.builder.getOrCreate()\n",
-					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"storage_account=Util.get_storage_account()\n",
 					"source_path: str = f\"abfss://odw-raw@{storage_account}{source_folder}/\"\n",
 					"standardised_container = f\"abfss://odw-standardised@{storage_account}\"\n",
 					"print(standardised_container)"
@@ -316,7 +318,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"@logging_to_appins\n",
+					"@LoggingUtil.logging_to_appins\n",
 					"def create_table_from_schema(jsonschema: str, db_name: str, table_name: str, target_container: str, target_folder: str, change_data_feed=False):\n",
 					"   \n",
 					"    spark = SparkSession.builder.getOrCreate()\n",
@@ -341,26 +343,26 @@
 					"        table_details = spark.sql(f\"DESCRIBE DETAIL {db_name}.{table_name}\").toPandas()\n",
 					"        \n",
 					"        if len(table_details) > 1:\n",
-					"            raise logError(\"Multiple parquet files detected. Please investigate!\")\n",
+					"            raise LoggingUtil().log_error(\"Multiple parquet files detected. Please investigate!\")\n",
 					"        \n",
 					"        existing_location = table_details['location'][0].rstrip(\"/\")\n",
 					"        if existing_location == target_loc:\n",
-					"            logInfo(f\"Table '{db_name}.{table_name}' already exists at correct location.\")\n",
+					"            LoggingUtil().log_info(f\"Table '{db_name}.{table_name}' already exists at correct location.\")\n",
 					"        else:\n",
-					"            raise logError(f\"Table exists but at a different location: {existing_location}. Expected: {target_loc}\")\n",
+					"            raise LoggingUtil().log_error(f\"Table exists but at a different location: {existing_location}. Expected: {target_loc}\")\n",
 					"        return\n",
 					"\n",
 					"    # Create table if not exists\n",
 					"    if not DeltaTable.isDeltaTable(spark, target_loc):\n",
 					"        df.write.option(\"mergeSchema\", \"false\").format(\"delta\").save(target_loc)\n",
 					"    \n",
-					"    logInfo(f\"Creating table {db_name}.{table_name}\")\n",
+					"    LoggingUtil().log_info(f\"Creating table {db_name}.{table_name}\")\n",
 					"    spark.sql(f\"CREATE TABLE {db_name}.{table_name} USING DELTA LOCATION '{target_loc}'\")\n",
 					"    \n",
 					"    if change_data_feed:\n",
 					"        spark.sql(f\"ALTER TABLE {db_name}.{table_name} SET TBLPROPERTIES ('delta.enableChangeDataFeed' = 'true')\")\n",
 					"    \n",
-					"    logInfo(f\"Table '{db_name}.{table_name}' created successfully!\")"
+					"    LoggingUtil().log_info(f\"Table '{db_name}.{table_name}' created successfully!\")"
 				],
 				"execution_count": null
 			},
@@ -381,7 +383,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"@logging_to_appins\n",
+					"@LoggingUtil.logging_to_appins\n",
 					"def ingest_adhoc(storage_account, definition, folder_path, filename, expected_from, expected_to):\n",
 					"    spark = SparkSession.builder.getOrCreate()\n",
 					"    spark.conf.set(\"spark.databricks.delta.schema.autoMerge.enabled\", \"true\")\n",
@@ -472,9 +474,9 @@
 					"        if table_field is not None and field.dataType != table_field.dataType:\n",
 					"            sparkDF = sparkDF.withColumn(field.name, col(field.name).cast(table_field.dataType))\n",
 					"    \n",
-					"    logInfo(f\"Writing data to odw_standardised_db.{standardised_table_name}\")\n",
+					"    LoggingUtil().log_info(f\"Writing data to odw_standardised_db.{standardised_table_name}\")\n",
 					"    sparkDF.write.option(\"mergeSchema\", \"true\").format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",
-					"    logInfo(f\"Written data to odw_standardised_db.{standardised_table_name}\")\n",
+					"    LoggingUtil().log_info(f\"Written data to odw_standardised_db.{standardised_table_name}\")\n",
 					"    \n",
 					"    standardised_table_df_new = spark.read.format(\"delta\").load(standardised_table_location)\n",
 					"    rows_new = standardised_table_df.filter((standardised_table_df.expected_from == expected_from) & (standardised_table_df.expected_to == expected_to)).count()\n",
@@ -504,7 +506,7 @@
 					"            ingestion_log_df = spark.read.format(\"delta\").load(ingestion_log_table_location)\n",
 					"            table_exists = True\n",
 					"        except Exception as e:\n",
-					"            logInfo(f\"Ingestion log table not found at {ingestion_log_table_location}. Creating a new one.\")\n",
+					"            LoggingUtil().log_info(f\"Ingestion log table not found at {ingestion_log_table_location}. Creating a new one.\")\n",
 					"            table_exists = False\n",
 					"        \n",
 					"        new_log_entry = sparkDF.select(\n",
@@ -525,18 +527,18 @@
 					"\n",
 					"        if not table_exists:\n",
 					"            new_log_entry.write.format(\"delta\").option(\"path\", ingestion_log_table_location).saveAsTable(f\"logging.{logging_table_name}\")\n",
-					"            logInfo(f\"Updating ingestion logging table {logging_table_name} with first entry.\")\n",
+					"            LoggingUtil().log_info(f\"Updating ingestion logging table {logging_table_name} with first entry.\")\n",
 					"        else:\n",
 					"            new_log_entry.write.format(\"delta\").mode(\"append\").saveAsTable(f\"logging.{logging_table_name}\")\n",
-					"            logInfo(\"Appended to existing ingestion logging table with new entry\")\n",
+					"            LoggingUtil().log_info(\"Appended to existing ingestion logging table with new entry\")\n",
 					"    \n",
 					"    except Exception as e:\n",
-					"        logInfo('Logging to tables_logs failed')\n",
+					"        LoggingUtil().log_info('Logging to tables_logs failed')\n",
 					"    \n",
 					"    if rows_raw <= rows_new:\n",
-					"        logInfo('All rows have successfully been written')\n",
+					"        LoggingUtil().log_info('All rows have successfully been written')\n",
 					"    else:\n",
-					"        logError(f\"All rows have NOT been successfully written. Expected {rows_raw} but {rows_new} written\")\n",
+					"        LoggingUtil().log_error(f\"All rows have NOT been successfully written. Expected {rows_raw} but {rows_new} written\")\n",
 					"        ingestion_failure = True\n",
 					"    \n",
 					"    return ingestion_failure, rows_raw"
@@ -546,7 +548,7 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"@logging_to_appins\n",
+					"@LoggingUtil.logging_to_appins\n",
 					"async def ingest_horizon(date_folder: str, file: str):\n",
 					"    try:\n",
 					"        spark = SparkSession.builder.getOrCreate()\n",
@@ -575,7 +577,7 @@
 					"\n",
 					"            if delete_existing_table:\n",
 					"                print(f\"Deleting existing table if exists odw_standardised_db.{definition['Standardised_Table_Name']}\")\n",
-					"                mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
+					"                TableUtil.delete_table(\"odw_standardised_db\", definition[\"Standardised_Table_Name\"])\n",
 					"\n",
 					"            ingestion_failure, row_count = ingest_adhoc(storage_account, definition, source_path, file, expected_from, expected_to)\n",
 					"\n",
@@ -605,7 +607,7 @@
 					"                print(\"No Errors reported during Ingestion\")\n",
 					"        else:\n",
 					"            if specific_file != '':\n",
-					"                raise logError(f\"No definition found for {file}\")\n",
+					"                raise LoggingUtil().log_error(f\"No definition found for {file}\")\n",
 					"            else:\n",
 					"                print(f\"Condition Not Satisfied for Load {file} File\")\n",
 					"    except Exception as e:\n",
