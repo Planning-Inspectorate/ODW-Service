@@ -1,0 +1,129 @@
+{
+	"name": "ref_appeal_attribute_matrix_curated",
+	"properties": {
+		"folder": {
+			"name": "odw-curated"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "5027926e-73eb-40a5-bded-6345d5f34156"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "Synapse PySpark"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql import functions as F\n",
+					"from pyspark.sql import types as T\n",
+					"from pyspark.sql.window import Window"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"std_table: str = \"odw_standardised_db.appeal_attribute_matrix\"\n",
+					"hrm_table: str = \"odw_harmonised_db.ref_appeal_attribute_matrix\"\n",
+					"table_name: str = \"odw_curated_db.ref_appeal_attribute_matrix\""
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"#Get Storage account name\n",
+					"storage_account=mssparkutils.notebook.run('/utils/py_utils_get_storage_account')\n",
+					"print(storage_account)"
+				],
+				"execution_count": null
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					"std_cols = spark.table(std_table).columns\n",
+					"df_h = spark.table(hrm_table)\n",
+					"\n",
+					"target_path = f\"abfss://odw-curated@{storage_account}AppealAttributeMatrix/appeal_attribute_matrix\"\n",
+					"\n",
+					"if \"IsActive\" in df_h.columns:\n",
+					"    df = df_h.filter(F.col(\"IsActive\") == \"Y\")\n",
+					"elif {\"TEMP_PK\",\"IngestionDate\"}.issubset(set(df_h.columns)):\n",
+					"    latest = df_h.groupBy(\"TEMP_PK\").agg(F.max(\"IngestionDate\").alias(\"IngestionDate\"))\n",
+					"    df = df_h.join(latest, on=[\"TEMP_PK\", \"IngestionDate\"], how=\"inner\")\n",
+					"else:\n",
+					"    df = df_h\n",
+					"\n",
+					"for c in std_cols:\n",
+					"    if c not in df.columns:\n",
+					"        df = df.withColumn(c, F.lit(None).cast(\"string\"))\n",
+					"\n",
+					"extras = [c for c in df.columns if c not in std_cols]\n",
+					"ordered = std_cols + extras\n",
+					"df = df.select(*[F.col(c) for c in ordered])\n",
+					"\n",
+					"df.write.mode(\"overwrite\").format(\"delta\").save(target_path)\n",
+					"\n",
+					"if not spark.catalog.tableExists(table_name):\n",
+					"    # check for first created table\n",
+					"    (df.write.format(\"delta\").mode(\"overwrite\").option(\"mergeSchema\", \"true\").option(\"overwriteSchema\", \"true\")\n",
+					"    .saveAsTable(f\"{table_name}\"))\n",
+					"    print(f\"Table '{table_name}' created.\")\n",
+					"else: \n",
+					"    # overwrite for new uploads\n",
+					"    (df.write.format(\"delta\").mode(\"overwrite\").option(\"mergeSchema\", \"true\")\n",
+					"        # .option(\"overwriteSchema\", \"true\")   # uncomment if there is change in a column’s type/nullability or columns have been removed/renamed.\n",
+					"        .saveAsTable(table_name))\n",
+					"    print(f\"Table '{table_name}' already exists. If new schema changes have been added, the table has been updated.\")\n",
+					"\n",
+					"\n",
+					"display(spark.table(table_name).limit(50))"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
