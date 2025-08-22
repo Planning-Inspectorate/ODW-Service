@@ -31,54 +31,10 @@ jobs:
       failTaskOnFailedTests: true
   
   - script: |
-      # Install Python dependencies
+      # Install Python dependencies (without pyodbc since we'll use Azure CLI instead)
       python3 -m pip install --upgrade pip
-      python3 -m pip install -r $(Build.SourcesDirectory)/scripts/requirements.txt
-      
-      # Fix any broken packages first
-      sudo apt --fix-broken install -y
-      
-      # Update package lists
-      sudo apt-get update
-      
-      # Remove any existing ODBC packages that might conflict
-      sudo apt-get remove -y unixodbc unixodbc-dev msodbcsql17 || true
-      
-      # Install ODBC dependencies in correct order
-      sudo apt-get install -y curl apt-transport-https gnupg lsb-release
-      
-      # Add Microsoft repository
-      curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-      
-      # Determine Ubuntu version and add appropriate repository
-      UBUNTU_VERSION=$(lsb_release -rs)
-      echo "Ubuntu version: $UBUNTU_VERSION"
-      
-      if [[ "$UBUNTU_VERSION" == "18.04" ]]; then
-        curl -sSL https://packages.microsoft.com/config/ubuntu/18.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-      elif [[ "$UBUNTU_VERSION" == "20.04" ]]; then
-        curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-      elif [[ "$UBUNTU_VERSION" == "22.04" ]]; then
-        curl -sSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-      else
-        echo "Unsupported Ubuntu version: $UBUNTU_VERSION, trying 20.04 repository"
-        curl -sSL https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-      fi
-      
-      # Update package lists after adding Microsoft repository
-      sudo apt-get update
-      
-      # Install unixODBC first (this provides the base ODBC functionality)
-      sudo apt-get install -y unixodbc unixodbc-dev
-      
-      # Install Microsoft ODBC Driver 17 for SQL Server
-      sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
-      
-      # Verify installation
-      odbcinst -j
-      echo "ODBC drivers installed:"
-      odbcinst -q -d
-    displayName: 'Install dependencies for E2E verification'
+      python3 -m pip install requests azure-identity azure-core
+    displayName: 'Install Python dependencies'
     
   - task: AzureCLI@2
     displayName: 'Verify E2E Test Results'
@@ -104,8 +60,8 @@ jobs:
         echo "Synapse Endpoint: $SYNAPSE_ENDPOINT"
         echo ""
         
-        # Run the verification script
-        python3 $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.py \
+        # Run the Azure CLI-based verification script
+        python3 $(Build.SourcesDirectory)/scripts/verify-e2e-test-results-cli.py \
           --synapse-endpoint "$SYNAPSE_ENDPOINT" \
           --hours-back 2 \
           --max-wait 10
