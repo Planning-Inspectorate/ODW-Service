@@ -22,37 +22,131 @@ jobs:
       python3 -m pytest $(Build.SourcesDirectory)/tests/e2e_test/test_e2e_pln_master_test.py::TestE2EPlnMasterTest::test_pln_master_test_pipeline -vv -rP --junitxml=e2e-test-results.xml --client_id="$servicePrincipalId" --client_secret="$servicePrincipalKey" --tenant="$tenantId"
     displayName: 'Run E2E Tests with pytest'
   
-  - task: PublishTestResults@2
-    displayName: 'Publish E2E Test Results'
-    condition: always()
-    inputs:
-      testResultsFiles: 'e2e-test-results.xml'
-      testRunTitle: 'E2E Master Pipeline Tests'
-      failTaskOnFailedTests: true
-  
-  - task: AzureCLI@2
+  - powershell: |
+      Write-Host "Fetching E2E Tests results..."
+      Write-Host "===================================================="
+      
+      # Define workspace and database details based on environment
+      $workspaceName = "pins-synw-odw-${{ parameters.env }}-uks"
+      $serverName = "$workspaceName.sql.azuresynapse.net"
+      $databaseName = "logging"
+      $hoursBack = 2
+      $maxWaitMinutes = 10
+      
+      Write-Host "Environment: ${{ parameters.env }}"
+      Write-Host "Workspace: $workspaceName"
+      Write-Host "Server: $serverName"
+      Write-Host "Database: $databaseName"
+      Write-Host "Looking back: $hoursBack hours"
+      Write-Host "Max wait time: $maxWaitMinutes minutes"
+      Write-Host ""
+      
+      # SQL Query to get recent E2E test results
+      $sqlQuery = @"
+      SELECT entity, test_status, test_timestamp, 
+             std_count, hrm_count, hrm_active_count, cur_count, 
+             std_to_hrm_match, hrm_to_cur_match, cur_unique_check 
+      FROM e2e_test_results 
+      WHERE test_timestamp >= DATEADD(hour, -$hoursBack, GETDATE()) 
+      ORDER BY test_timestamp DESC
+      "@
+      
+      Write-Host "Looking for E2E test results from the last $hoursBack hours..."
+      
+      $startTime = Get-Date
+      $maxWaitSeconds = $maxWaitMinutes * 60
+      $found = $false
+      
+      while (-not $found) {
+          try {
+              Write-Host "Executing SQL query against Synapse serverless pool..."
+              
+              # Execute the query
+              $results = Invoke-Sqlcmd -ServerInstance $serverName `
+                                      -Database $databaseName `
+                                      -Username '$(SQL_USER)' `
+                                      -Password '$(SQL_PASS)' `
+                                      -Query $sqlQuery `
+                                      -QueryTimeout 60
+              
+              if ($results -and $results.Count -gt 0) {
+                  Write-Host "Found $($results.Count) E2E test result(s)!"
+                  Write-Host ""
+                  Write-Host "Test Results Summary:"
+                  Write-Host "=" * 50
+                  
+                  $allPassed = $true
+                  $entitiesTested = @()
+                  
+                  foreach ($row in $results) {
+                      $entity = $row.entity
+                      $testStatus = $row.test_status
+                      $timestamp = $row.test_timestamp
+                      $entitiesTested += $entity
+                      
+                      $statusIndicator = if ($testStatus -eq "PASSED") { "PASS" } else { "FAIL" }
+                      Write-Host "[$statusIndicator] Entity: $entity, Status: $testStatus, Time: $timestamp"
+                      
+                      # Log additional metrics if available
+                      $metrics = @('std_count', 'hrm_count', 'hrm_active_count', 'cur_count', 'std_to_hrm_match', 'hrm_to_cur_match', 'cur_unique_check')
+                      foreach ($metric in $metrics) {
+                          if ($row.PSObject.Properties.Name -contains $metric -and $row.$metric -ne $null) {
+                              Write-Host "  $metric: $($row.$metric)"
+                          }
+                      }
+                      
+                      if ($testStatus -ne "PASSED") {
+                          $allPassed = $false
+                      }
+                  }
+                  
+                  Write-Host "=" * 50
+                  $uniqueEntities = $entitiesTested | Sort-Object -Unique
+                  Write-Host "Summary: $($uniqueEntities.Count) entities tested"
+                  Write-Host "Entities: $($uniqueEntities -join ', ')"
+                  Write-Host ""
+                  
+                  if ($allPassed) {
+                      Write-Host "SUCCESS: All E2E tests PASSED!" -ForegroundColor Green
+                      Write-Host ""
+                      Write-Host "E2E Test Verification: PASSED"
+                      Write-Host "All tests passed - pipeline can proceed."
+                      $found = $true
+                      exit 0
+                  } else {
+                      Write-Host "FAILURE: One or more E2E tests FAILED!" -ForegroundColor Red
+                      Write-Host ""
+                      Write-Host "E2E Test Verification: FAILED"
+                      Write-Host "The pipeline will fail to prevent false positive results."
+                      exit 1
+                  }
+              } else {
+                  Write-Host "No test results found in the specified time window"
+              }
+          }
+          catch {
+              Write-Host "Error executing query: $($_.Exception.Message)" -ForegroundColor Red
+          }
+          
+          # Check if we should continue waiting
+          $elapsed = (Get-Date) - $startTime
+          if ($elapsed.TotalSeconds -ge $maxWaitSeconds) {
+              Write-Host "ERROR: No E2E test results found after waiting $maxWaitMinutes minutes" -ForegroundColor Red
+              Write-Host ""
+              Write-Host "Manual Verification Instructions:"
+              Write-Host "Please check the test results manually in Synapse Analytics Studio:"
+              Write-Host ""
+              Write-Host "1. Open Synapse Analytics Studio: https://web.azuresynapse.net/"
+              Write-Host "2. Navigate to Data > Databases > $databaseName > Tables > e2e_test_results"
+              Write-Host ""
+              Write-Host "4. Verify that test_status shows 'PASSED' for recent runs"
+              exit 1
+          }
+          
+          Write-Host "No recent test results found. Waiting... ($([int]$elapsed.TotalSeconds)s/$($maxWaitSeconds)s)"
+          Start-Sleep -Seconds 30
+      }
     displayName: 'Validate E2E Test Results'
-    inputs:
-      azureSubscription: 'ODW ${{ upper(parameters.env) }} - Infrastructure'
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        set -e  # Exit immediately if any command fails
-        
-        echo "Starting automated E2E test results verification..."
-        echo "===================================================="
-        
-        # Define workspace name based on environment
-        WORKSPACE_NAME="pins-synw-odw-${{ parameters.env }}-uks"
-        
-        echo "Environment: ${{ parameters.env }}"
-        echo "Workspace: $WORKSPACE_NAME"
-        echo ""
-        
-        # Make the script executable and run it
-        chmod +x $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.sh
-        $(Build.SourcesDirectory)/scripts/verify-e2e-test-results.sh "$WORKSPACE_NAME" 2 10
-        
-        echo ""
-        echo "E2E test verification completed successfully!"
-        echo "All tests passed - pipeline can proceed."
+    env:
+      SQL_USER: $(synapseUsername)
+      SQL_PASS: $(synapsePassword)
