@@ -114,7 +114,6 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
                     print("FAILURE: One or more E2E tests FAILED!")
                     print("")
                     print("E2E Test Verification: FAILED")
-                    print("The pipeline will fail to prevent false positive results.")
                     return False
             else:
                 print("No test results found in the specified time window")

@@ -125,7 +125,6 @@ except Exception as e:
                 else
                     echo ""
                     echo "E2E Test Verification: FAILED"
-                    echo "The pipeline will fail to prevent false positive results."
                     exit 1
                 fi
             else
