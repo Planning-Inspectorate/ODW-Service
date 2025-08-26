@@ -47,6 +47,13 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
         try:
             # Get connection to logging database using existing SynapseUtil
             server = f"pins-synw-odw-{env.lower()}-uks-ondemand.sql.azuresynapse.net"
+            print(f"Connecting to server: {server}")
+            print(f"Database: logging")
+            
+            # Debug: Check available ODBC drivers
+            import pyodbc
+            print(f"Available ODBC drivers: {[x for x in pyodbc.drivers() if 'SQL Server' in x]}")
+            
             connection = SynapseUtil._get_connection(server, "logging")
             
             # SQL query to get recent E2E test results

@@ -23,6 +23,26 @@ jobs:
     displayName: 'Run E2E Tests with pytest'
   
   - script: |
+      # Install ODBC Driver 18 for SQL Server
+      echo "Installing ODBC Driver 18 for SQL Server..."
+      sudo curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+      sudo curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+      sudo apt-get update
+      sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+      sudo apt-get install -y unixodbc-dev
+      
+      # Install required Python packages
+      pip3 install pyodbc azure-identity azure-storage-blob python-dotenv
+      
+      echo "ODBC Driver 18 installation completed"
+      
+      # Verify installation
+      odbcinst -q -d -n "ODBC Driver 18 for SQL Server" || echo "Driver 18 not found"
+      odbcinst -q -d -n "ODBC Driver 17 for SQL Server" || echo "Driver 17 not found"
+    displayName: 'Install ODBC Driver 18 and Dependencies'
+    
+  - script: |
       export PATH="$PATH:/home/AzDevOps/.local/bin/"
+      export ENV=${{ parameters.env }}
       python3 $(Build.SourcesDirectory)/tests/e2e_test/validate_e2e_results.py ${{ parameters.env }}
     displayName: 'Validate E2E Test Results using Python SynapseUtil'
