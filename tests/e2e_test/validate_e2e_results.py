@@ -9,10 +9,15 @@ import os
 import time
 from datetime import datetime
 
-# Add the parent directory to sys.path to import from tests.util
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Add the root project directory to sys.path for proper imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
 
-from util.synapse_util import SynapseUtil
+# Add the tests directory to sys.path
+tests_dir = os.path.join(project_root, 'tests')
+sys.path.insert(0, tests_dir)
+
+from tests.util.synapse_util import SynapseUtil
 
 
 def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 10) -> bool:
