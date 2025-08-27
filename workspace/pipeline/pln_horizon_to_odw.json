@@ -451,11 +451,66 @@
 								],
 								"ifTrueActivities": [
 									{
-										"name": "Script1",
-										"type": "Script",
+										"name": "Get_LastIngestDate",
+										"type": "Lookup",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [
+											{
+												"name": "Set_LastIngestDate",
+												"value": ""
+											}
+										],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": "SELECT LastIngestDate \nFROM dbo.LastIngestDates \nWHERE TableName = '@{item().Horizon_Table_Name}'\n",
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "AzureSqlTable1",
+												"type": "DatasetReference"
+											},
+											"firstRowOnly": true
+										}
+									},
+									{
+										"name": "Set_LastIngestDate",
+										"type": "SetVariable",
 										"dependsOn": [
 											{
 												"activity": "Get_LastIngestDate",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "LastIngestDate",
+											"value": {
+												"value": "@coalesce(activity('Get_LastIngestDate').output.firstRow.LastIngestDate, '1900-01-01T00:00:00Z')\n",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Incremental_Copy",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "Set_LastIngestDate",
 												"dependencyConditions": [
 													"Succeeded"
 												]
@@ -469,24 +524,67 @@
 											"secureInput": false
 										},
 										"userProperties": [],
-										"linkedServiceName": {
-											"referenceName": "ls_sql_hzn",
-											"type": "LinkedServiceReference"
-										},
 										"typeProperties": {
-											"scripts": [
-												{
-													"type": "NonQuery",
-													"text": "SELECT LastIngestDate\nFROM meta.LastIngestDates\nWHERE TableName = '@{item().Standardised_Table_Name}'"
+											"source": {
+												"type": "SqlServerSource",
+												"sqlReaderQuery": {
+													"value": "@concat(\n  'SELECT * FROM ', \n  item().Horizon_Table_Name, \n  ' WHERE ', \n  item().Incremental_Key, \n  ' > ''', \n  variables('LastIngestDate'), \n  ''''\n)",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
 												}
-											],
-											"scriptBlockExecutionTimeout": "02:00:00"
-										}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_Horizon_Source_table",
+												"type": "DatasetReference",
+												"parameters": {
+													"table_name": "@item().Horizon_Table_Name"
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_Horizon_odw_raw",
+												"type": "DatasetReference",
+												"parameters": {
+													"FileName": "@item().Source_Filename_Format"
+												}
+											}
+										]
 									},
 									{
-										"name": "Get_LastIngestDate",
-										"type": "Lookup",
-										"dependsOn": [],
+										"name": "Update_LastIngestDate",
+										"type": "Script",
+										"dependsOn": [
+											{
+												"activity": "Incremental_Copy",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
 										"policy": {
 											"timeout": "0.12:00:00",
 											"retry": 0,
@@ -496,16 +594,8 @@
 										},
 										"userProperties": [],
 										"typeProperties": {
-											"source": {
-												"type": "AzureSqlSource",
-												"queryTimeout": "02:00:00",
-												"partitionOption": "None"
-											},
-											"dataset": {
-												"referenceName": "AzureSqlTable1",
-												"type": "DatasetReference"
-											},
-											"firstRowOnly": true
+											"scripts": [],
+											"scriptBlockExecutionTimeout": "02:00:00"
 										}
 									}
 								]
@@ -861,6 +951,9 @@
 			},
 			"H_NoteBook_errorMessage": {
 				"type": "Array"
+			},
+			"LastIngestDate": {
+				"type": "String"
 			}
 		},
 		"folder": {
