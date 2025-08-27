@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "6371fb53-2ee9-42cd-9499-0a9011526b5e"
+				"spark.autotune.trackingId": "f7cc8a4d-70a6-4114-8d29-7060d36c0440"
 			}
 		},
 		"metadata": {
@@ -52,6 +52,21 @@
 		},
 		"cells": [
 			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"**Purpose**\n",
+					"\n",
+					"Harmonises the AppealAttributeMatrix entity from the standardised layer into odw-harmonised, which adds technical keys and metadata for consistent downstream use. This notebook is designed to run as part of the pln_ref_appeal_attribute_matrix pipeline whenever a new file has been uploaded to fileshare (i.e. when the appeal matrix gets updated)"
+				]
+			},
+			{
 				"cell_type": "code",
 				"source": [
 					"from pyspark.sql import functions as F\n",
@@ -59,6 +74,27 @@
 					"from pyspark.sql.window import Window"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"**Inputs**\n",
+					"\n",
+					"Source table: odw_standardised_db.appeal_attribute_matrix\n",
+					"\n",
+					"**Outputs**\n",
+					"\n",
+					"Delta path: odw-harmonised/AppealAttributeMatrix/appeal_attribute_matrix\n",
+					"\n",
+					"Table: odw_harmonised_db.ref_appeal_attribute_matrix"
+				]
 			},
 			{
 				"cell_type": "code",
@@ -76,6 +112,28 @@
 					"print(storage_account)"
 				],
 				"execution_count": null
+			},
+			{
+				"cell_type": "markdown",
+				"metadata": {
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"**Key transformations**\n",
+					"\n",
+					"Loads & normalises: reads from odw_standardised_db.appeal_attribute_matrix. All string columns are trimmed to remove leading and trailing spaces, and the key column attribute is normalised by converting it to lowercase and trimming, ensuring case-insensitive matching.\n",
+					"\n",
+					"Add harmonisation attributes: TEMP_PK is generated as a SHA-256 hash of the key column (attribute) to create a stable technical key. IngestionDate is cast to a timestamp when available, otherwise set to the current timestamp, and IsActive is included with a default value of \"Y\".\n",
+					"\n",
+					"Column ordering: The final dataset keeps all original standardised columns in their existing order and then appends the new attributes: TEMP_PK, ODTSourceSystem, IngestionDate, and IsActive.\n",
+					"\n",
+					"Write harmonised outputs: The harmonised dataset is written out as Delta files to the harmonised path using overwrite mode with schema merge enabled. It then creates or overwrites the table odw_harmonised_db.ref_appeal_attribute_matrix, applying both mergeSchema and overwriteSchema to accommodate schema changes automatically.\n",
+					""
+				]
 			},
 			{
 				"cell_type": "code",
