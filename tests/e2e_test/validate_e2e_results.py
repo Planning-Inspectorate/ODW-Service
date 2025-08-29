@@ -7,6 +7,7 @@ Uses the existing SynapseUtil class to check test results and fail if any test s
 import sys
 import os
 import time
+import argparse
 from datetime import datetime
 
 # Add the root project directory to sys.path for proper imports
@@ -20,7 +21,7 @@ sys.path.insert(0, tests_dir)
 from tests.util.synapse_util import SynapseUtil
 
 
-def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 10) -> bool:
+def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 10, verbose: bool = False) -> bool:
     """
     Validate E2E test results from the logging database.
     
@@ -28,6 +29,7 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
         env: Environment name (e.g., 'dev', 'test')
         hours_back: How many hours back to look for results
         max_wait_minutes: Maximum time to wait for results
+        verbose: Enable verbose debugging output
         
     Returns:
         True if all tests passed, False otherwise
@@ -47,12 +49,15 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
         try:
             # Get connection to logging database using existing SynapseUtil
             server = f"pins-synw-odw-{env.lower()}-uks-ondemand.sql.azuresynapse.net"
-            print(f"Connecting to server: {server}")
-            print(f"Database: logging")
-            
-            # Debug: Check available ODBC drivers
-            import pyodbc
-            print(f"Available ODBC drivers: {[x for x in pyodbc.drivers() if 'SQL Server' in x]}")
+            if verbose:
+                print(f"Connecting to server: {server}")
+                print(f"Database: logging")
+                
+                # Debug: Check available ODBC drivers
+                import pyodbc
+                print(f"Available ODBC drivers: {[x for x in pyodbc.drivers() if 'SQL Server' in x]}")
+            else:
+                import pyodbc
             
             connection = SynapseUtil._get_connection(server, "logging")
             
@@ -140,13 +145,27 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
 
 
 if __name__ == "__main__":
-    # Get environment from command line argument or environment variable
-    env = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('ENV', 'dev')
+    parser = argparse.ArgumentParser(description="Validate E2E test results from the logging database")
+    parser.add_argument("env", nargs="?", default=os.environ.get('ENV', 'dev'),
+                       help="Environment name (e.g., 'dev', 'test'). Defaults to ENV environment variable or 'dev'")
+    parser.add_argument("--hours-back", type=int, default=2,
+                       help="How many hours back to look for results (default: 2)")
+    parser.add_argument("--max-wait-minutes", type=int, default=10,
+                       help="Maximum time to wait for results in minutes (default: 10)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                       help="Enable verbose debugging output")
     
-    print(f"Starting E2E test validation for environment: {env}")
+    args = parser.parse_args()
+    
+    print(f"Starting E2E test validation for environment: {args.env}")
+    if args.verbose:
+        print(f"Verbose mode: enabled")
+        print(f"Hours back: {args.hours_back}")
+        print(f"Max wait minutes: {args.max_wait_minutes}")
+        print("")
     
     try:
-        success = validate_e2e_results(env)
+        success = validate_e2e_results(args.env, args.hours_back, args.max_wait_minutes, args.verbose)
         sys.exit(0 if success else 1)
     except Exception as e:
         print(f"Unexpected error: {str(e)}")

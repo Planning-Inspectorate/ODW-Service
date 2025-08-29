@@ -17,7 +17,7 @@ class TestE2EPlnE2ETest(PipelineRunTestCase):
         # Wait for the pipeline to complete with extended timeout for comprehensive E2E testing
         pipeline_result = self._wait_for_pipeline_run(
             pipeline_run_id,
-            max_wait_time_minutes=60
+            max_wait_time_minutes=30
         )
         
         # The pipeline should complete successfully
