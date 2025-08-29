@@ -62,3 +62,4 @@ Some of the key resources used in the deployment are:
 | ADLS Storage Account | Hierarchical namespace enabled Storage Account to act as a data lake |
 | Key Vault | Secrets storage for connection strings, password, etc for connected services |
 | Log Analytics | Activity and metric diagnostic log storage with querying capabilities using KQL |
+jgjlll
