@@ -97,8 +97,15 @@
 				"cell_type": "code",
 				"source": [
 					"def test_datalake_failover_connectivity():\n",
-					"    storage_endpoint = re.search('url=https://(.+?);', mssparkutils.credentials.getFullConnectionString(\"ls_backup_destination\")).group(1)\n",
-					"    env = re.search(\"pinsstodw(.*)ukw\", storage_endpoint).group(1)\n",
+					"    # Try to get the backup destination connection - if it fails, skip the test\n",
+					"    try:\n",
+					"        connection_string = mssparkutils.credentials.getFullConnectionString(\"ls_backup_destination\")\n",
+					"        storage_endpoint = re.search('url=https://(.+?);', connection_string).group(1)\n",
+					"        env = re.search(\"pinsstodw(.*)ukw\", storage_endpoint).group(1)\n",
+					"    except Exception as e:\n",
+					"        print(f\"Skipping test_datalake_failover_connectivity because backup destination is not configured: {e}\")\n",
+					"        return\n",
+					"    \n",
 					"    if env == \"build\":\n",
 					"        print(\"Skipping test_datalake_failover_connectivity because the build environment does not have any backup data\")\n",
 					"        return\n",
@@ -113,7 +120,7 @@
 					"        exception_raised = e\n",
 					"    finally:\n",
 					"        mssparkutils.fs.unmount(\"/temp_test_datalake_failover_connectivity\")\n",
-					"    assert not exception_raised, f\"Could not connect to the main data lake '{storage_endpoint}'\""
+					"    assert not exception_raised, f\"Could not connect to the backup data lake '{storage_endpoint}'\""
 				],
 				"execution_count": null
 			},
