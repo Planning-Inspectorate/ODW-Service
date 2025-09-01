@@ -82,6 +82,7 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
                 
                 all_passed = True
                 entities_tested = []
+                failed_count = 0
                 
                 for row in results:
                     entity = row[0] if len(row) > 0 else "Unknown"
@@ -102,10 +103,12 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
                     
                     if test_status != "PASSED":
                         all_passed = False
+                        failed_count += 1
                 
                 print("=" * 50)
                 unique_entities = list(set(entities_tested))
-                print(f"Summary: {len(unique_entities)} entities tested")
+                total_tests = len(unique_entities)
+                print(f"Summary: {total_tests} entities tested")
                 print(f"Entities: {', '.join(sorted(unique_entities))}")
                 print("")
                 
@@ -116,7 +119,7 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
                     print("All tests passed - pipeline can proceed.")
                     return True
                 else:
-                    print("FAILURE: One or more E2E tests FAILED!")
+                    print(f"FAILURE: {failed_count} out of {total_tests} E2E tests FAILED!")
                     print("")
                     print("E2E Test Verification: FAILED")
                     return False
