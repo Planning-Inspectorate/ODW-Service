@@ -75,7 +75,7 @@ def validate_e2e_results(env: str, hours_back: int = 2, max_wait_minutes: int = 
             results = SynapseUtil.submit_sql_query(connection, sql_query)
             
             if results and len(results) > 0:
-                print(f"Found {len(results)} E2E test result(s)!")
+                print(f"Found {len(results)} E2E test results!")
                 print("")
                 print("Test Results Summary:")
                 print("=" * 50)
