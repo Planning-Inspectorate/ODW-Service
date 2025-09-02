@@ -1,0 +1,131 @@
+{
+	"name": "Application Insite",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "pinssynspodw34",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "f145047d-be71-4235-b1b6-fbb3e5b40b36"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"enableDebugMode": false,
+			"kernelspec": {
+				"name": "synapse_pyspark",
+				"display_name": "python"
+			},
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/ff442a29-fc06-4a13-8e3e-65fd5da513b3/resourceGroups/pins-rg-data-odw-dev-uks/providers/Microsoft.Synapse/workspaces/pins-synw-odw-dev-uks/bigDataPools/pinssynspodw34",
+				"name": "pinssynspodw34",
+				"type": "Spark",
+				"endpoint": "https://pins-synw-odw-dev-uks.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/pinssynspodw34",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net"
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 3,
+				"cores": 4,
+				"memory": 28,
+				"automaticScaleJobs": false
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"import requests\n",
+					"import json\n",
+					"from datetime import datetime\n",
+					"\n",
+					"# Replace with your actual instrumentation key\n",
+					"instrumentation_key = \"a1609846-e819-4880-976a-de745a22203f\"\n",
+					"endpoint = \"https://uksouth-1.in.applicationinsights.azure.com/v2/track\"\n",
+					"\n",
+					"# Simulate pipeline parameters\n",
+					"params = {\n",
+					"    \"Stage\": \"RawToStd\",\n",
+					"    \"PipelineName\": \"horizon_raw_to_std\",\n",
+					"    \"PipelineRunID\": \"12345\",\n",
+					"    \"StartTime\": \"2025-09-02 13:02:56\",\n",
+					"    \"EndTime\": \"2025-09-02 13:04:38\",\n",
+					"    \"Inserts\": 381882,\n",
+					"    \"Updates\": 0,\n",
+					"    \"Deletes\": 0,\n",
+					"    \"ErrorMessage\": \"\",\n",
+					"    \"StatusMessage\": \"success\",\n",
+					"    \"PipelineTriggerID\": \"trigger_001\",\n",
+					"    \"PipelineTriggerName\": \"manual_trigger\",\n",
+					"    \"PipelineTriggerType\": \"Manual\",\n",
+					"    \"PipelineTriggeredbyPipelineName\": \"\",\n",
+					"    \"PipelineTriggeredbyPipelineRunID\": \"\",\n",
+					"    \"PipelineExecutionTimeInSec\": \"102\",\n",
+					"    \"ActivityType\": \"DataLoad\",\n",
+					"    \"DurationSeconds\": \"102\",\n",
+					"    \"StatusCode\": \"200\",\n",
+					"    \"AppInsCustomEventName\": \"ODW_Master_Pipeline_Logs\"\n",
+					"}\n",
+					"\n",
+					"# Construct the body\n",
+					"body = {\n",
+					"    \"Stage\": params[\"Stage\"],\n",
+					"    \"PipelineName\": params[\"PipelineName\"],\n",
+					"    \"PipelineRunID\": params[\"PipelineRunID\"],\n",
+					"    \"StartTime\": params[\"StartTime\"],\n",
+					"    \"EndTime\": params[\"EndTime\"],\n",
+					"    \"Inserts\": str(params[\"Inserts\"]),\n",
+					"    \"Updates\": str(params[\"Updates\"]),\n",
+					"    \"Deletes\": str(params[\"Deletes\"]),\n",
+					"    \"ErrorMessage\": params[\"ErrorMessage\"],\n",
+					"    \"StatusMessage\": params[\"StatusMessage\"],\n",
+					"    \"PipelineTriggerID\": params[\"PipelineTriggerID\"],\n",
+					"    \"PipelineTriggerName\": params[\"PipelineTriggerName\"],\n",
+					"    \"PipelineTriggerType\": params[\"PipelineTriggerType\"],\n",
+					"    \"PipelineTriggeredbyPipelineName\": params[\"PipelineTriggeredbyPipelineName\"],\n",
+					"    \"PipelineTriggeredbyPipelineRunID\": params[\"PipelineTriggeredbyPipelineRunID\"],\n",
+					"    \"PipelineExecutionTimeInSec\": params[\"PipelineExecutionTimeInSec\"],\n",
+					"    \"ActivityType\": params[\"ActivityType\"],\n",
+					"    \"StatusCode\": params[\"StatusCode\"],\n",
+					"    \"DurationSeconds\": params[\"DurationSeconds\"]\n",
+					"}\n",
+					"\n",
+					"# Final payload\n",
+					"payload = {\n",
+					"    \"name\": \"Microsoft.ApplicationInsights.Event\",\n",
+					"    \"time\": datetime.utcnow().isoformat() + \"Z\",\n",
+					"    \"iKey\": instrumentation_key,\n",
+					"    \"data\": {\n",
+					"        \"baseType\": \"EventData\",\n",
+					"        \"baseData\": {\n",
+					"            \"name\": params[\"AppInsCustomEventName\"],\n",
+					"            \"properties\": body\n",
+					"        }\n",
+					"    }\n",
+					"}\n",
+					"\n",
+					"# Send to Application Insights\n",
+					"response = requests.post(endpoint, json=payload)\n",
+					"print(\"Telemetry sent:\", response.status_code)"
+				],
+				"execution_count": null
+			}
+		]
+	}
+}
