@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "784a0546-3fcd-43bd-9026-580b6cfbfe5a"
+				"spark.autotune.trackingId": "816e43d1-c962-4869-921b-2c35f55ae2d7"
 			}
 		},
 		"metadata": {
@@ -657,7 +657,14 @@
 			{
 				"cell_type": "code",
 				"source": [
+					"import asyncio\n",
+					"import nest_asyncio\n",
+					"from datetime import datetime\n",
+					"\n",
+					"nest_asyncio.apply()\n",
+					"\n",
 					"async def process_file(file):\n",
+					"    start_exec_time = datetime.now()\n",
 					"    insert_count, error_message = await ingest_horizon(date_folder=latest_folder, file=file)\n",
 					"\n",
 					"    end_exec_time = datetime.now()\n",
@@ -688,9 +695,16 @@
 					"        \"AppInsCustomEventName\": \"ODW_Master_Pipeline_Logs\"\n",
 					"    }\n",
 					"\n",
-					"    await asyncio.to_thread(send_telemetry_to_app_insights, params)"
+					"    await asyncio.to_thread(send_telemetry_to_app_insights, params)\n",
+					"\n",
+					"async def load_horizon_async():\n",
+					"    tasks = [process_file(file) for file in horizon_files]\n",
+					"    await asyncio.gather(*tasks)\n",
+					"\n",
+					"loop = asyncio.get_event_loop()\n",
+					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 111
+				"execution_count": 115
 			},
 			{
 				"cell_type": "code",
