@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "512e59c2-a8a0-45d7-95e9-5840cecf5e3e"
+				"spark.autotune.trackingId": "df2ac80b-c633-4a5f-ba54-fde7e3a7cd32"
 			}
 		},
 		"metadata": {
@@ -90,14 +90,14 @@
 					"    }\n",
 					"}"
 				],
-				"execution_count": 25
+				"execution_count": 54
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 26
+				"execution_count": 55
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 				"source": [
 					" %run utils/py_logging_decorator"
 				],
-				"execution_count": 27
+				"execution_count": 56
 			},
 			{
 				"cell_type": "markdown",
@@ -133,16 +133,16 @@
 			{
 				"cell_type": "code",
 				"source": [
-					"%run utils/py_utils_common_logging_output"
+					"# %run utils/py_utils_common_logging_output"
 				],
-				"execution_count": 28
+				"execution_count": 57
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_Application_Insite"
 				],
-				"execution_count": 29
+				"execution_count": 58
 			},
 			{
 				"cell_type": "markdown",
@@ -176,7 +176,7 @@
 					"from pyspark.sql.types import StringType, DateType, TimestampType, IntegerType, FloatType, StructType, StructField\n",
 					"from delta import DeltaTable"
 				],
-				"execution_count": 30
+				"execution_count": 59
 			},
 			{
 				"cell_type": "markdown",
@@ -216,9 +216,10 @@
 					"start_exec_time = datetime.now()\n",
 					"insert_count = 0\n",
 					"update_count = 0\n",
-					"delete_count = 0"
+					"delete_count = 0\n",
+					"error_message=''"
 				],
-				"execution_count": 47
+				"execution_count": 71
 			},
 			{
 				"cell_type": "markdown",
@@ -245,7 +246,7 @@
 					"PipelineTriggeredbyPipelineName = \"pln_all_horizon_data\"\n",
 					"PipelineTriggeredbyPipelineRunID = \"7cd26982-eaab-4646-b3fd-afd12b4bee73\""
 				],
-				"execution_count": 32
+				"execution_count": 61
 			},
 			{
 				"cell_type": "code",
@@ -256,7 +257,7 @@
 					"standardised_container = f\"abfss://odw-standardised@{storage_account}\"\n",
 					"print(standardised_container)"
 				],
-				"execution_count": 34
+				"execution_count": 62
 			},
 			{
 				"cell_type": "markdown",
@@ -289,7 +290,7 @@
 					"else:\n",
 					"    print(\"No folders found in the specified directory.\")"
 				],
-				"execution_count": 35
+				"execution_count": 63
 			},
 			{
 				"cell_type": "markdown",
@@ -313,7 +314,7 @@
 					"horizon_files\n",
 					" # comment this during the full execution"
 				],
-				"execution_count": 36
+				"execution_count": 64
 			},
 			{
 				"cell_type": "markdown",
@@ -377,7 +378,7 @@
 					"    \n",
 					"    logInfo(f\"Table '{db_name}.{table_name}' created successfully!\")"
 				],
-				"execution_count": 37
+				"execution_count": 65
 			},
 			{
 				"cell_type": "markdown",
@@ -543,7 +544,7 @@
 					"    \n",
 					"    return ingestion_failure, rows_raw"
 				],
-				"execution_count": 38
+				"execution_count": 66
 			},
 			{
 				"cell_type": "code",
@@ -583,7 +584,7 @@
 					"\n",
 					"            if ingestion_failure:\n",
 					"                print(\"Errors reported during Ingestion!!\")\n",
-					"\n",
+					"                error_message = \"Errors reported during Ingestion!!\"\n",
 					"            else:\n",
 					"                print(\"No Errors reported during Ingestion\")\n",
 					"        else:\n",
@@ -592,9 +593,10 @@
 					"            else:\n",
 					"                print(f\"Condition Not Satisfied for Load {file} File\")\n",
 					"    except Exception as e:\n",
-					"        print(f\"Failed to process {file}: {e}\")"
+					"        print(f\"Failed to process {file}: {e}\")\n",
+					"        error_message = f\"Failed to process {file}: {str(e)}\""
 				],
-				"execution_count": 39
+				"execution_count": 72
 			},
 			{
 				"cell_type": "code",
@@ -611,18 +613,18 @@
 					"\n",
 					"        end_exec_time = datetime.now()\n",
 					"        DurationSeconds = (end_exec_time - start_exec_time).total_seconds()  # Correctly indented inside the function\n",
-					"        \n",
+					"        ActivityType= mssparkutils.runtime.context['currentNotebookName']\n",
 					"        # Prepare telemetry params\n",
 					"        params = {\n",
 					"            \"Stage\": \"Completed\",\n",
 					"            \"PipelineName\": PipelineName,\n",
 					"            \"PipelineRunID\": PipelineRunID,\n",
-					"            \"StartTime\": start_exec_time,\n",
-					"            \"EndTime\": end_exec_time,\n",
+					"            \"StartTime\": start_exec_time.isoformat(),\n",
+					"            \"EndTime\": end_exec_time.isoformat(),\n",
 					"            \"Inserts\": insert_count,\n",
 					"            \"Updates\": update_count,\n",
 					"            \"Deletes\": delete_count,\n",
-					"            \"ErrorMessage\": \"\",\n",
+					"            \"ErrorMessage\": error_message,\n",
 					"            \"StatusMessage\": \"Successful\",\n",
 					"            \"PipelineTriggerID\": PipelineTriggerID,\n",
 					"            \"PipelineTriggerName\": PipelineTriggerName,\n",
@@ -630,7 +632,7 @@
 					"            \"PipelineTriggeredbyPipelineName\": PipelineTriggeredbyPipelineName,\n",
 					"            \"PipelineTriggeredbyPipelineRunID\": PipelineTriggeredbyPipelineRunID,\n",
 					"            \"PipelineExecutionTimeInSec\": DurationSeconds,\n",
-					"            \"ActivityType\": process_name,\n",
+					"            \"ActivityType\": ActivityType,\n",
 					"            \"DurationSeconds\": DurationSeconds,\n",
 					"            \"StatusCode\": \"200\",\n",
 					"            \"AppInsCustomEventName\": \"ODW_Master_Pipeline_Logs\"\n",
@@ -645,7 +647,7 @@
 					"loop = asyncio.get_event_loop()\n",
 					"loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 49
+				"execution_count": 68
 			},
 			{
 				"cell_type": "code",
@@ -660,7 +662,7 @@
 					"# loop = asyncio.get_event_loop()\n",
 					"# loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": 40
+				"execution_count": 69
 			},
 			{
 				"cell_type": "markdown",
@@ -681,7 +683,7 @@
 					"# # Exit with the JSON result\n",
 					"# mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
-				"execution_count": 41
+				"execution_count": 70
 			}
 		]
 	}
