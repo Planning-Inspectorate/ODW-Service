@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "fc4337f6-704a-4ea4-b75b-ea7439304ef4"
+				"spark.autotune.trackingId": "09ca5bd8-13b5-4e96-9323-66b4f60ac1b3"
 			}
 		},
 		"metadata": {
@@ -90,14 +90,14 @@
 					"    }\n",
 					"}"
 				],
-				"execution_count": 20
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run /utils/py_mount_storage"
 				],
-				"execution_count": 21
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -115,7 +115,7 @@
 				"source": [
 					" %run utils/py_logging_decorator"
 				],
-				"execution_count": 22
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -135,14 +135,14 @@
 				"source": [
 					"# %run utils/py_utils_common_logging_output"
 				],
-				"execution_count": 23
+				"execution_count": null
 			},
 			{
 				"cell_type": "code",
 				"source": [
 					"%run utils/py_application_Insite"
 				],
-				"execution_count": 24
+				"execution_count": null
 			},
 			{
 				"cell_type": "markdown",
@@ -492,6 +492,7 @@
 					"    logInfo(f\"Writing data to odw_standardised_db.{standardised_table_name}\")\n",
 					"    sparkDF.write.option(\"mergeSchema\", \"true\").format(\"delta\").mode(\"append\").saveAsTable(f\"odw_standardised_db.{standardised_table_name}\")\n",
 					"    logInfo(f\"Written data to odw_standardised_db.{standardised_table_name}\")\n",
+					"    end_exec_time = datetime.now()\n",
 					"    \n",
 					"    standardised_table_df_new = spark.read.format(\"delta\").load(standardised_table_location)\n",
 					"    rows_new = standardised_table_df.filter((standardised_table_df.expected_from == expected_from) & (standardised_table_df.expected_to == expected_to)).count()\n",
@@ -543,7 +544,7 @@
 					"        logError(f\"All rows have NOT been successfully written. Expected {rows_raw} but {rows_new} written\")\n",
 					"        ingestion_failure = True\n",
 					"    \n",
-					"    return ingestion_failure, rows_raw,standardised_table_name"
+					"    return ingestion_failure, rows_raw,standardised_table_name,end_exec_time"
 				],
 				"execution_count": null
 			},
@@ -554,6 +555,7 @@
 					"async def ingest_horizon(date_folder: str, file: str):\n",
 					"    row_count = 0\n",
 					"    error_message = \"\"\n",
+					"    start_exec_time = datetime.now()\n",
 					"    try:\n",
 					"        spark = SparkSession.builder.getOrCreate()\n",
 					"\n",
@@ -583,7 +585,7 @@
 					"                print(f\"Deleting existing table if exists odw_standardised_db.{definition['Standardised_Table_Name']}\")\n",
 					"                mssparkutils.notebook.run('/utils/py_delete_table', 300, arguments={'db_name': 'odw_standardised_db', 'table_name': definition['Standardised_Table_Name']})\n",
 					"\n",
-					"            ingestion_failure, row_count,standardised_table_name = ingest_adhoc(storage_account, definition, source_path, file, expected_from, expected_to)\n",
+					"            ingestion_failure, row_count,standardised_table_name,end_exec_time = ingest_adhoc(storage_account, definition, source_path, file, expected_from, expected_to)\n",
 					"\n",
 					"            if ingestion_failure:\n",
 					"                print(\"Errors reported during Ingestion!!\")\n",
@@ -599,7 +601,7 @@
 					"        print(f\"Failed to process {file}: {e}\")\n",
 					"        error_message = f\"Failed to process {file}: {str(e)}\"\n",
 					"\n",
-					"    return row_count, error_message,standardised_table_name"
+					"    return row_count, error_message,standardised_table_name,start_exec_time,end_exec_time"
 				],
 				"execution_count": null
 			},
@@ -613,11 +615,11 @@
 					"nest_asyncio.apply()\n",
 					"\n",
 					"async def process_file(file):\n",
-					"    start_exec_time = datetime.now()\n",
+					"    \n",
 					"    # Ingest file, returning insert count, error message, and table name\n",
-					"    insert_count, error_message, standardised_table_name = await ingest_horizon(date_folder=latest_folder, file=file)\n",
+					"    insert_count, error_message, standardised_table_name,start_exec_time,end_exec_time = await ingest_horizon(date_folder=latest_folder, file=file)\n",
 					"\n",
-					"    end_exec_time = datetime.now()\n",
+					"    \n",
 					"    DurationSeconds = (end_exec_time - start_exec_time).total_seconds()\n",
 					"    ActivityType = mssparkutils.runtime.context['currentNotebookName']\n",
 					"    StatusMessage = f\"Data load happened from {file} file to {standardised_table_name} table\"\n",
