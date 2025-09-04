@@ -20,7 +20,7 @@
 				"spark.dynamicAllocation.enabled": "false",
 				"spark.dynamicAllocation.minExecutors": "2",
 				"spark.dynamicAllocation.maxExecutors": "2",
-				"spark.autotune.trackingId": "90f193c3-e241-4516-b3de-23daf3f97130"
+				"spark.autotune.trackingId": "ad6df6d3-aa9b-4e73-8d27-4425b93a742d"
 			}
 		},
 		"metadata": {
@@ -610,7 +610,7 @@
 					"\n",
 					"    return row_count, error_message,standardised_table_name,start_exec_time,end_exec_time"
 				],
-				"execution_count": 38
+				"execution_count": 45
 			},
 			{
 				"cell_type": "code",
@@ -622,16 +622,16 @@
 					"nest_asyncio.apply()\n",
 					"\n",
 					"async def process_file(file):\n",
-					"    \n",
 					"    # Ingest file, returning insert count, error message, and table name\n",
-					"    insert_count, error_message, standardised_table_name,start_exec_time,end_exec_time = await ingest_horizon(date_folder=latest_folder, file=file)\n",
+					"    insert_count, error_message, standardised_table_name, start_exec_time, end_exec_time = await ingest_horizon(date_folder=latest_folder, file=file)\n",
 					"\n",
-					"    # error_message = \"Errors reported during Ingestion!!\"\n",
+					"    # For testing error, uncomment below line or inject error_message dynamically\n",
+					"    error_message = \"Errors reported during Ingestion!!\"\n",
+					"\n",
 					"    DurationSeconds = (end_exec_time - start_exec_time).total_seconds()\n",
 					"    ActivityType = mssparkutils.runtime.context['currentNotebookName']\n",
 					"    StatusMessage = f\"Successfully loaded data from {file} into {standardised_table_name} table\"\n",
 					"    Stage = \"Success\" if not error_message else \"Failed\"\n",
-					"\n",
 					"\n",
 					"    params = {\n",
 					"        \"Stage\": Stage,\n",
@@ -656,22 +656,91 @@
 					"        \"AppInsCustomEventName\": \"ODW_Master_Pipeline_Logs\"\n",
 					"    }\n",
 					"\n",
-					"    # Send telemetry\n",
-					"    await asyncio.to_thread(send_telemetry_to_app_insights, params,instrumentation_key)\n",
-					"    # Optional: print or raise error on failure\n",
+					"    # Send telemetry in a separate thread\n",
+					"    await asyncio.to_thread(send_telemetry_to_app_insights, params, instrumentation_key)\n",
+					"\n",
+					"    # If error found, raise exception to stop overall processing and quit notebook\n",
 					"    if error_message:\n",
 					"        print(f\"Notebook failed for file {file}: {error_message}\")\n",
+					"        raise RuntimeError(f\"Notebook failed due to error in file {file}: {error_message}\")\n",
 					"\n",
 					"async def load_horizon_async():\n",
-					"    # Process all files in parallel (ensure horizon_files is populated)\n",
-					"    tasks = [process_file(file) for file in horizon_files]\n",
-					"    await asyncio.gather(*tasks)\n",
+					"    # Process files sequentially to stop on first error,\n",
+					"    # or use gather with return_exceptions=False to stop on exceptions\n",
+					"    for file in horizon_files:\n",
+					"        await process_file(file)\n",
 					"\n",
-					"# Main entry point\n",
-					"loop = asyncio.get_event_loop()\n",
-					"loop.run_until_complete(load_horizon_async())"
+					"# Run and handle exception to quit notebook cleanly\n",
+					"try:\n",
+					"    loop = asyncio.get_event_loop()\n",
+					"    loop.run_until_complete(load_horizon_async())\n",
+					"except RuntimeError as e:\n",
+					"    print(str(e))\n",
+					"    import sys\n",
+					"    sys.exit(1)  # Quits the notebook with error code 1"
 				],
-				"execution_count": 39
+				"execution_count": 46
+			},
+			{
+				"cell_type": "code",
+				"source": [
+					"# import asyncio\n",
+					"# import nest_asyncio\n",
+					"# from datetime import datetime\n",
+					"\n",
+					"# nest_asyncio.apply()\n",
+					"\n",
+					"# async def process_file(file):\n",
+					"    \n",
+					"#     # Ingest file, returning insert count, error message, and table name\n",
+					"#     insert_count, error_message, standardised_table_name,start_exec_time,end_exec_time = await ingest_horizon(date_folder=latest_folder, file=file)\n",
+					"\n",
+					"#     error_message = \"Errors reported during Ingestion!!\"\n",
+					"#     DurationSeconds = (end_exec_time - start_exec_time).total_seconds()\n",
+					"#     ActivityType = mssparkutils.runtime.context['currentNotebookName']\n",
+					"#     StatusMessage = f\"Successfully loaded data from {file} into {standardised_table_name} table\"\n",
+					"#     Stage = \"Success\" if not error_message else \"Failed\"\n",
+					"\n",
+					"\n",
+					"#     params = {\n",
+					"#         \"Stage\": Stage,\n",
+					"#         \"PipelineName\": PipelineName,\n",
+					"#         \"PipelineRunID\": PipelineRunID,\n",
+					"#         \"StartTime\": start_exec_time.isoformat(),\n",
+					"#         \"EndTime\": end_exec_time.isoformat(),\n",
+					"#         \"Inserts\": insert_count,\n",
+					"#         \"Updates\": update_count,\n",
+					"#         \"Deletes\": delete_count,\n",
+					"#         \"ErrorMessage\": error_message,\n",
+					"#         \"StatusMessage\": StatusMessage,\n",
+					"#         \"PipelineTriggerID\": PipelineTriggerID,\n",
+					"#         \"PipelineTriggerName\": PipelineTriggerName,\n",
+					"#         \"PipelineTriggerType\": PipelineTriggerType,\n",
+					"#         \"PipelineTriggeredbyPipelineName\": PipelineTriggeredbyPipelineName,\n",
+					"#         \"PipelineTriggeredbyPipelineRunID\": PipelineTriggeredbyPipelineRunID,\n",
+					"#         \"PipelineExecutionTimeInSec\": DurationSeconds,\n",
+					"#         \"ActivityType\": ActivityType,\n",
+					"#         \"DurationSeconds\": DurationSeconds,\n",
+					"#         \"StatusCode\": \"200\" if Stage == \"Success\" else \"500\",\n",
+					"#         \"AppInsCustomEventName\": \"ODW_Master_Pipeline_Logs\"\n",
+					"#     }\n",
+					"\n",
+					"#     # Send telemetry\n",
+					"#     await asyncio.to_thread(send_telemetry_to_app_insights, params,instrumentation_key)\n",
+					"#     # Optional: print or raise error on failure\n",
+					"#     if error_message:\n",
+					"#         print(f\"Notebook failed for file {file}: {error_message}\")\n",
+					"\n",
+					"# async def load_horizon_async():\n",
+					"#     # Process all files in parallel (ensure horizon_files is populated)\n",
+					"#     tasks = [process_file(file) for file in horizon_files]\n",
+					"#     await asyncio.gather(*tasks)\n",
+					"\n",
+					"# # Main entry point\n",
+					"# loop = asyncio.get_event_loop()\n",
+					"# loop.run_until_complete(load_horizon_async())"
+				],
+				"execution_count": 44
 			},
 			{
 				"cell_type": "code",
@@ -723,7 +792,7 @@
 					"#         print(f\"Failed to process {file}: {e}\")\n",
 					"#         error_message = f\"Failed to process {file}: {str(e)}\""
 				],
-				"execution_count": null
+				"execution_count": 40
 			},
 			{
 				"cell_type": "code",
@@ -775,7 +844,7 @@
 					"# loop = asyncio.get_event_loop()\n",
 					"# loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": null
+				"execution_count": 41
 			},
 			{
 				"cell_type": "code",
@@ -790,7 +859,7 @@
 					"# loop = asyncio.get_event_loop()\n",
 					"# loop.run_until_complete(load_horizon_async())"
 				],
-				"execution_count": null
+				"execution_count": 42
 			},
 			{
 				"cell_type": "markdown",
@@ -811,7 +880,7 @@
 					"# # Exit with the JSON result\n",
 					"# mssparkutils.notebook.exit(app_insight_logger.generate_processing_results())"
 				],
-				"execution_count": null
+				"execution_count": 43
 			}
 		]
 	}
