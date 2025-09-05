@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
     LOAD_SAP_HR_MONTHLY {
         varchar PersNo PK
